@@ -213,7 +213,7 @@ class ModelManager {
             return;
           }
           await loadExternalResource(this.cubism2Path, 'js');
-          const { default: Cubism2Model } = await import('./cubism2/index');
+          const { default: Cubism2Model } = await import('@/cubism2/index');
           this.cubism2model = new Cubism2Model();
         }
         await this.cubism2model.init('live2d', modelSettingPath, modelSetting);

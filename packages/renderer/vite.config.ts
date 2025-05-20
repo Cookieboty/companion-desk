@@ -25,14 +25,6 @@ export default defineConfig({
     emptyOutDir: true,
     assetsDir: 'assets',
     minify: 'terser',
-    // 确保生成的资源使用相对路径
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-        },
-      },
-    },
   },
 
   // 解析配置
