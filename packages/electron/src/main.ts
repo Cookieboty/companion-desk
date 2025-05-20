@@ -2,6 +2,27 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 
+// 开发模式下启用热重载
+const isDev = process.env.NODE_ENV === 'development';
+if (isDev) {
+  try {
+    // 尝试加载electron-reload，如果没有安装则会抛出错误
+    // 这样可以避免在生产环境中出现问题
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, '..', 'node_modules', 'electron'),
+      hardResetMethod: 'exit',
+      // 监视这些文件的变化
+      watched: [
+        path.join(__dirname, '..', 'dist', '**'),
+        path.join(__dirname, '..', 'src', '**')
+      ]
+    });
+    console.log('开发模式：热重载已启用');
+  } catch (err) {
+    console.error('无法启用热重载，请确保已安装electron-reload:', err);
+  }
+}
+
 // 保持一个对窗口对象的全局引用，如果不这样做，当 JavaScript 对象被
 // 垃圾回收，窗口会自动关闭
 let mainWindow: BrowserWindow | null = null;
@@ -28,11 +49,12 @@ function createWindow() {
 
   // 加载应用
   const isDev = process.env.NODE_ENV === 'development';
-  console.log('env=====>', isDev);
 
   let startUrl;
   if (isDev) {
     startUrl = 'http://localhost:3000';
+    // 开发模式下打开开发者工具
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     // 在生产环境中，从extraResources中加载渲染器
     const rendererPath = path.join(
