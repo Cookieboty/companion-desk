@@ -29,13 +29,27 @@ function createWindow() {
   // 加载应用
   const isDev = process.env.NODE_ENV === 'development';
   console.log('env=====>', isDev);
-  const startUrl = isDev
-    ? 'http://localhost:3000'
-    : url.format({
-      pathname: path.join(__dirname, '../../renderer/dist/index.html'),
+
+  let startUrl;
+  if (isDev) {
+    startUrl = 'http://localhost:3000';
+  } else {
+    // 在生产环境中，从extraResources中加载渲染器
+    const rendererPath = path.join(
+      app.isPackaged
+        ? path.dirname(app.getPath('exe'))
+        : app.getAppPath(),
+      'resources',
+      'renderer',
+      'index.html'
+    );
+
+    startUrl = url.format({
+      pathname: rendererPath,
       protocol: 'file:',
       slashes: true
     });
+  }
 
   mainWindow.loadURL(startUrl);
 

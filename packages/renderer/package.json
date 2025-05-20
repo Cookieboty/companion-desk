@@ -4,7 +4,9 @@
   "description": "基于React的前端UI",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run copy-assets",
     "build": "tsc && vite build",
+    "copy-assets": "copyfiles -u 1 \"public/live2d-widget/**/*\" dist/assets/live2d-widget/",
     "clean": "rimraf dist",
     "test": "vitest run"
   },
@@ -20,6 +22,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",
+    "copyfiles": "^2.4.1",
     "rimraf": "^5.0.0",
     "typescript": "^4.9.0",
     "vite": "^4.3.9",

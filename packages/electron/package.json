@@ -27,8 +27,10 @@
     "productName": "AI 看板娘",
     "files": [
       "dist/**/*",
-      "../renderer/dist/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      { "from": "../renderer/dist", "to": "renderer" }
     ],
     "directories": {
       "buildResources": "assets",
