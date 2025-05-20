@@ -1,0 +1,119 @@
+.live2d-container {
+  position: relative;
+  width: 280px;
+  height: 250px;
+}
+
+.waifu-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#live2d-canvas {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.waifu-message {
+  opacity: 0;
+  width: 250px;
+  height: auto;
+  min-height: 70px;
+  margin: -20px 30px;
+  padding: 5px 10px;
+  border: 1px solid rgba(224, 186, 140, 0.62);
+  border-radius: 12px;
+  background-color: rgba(236, 217, 188, 0.8);
+  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  position: absolute;
+  animation-delay: 5s;
+  animation-duration: 50s;
+  animation-iteration-count: infinite;
+  animation-name: shake;
+  animation-timing-function: ease-in-out;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 20;
+}
+
+.waifu-message.show {
+  opacity: 1;
+}
+
+.waifu-tool {
+  display: none;
+  position: absolute;
+  right: -10px;
+  bottom: 30px;
+  width: 40px;
+  height: auto;
+  z-index: 10;
+}
+
+.live2d-container:hover .waifu-tool {
+  display: block;
+}
+
+.waifu-tool span {
+  display: block;
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  color: #5b6c7d;
+  border: 1px solid #eee;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  margin-bottom: 5px;
+  line-height: 30px;
+  font-size: 16px;
+  transition: transform 0.15s ease-in-out;
+}
+
+.waifu-tool span:hover {
+  transform: scale(1.1);
+  color: #0684bd;
+}
+
+/* 兼容原始项目的样式 */
+#waifu-toggle {
+  position: fixed;
+  bottom: 66px;
+  left: 0;
+  z-index: 100;
+  font-size: 12px;
+  padding: 5px 2px 5px 5px;
+  width: auto;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  background-color: #fa0;
+  color: #fff;
+}
+
+#waifu-toggle.waifu-toggle-active {
+  opacity: 0.3;
+}
+
+@keyframes shake {
+  2% {
+    transform: translate(0.5px, -1.5px) rotate(-0.5deg);
+  }
+  4% {
+    transform: translate(0.5px, 1.5px) rotate(1.5deg);
+  }
+  6% {
+    transform: translate(1.5px, 1.5px) rotate(1.5deg);
+  }
+  /* 更多关键帧... */
+  98% {
+    transform: translate(0.5px, -0.5px) rotate(0.5deg);
+  }
+  100% {
+    transform: translate(0.5px, -1.5px) rotate(-0.5deg);
+  }
+} 

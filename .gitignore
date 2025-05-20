@@ -26,3 +26,12 @@ yarn-error.log*
 .yalc
 yalc.lock
 public/langs.json
+
+# editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# operating system
+Thumbs.db
