@@ -103,7 +103,7 @@ const App: React.FC = () => {
       </div>
 
       <Live2DModel
-        modelPath="https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/"
+        modelPath="/live2d-widget/"
         onLoad={() => setLoaded(true)}
       />
     </div>

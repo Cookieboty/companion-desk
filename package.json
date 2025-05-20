@@ -1,66 +1,24 @@
 {
-  "name": "live2d-electron",
+  "name": "ig-live-monorepo",
   "version": "1.0.0",
   "description": "基于 Electron 的看板娘桌面应用",
-  "main": "dist/main.js",
+  "private": true,
   "scripts": {
-    "start": "concurrently \"npm run start:react\" \"npm run start:electron\"",
-    "start:react": "cross-env BROWSER=none react-scripts start",
-    "start:electron": "wait-on http://localhost:3000 && electron .",
-    "build": "react-scripts build && tsc -p electron-tsconfig.json",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "postinstall": "electron-builder install-app-deps",
-    "package": "npm run build && electron-builder build --mac --win"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "package": "turbo run package",
+    "test": "turbo run test",
+    "clean": "turbo run clean"
   },
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
   "devDependencies": {
-    "@types/node": "^16.18.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "concurrently": "^7.6.0",
-    "cross-env": "^7.0.3",
-    "electron": "^22.0.0",
-    "electron-builder": "^23.6.0",
-    "react-scripts": "5.0.1",
-    "typescript": "^4.9.0",
-    "wait-on": "^7.0.1"
+    "turbo": "^1.10.0",
+    "typescript": "^4.9.0"
   },
-  "build": {
-    "appId": "com.live2d.electron",
-    "productName": "AI 看板娘",
-    "files": [
-      "dist/**/*",
-      "build/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "directories": {
-      "buildResources": "assets"
-    },
-    "mac": {
-      "category": "public.app-category.entertainment",
-      "target": "dmg"
-    },
-    "win": {
-      "target": "nsis"
-    }
+  "engines": {
+    "node": ">=16.0.0",
+    "pnpm": ">=8.0.0"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  }
+  "packageManager": "pnpm@8.6.0"
 }

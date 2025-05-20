@@ -27,11 +27,15 @@ function createWindow() {
   });
 
   // 加载应用
-  const startUrl = process.env.ELECTRON_START_URL || url.format({
-    pathname: path.join(__dirname, '../index.html'),
-    protocol: 'file:',
-    slashes: true
-  });
+  const isDev = process.env.NODE_ENV === 'development';
+  console.log('env=====>', isDev);
+  const startUrl = isDev
+    ? 'http://localhost:3000'
+    : url.format({
+      pathname: path.join(__dirname, '../../renderer/dist/index.html'),
+      protocol: 'file:',
+      slashes: true
+    });
 
   mainWindow.loadURL(startUrl);
 

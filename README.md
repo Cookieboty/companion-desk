@@ -1,6 +1,61 @@
-# AI 看板娘应用
+# IG-Live 桌面看板娘应用
 
-这是一个基于 Electron、React 和 TypeScript 的 AI 看板娘应用，它是对 [stevenjoezhang/live2d-widget](https://github.com/stevenjoezhang/live2d-widget) 项目的重新实现。
+基于Electron和React的桌面看板娘应用。
+
+## 项目结构
+
+使用pnpm workspace + Turborepo进行工程化管理:
+
+```
+ig-live-monorepo/
+├── packages/
+│   ├── electron/    - Electron主进程代码
+│   ├── renderer/    - React前端渲染器
+│   └── types/       - 共享类型定义
+├── pnpm-workspace.yaml
+├── turbo.json
+└── package.json
+```
+
+## 开发环境设置
+
+### 安装依赖
+
+```bash
+pnpm install
+```
+
+### 开发模式
+
+```bash
+pnpm dev
+```
+
+这将同时启动React开发服务器和Electron应用。
+
+### 构建项目
+
+```bash
+pnpm build
+```
+
+### 打包应用
+
+```bash
+pnpm package
+```
+
+## 快捷键
+
+- `Alt+P`: 切换窗口置顶状态
+- `Alt+Q`: 退出应用
+
+## 功能
+
+- 透明窗口
+- 窗口拖动
+- 窗口置顶
+- 跨平台支持(Windows/macOS)
 
 ## 功能特点
 

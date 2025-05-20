@@ -1,0 +1,45 @@
+{
+  "name": "@ig-live/electron",
+  "version": "1.0.0",
+  "description": "Electron主进程和预加载脚本",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development wait-on http://localhost:3000 && electron .",
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "package": "electron-builder build --mac --win"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^22.0.0"
+  },
+  "devDependencies": {
+    "@ig-live/types": "workspace:*",
+    "cross-env": "^7.0.3",
+    "electron-builder": "^23.6.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^4.9.0",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.ig-live.electron",
+    "productName": "AI 看板娘",
+    "files": [
+      "dist/**/*",
+      "../renderer/dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "../../dist"
+    },
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+} 

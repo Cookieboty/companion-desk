@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { IpcApi } from '@ig-live/types';
 
 // 向渲染进程暴露安全的 API
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -14,4 +15,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   moveWindow: (deltaX: number, deltaY: number) => {
     ipcRenderer.send('move-window', deltaX, deltaY);
   }
-}); 
+} as IpcApi); 

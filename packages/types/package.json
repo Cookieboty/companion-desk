@@ -1,0 +1,17 @@
+{
+  "name": "@ig-live/types",
+  "version": "1.0.0",
+  "description": "共享类型定义",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "rimraf": "^5.0.0",
+    "typescript": "^4.9.0"
+  }
+} 
