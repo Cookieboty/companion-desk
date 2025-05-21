@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 技术栈
+
+本项目使用的主要技术栈：
+
+## 核心技术
+
+- Electron - 跨平台桌面应用开发框架
+- React - 用户界面库
+- TypeScript - 类型安全的JavaScript超集
+- Live2D Cubism - Live2D模型渲染引擎
+
+## 构建工具
+
+- Turborepo - 高性能构建系统
+- pnpm - 快速、节省磁盘空间的包管理器
+- Vite - 现代前端构建工具
+- electron-builder - 打包和分发Electron应用
+
+## 开发工具
+
+- electron-reload - 提供Electron应用的热重载功能
+- concurrently - 同时运行多个命令的工具
+- cross-env - 跨平台设置环境变量
+
+## 最佳实践
+
+- 使用TypeScript确保类型安全
+- 使用模块化设计组织代码
+- 使用pnpm workspace管理多包项目
+- 使用Turborepo优化构建流程

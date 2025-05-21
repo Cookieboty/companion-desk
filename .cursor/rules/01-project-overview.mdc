@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 项目概述
+
+本项目是一个基于Electron和React的桌面看板娘应用，使用pnpm workspace + Turborepo进行工程化管理。
+
+## 基本结构
+
+项目包含三个主要模块：
+
+- [packages/electron](mdc:packages/electron/package.json) - Electron主进程和预加载脚本
+- [packages/renderer](mdc:packages/renderer/package.json) - 基于React的前端UI
+- [packages/types](mdc:packages/types/package.json) - 共享类型定义
+
+## 核心配置文件
+
+- [package.json](mdc:package.json) - 项目根配置
+- [pnpm-workspace.yaml](mdc:pnpm-workspace.yaml) - 工作区配置
+- [turbo.json](mdc:turbo.json) - Turborepo配置
+
+## 功能特点
+
+- 透明无边框窗口
+- 窗口拖拽
+- 窗口置顶切换
+- 加载和显示Live2D模型
+- 模型互动和消息气泡
+- 开发模式下支持热重载

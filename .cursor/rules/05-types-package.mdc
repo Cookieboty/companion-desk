@@ -1,0 +1,30 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Types包
+
+## 目录结构
+
+- [src/index.ts](mdc:packages/types/src/index.ts) - 类型定义入口文件
+
+## 配置文件
+
+- [package.json](mdc:packages/types/package.json) - 包配置和依赖
+- [tsconfig.json](mdc:packages/types/tsconfig.json) - TypeScript配置
+
+## 开发命令
+
+- `pnpm dev` - 启动TypeScript监视模式
+- `pnpm build` - 构建类型定义
+- `pnpm clean` - 清理构建产物
+
+## 主要类型
+
+- `IpcApi` - 定义主进程和渲染进程之间的IPC通信接口
+- `ElectronApi` - 定义在渲染进程中可用的Electron API
+
+## 使用方式
+
+此包被其他包作为依赖引入，提供共享的类型定义，确保主进程和渲染进程之间类型安全的通信。

@@ -1,0 +1,28 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 开发工作流
+
+## 开发命令
+
+- `pnpm dev` - 启动开发环境（同时启动所有包）
+- `pnpm build` - 构建所有包
+- `pnpm package` - 打包应用为可分发格式
+- `pnpm clean` - 清理构建产物
+
+## 开发流程
+
+1. 修改 [types](mdc:packages/types/src) 包中的共享类型（如需要）
+2. 开发 [renderer](mdc:packages/renderer/src) 包中的前端UI
+3. 开发 [electron](mdc:packages/electron/src) 包中的主进程逻辑
+4. 使用 `pnpm dev` 启动开发环境进行测试
+5. 使用 `pnpm build` 构建项目
+6. 使用 `pnpm package` 打包应用
+
+## 注意事项
+
+- 开发模式下支持热重载，修改代码后应用会自动更新
+- Electron主进程和渲染进程通过IPC通信
+- 所有包之间的依赖关系通过workspace管理

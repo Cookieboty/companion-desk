@@ -1,0 +1,36 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 工作区结构
+
+本项目使用pnpm workspace + Turborepo进行工程化管理，具有以下特点：
+
+## 工作区配置
+
+- [pnpm-workspace.yaml](mdc:pnpm-workspace.yaml) - 定义工作区包含的目录
+- [turbo.json](mdc:turbo.json) - Turborepo任务配置
+
+## 包依赖关系
+
+- `@ig-live/types` - 被electron和renderer包引用
+- `@ig-live/electron` - 依赖types包，负责加载renderer构建产物
+- `@ig-live/renderer` - 依赖types包，提供UI界面
+
+## 开发流程
+
+在根目录运行命令将影响所有包：
+
+- `pnpm dev` - 并行启动所有包的开发环境
+- `pnpm build` - 按依赖顺序构建所有包
+- `pnpm package` - 打包应用为可分发格式
+- `pnpm clean` - 清理所有包的构建产物
+
+## 新增包
+
+如需添加新包：
+
+1. 在packages目录下创建新目录
+2. 确保package.json中有正确的名称和依赖
+3. 在pnpm-workspace.yaml中确认包含路径配置正确

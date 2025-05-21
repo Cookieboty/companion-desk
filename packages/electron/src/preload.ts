@@ -14,5 +14,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 移动窗口
   moveWindow: (deltaX: number, deltaY: number) => {
     ipcRenderer.send('move-window', deltaX, deltaY);
+  },
+  // 获取窗口位置
+  getPosition: async () => {
+    return await ipcRenderer.invoke('get-position');
+  },
+  // 设置窗口位置
+  setPosition: (x: number, y: number) => {
+    try {
+      // 确保参数是数字并转为整数
+      const intX = Math.round(Number(x) || 0);
+      const intY = Math.round(Number(y) || 0);
+      ipcRenderer.send('set-position', intX, intY);
+    } catch (err) {
+      console.error('设置位置参数错误:', err);
+    }
   }
 } as IpcApi); 

@@ -1,55 +1,137 @@
 function registerDrag() {
   const element = document.getElementById('waifu');
   if (!element) return;
-  let winWidth = window.innerWidth,
-    winHeight = window.innerHeight;
-  const imgWidth = element.offsetWidth,
-    imgHeight = element.offsetHeight;
-  // Bind mousedown event to the element to be dragged
-  element.addEventListener('mousedown', event => {
-    if (event.button === 2) {
-      // Right mouse button, just return, do not handle
-      return;
-    }
-    const canvas = document.getElementById('live2d');
-    if (event.target !== canvas) return;
-    event.preventDefault();
-    // Record the coordinates of the cursor when pressing down on the image
-    const _offsetX = event.offsetX,
-      _offsetY = event.offsetY;
-    // Bind mousemove event
-    document.onmousemove = event => {
-      // Get the coordinates of the cursor in the viewport
-      const _x = event.clientX,
-        _y = event.clientY;
-      // Calculate the position of the dragged image
-      let _left = _x - _offsetX,
-        _top = _y - _offsetY;
-      // Check if within the window range
-      if (_top < 0) { // Top
-        _top = 0;
-      } else if (_top >= winHeight - imgHeight) { // Bottom
-        _top = winHeight - imgHeight;
+
+  // 定义变量
+  let isDragging = false;
+  let initialX = 0;
+  let initialY = 0;
+  let lastX = 0;
+  let lastY = 0;
+
+  // 窗口起始位置
+  let windowX = 0;
+  let windowY = 0;
+
+  // 动画帧ID
+  let animationFrameId: number | null = null;
+
+  // 获取全局电子API
+  const electronAPI = (window as any).electronAPI;
+
+  // 初始化时尝试获取当前窗口位置
+  const initPosition = async () => {
+    try {
+      if (electronAPI?.getPosition) {
+        const position = await electronAPI.getPosition();
+        if (Array.isArray(position) && position.length === 2) {
+          windowX = position[0];
+          windowY = position[1];
+        }
       }
-      if (_left < 0) { // Left
-        _left = 0;
-      } else if (_left >= winWidth - imgWidth) { // Right
-        _left = winWidth - imgWidth;
+    } catch (err) {
+      console.error('获取初始窗口位置失败:', err);
+    }
+  };
+
+  // 立即执行获取初始位置
+  initPosition();
+
+  // 移动动画函数
+  const moveWindow = () => {
+    if (!isDragging) return;
+
+    try {
+      if (electronAPI && electronAPI.setPosition) {
+        // 确保坐标为整数
+        const newX = Math.round(windowX);
+        const newY = Math.round(windowY);
+
+        // 发送位置更新
+        electronAPI.setPosition(newX, newY);
       }
-      // Set the position of the element during dragging
-      element.style.top = _top + 'px';
-      element.style.left = _left + 'px';
+    } catch (err) {
+      console.error('设置窗口位置失败:', err);
+      stopDragging();
     }
-    // Bind mouseup event
-    document.onmouseup = () => {
-      document.onmousemove = null;
+  };
+
+  // 鼠标移动处理函数
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+
+    // 计算移动距离
+    const deltaX = e.screenX - lastX;
+    const deltaY = e.screenY - lastY;
+
+    // 如果鼠标没有移动，则不更新
+    if (deltaX === 0 && deltaY === 0) return;
+
+    // 更新窗口位置
+    windowX += deltaX;
+    windowY += deltaY;
+
+    // 更新上次鼠标位置
+    lastX = e.screenX;
+    lastY = e.screenY;
+  };
+
+  // 停止拖动
+  const stopDragging = () => {
+    isDragging = false;
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
     }
-  });
-  // Reset width and height when the browser window size changes
-  window.onresize = () => {
-    winWidth = window.innerWidth;
-    winHeight = window.innerHeight;
-  }
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', stopDragging);
+  };
+
+  // 动画循环
+  const animationLoop = () => {
+    moveWindow();
+    if (isDragging) {
+      animationFrameId = requestAnimationFrame(animationLoop);
+    }
+  };
+
+  // 开始拖动
+  const startDragging = async (e: MouseEvent) => {
+    // 忽略右键点击
+    if (e.button === 2) return;
+
+    e.preventDefault();
+
+    // 获取最新窗口位置
+    try {
+      if (electronAPI?.getPosition) {
+        const position = await electronAPI.getPosition();
+        if (Array.isArray(position) && position.length === 2) {
+          windowX = position[0];
+          windowY = position[1];
+        }
+      }
+    } catch (err) {
+      console.error('获取窗口位置失败:', err);
+    }
+
+    // 记录鼠标初始位置
+    initialX = lastX = e.screenX;
+    initialY = lastY = e.screenY;
+
+    // 标记开始拖动
+    isDragging = true;
+
+    // 添加事件监听
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', stopDragging);
+
+    // 启动动画循环
+    animationFrameId = requestAnimationFrame(animationLoop);
+  };
+
+  // 鼠标按下事件
+  element.addEventListener('mousedown', startDragging);
 }
 
 export default registerDrag;

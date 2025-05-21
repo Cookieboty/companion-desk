@@ -230,7 +230,16 @@ function initWidget(config: string | Config) {
     logger.error('Your config for Live2D initWidget is outdated. Please refer to https://github.com/stevenjoezhang/live2d-widget/blob/master/dist/autoload.js');
     return;
   }
+
   logger.setLevel(config.logLevel);
+
+  // 初始化时检查并应用置顶状态
+  const electronAPI = (window as any).electronAPI;
+  if (electronAPI && electronAPI.setAlwaysOnTop) {
+    const alwaysOnTop = localStorage.getItem('waifu-always-on-top') === 'true';
+    electronAPI.setAlwaysOnTop(alwaysOnTop);
+  }
+
   document.body.insertAdjacentHTML(
     'beforeend',
     `<div id="waifu-toggle">

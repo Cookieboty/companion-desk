@@ -8,7 +8,7 @@ const App: React.FC = () => {
     waifuPath: '/asstes/waifu-tips.json',
     cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
     cubism2Path: '/asstes/live2d.min.js',
-    tools: ['hitokoto', 'asteroids', 'switch-model', 'switch-texture', 'photo', 'info', 'quit'],
+    tools: ['hitokoto', 'asteroids', 'switch-model', 'switch-texture', 'photo', 'info', 'toggle-top', 'quit'],
     logLevel: 'warn',
     drag: true,
   };

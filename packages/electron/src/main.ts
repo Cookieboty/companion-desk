@@ -37,9 +37,11 @@ function createWindow() {
     frame: false,
     transparent: true,
     resizable: false,
-    alwaysOnTop: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
     x: width - 300,
     y: height - 400,
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -115,5 +117,29 @@ ipcMain.on('move-window', (_, deltaX: number, deltaY: number) => {
   if (mainWindow) {
     const position = mainWindow.getPosition();
     mainWindow.setPosition(position[0] + deltaX, position[1] + deltaY);
+  }
+});
+
+// 获取窗口位置
+ipcMain.handle('get-position', () => {
+  if (mainWindow) {
+    return mainWindow.getPosition();
+  }
+  return [0, 0];
+});
+
+// 设置窗口位置
+ipcMain.on('set-position', (_, x: number, y: number) => {
+  if (mainWindow) {
+    try {
+      // 验证参数类型，确保是数字并转换为整数
+      const intX = Math.round(Number(x) || 0);
+      const intY = Math.round(Number(y) || 0);
+
+      // 设置位置时禁用动画（适用于一些平台）
+      mainWindow.setPosition(intX, intY, false);
+    } catch (err) {
+      console.error('设置窗口位置错误:', err, 'x=', x, 'y=', y);
+    }
   }
 }); 

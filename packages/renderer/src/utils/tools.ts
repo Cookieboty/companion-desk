@@ -10,7 +10,8 @@ import {
   fa_street_view,
   fa_camera_retro,
   fa_info_circle,
-  fa_xmark
+  fa_xmark,
+  fa_thumbtack
 } from './icons.js';
 import { showMessage, i18n } from './message.js';
 
@@ -38,6 +39,31 @@ interface Tools {
  * @type {Tools}
  */
 const tools: Tools = {
+  'toggle-top': {
+    icon: fa_thumbtack,
+    callback: () => {
+      // 获取electronAPI
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI || !electronAPI.setAlwaysOnTop) return;
+
+      // 记录当前置顶状态
+      const alwaysOnTop = localStorage.getItem('waifu-always-on-top') === 'true';
+
+      // 切换置顶状态
+      const newState = !alwaysOnTop;
+      localStorage.setItem('waifu-always-on-top', String(newState));
+
+      // 设置窗口置顶
+      electronAPI.setAlwaysOnTop(newState);
+
+      // 显示提示消息
+      showMessage(
+        newState ? '已设置为最前端显示！' : '已取消最前端显示！',
+        3000,
+        9
+      );
+    },
+  },
   hitokoto: {
     icon: fa_comment,
     callback: async (template: string) => {
@@ -67,11 +93,11 @@ const tools: Tools = {
   },
   'switch-model': {
     icon: fa_user_circle,
-    callback: () => {},
+    callback: () => { },
   },
   'switch-texture': {
     icon: fa_street_view,
-    callback: () => {},
+    callback: () => { },
   },
   photo: {
     icon: fa_camera_retro,

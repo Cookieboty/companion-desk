@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Electron包
+
+## 目录结构
+
+- [src/main.ts](mdc:packages/electron/src/main.ts) - 主进程入口文件
+- [src/preload.ts](mdc:packages/electron/src/preload.ts) - 预加载脚本
+
+## 配置文件
+
+- [package.json](mdc:packages/electron/package.json) - 包配置和依赖
+- [tsconfig.json](mdc:packages/electron/tsconfig.json) - TypeScript配置
+
+## 打包配置
+
+Electron Builder配置位于[package.json](mdc:packages/electron/package.json)的`build`字段。
+
+## 开发命令
+
+- `pnpm dev` - 开发模式启动（支持热重载）
+- `pnpm build` - 构建主进程代码
+- `pnpm package` - 打包应用为可分发格式
+
+## 主要功能
+
+- 创建透明无边框窗口
+- 处理窗口拖拽
+- 实现窗口置顶切换
+- 提供预加载API供渲染进程调用
