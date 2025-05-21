@@ -5,6 +5,8 @@ export interface IpcApi {
   moveWindow: (deltaX: number, deltaY: number) => void;
   getPosition: () => Promise<[number, number]>;
   setPosition: (x: number, y: number) => void;
+  saveModel: (modelName: string) => void;
+  getSavedModel: () => Promise<string>;
 }
 
 // 在渲染进程中可用的Electron API

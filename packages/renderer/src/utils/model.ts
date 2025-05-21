@@ -5,8 +5,18 @@
 
 import { showMessage } from './message';
 import { loadExternalResource, randomOtherOption } from './utils';
-import type Cubism2Model from './cubism2/index';
+import type Cubism2Model from '@/cubism2/index';
 import logger, { LogLevel } from './logger';
+
+// 声明全局电子API类型
+declare global {
+  interface Window {
+    electronAPI: {
+      saveModel: (modelName: string) => void;
+      getSavedModel: () => Promise<string>;
+    };
+  }
+}
 
 interface ModelListCDN {
   messages: string[];
@@ -123,6 +133,37 @@ class ModelManager {
     if (model.useCDN) {
       const response = await fetch(`${model.cdnPath}model_list.json`);
       model.modelList = await response.json();
+
+      // 尝试从Electron配置中恢复上次保存的模型
+      try {
+        const savedModelName = await window.electronAPI.getSavedModel();
+        if (savedModelName) {
+          // 在模型列表中查找保存的模型名称
+          const modelIndex = Array.isArray(model.modelList!.models)
+            ? model.modelList!.models.findIndex(m =>
+              Array.isArray(m)
+                ? m.includes(savedModelName)
+                : m === savedModelName
+            )
+            : -1;
+
+          if (modelIndex !== -1) {
+            model.modelId = modelIndex;
+            // 如果是包含多个纹理的模型，找到具体的纹理ID
+            const modelName = model.modelList!.models[modelIndex];
+            if (Array.isArray(modelName)) {
+              const textureIndex = modelName.indexOf(savedModelName);
+              if (textureIndex !== -1) {
+                model.modelTexturesId = textureIndex;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        logger.warn('无法从Electron配置恢复模型:', err);
+      }
+
+      // 确保模型ID在有效范围内
       if (model.modelId >= model.modelList!.models.length) {
         model.modelId = 0;
       }
@@ -143,6 +184,25 @@ class ModelManager {
         }
       }
     } else {
+      // 尝试从Electron配置中恢复本地模型
+      try {
+        const savedModelName = await window.electronAPI.getSavedModel();
+        if (savedModelName) {
+          // 在本地模型列表中查找保存的模型路径
+          for (let i = 0; i < models.length; i++) {
+            const pathIndex = models[i].paths.findIndex(p => p.includes(savedModelName));
+            if (pathIndex !== -1) {
+              model.modelId = i;
+              model.modelTexturesId = pathIndex;
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        logger.warn('无法从Electron配置恢复模型:', err);
+      }
+
+      // 确保模型ID在有效范围内
       if (model.modelId >= model.models.length) {
         model.modelId = 0;
       }
@@ -219,6 +279,14 @@ class ModelManager {
         await this.cubism2model.init('live2d', modelSettingPath, modelSetting);
         logger.info(`Model ${modelSettingPath} (Cubism version ${version}) loaded`);
         this.currentModelVersion = version;
+
+        // 保存模型到Electron配置
+        try {
+          const modelName = modelSettingPath.split('/').slice(-2)[0];
+          window.electronAPI.saveModel(modelName);
+        } catch (err) {
+          logger.warn('保存模型到Electron配置失败:', err);
+        }
       } else {
         logger.warn(`Model ${modelSettingPath} has version ${version} which is not supported`);
       }
@@ -253,9 +321,25 @@ class ModelManager {
         if (typeof textures === 'string') textures = [textures];
         modelSetting.textures = textures;
       }
+
+      // 保存CDN模型名称到Electron配置
+      try {
+        window.electronAPI.saveModel(modelName);
+      } catch (err) {
+        logger.warn('保存模型到Electron配置失败:', err);
+      }
     } else {
       modelSettingPath = this.models[this.modelId].paths[this.modelTexturesId];
       modelSetting = await this.fetchWithCache(modelSettingPath);
+
+      // 保存本地模型路径到Electron配置
+      try {
+        const modelPathParts = modelSettingPath.split('/');
+        const modelName = modelPathParts[modelPathParts.length - 2] || modelPathParts[modelPathParts.length - 1];
+        window.electronAPI.saveModel(modelName);
+      } catch (err) {
+        logger.warn('保存模型到Electron配置失败:', err);
+      }
     }
     await this.loadLive2D(modelSettingPath, modelSetting);
     showMessage(message, 4000, 10);

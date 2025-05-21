@@ -1,6 +1,44 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
+import * as fs from 'fs';
+
+// 配置文件路径
+const userDataPath = app.getPath('userData');
+const configPath = path.join(userDataPath, 'config.json');
+
+// 默认配置
+interface AppConfig {
+  windowPosition: { x: number; y: number };
+  modelName: string;
+}
+
+const defaultConfig: AppConfig = {
+  windowPosition: { x: 0, y: 0 },
+  modelName: ''
+};
+
+// 加载配置
+function loadConfig(): AppConfig {
+  try {
+    if (fs.existsSync(configPath)) {
+      const configData = fs.readFileSync(configPath, 'utf8');
+      return JSON.parse(configData);
+    }
+  } catch (err) {
+    console.error('读取配置文件失败:', err);
+  }
+  return { ...defaultConfig };
+}
+
+// 保存配置
+function saveConfig(config: AppConfig): void {
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  } catch (err) {
+    console.error('保存配置文件失败:', err);
+  }
+}
 
 // 开发模式下启用热重载
 const isDev = process.env.NODE_ENV === 'development';
@@ -30,6 +68,19 @@ let mainWindow: BrowserWindow | null = null;
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
+  // 加载保存的配置
+  const config = loadConfig();
+
+  // 检查位置是否有效，如果无效或是首次运行则使用默认位置
+  let x = config.windowPosition.x;
+  let y = config.windowPosition.y;
+
+  // 如果位置超出屏幕范围，使用默认位置
+  if (x <= 0 || x >= width || y <= 0 || y >= height) {
+    x = width - 300;
+    y = height - 400;
+  }
+
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
     width: 280,
@@ -39,8 +90,8 @@ function createWindow() {
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    x: width - 300,
-    y: height - 400,
+    x: x,
+    y: y,
     backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -81,6 +132,16 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // 监听窗口移动事件，保存位置
+  mainWindow.on('moved', () => {
+    if (mainWindow) {
+      const position = mainWindow.getPosition();
+      const config = loadConfig();
+      config.windowPosition = { x: position[0], y: position[1] };
+      saveConfig(config);
+    }
+  });
 }
 
 // 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
@@ -91,6 +152,16 @@ app.on('window-all-closed', () => {
   // 在 macOS 上，用户通常希望点击 Dock 图标时重新打开应用
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+// 应用退出前保存位置
+app.on('before-quit', () => {
+  if (mainWindow) {
+    const position = mainWindow.getPosition();
+    const config = loadConfig();
+    config.windowPosition = { x: position[0], y: position[1] };
+    saveConfig(config);
   }
 });
 
@@ -142,4 +213,17 @@ ipcMain.on('set-position', (_, x: number, y: number) => {
       console.error('设置窗口位置错误:', err, 'x=', x, 'y=', y);
     }
   }
+});
+
+// 保存当前模型
+ipcMain.on('save-model', (_, modelName: string) => {
+  const config = loadConfig();
+  config.modelName = modelName;
+  saveConfig(config);
+});
+
+// 获取保存的模型
+ipcMain.handle('get-saved-model', () => {
+  const config = loadConfig();
+  return config.modelName || '';
 }); 

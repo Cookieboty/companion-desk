@@ -29,5 +29,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     } catch (err) {
       console.error('设置位置参数错误:', err);
     }
+  },
+  // 保存当前模型
+  saveModel: (modelName: string) => {
+    ipcRenderer.send('save-model', modelName);
+  },
+  // 获取保存的模型
+  getSavedModel: async () => {
+    return await ipcRenderer.invoke('get-saved-model');
   }
 } as IpcApi); 

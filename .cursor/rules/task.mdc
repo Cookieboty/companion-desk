@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+每一次完成任务结束时候在tasks目录下创建md记录任务步骤，进度等具体情况。
