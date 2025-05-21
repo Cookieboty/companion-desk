@@ -98,15 +98,17 @@ function registerTools(model: ModelManager, config: Config, tips: Tips | null) {
   for (const toolName of config.tools!) {
     if (tools[toolName]) {
       const { icon, callback } = tools[toolName];
-      document
-        .getElementById('waifu-tool')!
-        .insertAdjacentHTML(
-          'beforeend',
-          `<span id="waifu-tool-${toolName}">${icon}</span>`,
-        );
-      document
-        .getElementById(`waifu-tool-${toolName}`)!
-        .addEventListener('click', callback);
+      const waifuTool = document.getElementById('waifu-tool');
+      if (!waifuTool) continue;
+
+      waifuTool.insertAdjacentHTML(
+        'beforeend',
+        `<span id="waifu-tool-${toolName}">${icon}</span>`,
+      );
+      const toolElement = document.getElementById(`waifu-tool-${toolName}`);
+      if (toolElement) {
+        toolElement.addEventListener('click', callback);
+      }
     }
   }
 }
@@ -225,7 +227,12 @@ async function loadWidget(config: Config) {
     registerTools(model, config, tips);
   }
   if (config.drag) registerDrag();
-  document.getElementById('waifu')!.style.bottom = '0';
+
+  // 确保元素存在后再设置样式
+  const waifuElement = document.getElementById('waifu');
+  if (waifuElement) {
+    waifuElement.style.bottom = '0';
+  }
 }
 
 /**
@@ -255,16 +262,23 @@ async function initWidget(config: string | Config) {
   );
   const toggle = document.getElementById('waifu-toggle');
   toggle?.addEventListener('click', async () => {
-    toggle!.classList.remove('waifu-toggle-active');
-    if (toggle?.getAttribute('first-time')) {
+    if (!toggle) return;
+
+    toggle.classList.remove('waifu-toggle-active');
+    if (toggle.getAttribute('first-time')) {
       loadWidget(config as Config);
-      toggle?.removeAttribute('first-time');
+      toggle.removeAttribute('first-time');
     } else {
       await removeCache('waifu-display');
-      document.getElementById('waifu')!.style.display = '';
-      setTimeout(() => {
-        document.getElementById('waifu')!.style.bottom = '0';
-      }, 0);
+      const waifuElement = document.getElementById('waifu');
+      if (waifuElement) {
+        waifuElement.style.display = '';
+        setTimeout(() => {
+          if (waifuElement) {
+            waifuElement.style.bottom = '0';
+          }
+        }, 0);
+      }
     }
   });
 

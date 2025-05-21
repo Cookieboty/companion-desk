@@ -1,6 +1,8 @@
 function registerDrag() {
-  const element = document.getElementById('waifu');
-  if (!element) return;
+  // 修改为只监听live2d画布区域
+  const waifuElement = document.getElementById('waifu');
+  const dragElement = document.getElementById('live2d');
+  if (!waifuElement || !dragElement) return;
 
   // 定义变量
   let isDragging = false;
@@ -130,8 +132,8 @@ function registerDrag() {
     animationFrameId = requestAnimationFrame(animationLoop);
   };
 
-  // 鼠标按下事件
-  element.addEventListener('mousedown', startDragging);
+  // 鼠标按下事件 - 只在live2d画布上监听
+  dragElement.addEventListener('mousedown', startDragging);
 }
 
 export default registerDrag;

@@ -43,12 +43,16 @@ function showMessage(
   }
   text = randomSelection(text) as string;
   sessionStorage.setItem('waifu-text', String(priority));
-  const tips = document.getElementById('waifu-tips')!;
+  const tips = document.getElementById('waifu-tips');
+  if (!tips) return;
+
   tips.innerHTML = text;
   tips.classList.add('waifu-tips-active');
   messageTimer = setTimeout(() => {
     sessionStorage.removeItem('waifu-text');
-    tips.classList.remove('waifu-tips-active');
+    if (tips) {
+      tips.classList.remove('waifu-tips-active');
+    }
   }, timeout);
 }
 

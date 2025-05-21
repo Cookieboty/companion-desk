@@ -47,12 +47,13 @@ if (isDev) {
     // 尝试加载electron-reload，如果没有安装则会抛出错误
     // 这样可以避免在生产环境中出现问题
     require('electron-reload')(__dirname, {
-      electron: path.join(__dirname, '..', 'node_modules', 'electron'),
+      electron: require('electron'),
       hardResetMethod: 'exit',
       // 监视这些文件的变化
       watched: [
         path.join(__dirname, '..', 'dist', '**'),
-        path.join(__dirname, '..', 'src', '**')
+        path.join(__dirname, '..', 'src', '**'),
+        path.join(__dirname, '..', '..', 'renderer', 'dist', '**')
       ]
     });
     console.log('开发模式：热重载已启用');
@@ -83,8 +84,8 @@ function createWindow() {
 
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
-    width: 280,
-    height: 350,
+    width: 380,
+    height: 450,
     frame: false,
     transparent: true,
     resizable: false,

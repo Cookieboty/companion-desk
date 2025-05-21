@@ -5,6 +5,21 @@
 
 import logger from './logger';
 
+// 声明全局电子API类型
+declare global {
+  interface Window {
+    electronAPI: {
+      saveModel: (modelName: string) => void;
+      getSavedModel: () => Promise<string>;
+      setAlwaysOnTop: (flag: boolean) => void;
+      moveWindow: (deltaX: number, deltaY: number) => void;
+      getPosition: () => Promise<[number, number]>;
+      setPosition: (x: number, y: number) => void;
+      quit: () => void;
+    };
+  }
+}
+
 /**
  * 获取缓存值
  * @param key 缓存键名
@@ -16,7 +31,10 @@ export async function getCache<T>(key: string, defaultValue?: T): Promise<T | nu
   try {
     if (window.electronAPI && key === 'modelName') {
       const value = await window.electronAPI.getSavedModel();
-      if (value) return value as unknown as T;
+      if (value) {
+        logger.info(`从Electron获取缓存成功: ${key}=${value}`);
+        return value as unknown as T;
+      }
     }
   } catch (err) {
     logger.warn(`从Electron获取缓存失败: ${key}`, err);
@@ -62,6 +80,7 @@ export async function setCache(key: string, value: any): Promise<void> {
         // 这些值仅保存在localStorage，不同步到Electron
       } else if (key === 'modelName') {
         await window.electronAPI.saveModel(value);
+        logger.info(`保存到Electron配置成功: ${key}=${value}`);
       }
     }
   } catch (err) {
@@ -77,6 +96,7 @@ export async function setCache(key: string, value: any): Promise<void> {
     } else {
       localStorage.setItem(key, String(value));
     }
+    logger.info(`保存到localStorage成功: ${key}=${typeof value === 'object' ? JSON.stringify(value) : value}`);
   } catch (err) {
     logger.warn(`保存到localStorage失败: ${key}`, err);
   }
@@ -89,6 +109,7 @@ export async function setCache(key: string, value: any): Promise<void> {
 export async function removeCache(key: string): Promise<void> {
   try {
     localStorage.removeItem(key);
+    logger.info(`从localStorage删除缓存成功: ${key}`);
   } catch (err) {
     logger.warn(`从localStorage删除缓存失败: ${key}`, err);
   }

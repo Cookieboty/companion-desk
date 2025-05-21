@@ -5,9 +5,9 @@ import type { Config } from './utils/model';
 const App: React.FC = () => {
   // Live2D Widget配置
   const live2dConfig: Config = {
-    waifuPath: '/asstes/waifu-tips.json',
+    waifuPath: '/assets/waifu-tips.json',
     cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
-    cubism2Path: '/asstes/live2d.min.js',
+    cubism2Path: '/assets/live2d.min.js',
     tools: ['hitokoto', 'asteroids', 'switch-model', 'switch-texture', 'photo', 'info', 'toggle-top', 'quit'],
     logLevel: 'warn',
     drag: true,

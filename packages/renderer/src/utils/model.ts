@@ -129,12 +129,12 @@ class ModelManager {
     try {
       const modelId = await getCache<number>('modelId');
       if (modelId !== null && !isNaN(modelId)) {
-        model.modelId = modelId;
+        model._modelId = modelId;
       }
 
       const modelTexturesId = await getCache<number>('modelTexturesId');
       if (modelTexturesId !== null && !isNaN(modelTexturesId)) {
-        model.modelTexturesId = modelTexturesId;
+        model._modelTexturesId = modelTexturesId;
       }
     } catch (err) {
       logger.warn('无法从缓存加载模型配置:', err);
@@ -144,43 +144,56 @@ class ModelManager {
       const response = await fetch(`${model.cdnPath}model_list.json`);
       model.modelList = await response.json();
 
-      // 尝试从Electron配置中恢复上次保存的模型
+      // 尝试从缓存中恢复上次保存的模型
       try {
         const savedModelName = await getCache<string>('modelName');
+        logger.info('从缓存加载模型名称:', savedModelName);
+
         if (savedModelName) {
           // 在模型列表中查找保存的模型名称
-          const modelIndex = Array.isArray(model.modelList!.models)
-            ? model.modelList!.models.findIndex(m =>
-              Array.isArray(m)
-                ? m.includes(savedModelName)
-                : m === savedModelName
-            )
-            : -1;
+          let foundModel = false;
 
-          if (modelIndex !== -1) {
-            model.modelId = modelIndex;
-            // 如果是包含多个纹理的模型，找到具体的纹理ID
-            const modelName = model.modelList!.models[modelIndex];
-            if (Array.isArray(modelName)) {
-              const textureIndex = modelName.indexOf(savedModelName);
-              if (textureIndex !== -1) {
-                model.modelTexturesId = textureIndex;
+          if (Array.isArray(model.modelList!.models)) {
+            for (let i = 0; i < model.modelList!.models.length; i++) {
+              const modelItem = model.modelList!.models[i];
+
+              if (Array.isArray(modelItem)) {
+                // 如果是包含多个纹理的模型，查找具体的纹理
+                const textureIndex = modelItem.findIndex(name => name === savedModelName);
+                if (textureIndex !== -1) {
+                  model._modelId = i;
+                  model._modelTexturesId = textureIndex;
+                  foundModel = true;
+                  logger.info(`找到缓存的模型: ID=${i}, 纹理ID=${textureIndex}`);
+                  break;
+                }
+              } else if (modelItem === savedModelName) {
+                // 单个模型名称匹配
+                model._modelId = i;
+                model._modelTexturesId = 0;
+                foundModel = true;
+                logger.info(`找到缓存的模型: ID=${i}`);
+                break;
               }
             }
           }
+
+          if (!foundModel) {
+            logger.warn(`未找到缓存的模型: ${savedModelName}`);
+          }
         }
       } catch (err) {
-        logger.warn('无法从Electron配置恢复模型:', err);
+        logger.warn('无法从缓存恢复模型:', err);
       }
 
       // 确保模型ID在有效范围内
-      if (model.modelId >= model.modelList!.models.length) {
-        model.modelId = 0;
+      if (model._modelId >= model.modelList!.models.length) {
+        model._modelId = 0;
       }
-      const modelName = model.modelList!.models[model.modelId];
+      const modelName = model.modelList!.models[model._modelId];
       if (Array.isArray(modelName)) {
-        if (model.modelTexturesId >= modelName.length) {
-          model.modelTexturesId = 0;
+        if (model._modelTexturesId >= modelName.length) {
+          model._modelTexturesId = 0;
         }
       } else {
         const modelSettingPath = `${model.cdnPath}model/${modelName}/index.json`;
@@ -188,38 +201,56 @@ class ModelManager {
         const version = model.checkModelVersion(modelSetting);
         if (version === 2) {
           const textureCache = await model.loadTextureCache(modelName);
-          if (model.modelTexturesId >= textureCache.length) {
-            model.modelTexturesId = 0;
+          if (model._modelTexturesId >= textureCache.length) {
+            model._modelTexturesId = 0;
           }
         }
       }
     } else {
-      // 尝试从Electron配置中恢复本地模型
+      // 尝试从缓存中恢复本地模型
       try {
         const savedModelName = await getCache<string>('modelName');
+        logger.info('从缓存加载本地模型名称:', savedModelName);
+
         if (savedModelName) {
           // 在本地模型列表中查找保存的模型路径
+          let foundModel = false;
+
           for (let i = 0; i < models.length; i++) {
-            const pathIndex = models[i].paths.findIndex(p => p.includes(savedModelName));
-            if (pathIndex !== -1) {
-              model.modelId = i;
-              model.modelTexturesId = pathIndex;
-              break;
+            for (let j = 0; j < models[i].paths.length; j++) {
+              const path = models[i].paths[j];
+              if (path.includes(savedModelName)) {
+                model._modelId = i;
+                model._modelTexturesId = j;
+                foundModel = true;
+                logger.info(`找到缓存的本地模型: ID=${i}, 路径ID=${j}`);
+                break;
+              }
             }
+            if (foundModel) break;
+          }
+
+          if (!foundModel) {
+            logger.warn(`未找到缓存的本地模型: ${savedModelName}`);
           }
         }
       } catch (err) {
-        logger.warn('无法从Electron配置恢复模型:', err);
+        logger.warn('无法从缓存恢复本地模型:', err);
       }
 
       // 确保模型ID在有效范围内
-      if (model.modelId >= model.models.length) {
-        model.modelId = 0;
+      if (model._modelId >= model.models.length) {
+        model._modelId = 0;
       }
-      if (model.modelTexturesId >= model.models[model.modelId].paths.length) {
-        model.modelTexturesId = 0;
+      if (model._modelTexturesId >= model.models[model._modelId].paths.length) {
+        model._modelTexturesId = 0;
       }
     }
+
+    // 初始化完成后同步缓存
+    setCache('modelId', model._modelId);
+    setCache('modelTexturesId', model._modelTexturesId);
+
     return model;
   }
 
@@ -242,7 +273,10 @@ class ModelManager {
   }
 
   resetCanvas() {
-    document.getElementById('waifu-canvas')!.innerHTML = '<canvas id="live2d" width="800" height="800"></canvas>';
+    const canvas = document.getElementById('waifu-canvas');
+    if (canvas) {
+      canvas.innerHTML = '<canvas id="live2d" width="800" height="800"></canvas>';
+    }
   }
 
   async fetchWithCache(url: string) {
@@ -293,7 +327,8 @@ class ModelManager {
         // 保存模型到缓存
         try {
           const modelName = modelSettingPath.split('/').slice(-2)[0];
-          setCache('modelName', modelName);
+          logger.info(`保存模型到缓存: ${modelName}`);
+          await setCache('modelName', modelName);
         } catch (err) {
           logger.warn('保存模型到缓存失败:', err);
         }
@@ -334,7 +369,8 @@ class ModelManager {
 
       // 保存CDN模型名称到缓存
       try {
-        setCache('modelName', modelName);
+        logger.info(`保存CDN模型到缓存: ${modelName}`);
+        await setCache('modelName', modelName);
       } catch (err) {
         logger.warn('保存模型到缓存失败:', err);
       }
@@ -346,11 +382,13 @@ class ModelManager {
       try {
         const modelPathParts = modelSettingPath.split('/');
         const modelName = modelPathParts[modelPathParts.length - 2] || modelPathParts[modelPathParts.length - 1];
-        setCache('modelName', modelName);
+        logger.info(`保存本地模型到缓存: ${modelName}`);
+        await setCache('modelName', modelName);
       } catch (err) {
         logger.warn('保存模型到缓存失败:', err);
       }
     }
+    this.resetCanvas();
     await this.loadLive2D(modelSettingPath, modelSetting);
     showMessage(message, 4000, 10);
   }
