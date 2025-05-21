@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import type { Config } from '../utils/model';
+import type { Config } from '@/utils/model';
 
 // 不需要在这里导入CSS，因为我们已经将它放在public目录中
 // CSS会通过index.html中的link标签加载
@@ -24,7 +24,7 @@ const Live2dWidget: React.FC<Live2dWidgetProps> = ({ config }) => {
     if (initialized.current) return;
 
     // 动态导入模块以避免SSR问题
-    import('../utils/widget').then(({ initWidget }) => {
+    import('@/utils/widget').then(({ initWidget }) => {
       if (!containerRef.current) return;
 
       // 初始化看板娘

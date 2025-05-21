@@ -3,13 +3,14 @@
  * @module widget
  */
 
-import { ModelManager, Config, ModelList } from './model.js';
-import { showMessage, welcomeMessage, Time } from './message.js';
-import { randomSelection } from './utils.js';
-import tools from './tools.js';
-import logger from './logger.js';
-import registerDrag from './drag.js';
-import { fa_child } from './icons.js';
+import { ModelManager, Config, ModelList } from './model';
+import { showMessage, welcomeMessage, Time } from './message';
+import { randomSelection } from './utils';
+import tools from './tools';
+import logger from './logger';
+import registerDrag from './drag';
+import { fa_child } from './icons';
+import { getCache, setCache, removeCache } from './cache';
 
 interface Tips {
   /**
@@ -75,7 +76,7 @@ interface Tips {
   models: ModelList[];
 }
 
-function registerTools(model: ModelManager, config: Config, tips: Tips) {
+function registerTools(model: ModelManager, config: Config, tips: Tips | null) {
   tools['switch-model'].callback = () => model.loadNextModel();
   tools['switch-texture'].callback = () => {
     let successMessage = '', failMessage = '';
@@ -85,9 +86,12 @@ function registerTools(model: ModelManager, config: Config, tips: Tips) {
     }
     model.loadRandTexture(successMessage, failMessage);
   };
-  tools.hitokoto.callback = tools.hitokoto.callback.bind(null, tips.message.hitokoto);
-  tools.photo.callback = tools.photo.callback.bind(null, tips.message.photo);
-  tools.quit.callback = tools.quit.callback.bind(null, tips.message.goodbye);
+
+  if (tips) {
+    tools.hitokoto.callback = tools.hitokoto.callback.bind(null, tips.message.hitokoto);
+    tools.photo.callback = tools.photo.callback.bind(null, tips.message.photo);
+    tools.quit.callback = tools.quit.callback.bind(null, tips.message.goodbye);
+  }
   if (!Array.isArray(config.tools)) {
     config.tools = Object.keys(tools);
   }
@@ -111,7 +115,8 @@ function registerTools(model: ModelManager, config: Config, tips: Tips) {
  * Register event listeners.
  * @param {Tips} tips - Result configuration.
  */
-function registerEventListener(tips: Tips) {
+function registerEventListener(tips: Tips | null) {
+  if (!tips) return;
   // Detect user activity and display messages when idle
   let userAction = false;
   let userActionTimer: any;
@@ -194,7 +199,7 @@ function registerEventListener(tips: Tips) {
  * @param {Config} config - Waifu configuration.
  */
 async function loadWidget(config: Config) {
-  localStorage.removeItem('waifu-display');
+  await removeCache('waifu-display');
   sessionStorage.removeItem('waifu-text');
   document.body.insertAdjacentHTML(
     'beforeend',
@@ -207,7 +212,7 @@ async function loadWidget(config: Config) {
      </div>`,
   );
   let models: ModelList[] = [];
-  let tips: Tips | null;
+  let tips: Tips | null = null;
   if (config.waifuPath) {
     const response = await fetch(config.waifuPath);
     tips = await response.json();
@@ -216,7 +221,9 @@ async function loadWidget(config: Config) {
   }
   const model = await ModelManager.initCheck(config, models);
   await model.loadModel('');
-  registerTools(model, config, tips);
+  if (tips) {
+    registerTools(model, config, tips);
+  }
   if (config.drag) registerDrag();
   document.getElementById('waifu')!.style.bottom = '0';
 }
@@ -225,7 +232,7 @@ async function loadWidget(config: Config) {
  * Initialize the waifu widget.
  * @param {string | Config} config - Waifu configuration or configuration path.
  */
-function initWidget(config: string | Config) {
+async function initWidget(config: string | Config) {
   if (typeof config === 'string') {
     logger.error('Your config for Live2D initWidget is outdated. Please refer to https://github.com/stevenjoezhang/live2d-widget/blob/master/dist/autoload.js');
     return;
@@ -236,8 +243,8 @@ function initWidget(config: string | Config) {
   // 初始化时检查并应用置顶状态
   const electronAPI = (window as any).electronAPI;
   if (electronAPI && electronAPI.setAlwaysOnTop) {
-    const alwaysOnTop = localStorage.getItem('waifu-always-on-top') === 'true';
-    electronAPI.setAlwaysOnTop(alwaysOnTop);
+    const alwaysOnTop = await getCache<boolean>('waifu-always-on-top');
+    electronAPI.setAlwaysOnTop(alwaysOnTop === true);
   }
 
   document.body.insertAdjacentHTML(
@@ -247,23 +254,22 @@ function initWidget(config: string | Config) {
      </div>`,
   );
   const toggle = document.getElementById('waifu-toggle');
-  toggle?.addEventListener('click', () => {
+  toggle?.addEventListener('click', async () => {
     toggle!.classList.remove('waifu-toggle-active');
     if (toggle?.getAttribute('first-time')) {
       loadWidget(config as Config);
       toggle?.removeAttribute('first-time');
     } else {
-      localStorage.removeItem('waifu-display');
+      await removeCache('waifu-display');
       document.getElementById('waifu')!.style.display = '';
       setTimeout(() => {
         document.getElementById('waifu')!.style.bottom = '0';
       }, 0);
     }
   });
-  if (
-    localStorage.getItem('waifu-display') &&
-    Date.now() - Number(localStorage.getItem('waifu-display')) <= 86400000
-  ) {
+
+  const displayTime = await getCache<number>('waifu-display');
+  if (displayTime && Date.now() - displayTime <= 86400000) {
     toggle?.setAttribute('first-time', 'true');
     setTimeout(() => {
       toggle?.classList.add('waifu-toggle-active');
@@ -273,4 +279,5 @@ function initWidget(config: string | Config) {
   }
 }
 
-export { initWidget, Tips };
+export { initWidget };
+export type { Tips };

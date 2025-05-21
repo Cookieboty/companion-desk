@@ -14,6 +14,7 @@ import {
   fa_thumbtack
 } from './icons.js';
 import { showMessage, i18n } from './message.js';
+import { getCache, setCache } from './cache';
 
 interface Tools {
   /**
@@ -41,17 +42,17 @@ interface Tools {
 const tools: Tools = {
   'toggle-top': {
     icon: fa_thumbtack,
-    callback: () => {
+    callback: async () => {
       // 获取electronAPI
       const electronAPI = (window as any).electronAPI;
       if (!electronAPI || !electronAPI.setAlwaysOnTop) return;
 
       // 记录当前置顶状态
-      const alwaysOnTop = localStorage.getItem('waifu-always-on-top') === 'true';
+      const alwaysOnTop = await getCache<boolean>('waifu-always-on-top') === true;
 
       // 切换置顶状态
       const newState = !alwaysOnTop;
-      localStorage.setItem('waifu-always-on-top', String(newState));
+      await setCache('waifu-always-on-top', newState);
 
       // 设置窗口置顶
       electronAPI.setAlwaysOnTop(newState);
@@ -125,8 +126,8 @@ const tools: Tools = {
   },
   quit: {
     icon: fa_xmark,
-    callback: (message: string | string[]) => {
-      localStorage.setItem('waifu-display', Date.now().toString());
+    callback: async (message: string | string[]) => {
+      await setCache('waifu-display', Date.now());
       showMessage(message, 2000, 11);
       const waifu = document.getElementById('waifu');
       if (!waifu) return;
@@ -142,4 +143,4 @@ const tools: Tools = {
 };
 
 export default tools;
-export { Tools };
+export type { Tools };

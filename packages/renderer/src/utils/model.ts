@@ -7,6 +7,7 @@ import { showMessage } from './message';
 import { loadExternalResource, randomOtherOption } from './utils';
 import type Cubism2Model from '@/cubism2/index';
 import logger, { LogLevel } from './logger';
+import { getCache, setCache } from './cache';
 
 // 声明全局电子API类型
 declare global {
@@ -107,21 +108,14 @@ class ModelManager {
     } else if (!models.length) {
       throw 'Invalid initWidget argument!';
     }
-    let modelId: number = parseInt(localStorage.getItem('modelId') as string, 10);
-    let modelTexturesId: number = parseInt(
-      localStorage.getItem('modelTexturesId') as string, 10
-    );
-    if (isNaN(modelId) || isNaN(modelTexturesId)) {
-      modelTexturesId = 0;
-    }
-    if (isNaN(modelId)) {
-      modelId = config.modelId ?? 0;
-    }
+
+    // 初始化时从缓存加载modelId和modelTexturesId，默认值为0或配置中指定的值
+    this._modelId = config.modelId ?? 0;
+    this._modelTexturesId = 0;
+
     this.useCDN = useCDN;
     this.cdnPath = cdnPath || '';
     this.cubism2Path = cubism2Path || '';
-    this._modelId = modelId;
-    this._modelTexturesId = modelTexturesId;
     this.currentModelVersion = 0;
     this.loading = false;
     this.modelJSONCache = {};
@@ -130,13 +124,29 @@ class ModelManager {
 
   public static async initCheck(config: Config, models: ModelList[] = []) {
     const model = new ModelManager(config, models);
+
+    // 从缓存读取modelId和modelTexturesId
+    try {
+      const modelId = await getCache<number>('modelId');
+      if (modelId !== null && !isNaN(modelId)) {
+        model.modelId = modelId;
+      }
+
+      const modelTexturesId = await getCache<number>('modelTexturesId');
+      if (modelTexturesId !== null && !isNaN(modelTexturesId)) {
+        model.modelTexturesId = modelTexturesId;
+      }
+    } catch (err) {
+      logger.warn('无法从缓存加载模型配置:', err);
+    }
+
     if (model.useCDN) {
       const response = await fetch(`${model.cdnPath}model_list.json`);
       model.modelList = await response.json();
 
       // 尝试从Electron配置中恢复上次保存的模型
       try {
-        const savedModelName = await window.electronAPI.getSavedModel();
+        const savedModelName = await getCache<string>('modelName');
         if (savedModelName) {
           // 在模型列表中查找保存的模型名称
           const modelIndex = Array.isArray(model.modelList!.models)
@@ -186,7 +196,7 @@ class ModelManager {
     } else {
       // 尝试从Electron配置中恢复本地模型
       try {
-        const savedModelName = await window.electronAPI.getSavedModel();
+        const savedModelName = await getCache<string>('modelName');
         if (savedModelName) {
           // 在本地模型列表中查找保存的模型路径
           for (let i = 0; i < models.length; i++) {
@@ -215,7 +225,7 @@ class ModelManager {
 
   public set modelId(modelId: number) {
     this._modelId = modelId;
-    localStorage.setItem('modelId', modelId.toString());
+    setCache('modelId', modelId);
   }
 
   public get modelId() {
@@ -224,7 +234,7 @@ class ModelManager {
 
   public set modelTexturesId(modelTexturesId: number) {
     this._modelTexturesId = modelTexturesId;
-    localStorage.setItem('modelTexturesId', modelTexturesId.toString());
+    setCache('modelTexturesId', modelTexturesId);
   }
 
   public get modelTexturesId() {
@@ -280,12 +290,12 @@ class ModelManager {
         logger.info(`Model ${modelSettingPath} (Cubism version ${version}) loaded`);
         this.currentModelVersion = version;
 
-        // 保存模型到Electron配置
+        // 保存模型到缓存
         try {
           const modelName = modelSettingPath.split('/').slice(-2)[0];
-          window.electronAPI.saveModel(modelName);
+          setCache('modelName', modelName);
         } catch (err) {
-          logger.warn('保存模型到Electron配置失败:', err);
+          logger.warn('保存模型到缓存失败:', err);
         }
       } else {
         logger.warn(`Model ${modelSettingPath} has version ${version} which is not supported`);
@@ -322,23 +332,23 @@ class ModelManager {
         modelSetting.textures = textures;
       }
 
-      // 保存CDN模型名称到Electron配置
+      // 保存CDN模型名称到缓存
       try {
-        window.electronAPI.saveModel(modelName);
+        setCache('modelName', modelName);
       } catch (err) {
-        logger.warn('保存模型到Electron配置失败:', err);
+        logger.warn('保存模型到缓存失败:', err);
       }
     } else {
       modelSettingPath = this.models[this.modelId].paths[this.modelTexturesId];
       modelSetting = await this.fetchWithCache(modelSettingPath);
 
-      // 保存本地模型路径到Electron配置
+      // 保存本地模型路径到缓存
       try {
         const modelPathParts = modelSettingPath.split('/');
         const modelName = modelPathParts[modelPathParts.length - 2] || modelPathParts[modelPathParts.length - 1];
-        window.electronAPI.saveModel(modelName);
+        setCache('modelName', modelName);
       } catch (err) {
-        logger.warn('保存模型到Electron配置失败:', err);
+        logger.warn('保存模型到缓存失败:', err);
       }
     }
     await this.loadLive2D(modelSettingPath, modelSetting);
