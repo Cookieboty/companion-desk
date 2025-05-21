@@ -95,11 +95,12 @@ function welcomeMessage(time: Time, template: string): string {
   return text;
 }
 
-function i18n(template, ...args) {
-  return template.replace(/\$(\d+)/g, (_, idx) => {
+function i18n(template: string, ...args: any[]): string {
+  return template.replace(/\$(\d+)/g, (_: string, idx: string) => {
     const i = parseInt(idx, 10) - 1;
     return args[i] ?? '';
   });
 }
 
-export { showMessage, welcomeMessage, i18n, Time };
+export { showMessage, welcomeMessage, i18n };
+export type { Time };

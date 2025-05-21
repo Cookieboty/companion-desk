@@ -218,8 +218,10 @@ async function loadWidget(config: Config) {
   if (config.waifuPath) {
     const response = await fetch(config.waifuPath);
     tips = await response.json();
-    models = tips.models;
-    registerEventListener(tips);
+    if (tips) {
+      models = tips.models;
+      registerEventListener(tips);
+    }
   }
   const model = await ModelManager.initCheck(config, models);
   await model.loadModel('');

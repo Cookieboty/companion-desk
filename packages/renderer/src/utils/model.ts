@@ -15,6 +15,11 @@ declare global {
     electronAPI: {
       saveModel: (modelName: string) => void;
       getSavedModel: () => Promise<string>;
+      setAlwaysOnTop: (flag: boolean) => void;
+      moveWindow: (deltaX: number, deltaY: number) => void;
+      getPosition: () => Promise<[number, number]>;
+      setPosition: (x: number, y: number) => void;
+      quit: () => void;
     };
   }
 }
