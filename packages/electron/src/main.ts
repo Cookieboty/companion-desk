@@ -97,7 +97,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      devTools: true  // 确保开发者工具可用
     }
   });
 
@@ -110,8 +111,36 @@ function createWindow() {
     // 开发模式下打开开发者工具
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    // 在生产环境中，从extraResources中加载渲染器
-    const rendererPath = path.join(
+    // 无论是否是开发模式，都打开开发者工具用于调试
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    // 在生产环境中，从本地构建目录或extraResources中加载渲染器
+    let rendererPath;
+
+    // 打印应用路径信息用于调试
+    console.log('应用程序路径(app.getAppPath()):', app.getAppPath());
+    console.log('exe路径(app.getPath(exe)):', app.getPath('exe'));
+    console.log('isPackaged:', app.isPackaged);
+    console.log('__dirname:', __dirname);
+
+    // 构建各种可能的路径
+
+    // macOS特定路径 - 包在Resources下
+    const macOSResourcesPath = path.join(
+      path.dirname(path.dirname(app.getPath('exe'))), // /path/to/App.app/Contents/MacOS -> /path/to/App.app/Contents
+      'Resources',
+      'renderer',
+      'index.html'
+    );
+
+    // macOS特定路径 - app目录下
+    const macOSAppPath = path.join(
+      path.dirname(__dirname), // dist目录
+      'renderer',
+      'index.html'
+    );
+
+    // 常规resources目录
+    const resourceRendererPath = path.join(
       app.isPackaged
         ? path.dirname(app.getPath('exe'))
         : app.getAppPath(),
@@ -119,6 +148,86 @@ function createWindow() {
       'renderer',
       'index.html'
     );
+
+    // 本地dist/renderer目录
+    const localRendererPath = path.join(__dirname, 'renderer', 'index.html');
+
+    // 输出所有路径用于调试
+    console.log('macOS资源渲染器路径:', macOSResourcesPath);
+    console.log('macOS应用渲染器路径:', macOSAppPath);
+    console.log('资源渲染器路径:', resourceRendererPath);
+    console.log('本地渲染器路径:', localRendererPath);
+
+    // 检查路径是否存在
+    console.log('macOSResourcesPath存在:', fs.existsSync(macOSResourcesPath));
+    console.log('macOSAppPath存在:', fs.existsSync(macOSAppPath));
+    console.log('resourceRendererPath存在:', fs.existsSync(resourceRendererPath));
+    console.log('localRendererPath存在:', fs.existsSync(localRendererPath));
+
+    // 尝试按顺序使用各种路径
+    if (process.platform === 'darwin' && fs.existsSync(macOSResourcesPath)) {
+      rendererPath = macOSResourcesPath;
+      console.log('使用macOS资源路径:', macOSResourcesPath);
+    } else if (process.platform === 'darwin' && fs.existsSync(macOSAppPath)) {
+      rendererPath = macOSAppPath;
+      console.log('使用macOS应用路径:', macOSAppPath);
+    } else if (fs.existsSync(resourceRendererPath)) {
+      rendererPath = resourceRendererPath;
+      console.log('使用资源渲染器路径:', resourceRendererPath);
+    } else if (fs.existsSync(localRendererPath)) {
+      rendererPath = localRendererPath;
+      console.log('使用本地渲染器路径:', localRendererPath);
+    } else {
+      // 尝试列出目录内容以辅助调试
+      try {
+        console.log('列出可能的目录内容:');
+        // 列出应用程序目录
+        const appDir = app.getAppPath();
+        console.log('应用程序目录内容:', fs.existsSync(appDir) ? fs.readdirSync(appDir) : '目录不存在');
+
+        // 如果在macOS上，列出Resources目录
+        if (process.platform === 'darwin') {
+          const macResourcesDir = path.join(
+            path.dirname(path.dirname(app.getPath('exe'))),
+            'Resources'
+          );
+          console.log('macOS Resources目录内容:', fs.existsSync(macResourcesDir) ? fs.readdirSync(macResourcesDir) : '目录不存在');
+
+          // 查看是否有renderer目录
+          const macRendererDir = path.join(macResourcesDir, 'renderer');
+          if (fs.existsSync(macRendererDir)) {
+            console.log('macOS renderer目录内容:', fs.readdirSync(macRendererDir));
+          }
+        }
+      } catch (err) {
+        console.error('列出目录内容失败:', err);
+      }
+
+      console.error('渲染器路径不存在:', resourceRendererPath);
+      console.error('备用渲染器路径也不存在:', localRendererPath);
+      // 加载一个错误页面或使用一个内置的HTML
+      rendererPath = path.join(__dirname, 'error.html');
+      // 如果错误页面不存在，创建一个
+      if (!fs.existsSync(rendererPath)) {
+        const errorHTML = `
+          <html>
+            <head><title>错误</title></head>
+            <body>
+              <h1>加载失败</h1>
+              <p>无法找到渲染器文件。请确保已正确构建应用。</p>
+              <pre>
+                app.getAppPath(): ${app.getAppPath()}
+                app.getPath('exe'): ${app.getPath('exe')}
+                __dirname: ${__dirname}
+                resourceRendererPath: ${resourceRendererPath}
+                localRendererPath: ${localRendererPath}
+              </pre>
+            </body>
+          </html>
+        `;
+        fs.writeFileSync(rendererPath, errorHTML);
+      }
+    }
 
     startUrl = url.format({
       pathname: rendererPath,
@@ -227,4 +336,66 @@ ipcMain.on('save-model', (_, modelName: string) => {
 ipcMain.handle('get-saved-model', () => {
   const config = loadConfig();
   return config.modelName || '';
+});
+
+// 读取本地JSON文件
+ipcMain.handle('read-local-json', async (_, filePath: string) => {
+  try {
+    // 处理路径，支持相对路径
+    let resolvedPath = filePath;
+
+    // 如果是相对路径，则相对于app的资源目录解析
+    if (!path.isAbsolute(filePath)) {
+      if (app.isPackaged) {
+        // 检查各种可能的资源路径
+        const resourcesPath = path.join(
+          path.dirname(path.dirname(app.getPath('exe'))),
+          'Resources'
+        );
+        resolvedPath = path.join(resourcesPath, filePath);
+
+        // 如果不存在，尝试在app.asar中查找
+        if (!fs.existsSync(resolvedPath)) {
+          const appPath = app.getAppPath();
+          resolvedPath = path.join(appPath, filePath);
+        }
+      } else {
+        // 开发模式下，相对于app根目录解析
+        resolvedPath = path.join(app.getAppPath(), filePath);
+      }
+    }
+
+    // 检查文件是否存在
+    if (!fs.existsSync(resolvedPath)) {
+      console.error(`文件不存在: ${resolvedPath}`);
+      return null;
+    }
+
+    // 读取并解析JSON文件
+    const data = fs.readFileSync(resolvedPath, 'utf8');
+    console.log(`成功读取文件: ${resolvedPath}`);
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('读取本地JSON文件失败:', error);
+    return null;
+  }
+});
+
+// 获取应用资源路径
+ipcMain.handle('get-resources-path', () => {
+  if (app.isPackaged) {
+    return path.join(path.dirname(path.dirname(app.getPath('exe'))), 'Resources');
+  } else {
+    return app.getAppPath();
+  }
+});
+
+// 检查文件是否存在
+ipcMain.handle('file-exists', (_, filePath: string) => {
+  try {
+    return fs.existsSync(filePath);
+  } catch (error) {
+    console.error('检查文件存在失败:', error);
+    return false;
+  }
 }); 

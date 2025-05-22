@@ -6,7 +6,7 @@
     "dev": "vite",
     "prebuild": "npm run copy-assets",
     "build": "tsc && vite build",
-    "copy-assets": "copyfiles -u 1 \"public/live2d-widget/**/*\" dist/assets/live2d-widget/",
+    "copy-assets": "mkdir -p dist/assets/live2d-models && cp -R public/assets/* dist/assets/ && mkdir -p dist/assets/live2d-widget",
     "clean": "rimraf dist",
     "test": "vitest run"
   },

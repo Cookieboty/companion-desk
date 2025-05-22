@@ -7,6 +7,8 @@
     "dev": "turbo run dev",
     "start": "turbo run dev --parallel",
     "build": "turbo run build",
+    "build:renderer": "turbo run build --filter=@ig-live/renderer",
+    "build:electron": "turbo run build --filter=@ig-live/electron",
     "package": "turbo run package",
     "test": "turbo run test",
     "clean": "turbo run clean"
