@@ -95,11 +95,15 @@ const tools: Tools = {
   },
   'switch-model': {
     icon: fa_user_circle,
-    callback: () => { },
+    callback: async () => {
+      // 这里保留为空，实际回调会在widget.ts中被覆盖
+    },
   },
   'switch-texture': {
     icon: fa_street_view,
-    callback: () => { },
+    callback: async () => {
+      // 这里保留为空，实际回调会在widget.ts中被覆盖
+    },
   },
   photo: {
     icon: fa_camera_retro,
@@ -122,7 +126,7 @@ const tools: Tools = {
   info: {
     icon: fa_info_circle,
     callback: () => {
-      open('https://github.com/stevenjoezhang/live2d-widget');
+      open('https://github.com/Cookieboty/ai-live2d-client');
     },
   },
   quit: {

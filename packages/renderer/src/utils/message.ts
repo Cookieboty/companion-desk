@@ -25,29 +25,61 @@ let messageTimer: NodeJS.Timeout | null = null;
  * @param {string | string[]} text - Message text or array of texts.
  * @param {number} timeout - Timeout for message display (ms).
  * @param {number} priority - Priority of the message.
+ * @param {boolean} clearPrevious - Whether to immediately clear any existing message.
  */
 function showMessage(
   text: string | string[],
   timeout: number,
   priority: number,
+  clearPrevious: boolean = false
 ) {
   if (
     !text ||
-    (sessionStorage.getItem('waifu-text') &&
+    (!clearPrevious &&
+      sessionStorage.getItem('waifu-text') &&
       Number(sessionStorage.getItem('waifu-text')) > priority)
   )
     return;
+
+  // 清理现有计时器
   if (messageTimer) {
     clearTimeout(messageTimer);
     messageTimer = null;
   }
-  text = randomSelection(text) as string;
-  sessionStorage.setItem('waifu-text', String(priority));
+
+  // 如果需要立即清除之前的消息
   const tips = document.getElementById('waifu-tips');
   if (!tips) return;
 
+  if (clearPrevious) {
+    sessionStorage.removeItem('waifu-text');
+    tips.classList.remove('waifu-tips-active');
+
+    // 短暂延迟后再显示新消息
+    setTimeout(() => {
+      showNewMessage(text, timeout, priority, tips);
+    }, 100);
+  } else {
+    showNewMessage(text, timeout, priority, tips);
+  }
+}
+
+/**
+ * 显示新消息的内部函数
+ */
+function showNewMessage(
+  text: string | string[],
+  timeout: number,
+  priority: number,
+  tips: HTMLElement
+) {
+  text = randomSelection(text) as string;
+  sessionStorage.setItem('waifu-text', String(priority));
+
   tips.innerHTML = text;
   tips.classList.add('waifu-tips-active');
+
+  // 设置自动隐藏的计时器
   messageTimer = setTimeout(() => {
     sessionStorage.removeItem('waifu-text');
     if (tips) {

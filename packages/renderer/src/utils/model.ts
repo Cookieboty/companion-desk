@@ -14,6 +14,10 @@ import { IpcApi } from '@ig-live/types';
 declare global {
   interface Window {
     electronAPI: IpcApi;
+    cleanupDrag?: () => void;
+    drag?: boolean;
+    isInitialized?: boolean;
+    config?: Config & { forceRefresh?: boolean };
   }
 }
 
@@ -69,6 +73,11 @@ interface Config {
    * @type {LogLevel | undefined}
    */
   logLevel?: LogLevel;
+  /**
+   * Force refresh model data.
+   * @type {boolean | undefined}
+   */
+  forceRefresh?: boolean;
 }
 
 /**
@@ -121,26 +130,88 @@ class ModelManager {
   }
 
   public static async initCheck(config: Config, models: ModelList[] = []) {
+    // 检查是否需要强制刷新
+    const forceReset = config.forceRefresh === true;
+
+    // 使用备用CDN的配置
+    let useBackupCdn = false;
+    let backupCdnPath = '';
+
+    // 创建模型管理器
     const model = new ModelManager(config, models);
 
-    // 从缓存读取modelId和modelTexturesId
-    try {
-      const modelId = await getCache<number>('modelId');
-      if (modelId !== null && !isNaN(modelId)) {
-        model._modelId = modelId;
-      }
+    // 从缓存读取modelId和modelTexturesId，除非强制重置
+    if (!forceReset) {
+      try {
+        const modelId = await getCache<number>('modelId');
+        if (modelId !== null && !isNaN(modelId)) {
+          model._modelId = modelId;
+        }
 
-      const modelTexturesId = await getCache<number>('modelTexturesId');
-      if (modelTexturesId !== null && !isNaN(modelTexturesId)) {
-        model._modelTexturesId = modelTexturesId;
+        const modelTexturesId = await getCache<number>('modelTexturesId');
+        if (modelTexturesId !== null && !isNaN(modelTexturesId)) {
+          model._modelTexturesId = modelTexturesId;
+        }
+      } catch (err) {
+        logger.warn('无法从缓存加载模型配置:', err);
       }
-    } catch (err) {
-      logger.warn('无法从缓存加载模型配置:', err);
+    } else {
+      // 强制重置时，使用默认值
+      logger.info('检测到强制重置参数，使用默认模型ID');
+      model._modelId = 0;
+      model._modelTexturesId = 0;
     }
 
     if (model.useCDN) {
-      const response = await customFetch(`${model.cdnPath}model_list.json`);
-      model.modelList = await response.json();
+      try {
+        // 尝试使用主CDN API
+        let response = await customFetch(`${model.cdnPath}model_list.json`);
+        model.modelList = await response.json();
+
+        // 检查模型列表是否有效
+        if (!model.modelList || !model.modelList.models || !Array.isArray(model.modelList.models) || model.modelList.models.length === 0) {
+          throw new Error('无效的模型列表');
+        }
+
+        logger.info(`从CDN加载了模型列表，包含 ${Array.isArray(model.modelList.models) ? model.modelList.models.length : 0} 个模型`);
+      } catch (err) {
+        logger.error('从主CDN加载模型列表失败:', err);
+
+        // 如果使用的是默认CDN但加载失败，尝试备用CDN
+        if (model.cdnPath.includes('jsdelivr.net')) {
+          try {
+            logger.info('尝试使用备用CDN...');
+            // 备用CDN
+            backupCdnPath = 'https://cdn.jsdelivr.net/gh/fghrsh/live2d_api/';
+            const response = await customFetch(`${backupCdnPath}model_list.json`);
+            const backupModelList = await response.json();
+
+            // 检查备用模型列表是否有效
+            if (backupModelList && backupModelList.models && Array.isArray(backupModelList.models) && backupModelList.models.length > 0) {
+              model.modelList = backupModelList;
+              useBackupCdn = true;
+              logger.info('成功从备用CDN加载模型列表');
+            } else {
+              throw new Error('备用CDN返回的模型列表无效');
+            }
+          } catch (backupErr) {
+            logger.error('从备用CDN加载模型列表也失败:', backupErr);
+            // 如果备用CDN也失败，设置一个基本的模型列表
+            model.modelList = {
+              models: ['HyperdimensionNeptunia/neptune_classic', 'KantaiCollection/murakumo'],
+              messages: ['模型加载成功']
+            };
+            logger.info('使用内置的基本模型列表');
+          }
+        } else {
+          // 如果不是默认CDN，则使用基本模型列表
+          model.modelList = {
+            models: ['HyperdimensionNeptunia/neptune_classic', 'KantaiCollection/murakumo'],
+            messages: ['模型加载成功']
+          };
+          logger.info('使用内置的基本模型列表');
+        }
+      }
 
       // 尝试从缓存中恢复上次保存的模型
       try {
@@ -194,14 +265,26 @@ class ModelManager {
           model._modelTexturesId = 0;
         }
       } else {
-        const modelSettingPath = `${model.cdnPath}model/${modelName}/index.json`;
-        const modelSetting = await model.fetchWithCache(modelSettingPath);
-        const version = model.checkModelVersion(modelSetting);
-        if (version === 2) {
-          const textureCache = await model.loadTextureCache(modelName);
-          if (model._modelTexturesId >= textureCache.length) {
-            model._modelTexturesId = 0;
+        // 确定使用哪个CDN路径
+        const cdnPath = useBackupCdn ? backupCdnPath : model.cdnPath;
+        const modelSettingPath = `${cdnPath}model/${modelName}/index.json`;
+
+        try {
+          const modelSetting = await model.fetchWithCache(modelSettingPath);
+          const version = model.checkModelVersion(modelSetting);
+          if (version === 2) {
+            // 确定使用哪个CDN路径
+            const textureCachePath = `${cdnPath}model/${modelName}/textures.cache`;
+            const textureCache = await model.fetchWithCache(textureCachePath);
+            if (model._modelTexturesId >= textureCache.length) {
+              model._modelTexturesId = 0;
+            }
           }
+        } catch (err) {
+          logger.warn(`加载模型设置失败: ${modelSettingPath}`, err);
+          // 回退到默认设置
+          model._modelId = 0;
+          model._modelTexturesId = 0;
         }
       }
     } else {
@@ -245,6 +328,23 @@ class ModelManager {
       }
     }
 
+    // 如果使用备用CDN，创建一个新的ModelManager实例
+    if (useBackupCdn && backupCdnPath) {
+      const backupConfig = { ...config, cdnPath: backupCdnPath };
+      const backupModel = new ModelManager(backupConfig, models);
+
+      // 复制属性
+      backupModel._modelId = model._modelId;
+      backupModel._modelTexturesId = model._modelTexturesId;
+      backupModel.modelList = model.modelList;
+
+      // 初始化完成后同步缓存
+      setCache('modelId', backupModel._modelId);
+      setCache('modelTexturesId', backupModel._modelTexturesId);
+
+      return backupModel;
+    }
+
     // 初始化完成后同步缓存
     setCache('modelId', model._modelId);
     setCache('modelTexturesId', model._modelTexturesId);
@@ -271,21 +371,38 @@ class ModelManager {
   }
 
   resetCanvas() {
-    const canvas = document.getElementById('waifu-canvas');
-    if (canvas) {
-      canvas.innerHTML = '<canvas id="live2d" width="800" height="800"></canvas>';
+    try {
+      logger.info('重置画布');
+      const canvas = document.getElementById('waifu-canvas');
+      if (canvas) {
+        canvas.innerHTML = '<canvas id="live2d" width="800" height="800"></canvas>';
+        logger.info('画布重置成功');
+      } else {
+        logger.error('未找到waifu-canvas元素');
+      }
+    } catch (err) {
+      logger.error('重置画布失败:', err);
     }
   }
 
   async fetchWithCache(url: string) {
+    // 检查是否需要强制刷新
+    const forceRefresh = this.useCDN && (window as any).config?.forceRefresh === true;
+
+    // 为了避免缓存问题，在URL上添加时间戳
+    const finalUrl = forceRefresh && !url.includes('?_t=') && !url.includes('&_t=') ?
+      `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}` : url;
+
     let result;
-    if (url in this.modelJSONCache) {
+    if (!forceRefresh && url in this.modelJSONCache) {
       result = this.modelJSONCache[url];
     } else {
-      const response = await customFetch(url);
+      logger.info(`正在请求: ${finalUrl}`);
+      const response = await customFetch(finalUrl);
       try {
         result = await response.json();
-      } catch {
+      } catch (error) {
+        logger.error(`解析JSON失败: ${finalUrl}`, error);
         result = null;
       }
       this.modelJSONCache[url] = result;
@@ -349,46 +466,196 @@ class ModelManager {
    * @param {string | string[]} message - Loading message.
    */
   async loadModel(message: string | string[]) {
-    let modelSettingPath, modelSetting;
-    if (this.useCDN) {
-      let modelName = this.modelList!.models[this.modelId];
-      if (Array.isArray(modelName)) {
-        modelName = modelName[this.modelTexturesId];
-      }
-      modelSettingPath = `${this.cdnPath}model/${modelName}/index.json`;
-      modelSetting = await this.fetchWithCache(modelSettingPath);
-      const version = this.checkModelVersion(modelSetting);
-      if (version === 2) {
-        const textureCache = await this.loadTextureCache(modelName);
-        let textures = textureCache[this.modelTexturesId];
-        if (typeof textures === 'string') textures = [textures];
-        modelSetting.textures = textures;
+    try {
+      logger.info(`开始加载模型，当前modelId: ${this.modelId}, modelTexturesId: ${this.modelTexturesId}`);
+
+      // 打印模型列表信息
+      if (this.useCDN && this.modelList) {
+        logger.info('CDN模型列表内容:', JSON.stringify(this.modelList.models));
+
+        // 检查是否是超时处理中的强制加载
+        if (window.config?.forceRefresh === true) {
+          // 在强制刷新模式下，随机选择一个不同的模型
+          logger.info('检测到强制刷新模式，尝试随机选择一个不同的模型');
+
+          const currentModel = this.modelId;
+          const modelCount = this.modelList.models.length;
+
+          if (modelCount > 1) {
+            // 如果有多个模型，随机选择一个不同的
+            let newModelId;
+            do {
+              newModelId = Math.floor(Math.random() * modelCount);
+            } while (newModelId === currentModel && modelCount > 1);
+
+            this.modelId = newModelId;
+            this.modelTexturesId = 0;
+
+            logger.info(`随机选择了新的模型ID: ${this.modelId}`);
+          }
+        }
+      } else if (this.models && this.models.length > 0) {
+        logger.info('本地模型列表内容:', JSON.stringify(this.models.map(m => m.name)));
+
+        // 对本地模型也进行同样的随机选择
+        if (window.config?.forceRefresh === true) {
+          logger.info('检测到强制刷新模式，尝试随机选择一个不同的本地模型');
+
+          const currentModel = this.modelId;
+          const modelCount = this.models.length;
+
+          if (modelCount > 1) {
+            // 如果有多个模型，随机选择一个不同的
+            let newModelId;
+            do {
+              newModelId = Math.floor(Math.random() * modelCount);
+            } while (newModelId === currentModel && modelCount > 1);
+
+            this.modelId = newModelId;
+            this.modelTexturesId = 0;
+
+            logger.info(`随机选择了新的本地模型ID: ${this.modelId}`);
+          }
+        }
       }
 
-      // 保存CDN模型名称到缓存
-      try {
-        logger.info(`保存CDN模型到缓存: ${modelName}`);
-        await setCache('modelName', modelName);
-      } catch (err) {
-        logger.warn('保存模型到缓存失败:', err);
+      // 如果不是首次初始化，才显示加载中提示
+      // 初始化时由widget.ts中的加载指示器处理
+      if (window.isInitialized) {
+        showMessage('模型加载中...', 999999, 10);
       }
-    } else {
-      modelSettingPath = this.models[this.modelId].paths[this.modelTexturesId];
-      modelSetting = await this.fetchWithCache(modelSettingPath);
 
-      // 保存本地模型路径到缓存
-      try {
-        const modelPathParts = modelSettingPath.split('/');
-        const modelName = modelPathParts[modelPathParts.length - 2] || modelPathParts[modelPathParts.length - 1];
-        logger.info(`保存本地模型到缓存: ${modelName}`);
-        await setCache('modelName', modelName);
-      } catch (err) {
-        logger.warn('保存模型到缓存失败:', err);
+      // 定义加载进度指示器
+      const createLoadingTip = () => {
+        const waifuTips = document.getElementById('waifu-tips');
+        if (!waifuTips) return;
+
+        const existingLoader = document.getElementById('model-loading-progress');
+        if (existingLoader) return;
+
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'model-loading-progress';
+        loadingDiv.style.width = '0%';
+        loadingDiv.style.height = '3px';
+        loadingDiv.style.backgroundColor = '#0084ff';
+        loadingDiv.style.position = 'absolute';
+        loadingDiv.style.bottom = '0';
+        loadingDiv.style.left = '0';
+        loadingDiv.style.transition = 'width 0.3s';
+        waifuTips.appendChild(loadingDiv);
+
+        return loadingDiv;
+      };
+
+      // 更新加载进度
+      const updateLoadingProgress = (percent: number) => {
+        const loadingDiv = document.getElementById('model-loading-progress');
+        if (loadingDiv) {
+          loadingDiv.style.width = `${percent}%`;
+        }
+      };
+
+      // 移除加载进度指示器
+      const removeLoadingTip = () => {
+        const loadingDiv = document.getElementById('model-loading-progress');
+        if (loadingDiv) {
+          loadingDiv.remove();
+        }
+      };
+
+      // 创建加载进度条
+      const loadingTip = createLoadingTip();
+      updateLoadingProgress(10);
+
+      let modelSettingPath, modelSetting;
+      if (this.useCDN) {
+        updateLoadingProgress(20);
+        let modelName = this.modelList!.models[this.modelId];
+        if (Array.isArray(modelName)) {
+          modelName = modelName[this.modelTexturesId];
+        }
+        modelSettingPath = `${this.cdnPath}model/${modelName}/index.json`;
+        updateLoadingProgress(30);
+        modelSetting = await this.fetchWithCache(modelSettingPath);
+        updateLoadingProgress(40);
+        const version = this.checkModelVersion(modelSetting);
+        if (version === 2) {
+          updateLoadingProgress(50);
+          const textureCache = await this.loadTextureCache(modelName);
+          let textures = textureCache[this.modelTexturesId];
+          if (typeof textures === 'string') textures = [textures];
+          modelSetting.textures = textures;
+        }
+
+        // 保存CDN模型名称到缓存
+        try {
+          logger.info(`保存CDN模型到缓存: ${modelName}`);
+          await setCache('modelName', modelName);
+        } catch (err) {
+          logger.warn('保存模型到缓存失败:', err);
+        }
+      } else {
+        updateLoadingProgress(20);
+        modelSettingPath = this.models[this.modelId].paths[this.modelTexturesId];
+        updateLoadingProgress(30);
+        modelSetting = await this.fetchWithCache(modelSettingPath);
+        updateLoadingProgress(40);
+
+        // 保存本地模型路径到缓存
+        try {
+          const modelPathParts = modelSettingPath.split('/');
+          const modelName = modelPathParts[modelPathParts.length - 2] || modelPathParts[modelPathParts.length - 1];
+          logger.info(`保存本地模型到缓存: ${modelName}`);
+          await setCache('modelName', modelName);
+        } catch (err) {
+          logger.warn('保存模型到缓存失败:', err);
+        }
       }
+
+      updateLoadingProgress(60);
+      this.resetCanvas();
+      updateLoadingProgress(70);
+      await this.loadLive2D(modelSettingPath, modelSetting);
+
+      // 重新注册拖动功能
+      updateLoadingProgress(90);
+      if (window.drag === true) {
+        try {
+          // 延迟一点时间确保DOM已更新
+          setTimeout(async () => {
+            // 动态导入以避免循环引用
+            const { default: registerDrag } = await import('./drag');
+            if (typeof window.cleanupDrag === 'function') {
+              window.cleanupDrag();
+            }
+            window.cleanupDrag = registerDrag();
+            logger.info('已重新注册拖动功能');
+          }, 100);
+        } catch (err) {
+          logger.error('重新注册拖动功能失败:', err);
+        }
+      }
+
+      updateLoadingProgress(100);
+
+      // 加载完成，移除进度条并显示完成消息
+      setTimeout(() => {
+        removeLoadingTip();
+        // 显示加载完成信息，然后再显示模型自身的信息
+        showMessage('模型加载完毕！', 2000, 10);
+        setTimeout(() => {
+          showMessage(message, 4000, 10);
+        }, 2000);
+      }, 500);
+
+    } catch (error) {
+      // 发生错误时也移除加载提示
+      const loadingDiv = document.getElementById('model-loading-progress');
+      if (loadingDiv) loadingDiv.remove();
+
+      logger.error('加载模型失败:', error);
+      showMessage('加载模型失败', 4000, 10);
     }
-    this.resetCanvas();
-    await this.loadLive2D(modelSettingPath, modelSetting);
-    showMessage(message, 4000, 10);
   }
 
   /**
@@ -434,13 +701,46 @@ class ModelManager {
    * Load the next character's model.
    */
   async loadNextModel() {
-    this.modelTexturesId = 0;
-    if (this.useCDN) {
-      this.modelId = (this.modelId + 1) % this.modelList!.models.length;
-      await this.loadModel(this.modelList!.messages[this.modelId]);
-    } else {
-      this.modelId = (this.modelId + 1) % this.models.length;
-      await this.loadModel(this.models[this.modelId].message);
+    try {
+      logger.info('开始切换到下一个模型');
+      this.modelTexturesId = 0;
+
+      if (this.useCDN) {
+        if (!this.modelList) {
+          logger.error('模型列表未加载，无法切换模型');
+          showMessage('模型列表未加载，无法切换', 4000, 10);
+          return;
+        }
+
+        if (!this.modelList.models || !this.modelList.models.length) {
+          logger.error('模型列表为空，无法切换模型');
+          showMessage('模型列表为空，无法切换', 4000, 10);
+          return;
+        }
+
+        logger.info(`当前模型ID: ${this.modelId}, 总模型数: ${this.modelList.models.length}`);
+        this.modelId = (this.modelId + 1) % this.modelList.models.length;
+        logger.info(`切换到新的模型ID: ${this.modelId}`);
+
+        await this.loadModel(this.modelList.messages[this.modelId] || '模型已切换');
+      } else {
+        if (!this.models || !this.models.length) {
+          logger.error('本地模型列表为空，无法切换模型');
+          showMessage('模型列表为空，无法切换', 4000, 10);
+          return;
+        }
+
+        logger.info(`当前模型ID: ${this.modelId}, 总模型数: ${this.models.length}`);
+        this.modelId = (this.modelId + 1) % this.models.length;
+        logger.info(`切换到新的模型ID: ${this.modelId}`);
+
+        await this.loadModel(this.models[this.modelId].message || '模型已切换');
+      }
+
+      logger.info('模型切换成功');
+    } catch (err) {
+      logger.error('切换模型失败:', err);
+      showMessage('切换模型失败', 4000, 10);
     }
   }
 }

@@ -7,6 +7,8 @@ import * as fs from 'fs';
 const userDataPath = app.getPath('userData');
 const configPath = path.join(userDataPath, 'config.json');
 
+console.log('userDataPath=====>', userDataPath);
+
 // 默认配置
 interface AppConfig {
   windowPosition: { x: number; y: number };

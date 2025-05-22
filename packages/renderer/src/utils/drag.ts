@@ -1,8 +1,13 @@
 function registerDrag() {
+  console.log('正在注册拖动事件');
+
   // 修改为只监听live2d画布区域
   const waifuElement = document.getElementById('waifu');
   const dragElement = document.getElementById('live2d');
-  if (!waifuElement || !dragElement) return;
+  if (!waifuElement || !dragElement) {
+    console.error('无法找到waifu或live2d元素，拖动注册失败');
+    return;
+  }
 
   // 定义变量
   let isDragging = false;
@@ -134,6 +139,25 @@ function registerDrag() {
 
   // 鼠标按下事件 - 只在live2d画布上监听
   dragElement.addEventListener('mousedown', startDragging);
+
+  console.log('拖动事件注册成功');
+
+  // 返回一个清理函数，用于在重新注册前移除旧事件
+  return () => {
+    if (dragElement) {
+      dragElement.removeEventListener('mousedown', startDragging);
+    }
+
+    // 确保停止所有正在进行的拖动操作
+    stopDragging();
+
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+
+    console.log('拖动事件监听已移除');
+  };
 }
 
 export default registerDrag;
