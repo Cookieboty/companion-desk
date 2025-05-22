@@ -3,9 +3,12 @@
  * @module message
  */
 
-import { randomSelection } from './utils.js';
+import { randomSelection } from './live2d-utils';
 
-type Time = {
+/**
+ * 时间段配置
+ */
+export interface TimeConfig {
   /**
    * Time period, format is "HH-HH", e.g. "00-06" means from 0 to 6 o'clock.
    * @type {string}
@@ -16,7 +19,45 @@ type Time = {
    * @type {string}
    */
   text: string;
-}[];
+}
+
+/**
+ * 时间配置数组
+ */
+export type Time = TimeConfig[];
+
+/**
+ * 事件配置
+ */
+export interface EventConfig {
+  selector: string;
+  text: string | string[];
+}
+
+/**
+ * 季节消息配置
+ */
+export interface SeasonConfig {
+  date: string;
+  text: string | string[];
+}
+
+/**
+ * 消息配置
+ */
+export interface MessageConfig {
+  welcome: {
+    time: Time;
+    text: string;
+  };
+  mouseover: EventConfig[];
+  click: EventConfig[];
+  seasons: SeasonConfig[];
+  console: string;
+  copy: string;
+  visibility: string;
+  idle: string[];
+}
 
 let messageTimer: NodeJS.Timeout | null = null;
 
@@ -73,7 +114,7 @@ function showNewMessage(
   priority: number,
   tips: HTMLElement
 ) {
-  text = randomSelection(text) as string;
+  text = randomSelection(text);
   sessionStorage.setItem('waifu-text', String(priority));
 
   tips.innerHTML = text;
@@ -136,4 +177,3 @@ function i18n(template: string, ...args: any[]): string {
 }
 
 export { showMessage, welcomeMessage, i18n };
-export type { Time };

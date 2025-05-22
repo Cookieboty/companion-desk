@@ -1,54 +1,109 @@
-type LogLevel = 'error' | 'warn' | 'info' | 'trace';
+/**
+ * 日志级别类型
+ */
+export type LogLevel = 'error' | 'warn' | 'info' | 'trace';
 
+/**
+ * 日志类
+ */
 class Logger {
-  private static levelOrder: Record<LogLevel, number> = {
-    error: 0,
-    warn: 1,
-    info: 2,
-    trace: 3,
-  };
+  private level: LogLevel = 'info';
+  private prefix: string = '[Live2D]';
 
-  private level: LogLevel;
-
-  constructor(level: LogLevel = 'info') {
+  /**
+   * 设置日志级别
+   * @param level 日志级别
+   */
+  setLevel(level: LogLevel): void {
     this.level = level;
   }
 
-  setLevel(level: LogLevel | undefined) {
-    if (!level) return;
-    this.level = level;
+  /**
+   * 设置日志前缀
+   * @param prefix 日志前缀
+   */
+  setPrefix(prefix: string): void {
+    this.prefix = prefix;
   }
 
+  /**
+   * 获取当前日志级别的数值
+   * @returns 日志级别数值
+   */
+  private getLevelValue(level: LogLevel): number {
+    switch (level) {
+      case 'error': return 0;
+      case 'warn': return 1;
+      case 'info': return 2;
+      case 'trace': return 3;
+      default: return 2;
+    }
+  }
+
+  /**
+   * 检查是否应该记录此级别的日志
+   * @param level 日志级别
+   * @returns 是否应该记录
+   */
   private shouldLog(level: LogLevel): boolean {
-    return Logger.levelOrder[level] <= Logger.levelOrder[this.level];
+    return this.getLevelValue(level) <= this.getLevelValue(this.level);
   }
 
-  error(message: string, ...args: any[]) {
+  /**
+   * 格式化日志消息
+   * @param message 消息内容
+   * @returns 格式化后的消息
+   */
+  private formatMessage(message: string): string {
+    return `${this.prefix} ${message}`;
+  }
+
+  /**
+   * 记录错误日志
+   * @param message 消息内容
+   * @param optionalParams 可选参数
+   */
+  error(message: string, ...optionalParams: any[]): void {
     if (this.shouldLog('error')) {
-      console.error('[Live2D Widget][ERROR]', message, ...args);
+      console.error(this.formatMessage(message), ...optionalParams);
     }
   }
 
-  warn(message: string, ...args: any[]) {
+  /**
+   * 记录警告日志
+   * @param message 消息内容
+   * @param optionalParams 可选参数
+   */
+  warn(message: string, ...optionalParams: any[]): void {
     if (this.shouldLog('warn')) {
-      console.warn('[Live2D Widget][WARN ]', message, ...args);
+      console.warn(this.formatMessage(message), ...optionalParams);
     }
   }
 
-  info(message: string, ...args: any[]) {
+  /**
+   * 记录信息日志
+   * @param message 消息内容
+   * @param optionalParams 可选参数
+   */
+  info(message: string, ...optionalParams: any[]): void {
     if (this.shouldLog('info')) {
-      console.log('[Live2D Widget][INFO ]', message, ...args);
+      console.info(this.formatMessage(message), ...optionalParams);
     }
   }
 
-  trace(message: string, ...args: any[]) {
+  /**
+   * 记录跟踪日志
+   * @param message 消息内容
+   * @param optionalParams 可选参数
+   */
+  trace(message: string, ...optionalParams: any[]): void {
     if (this.shouldLog('trace')) {
-      console.log('[Live2D Widget][TRACE]', message, ...args);
+      console.log(this.formatMessage(message), ...optionalParams);
     }
   }
 }
 
+// 创建单例
 const logger = new Logger();
 
 export default logger;
-export type { LogLevel };

@@ -5,6 +5,7 @@
 
 import { IpcApi } from '@ig-live/types';
 import path from 'path';
+import { randomSelection, loadExternalResource, customFetch } from './live2d-utils';
 
 // 声明全局电子API类型
 declare global {
@@ -131,148 +132,9 @@ async function readLocalFile(url: string): Promise<any> {
   return fileContent;
 }
 
-/**
- * Randomly select an element from an array, or return the original value if not an array.
- * @param {string[] | string} obj - The object or array to select from.
- * @returns {string} The randomly selected element or the original value.
- */
-function randomSelection(obj: string[] | string): string {
-  return Array.isArray(obj) ? obj[Math.floor(Math.random() * obj.length)] : obj;
-}
-
 function randomOtherOption(total: number, excludeIndex: number): number {
   const idx = Math.floor(Math.random() * (total - 1));
   return idx >= excludeIndex ? idx + 1 : idx;
-}
-
-/**
- * Asynchronously load external resources.
- * @param {string} url - Resource path.
- * @param {string} type - Resource type.
- */
-async function loadExternalResource(url: string, type: string): Promise<string> {
-  // 判断当前环境和URL类型
-  const dev = isDevelopment();
-  const remote = isRemoteUrl(url);
-
-  // 在生产环境下且非远程URL，使用Electron读取本地文件
-  if (!dev && !remote && typeof window.electronAPI !== 'undefined') {
-    try {
-      console.log(`通过Electron加载资源: ${url}, 类型: ${type}`);
-
-      // 读取文件内容
-      const fileContent = await readLocalFile(url);
-
-      // 创建Blob并生成URL
-      const blob = new Blob(
-        [typeof fileContent === 'string' ? fileContent : fileContent],
-        { type: getContentType(url) }
-      );
-      const blobUrl = URL.createObjectURL(blob);
-      console.log(`创建Blob URL: ${blobUrl} 用于 ${url}`);
-
-      // 根据资源类型创建DOM元素
-      return new Promise((resolve: any, reject: any) => {
-        let tag;
-
-        if (type === 'css') {
-          tag = document.createElement('link');
-          tag.rel = 'stylesheet';
-          tag.href = blobUrl;
-        }
-        else if (type === 'js') {
-          tag = document.createElement('script');
-          tag.src = blobUrl;
-        }
-
-        if (tag) {
-          tag.onload = () => {
-            console.log(`资源加载成功: ${url}`);
-            resolve(url); // 返回原始URL以保持兼容性
-          };
-          tag.onerror = (e) => {
-            console.error(`资源加载失败: ${url}`, e);
-            // 释放Blob URL以避免内存泄漏
-            URL.revokeObjectURL(blobUrl);
-            reject(url);
-          };
-          document.head.appendChild(tag);
-        } else {
-          // 如果不是支持的类型，释放Blob URL并拒绝Promise
-          URL.revokeObjectURL(blobUrl);
-          reject(new Error(`不支持的资源类型: ${type}`));
-        }
-      });
-    } catch (error) {
-      console.error(`加载资源失败: ${url}`, error);
-      throw error;
-    }
-  }
-
-  // 开发环境或远程URL使用原始方法
-  return new Promise((resolve: any, reject: any) => {
-    let tag;
-
-    if (type === 'css') {
-      tag = document.createElement('link');
-      tag.rel = 'stylesheet';
-      tag.href = url;
-    }
-    else if (type === 'js') {
-      tag = document.createElement('script');
-      tag.src = url;
-    }
-    if (tag) {
-      tag.onload = () => resolve(url);
-      tag.onerror = () => reject(url);
-      document.head.appendChild(tag);
-    }
-  });
-}
-
-/**
- * 自定义fetch函数，用于处理开发环境和生产环境的请求差异
- * 在开发环境下使用普通fetch，在生产环境下对本地文件使用fs模块读取
- * @param {string} url - 请求路径
- * @param {RequestInit} [options] - fetch选项
- * @returns {Promise<Response>} - 返回Response对象
- */
-async function customFetch(url: string, options?: RequestInit): Promise<Response> {
-  console.log('customFetch===>', url, options);
-
-  // 判断当前环境和URL类型
-  const dev = isDevelopment();
-  const remote = isRemoteUrl(url);
-
-  // 开发环境或远程URL直接使用原生fetch
-  if (dev || remote) {
-    return fetch(url, options);
-  }
-
-  // 生产环境下处理本地文件
-  try {
-    // 读取本地文件
-    const fileContent = await readLocalFile(url);
-
-    // 创建一个模拟的Response对象
-    return new Response(fileContent, {
-      status: 200,
-      statusText: 'OK',
-      headers: {
-        'Content-Type': getContentType(url),
-      },
-    });
-  } catch (error) {
-    console.error('读取本地文件失败:', error);
-    // 创建一个错误Response
-    return new Response(JSON.stringify({ error: `读取文件失败: ${error}` }), {
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  }
 }
 
 /**
@@ -337,6 +199,49 @@ function getContentType(filePath: string): string {
 
   // 检查扩展名是否存在于映射表中
   return contentTypes[extension] || 'application/octet-stream';
+}
+
+/**
+ * 防抖函数
+ * @param fn 要执行的函数
+ * @param delay 延迟时间（毫秒）
+ * @returns 防抖处理后的函数
+ */
+export function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timer: NodeJS.Timeout | null = null;
+
+  return function (this: any, ...args: Parameters<T>) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
+}
+
+/**
+ * 节流函数
+ * @param fn 要执行的函数
+ * @param limit 时间限制（毫秒）
+ * @returns 节流处理后的函数
+ */
+export function throttle<T extends (...args: any[]) => any>(
+  fn: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let inThrottle = false;
+
+  return function (this: any, ...args: Parameters<T>) {
+    if (!inThrottle) {
+      fn.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => {
+        inThrottle = false;
+      }, limit);
+    }
+  };
 }
 
 export {

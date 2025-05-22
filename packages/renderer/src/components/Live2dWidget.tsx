@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
+import Live2D from './Live2D';
 import type { Config } from '@/utils/model';
 
 // 不需要在这里导入CSS，因为我们已经将它放在public目录中
@@ -15,43 +16,21 @@ interface Live2dWidgetProps {
 /**
  * Live2D Widget React组件
  * 将Live2D看板娘集成到React应用中
+ * 
+ * 这是一个包装组件，用于保持向后兼容性，同时使用重构后的React组件
  */
 const Live2dWidget: React.FC<Live2dWidgetProps> = ({ config }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const initialized = useRef<boolean>(false);
-
-  useEffect(() => {
-    if (initialized.current) return;
-
-    // 动态导入模块以避免SSR问题
-    import('@/utils/widget').then(({ initWidget }) => {
-      if (!containerRef.current) return;
-
-      // 初始化看板娘
-      initWidget(config);
-      initialized.current = true;
-    });
-
-    // 组件卸载时清理
-    return () => {
-      const waifu = document.getElementById('waifu');
-      const waifuToggle = document.getElementById('waifu-toggle');
-
-      if (waifu) {
-        waifu.remove();
-      }
-
-      if (waifuToggle) {
-        waifuToggle.remove();
-      }
-
-      // 清除本地存储中的相关项
-      localStorage.removeItem('waifu-display');
-      sessionStorage.removeItem('waifu-text');
-    };
-  }, [config]);
-
-  return <div ref={containerRef} className="live2d-widget-container" />;
+  // 直接使用新重构的组件
+  return (
+    <Live2D
+      waifuPath={config.waifuPath || ''}
+      cdnPath={config.cdnPath}
+      cubism2Path={config.cubism2Path || ''}
+      tools={config.tools}
+      drag={config.drag}
+      logLevel={config.logLevel}
+    />
+  );
 };
 
 export default Live2dWidget; 
