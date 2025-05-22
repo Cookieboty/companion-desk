@@ -104,17 +104,21 @@ function createWindow() {
 
   // 加载应用
   const isDev = process.env.NODE_ENV === 'development';
+  // 检查是否是调试包 (通过命令行参数判断)
+  const isDebugBuild = app.isPackaged && process.argv.includes('--debug-mode');
 
-  let startUrl;
+  let startUrl: string = 'about:blank'; // 默认值，确保startUrl一定有值
   if (isDev) {
     startUrl = 'http://localhost:3000';
     // 开发模式下打开开发者工具
     mainWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    // 无论是否是开发模式，都打开开发者工具用于调试
+  } else if (isDebugBuild) {
+    // 调试构建模式下打开开发者工具
     mainWindow.webContents.openDevTools({ mode: 'detach' });
+  } else {
+    // 生产环境下不打开开发者工具
     // 在生产环境中，从本地构建目录或extraResources中加载渲染器
-    let rendererPath;
+    let rendererPath: string | undefined;
 
     // 打印应用路径信息用于调试
     console.log('应用程序路径(app.getAppPath()):', app.getAppPath());
@@ -227,6 +231,24 @@ function createWindow() {
         `;
         fs.writeFileSync(rendererPath, errorHTML);
       }
+    }
+
+    // 确保rendererPath有值
+    if (!rendererPath) {
+      console.error('未能找到有效的渲染器路径，使用错误页面');
+      // 创建一个临时错误页面
+      const errorHtmlPath = path.join(app.getPath('temp'), 'error.html');
+      const errorHTML = `
+        <html>
+          <head><title>错误</title></head>
+          <body>
+            <h1>加载失败</h1>
+            <p>无法找到渲染器文件。请确保已正确构建应用。</p>
+          </body>
+        </html>
+      `;
+      fs.writeFileSync(errorHtmlPath, errorHTML);
+      rendererPath = errorHtmlPath;
     }
 
     startUrl = url.format({

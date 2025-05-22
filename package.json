@@ -10,6 +10,12 @@
     "build:renderer": "turbo run build --filter=@ig-live/renderer",
     "build:electron": "turbo run build --filter=@ig-live/electron",
     "package": "turbo run package",
+    "package:prod": "turbo run package:prod",
+    "package:prod:mac": "turbo run package:prod:mac",
+    "package:prod:win": "turbo run package:prod:win",
+    "package:debug": "turbo run package:debug",
+    "package:debug:mac": "turbo run package:debug:mac",
+    "package:debug:win": "turbo run package:debug:win",
     "test": "turbo run test",
     "clean": "turbo run clean"
   },

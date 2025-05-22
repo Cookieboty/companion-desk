@@ -9,8 +9,13 @@
     "build": "tsc && npm run copy-renderer",
     "copy-renderer": "node scripts/copy-renderer.js",
     "clean": "rimraf dist",
-    "package": "npm run build && electron-builder build --mac",
-    "package:debug": "npm run build && electron-builder build --mac --config.asar=false"
+    "package": "npm run package:prod",
+    "package:prod": "npm run build && electron-builder build",
+    "package:prod:mac": "npm run build && electron-builder build --mac",
+    "package:prod:win": "npm run build && electron-builder build --win",
+    "package:debug": "npm run build && electron-builder build --config.asar=false -- --debug-mode",
+    "package:debug:mac": "npm run build && electron-builder build --mac --config.asar=false -- --debug-mode",
+    "package:debug:win": "npm run build && electron-builder build --win --config.asar=false -- --debug-mode"
   },
   "author": "",
   "license": "MIT",
@@ -47,10 +52,12 @@
     },
     "mac": {
       "category": "public.app-category.entertainment",
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "assets/logo.jpg"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "assets/logo.jpg"
     }
   }
 }
