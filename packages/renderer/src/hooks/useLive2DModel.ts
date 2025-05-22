@@ -4,6 +4,14 @@ import { getCache, setCache } from '@/utils/cache';
 import { customFetch } from '@/utils/live2d-utils';
 import logger from '@/utils/logger';
 
+// 定义模型项的接口
+interface ModelItem {
+  name: string;
+  path: string;
+  message?: string;
+  textures?: string[];
+}
+
 export function useLive2DModel() {
   const { state, dispatch, config } = useLive2D();
   const [cubism2Model, setCubism2Model] = useState<any>(null);
@@ -53,7 +61,7 @@ export function useLive2DModel() {
           const savedModelName = await getCache<string>('modelName');
           if (savedModelName) {
             console.log('从缓存中恢复的模型名称:', savedModelName);
-            const modelIndex = formattedList.findIndex(model => model.name === savedModelName);
+            const modelIndex = formattedList.findIndex((model: ModelItem) => model.name === savedModelName);
             if (modelIndex >= 0) {
               console.log('找到匹配的模型索引:', modelIndex);
               dispatch({ type: 'SET_MODEL_ID', payload: modelIndex });
@@ -83,7 +91,7 @@ export function useLive2DModel() {
           const savedModelName = await getCache<string>('modelName');
           if (savedModelName) {
             console.log('从缓存中恢复的本地模型名称:', savedModelName);
-            const modelIndex = formattedList.findIndex(model =>
+            const modelIndex = formattedList.findIndex((model: ModelItem) =>
               model.name === savedModelName ||
               model.path.includes(savedModelName)
             );
@@ -152,6 +160,19 @@ export function useLive2DModel() {
 
     if (!state.modelList[modelIndex]) {
       console.error(`模型索引 ${modelIndex} 无效，超出范围`);
+      return;
+    }
+
+    // 检查Live2D库是否已初始化
+    if (!state.isInitialized) {
+      console.warn('Live2D库尚未初始化，无法加载模型');
+      dispatch({
+        type: 'SET_MESSAGE',
+        payload: {
+          text: '模型引擎正在加载中，请稍候',
+          priority: 10
+        }
+      });
       return;
     }
 
@@ -344,25 +365,27 @@ export function useLive2DModel() {
     loadModelList();
   }, [loadModelList]);
 
-  // 当模型列表加载完成后，自动加载第一个模型
+  // 当模型列表加载完成后，如果库已初始化则自动加载第一个模型
   useEffect(() => {
-    if (state.modelList && state.modelList.length > 0 && !loadingRef.current) {
-      console.log('模型列表加载完成，自动加载第一个模型');
+    if (state.modelList && state.modelList.length > 0 && !loadingRef.current && state.isInitialized) {
+      console.log('模型列表加载完成，库已初始化，自动加载第一个模型');
       // 检查当前modelId是否有效，如果无效则加载第一个模型
       const modelIdToLoad = state.modelId < state.modelList.length ? state.modelId : 0;
       loadModel(modelIdToLoad);
+    } else if (state.modelList && state.modelList.length > 0 && !state.isInitialized) {
+      console.log('模型列表已加载，但库尚未初始化，等待初始化完成');
     }
-  }, [state.modelList, loadModel]);
+  }, [state.modelList, loadModel, state.isInitialized]);
 
   // 当模型ID变化时加载对应模型
   useEffect(() => {
     console.log('模型ID变更:', state.modelId);
-    if (state.modelList && state.modelList.length > 0 && state.modelId < state.modelList.length) {
+    if (state.modelList && state.modelList.length > 0 && state.modelId < state.modelList.length && state.isInitialized) {
       console.log('模型ID变更触发加载:', state.modelId);
       // 为了避免无限循环，不要在这里加载模型
       // 模型加载应该由切换动作触发
     }
-  }, [state.modelId, state.modelList]);
+  }, [state.modelId, state.modelList, state.isInitialized]);
 
   return {
     loadModel,
