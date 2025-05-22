@@ -37,5 +37,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 获取保存的模型
   getSavedModel: async () => {
     return await ipcRenderer.invoke('get-saved-model');
+  },
+  // 读取本地文件
+  readLocalFile: async (filePath: string) => {
+    return await ipcRenderer.invoke('read-local-file', filePath);
   }
 } as IpcApi); 

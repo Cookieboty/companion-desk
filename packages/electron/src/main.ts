@@ -398,4 +398,207 @@ ipcMain.handle('file-exists', (_, filePath: string) => {
     console.error('检查文件存在失败:', error);
     return false;
   }
+});
+
+// 在IPC事件处理程序部分添加读取本地文件功能
+ipcMain.handle('read-local-file', async (event, filePath) => {
+  try {
+    console.log('正在读取本地文件:', filePath);
+
+    // 构建绝对路径
+    let absolutePath;
+
+    // 如果是相对路径，将其转换为绝对路径
+    if (!path.isAbsolute(filePath)) {
+      if (app.isPackaged) {
+        // 在打包环境中，使用应用程序资源目录
+        if (process.platform === 'darwin') {
+          // macOS应用包结构
+          absolutePath = path.join(
+            path.dirname(path.dirname(app.getPath('exe'))), // /path/to/App.app/Contents/MacOS -> /path/to/App.app/Contents
+            'Resources',
+            'app.asar.unpacked', // 解压的资源可能在这里
+            filePath
+          );
+
+          // 如果不存在，尝试其他可能的位置
+          if (!fs.existsSync(absolutePath)) {
+            absolutePath = path.join(
+              path.dirname(path.dirname(app.getPath('exe'))),
+              'Resources',
+              filePath
+            );
+          }
+
+          // 如果还不存在，尝试在renderer目录下查找
+          if (!fs.existsSync(absolutePath)) {
+            absolutePath = path.join(
+              path.dirname(path.dirname(app.getPath('exe'))),
+              'Resources',
+              'renderer',
+              filePath.replace(/^\//, '')
+            );
+          }
+
+          // 如果还不存在，尝试在assets目录下查找
+          if (!fs.existsSync(absolutePath)) {
+            absolutePath = path.join(
+              path.dirname(path.dirname(app.getPath('exe'))),
+              'Resources',
+              'renderer',
+              'assets',
+              path.basename(filePath)
+            );
+          }
+        } else {
+          // Windows/Linux应用包结构
+          absolutePath = path.join(
+            path.dirname(app.getPath('exe')),
+            'resources',
+            filePath
+          );
+
+          // 如果不存在，尝试在renderer目录下查找
+          if (!fs.existsSync(absolutePath)) {
+            absolutePath = path.join(
+              path.dirname(app.getPath('exe')),
+              'resources',
+              'renderer',
+              filePath.replace(/^\//, '')
+            );
+          }
+
+          // 如果还不存在，尝试在assets目录下查找
+          if (!fs.existsSync(absolutePath)) {
+            absolutePath = path.join(
+              path.dirname(app.getPath('exe')),
+              'resources',
+              'renderer',
+              'assets',
+              path.basename(filePath)
+            );
+          }
+        }
+      } else {
+        // 在开发环境中，使用项目根目录
+        absolutePath = path.join(app.getAppPath(), filePath);
+
+        // 如果不存在，尝试在renderer/public目录下查找
+        if (!fs.existsSync(absolutePath)) {
+          absolutePath = path.join(
+            app.getAppPath(),
+            'packages',
+            'renderer',
+            'public',
+            filePath.replace(/^\//, '')
+          );
+        }
+
+        // 如果还不存在，尝试在renderer/dist目录下查找
+        if (!fs.existsSync(absolutePath)) {
+          absolutePath = path.join(
+            app.getAppPath(),
+            'packages',
+            'renderer',
+            'dist',
+            filePath.replace(/^\//, '')
+          );
+        }
+
+        // 如果还不存在，尝试在assets目录下查找
+        if (!fs.existsSync(absolutePath)) {
+          absolutePath = path.join(
+            app.getAppPath(),
+            'packages',
+            'renderer',
+            'dist',
+            'assets',
+            path.basename(filePath)
+          );
+        }
+      }
+    } else {
+      absolutePath = filePath;
+    }
+
+    console.log('尝试读取文件路径:', absolutePath);
+
+    // 检查文件是否存在
+    if (!fs.existsSync(absolutePath)) {
+      console.error('文件不存在:', absolutePath);
+
+      // 尝试列出可能的目录内容以辅助调试
+      try {
+        console.log('列出可能的目录内容:');
+
+        // 列出renderer目录
+        if (app.isPackaged) {
+          if (process.platform === 'darwin') {
+            const resourcesDir = path.join(
+              path.dirname(path.dirname(app.getPath('exe'))),
+              'Resources'
+            );
+            console.log('Resources目录内容:', fs.existsSync(resourcesDir) ? fs.readdirSync(resourcesDir) : '目录不存在');
+
+            const rendererDir = path.join(resourcesDir, 'renderer');
+            if (fs.existsSync(rendererDir)) {
+              console.log('renderer目录内容:', fs.readdirSync(rendererDir));
+
+              const assetsDir = path.join(rendererDir, 'assets');
+              if (fs.existsSync(assetsDir)) {
+                console.log('assets目录内容:', fs.readdirSync(assetsDir));
+              }
+            }
+          } else {
+            const resourcesDir = path.join(
+              path.dirname(app.getPath('exe')),
+              'resources'
+            );
+            console.log('resources目录内容:', fs.existsSync(resourcesDir) ? fs.readdirSync(resourcesDir) : '目录不存在');
+
+            const rendererDir = path.join(resourcesDir, 'renderer');
+            if (fs.existsSync(rendererDir)) {
+              console.log('renderer目录内容:', fs.readdirSync(rendererDir));
+
+              const assetsDir = path.join(rendererDir, 'assets');
+              if (fs.existsSync(assetsDir)) {
+                console.log('assets目录内容:', fs.readdirSync(assetsDir));
+              }
+            }
+          }
+        } else {
+          const rendererDir = path.join(app.getAppPath(), 'packages', 'renderer', 'dist');
+          if (fs.existsSync(rendererDir)) {
+            console.log('renderer/dist目录内容:', fs.readdirSync(rendererDir));
+
+            const assetsDir = path.join(rendererDir, 'assets');
+            if (fs.existsSync(assetsDir)) {
+              console.log('renderer/dist/assets目录内容:', fs.readdirSync(assetsDir));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('列出目录内容失败:', err);
+      }
+
+      return null;
+    }
+
+    // 读取文件内容
+    const content = fs.readFileSync(absolutePath);
+
+    // 根据文件类型返回不同的格式
+    const extension = path.extname(absolutePath).toLowerCase();
+
+    // 对于文本文件，返回字符串
+    if (['.json', '.txt', '.html', '.css', '.js', '.xml'].includes(extension)) {
+      return content.toString('utf8');
+    }
+
+    // 对于二进制文件，返回Buffer数据，renderer会将其转为Blob
+    return content;
+  } catch (error) {
+    console.error('读取文件失败:', error);
+    return null;
+  }
 }); 

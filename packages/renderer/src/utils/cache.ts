@@ -4,19 +4,12 @@
  */
 
 import logger from './logger';
+import { IpcApi } from '@ig-live/types';
 
 // 声明全局电子API类型
 declare global {
   interface Window {
-    electronAPI: {
-      saveModel: (modelName: string) => void;
-      getSavedModel: () => Promise<string>;
-      setAlwaysOnTop: (flag: boolean) => void;
-      moveWindow: (deltaX: number, deltaY: number) => void;
-      getPosition: () => Promise<[number, number]>;
-      setPosition: (x: number, y: number) => void;
-      quit: () => void;
-    };
+    electronAPI: IpcApi;
   }
 }
 

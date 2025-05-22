@@ -76,7 +76,8 @@ function welcomeMessage(time: Time, template: string): string {
       }
     }
   }
-  const text = i18n(template, document.title);
+  console.log('template===>', template);
+  const text = i18n(template, document?.title || '');
   let from;
   if (document.referrer !== '') {
     const referrer = new URL(document.referrer),

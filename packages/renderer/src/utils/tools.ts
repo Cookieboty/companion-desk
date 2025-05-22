@@ -15,6 +15,7 @@ import {
 } from './icons.js';
 import { showMessage, i18n } from './message.js';
 import { getCache, setCache } from './cache';
+import { customFetch } from './utils';
 
 interface Tools {
   /**
@@ -69,7 +70,7 @@ const tools: Tools = {
     icon: fa_comment,
     callback: async (template: string) => {
       // Add hitokoto.cn API
-      const response = await fetch('https://v1.hitokoto.cn');
+      const response = await customFetch('https://v1.hitokoto.cn');
       const result = await response.json();
       const text = i18n(template, result.from, result.creator);
       showMessage(result.hitokoto, 6000, 9);

@@ -5,7 +5,7 @@
 
 import { ModelManager, Config, ModelList } from './model';
 import { showMessage, welcomeMessage, Time } from './message';
-import { randomSelection } from './utils';
+import { randomSelection, customFetch } from './utils';
 import tools from './tools';
 import logger from './logger';
 import registerDrag from './drag';
@@ -137,6 +137,7 @@ function registerEventListener(tips: Tips | null) {
       }, 20000);
     }
   }, 1000);
+  console.log('tips.message.welcome===>', tips.time, tips.message.welcome);
   showMessage(welcomeMessage(tips.time, tips.message.welcome), 7000, 11);
   window.addEventListener('mouseover', (event) => {
     // eslint-disable-next-line prefer-const
@@ -216,8 +217,9 @@ async function loadWidget(config: Config) {
   let models: ModelList[] = [];
   let tips: Tips | null = null;
   if (config.waifuPath) {
-    const response = await fetch(config.waifuPath);
+    const response = await customFetch(config.waifuPath);
     tips = await response.json();
+    console.log('tips===>', tips);
     if (tips) {
       models = tips.models;
       registerEventListener(tips);

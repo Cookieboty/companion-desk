@@ -4,23 +4,16 @@
  */
 
 import { showMessage } from './message';
-import { loadExternalResource, randomOtherOption } from './utils';
+import { loadExternalResource, randomOtherOption, customFetch } from './utils';
 import type Cubism2Model from '@/cubism2/index';
 import logger, { LogLevel } from './logger';
 import { getCache, setCache } from './cache';
+import { IpcApi } from '@ig-live/types';
 
 // 声明全局电子API类型
 declare global {
   interface Window {
-    electronAPI: {
-      saveModel: (modelName: string) => void;
-      getSavedModel: () => Promise<string>;
-      setAlwaysOnTop: (flag: boolean) => void;
-      moveWindow: (deltaX: number, deltaY: number) => void;
-      getPosition: () => Promise<[number, number]>;
-      setPosition: (x: number, y: number) => void;
-      quit: () => void;
-    };
+    electronAPI: IpcApi;
   }
 }
 
@@ -146,7 +139,7 @@ class ModelManager {
     }
 
     if (model.useCDN) {
-      const response = await fetch(`${model.cdnPath}model_list.json`);
+      const response = await customFetch(`${model.cdnPath}model_list.json`);
       model.modelList = await response.json();
 
       // 尝试从缓存中恢复上次保存的模型
@@ -289,7 +282,7 @@ class ModelManager {
     if (url in this.modelJSONCache) {
       result = this.modelJSONCache[url];
     } else {
-      const response = await fetch(url);
+      const response = await customFetch(url);
       try {
         result = await response.json();
       } catch {
