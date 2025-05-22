@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useLive2D } from '@/contexts/Live2DContext';
 import { randomSelection } from '@/utils/live2d-utils';
-import { Time } from '@/utils/message';
+import { Time } from '@/types/live2d';
 
 // 显示消息的hook
 export function useWaifuMessage() {

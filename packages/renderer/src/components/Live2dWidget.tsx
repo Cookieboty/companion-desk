@@ -1,6 +1,6 @@
 import React from 'react';
 import Live2D from './Live2D';
-import type { Config } from '@/utils/model';
+import type { ModelConfig } from '@/types/live2d';
 
 // 不需要在这里导入CSS，因为我们已经将它放在public目录中
 // CSS会通过index.html中的link标签加载
@@ -10,7 +10,7 @@ interface Live2dWidgetProps {
   /**
    * 配置选项
    */
-  config: Config;
+  config: ModelConfig;
 }
 
 /**

@@ -1,10 +1,10 @@
 import React from 'react';
 import Live2dWidget from './components/Live2dWidget';
-import type { Config } from './utils/model';
+import type { ModelConfig } from './types/live2d';
 
 const App: React.FC = () => {
   // Live2D Widget配置
-  const live2dConfig: Config = {
+  const live2dConfig: ModelConfig = {
     waifuPath: '/assets/waifu-tips.json',
     cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
     cubism2Path: '/assets/live2d.min.js',

@@ -7,18 +7,10 @@ import { useLive2DModel } from '@/hooks/useLive2DModel';
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
 import { useWindowDrag } from '@/hooks/useWindowDrag';
 import { Live2DProvider } from '@/contexts/Live2DContext';
+import { ModelConfig } from '@/types/live2d';
 import './style.css';
 
-export interface Live2DProps {
-  waifuPath: string;
-  cdnPath?: string;
-  apiPath?: string;
-  cubism2Path?: string;
-  modelId?: number;
-  tools?: string[];
-  drag?: boolean;
-  logLevel?: 'error' | 'warn' | 'info' | 'trace';
-}
+export type Live2DProps = ModelConfig;
 
 export const Live2D: React.FC<Live2DProps> = (props) => {
   const [initialized, setInitialized] = useState(false);
