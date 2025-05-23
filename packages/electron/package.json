@@ -13,9 +13,10 @@
     "package:prod": "npm run build && electron-builder build",
     "package:prod:mac": "npm run build && electron-builder build --mac",
     "package:prod:win": "npm run build && electron-builder build --win",
-    "package:debug": "npm run build && electron-builder build --config.asar=false -- --debug-mode",
-    "package:debug:mac": "npm run build && electron-builder build --mac --config.asar=false -- --debug-mode",
-    "package:debug:win": "npm run build && electron-builder build --win --config.asar=false -- --debug-mode"
+    "package:debug": "npm run build && cross-env DEBUG=true electron-builder build --config.asar=false -c.extraMetadata.debug=true",
+    "package:debug:mac": "npm run build && cross-env DEBUG=true electron-builder build --mac --config.asar=false -c.extraMetadata.debug=true",
+    "package:debug:win": "npm run build && cross-env DEBUG=true electron-builder build --win --config.asar=false -c.extraMetadata.debug=true",
+    "launch:debug": "electron . --debug-mode"
   },
   "author": "",
   "license": "MIT",
@@ -58,6 +59,15 @@
     "win": {
       "target": "nsis",
       "icon": "assets/logo.jpg"
-    }
+    },
+    "extraMetadata": {
+      "main": "dist/main.js"
+    },
+    "protocols": [
+      {
+        "name": "AI看板娘",
+        "schemes": ["ai-live"]
+      }
+    ]
   }
 }

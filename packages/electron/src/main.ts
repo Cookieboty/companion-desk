@@ -7,7 +7,6 @@ import * as fs from 'fs';
 const userDataPath = app.getPath('userData');
 const configPath = path.join(userDataPath, 'config.json');
 
-console.log('userDataPath=====>', userDataPath);
 
 // 默认配置
 interface AppConfig {
@@ -106,18 +105,30 @@ function createWindow() {
 
   // 加载应用
   const isDev = process.env.NODE_ENV === 'development';
-  // 检查是否是调试包 (通过命令行参数判断)
-  const isDebugBuild = app.isPackaged && process.argv.includes('--debug-mode');
+
+  // 检查是否是调试模式
+  // 1. 开发模式
+  // 2. 命令行参数包含--debug-mode
+  // 3. 环境变量DEBUG=true
+  // 4. package.json中的debug标志为true
+  const isDebugMode = isDev ||
+    process.argv.includes('--debug-mode') ||
+    process.env.DEBUG === 'true' ||
+    !!require('../package.json').debug;
+
+  console.log('应用启动模式:', { isDev, isDebugMode, args: process.argv });
 
   let startUrl: string = 'about:blank'; // 默认值，确保startUrl一定有值
   if (isDev) {
     startUrl = 'http://localhost:3000';
-    // 开发模式下打开开发者工具
+  }
+
+  // 在开发模式或调试模式下打开开发者工具
+  if (isDebugMode) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
-  } else if (isDebugBuild) {
-    // 调试构建模式下打开开发者工具
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
+  }
+
+  if (!isDev) {
     // 生产环境下不打开开发者工具
     // 在生产环境中，从本地构建目录或extraResources中加载渲染器
     let rendererPath: string | undefined;

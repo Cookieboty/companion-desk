@@ -1,0 +1,175 @@
+/* 看板娘容器 */
+#waifu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 250px;
+  height: 250px;
+  z-index: 1;
+  font-size: 0;
+  transition: all .3s ease-in-out;
+  transform: translateY(100%);
+}
+
+#waifu.waifu-active {
+  transform: translateY(0);
+}
+
+/* 看板娘提示 */
+#waifu-tips {
+  opacity: 0;
+  width: 250px;
+  min-height: 70px;
+  margin: -70px 20px;
+  padding: 5px 10px;
+  border: 1px solid rgba(224, 186, 140, 0.62);
+  border-radius: 12px;
+  background-color: rgba(236, 217, 188, 0.8);
+  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.2);
+  font-size: 14px;
+  line-height: 24px;
+  word-break: break-all;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  position: absolute;
+  animation-delay: 5s;
+  animation-duration: 50s;
+  animation-iteration-count: infinite;
+  animation-name: shake;
+  animation-timing-function: ease-in-out;
+  transition: opacity 0.3s;
+  z-index: 20;
+}
+
+#waifu-tips.waifu-tips-active {
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+/* 看板娘工具栏 */
+.waifu-tool {
+  display: block;
+  position: absolute;
+  right: -10px;
+  top: 70px;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+#waifu:hover .waifu-tool {
+  display: block;
+  opacity: 1;
+}
+
+.waifu-tool span {
+  display: block;
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  color: #5b6c7d;
+  cursor: pointer;
+  line-height: 30px;
+  transition: color 0.3s;
+  margin-bottom: 5px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+}
+
+.waifu-tool span:hover {
+  color: #0684bd;
+  background-color: rgba(226, 247, 255, 0.9);
+}
+
+/* SVG图标样式 */
+.waifu-tool span div {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.waifu-tool span svg {
+  width: 16px;
+  height: 16px;
+  fill: #5b6c7d;
+  transition: fill 0.3s;
+}
+
+.waifu-tool span:hover svg {
+  fill: #0684bd;
+}
+
+/* 看板娘画布 */
+.waifu-canvas {
+  position: relative;
+  width: 250px;
+  height: 250px;
+}
+
+/* 加载动画 */
+.waifu-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+}
+
+.waifu-loading-spinner {
+  margin: 20px auto;
+  width: 70px;
+  text-align: center;
+}
+
+.waifu-loading-spinner > div {
+  width: 18px;
+  height: 18px;
+  background-color: #0684bd;
+  border-radius: 100%;
+  display: inline-block;
+  animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+.waifu-loading-spinner .waifu-loading-bounce1 {
+  animation-delay: -0.32s;
+}
+
+.waifu-loading-spinner .waifu-loading-bounce2 {
+  animation-delay: -0.16s;
+}
+
+.waifu-loading-text {
+  color: #0684bd;
+  font-size: 14px;
+}
+
+@keyframes sk-bouncedelay {
+  0%, 80%, 100% { 
+    transform: scale(0); 
+  } 40% { 
+    transform: scale(1.0); 
+  }
+}
+
+@keyframes shake {
+  2% {
+    transform: translate(0.5px, -1.5px) rotate(-0.5deg);
+  }
+  4% {
+    transform: translate(0.5px, 1.5px) rotate(1.5deg);
+  }
+  6% {
+    transform: translate(1.5px, 1.5px) rotate(1.5deg);
+  }
+  /* 更多关键帧... */
+  100% {
+    transform: translate(0.5px, 0.5px) rotate(0.5deg);
+  }
+} 
