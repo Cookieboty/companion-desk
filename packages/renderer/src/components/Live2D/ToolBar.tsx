@@ -48,7 +48,7 @@ export const ToolBar: React.FC = () => {
       }, 6000);
     } catch (error) {
       console.error('加载一言API失败:', error);
-      showMessage('加载一言失败，请检查网络连接', 3000, 9);
+      showMessage('加载一言失败，请检查网络连接');
     }
   }, [showMessage]);
 
@@ -69,9 +69,7 @@ export const ToolBar: React.FC = () => {
       // 更新状态并显示消息
       dispatch({ type: 'TOGGLE_ALWAYS_ON_TOP' });
       showMessage(
-        newState ? '已设置为最前端显示！' : '已取消最前端显示！',
-        3000,
-        9
+        newState ? '已设置为最前端显示！' : '已取消最前端显示！'
       );
     }
   }, [dispatch, showMessage]);
@@ -80,7 +78,7 @@ export const ToolBar: React.FC = () => {
   const takeScreenshot = useCallback(() => {
     const canvas = document.getElementById('live2d') as HTMLCanvasElement;
     if (!canvas) {
-      showMessage('找不到画布元素，无法截图', 3000, 8);
+      showMessage('找不到画布元素，无法截图');
       return;
     }
 
@@ -95,10 +93,10 @@ export const ToolBar: React.FC = () => {
       link.click();
       document.body.removeChild(link);
 
-      showMessage('照好了，保存在下载目录了', 3000, 8);
+      showMessage('照好了，保存在下载目录了');
     } catch (error) {
       console.error('截图失败:', error);
-      showMessage('截图失败', 3000, 8);
+      showMessage('截图失败');
     }
   }, [showMessage]);
 

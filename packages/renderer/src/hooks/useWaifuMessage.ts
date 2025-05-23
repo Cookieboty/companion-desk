@@ -22,8 +22,8 @@ export function useWaifuMessage() {
   // 显示消息
   const showMessage = useCallback((
     text: string | string[],
-    timeout: number,
-    priority: number,
+    timeout: number = 3000, // 默认3秒自动关闭
+    priority: number = 8,
     clearPrevious: boolean = false
   ) => {
     // 如果没有文本或者当前消息优先级更高，则不显示

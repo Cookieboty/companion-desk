@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useReducer, ReactNode, useRef, useEffect } from 'react';
 import { Live2DProps } from '@/components/Live2D';
 
 // 模型类型定义
@@ -28,7 +28,7 @@ type Live2DAction =
   | { type: 'SET_MODEL_ID'; payload: number }
   | { type: 'SET_TEXTURE_ID'; payload: number }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_MESSAGE'; payload: { text: string; priority: number } }
+  | { type: 'SET_MESSAGE'; payload: { text: string; priority: number; timeout?: number } }
   | { type: 'CLEAR_MESSAGE' }
   | { type: 'TOGGLE_WIDGET' }
   | { type: 'TOGGLE_ALWAYS_ON_TOP' }
@@ -109,8 +109,48 @@ export const Live2DProvider: React.FC<{ children: ReactNode; config: Live2DProps
     dragEnabled: config.drag || false
   });
 
+  const messageTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 创建增强的dispatch函数，自动处理消息的自动关闭
+  const enhancedDispatch = React.useCallback((action: Live2DAction) => {
+    if (action.type === 'SET_MESSAGE') {
+      // 清除之前的定时器
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+        messageTimerRef.current = null;
+      }
+
+      // 调用原始dispatch
+      dispatch(action);
+
+      // 设置自动关闭定时器，默认3秒
+      const timeout = action.payload.timeout || 3000;
+      messageTimerRef.current = setTimeout(() => {
+        dispatch({ type: 'CLEAR_MESSAGE' });
+      }, timeout);
+    } else if (action.type === 'CLEAR_MESSAGE') {
+      // 清除定时器
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+        messageTimerRef.current = null;
+      }
+      dispatch(action);
+    } else {
+      dispatch(action);
+    }
+  }, []);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <Live2DContext.Provider value={{ state, dispatch, config }}>
+    <Live2DContext.Provider value={{ state, dispatch: enhancedDispatch, config }}>
       {children}
     </Live2DContext.Provider>
   );
