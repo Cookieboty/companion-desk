@@ -27,16 +27,54 @@ export const Live2DCanvas: React.FC = () => {
   // 初始化canvas和加载Cubism库
   useEffect(() => {
     const initCanvas = async () => {
-      if (!canvasRef.current || !config.cubism2Path) return;
+      if (!canvasRef.current || !config.cubism2Path) {
+        console.log('Canvas或cubism2Path未准备好');
+        return;
+      }
+
+      // 检查是否已经初始化过
+      if (state.isInitialized) {
+        console.log('Live2D库已经初始化，跳过重复初始化');
+        return;
+      }
 
       try {
+        console.log('开始加载Cubism库:', config.cubism2Path);
+
         // 加载Cubism库(已增强，会等待库完全初始化)
         await loadExternalResource(config.cubism2Path, 'js');
-        logger.info('Cubism库加载成功');
 
-        // 设置初始化状态
-        dispatch({ type: 'SET_INITIALIZED', payload: true });
+        // 额外检查确保Live2D全局对象已经可用
+        let attempts = 0;
+        const maxAttempts = 50;
+
+        const checkLive2DReady = () => {
+          attempts++;
+          console.log(`检查Live2D库是否就绪... (${attempts}/${maxAttempts})`);
+
+          if (typeof window.Live2D !== 'undefined' &&
+            typeof window.Live2DMotion !== 'undefined' &&
+            typeof window.AMotion !== 'undefined') {
+            console.log('Live2D库全局对象确认可用');
+            logger.info('Cubism库加载成功');
+
+            // 设置初始化状态
+            dispatch({ type: 'SET_INITIALIZED', payload: true });
+            console.log('Live2D初始化状态已设置为true');
+          } else if (attempts < maxAttempts) {
+            console.log('Live2D库尚未完全就绪，继续等待...');
+            setTimeout(checkLive2DReady, 100);
+          } else {
+            console.error('Live2D库初始化超时');
+            throw new Error('Live2D库初始化超时');
+          }
+        };
+
+        // 开始检查Live2D是否就绪
+        setTimeout(checkLive2DReady, 50);
+
       } catch (error) {
+        console.error('加载Cubism库失败:', error);
         logger.error('加载Cubism库失败:', error);
         dispatch({
           type: 'SET_MESSAGE',
@@ -49,7 +87,7 @@ export const Live2DCanvas: React.FC = () => {
     };
 
     initCanvas();
-  }, [config.cubism2Path, dispatch]);
+  }, [config.cubism2Path, dispatch, state.isInitialized]);
 
   // 当模型或纹理ID变化时进行重绘
   useEffect(() => {
