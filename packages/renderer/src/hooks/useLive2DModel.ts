@@ -224,12 +224,14 @@ export function useLive2DModel() {
   const constructModelPath = useCallback((modelName: string): string => {
     // 根据模型名称判断使用哪种路径格式
     if (modelName.includes('/')) {
-      // 如 "Potion-Maker/Pio" 或 "HyperdimensionNeptunia/neptune_classic"
+      // 如 "HyperdimensionNeptunia/neptune_classic"
       return `./assets/models/${modelName}/index.json`;
+    } else if (modelName.startsWith('potion-Maker-')) {
+      // 如 "potion-Maker-Pio" 或 "potion-Maker-Tia"
+      return `./assets/models/moc/${modelName}/index.json`;
     } else if (modelName.startsWith('bilibili-')) {
       // 如 "bilibili-22" 或 "bilibili-33" 
-      const seriesName = modelName.replace('bilibili-', '');
-      return `./assets/models/moc/${seriesName}.default/${seriesName}.default.model.json`;
+      return `./assets/models/moc/${modelName}/index.json`;
     } else if (modelName.includes('.')) {
       // 如 "22.default" 或 "33.2017.school"
       return `./assets/models/moc/${modelName}/${modelName}.model.json`;
