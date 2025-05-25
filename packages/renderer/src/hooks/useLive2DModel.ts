@@ -49,90 +49,79 @@ export function useLive2DModel() {
     }
 
     try {
-      console.log('开始加载模型列表...');
+      console.log('开始加载本地模型列表...');
       loadingRef.current = true;
       dispatchRef.current({ type: 'SET_LOADING', payload: true });
 
-      // 优先从本地加载model_list.json，但模型文件仍从CDN加载
-      try {
-        console.log('尝试从本地加载model_list.json');
-        const response = await customFetch('./assets/model_list.json');
-        const modelList = await response.json();
+      // 使用本地模型扫描器加载模型
+      const { getLocalModelScanner } = await import('@/utils/localModelScanner');
+      const scanner = getLocalModelScanner();
+      const { models: scannedModels, groups: scannedGroups } = await scanner.scanLocalModels();
 
-        if (modelList && modelList.models && configRef.current.cdnPath) {
-          console.log('成功加载本地模型列表，模型文件将从CDN加载');
-          const cdnPath = configRef.current.cdnPath.endsWith('/') ? configRef.current.cdnPath : `${configRef.current.cdnPath}/`;
-          await processModelList(modelList, cdnPath);
-          modelListLoadedRef.current = true;
-          return;
-        }
-      } catch (localError) {
-        console.warn('本地model_list.json加载失败，尝试CDN:', localError);
-      }
+      if (scannedModels.length > 0) {
+        console.log('成功扫描到本地模型:', scannedModels.length, '个');
+        console.log('本地模型列表:', scannedModels);
 
-      // 从CDN加载模型列表（备用方案）
-      if (configRef.current.cdnPath) {
-        console.log('使用CDN路径加载模型列表:', configRef.current.cdnPath);
-        const cdnPath = configRef.current.cdnPath.endsWith('/') ? configRef.current.cdnPath : `${configRef.current.cdnPath}/`;
-        const response = await customFetch(`${cdnPath}model_list.json`);
-        const modelList = await response.json();
+        // 转换为项目所需的格式
+        const formattedList: ModelItem[] = scannedModels.map((model: any) => ({
+          name: model.name,
+          path: model.path,
+          message: model.message,
+          textures: model.textures || [model.path]
+        }));
 
-        if (modelList && modelList.models) {
-          console.log('成功加载CDN模型列表:', modelList);
-          await processModelList(modelList, cdnPath);
-          modelListLoadedRef.current = true;
-          return;
-        }
-      }
+        modelGroupsRef.current = scannedGroups;
+        dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
 
-      // 从本地配置加载模型列表（最后备用方案）
-      if (configRef.current.waifuPath) {
-        console.log('使用本地配置加载模型列表:', configRef.current.waifuPath);
-        const response = await customFetch(configRef.current.waifuPath);
-        const waifuConfig = await response.json();
+        // 尝试从缓存中恢复上次保存的模型
+        const savedModelName = await getCache<string>('modelName');
+        if (savedModelName) {
+          console.log('从缓存中恢复的模型名称:', savedModelName);
+          const modelIndex = formattedList.findIndex((model: ModelItem) =>
+            model.name === savedModelName || model.path.includes(savedModelName)
+          );
+          if (modelIndex >= 0) {
+            console.log('找到匹配的模型索引:', modelIndex);
+            dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
 
-        if (waifuConfig && waifuConfig.models) {
-          console.log('成功加载本地模型配置:', waifuConfig);
-          const formattedList = waifuConfig.models.map((model: any) => ({
-            name: model.name,
-            path: model.paths[0], // 使用第一个路径
-            message: model.message || '模型已加载',
-            textures: model.paths // 所有路径作为纹理
-          }));
-
-          console.log('格式化后的本地模型列表:', formattedList);
-          dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
-
-          // 为本地配置创建简单的模型组
-          const localGroups = formattedList.map((model: any) => ({
-            models: [model.name],
-            message: model.message,
-            currentIndex: 0
-          }));
-          modelGroupsRef.current = localGroups;
-
-          // 尝试从缓存中恢复上次保存的模型
-          const savedModelName = await getCache<string>('modelName');
-          if (savedModelName) {
-            console.log('从缓存中恢复的本地模型名称:', savedModelName);
-            const modelIndex = formattedList.findIndex((model: ModelItem) =>
-              model.name === savedModelName ||
-              model.path.includes(savedModelName)
-            );
-            if (modelIndex >= 0) {
-              console.log('找到匹配的本地模型索引:', modelIndex);
-              dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
+            // 恢复纹理索引
+            const savedTextureId = await getCache<number>('modelTexturesId') || 0;
+            if (savedTextureId < formattedList[modelIndex].textures!.length) {
+              dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: savedTextureId });
+              // 更新模型组的当前索引
+              if (scannedGroups[modelIndex]) {
+                scannedGroups[modelIndex].currentIndex = savedTextureId;
+              }
             }
           }
-          modelListLoadedRef.current = true;
         }
+
+        modelListLoadedRef.current = true;
+        console.log('本地模型加载完成');
       } else {
-        console.log('未配置模型来源');
+        console.warn('未找到本地模型文件');
+        // 如果没有本地模型，显示错误信息
+        dispatchRef.current({
+          type: 'SET_MESSAGE',
+          payload: {
+            text: '未找到本地模型文件，请检查模型目录',
+            priority: 100
+          }
+        });
       }
 
     } catch (error) {
-      console.error('加载模型列表失败:', error);
-      logger.error('加载模型列表失败:', error);
+      console.error('加载本地模型列表失败:', error);
+      logger.error('加载本地模型列表失败:', error);
+
+      // 显示错误信息
+      dispatchRef.current({
+        type: 'SET_MESSAGE',
+        payload: {
+          text: '本地模型加载失败，请检查模型文件',
+          priority: 100
+        }
+      });
     } finally {
       loadingRef.current = false;
       dispatchRef.current({ type: 'SET_LOADING', payload: false });
