@@ -41,5 +41,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 读取本地文件
   readLocalFile: async (filePath: string) => {
     return await ipcRenderer.invoke('read-local-file', filePath);
+  },
+  // 获取鼠标位置
+  getCursorPosition: async () => {
+    return await ipcRenderer.invoke('get-cursor-position');
   }
 } as IpcApi); 

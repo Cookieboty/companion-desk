@@ -334,19 +334,60 @@ ipcMain.on('set-always-on-top', (_, flag: boolean) => {
   }
 });
 
-// 节流变量，减少Windows下频繁调用导致的问题
-let lastMoveTime = 0;
+// Windows DPI问题修复 - 记住窗口的原始尺寸
+const WINDOW_WIDTH = 380;
+const WINDOW_HEIGHT = 450;
+
+// 位置更新状态管理器 - 修复Windows DPI缩放问题的关键
+const positionUpdate = () => {
+  let w: number | null = null;
+  let h: number | null = null;
+  let rectSetted = false;
+
+  const updateRect = (width: number, height: number) => {
+    if (rectSetted) return;
+    w = width;
+    h = height;
+    rectSetted = true;
+    console.log('记录窗口原始尺寸:', { width, height });
+  };
+
+  const setShouldUpdateRect = () => {
+    rectSetted = false;
+  };
+
+  const setPosition = (x: number, y: number) => {
+    if (!mainWindow) return;
+
+    try {
+      // 使用记录的原始尺寸或默认尺寸
+      const bounds = {
+        width: w ?? WINDOW_WIDTH,
+        height: h ?? WINDOW_HEIGHT,
+        x: Math.round(x),
+        y: Math.round(y)
+      };
+
+      console.log('设置窗口位置和尺寸:', bounds);
+      mainWindow.setBounds(bounds);
+    } catch (err) {
+      console.error('设置窗口位置错误:', err);
+    }
+  };
+
+  return {
+    updateRect,
+    setShouldUpdateRect,
+    setPosition
+  };
+};
+
+// 全局唯一的位置更新管理器
+const { updateRect, setShouldUpdateRect, setPosition } = positionUpdate();
 
 ipcMain.on('move-window', (_, deltaX: number, deltaY: number) => {
   if (mainWindow) {
     try {
-      // Windows下添加简单的节流，避免过于频繁的调用
-      const now = Date.now();
-      if (process.platform === 'win32' && now - lastMoveTime < 8) {
-        return; // 8ms节流，保持流畅
-      }
-      lastMoveTime = now;
-
       // 确保参数为整数
       const intDeltaX = Math.round(Number(deltaX) || 0);
       const intDeltaY = Math.round(Number(deltaY) || 0);
@@ -354,13 +395,16 @@ ipcMain.on('move-window', (_, deltaX: number, deltaY: number) => {
       // 如果移动距离为0则不处理
       if (intDeltaX === 0 && intDeltaY === 0) return;
 
-      // 获取当前位置并计算新位置
-      const [currentX, currentY] = mainWindow.getPosition();
-      const newX = currentX + intDeltaX;
-      const newY = currentY + intDeltaY;
+      // 获取当前窗口bounds并更新原始尺寸记录
+      const bounds = mainWindow.getBounds();
+      updateRect(bounds.width, bounds.height);
 
-      // 设置新位置，禁用动画
-      mainWindow.setPosition(newX, newY, false);
+      // 计算新位置
+      const newX = bounds.x + intDeltaX;
+      const newY = bounds.y + intDeltaY;
+
+      // 使用修复后的setPosition方法
+      setPosition(newX, newY);
     } catch (err) {
       console.error('移动窗口错误:', err, 'deltaX=', deltaX, 'deltaY=', deltaY);
     }
@@ -375,6 +419,17 @@ ipcMain.handle('get-position', () => {
   return [0, 0];
 });
 
+// 获取鼠标位置
+ipcMain.handle('get-cursor-position', () => {
+  try {
+    const cursorPos = screen.getCursorScreenPoint();
+    return { x: cursorPos.x, y: cursorPos.y };
+  } catch (error) {
+    console.error('获取鼠标位置失败:', error);
+    return { x: 0, y: 0 };
+  }
+});
+
 // 设置窗口位置
 ipcMain.on('set-position', (_, x: number, y: number) => {
   if (mainWindow) {
@@ -383,8 +438,12 @@ ipcMain.on('set-position', (_, x: number, y: number) => {
       const intX = Math.round(Number(x) || 0);
       const intY = Math.round(Number(y) || 0);
 
-      // 设置位置时禁用动画（适用于一些平台）
-      mainWindow.setPosition(intX, intY, false);
+      // 获取当前窗口bounds并更新原始尺寸记录
+      const bounds = mainWindow.getBounds();
+      updateRect(bounds.width, bounds.height);
+
+      // 使用修复后的setPosition方法
+      setPosition(intX, intY);
     } catch (err) {
       console.error('设置窗口位置错误:', err, 'x=', x, 'y=', y);
     }
