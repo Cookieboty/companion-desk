@@ -95,6 +95,11 @@ function createWindow() {
     x: x,
     y: y,
     backgroundColor: '#00000000',
+    // Windows特定优化
+    ...(process.platform === 'win32' && {
+      thickFrame: false,
+      hasShadow: false
+    }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -329,10 +334,36 @@ ipcMain.on('set-always-on-top', (_, flag: boolean) => {
   }
 });
 
+// 节流变量，减少Windows下频繁调用导致的问题
+let lastMoveTime = 0;
+
 ipcMain.on('move-window', (_, deltaX: number, deltaY: number) => {
   if (mainWindow) {
-    const position = mainWindow.getPosition();
-    mainWindow.setPosition(position[0] + deltaX, position[1] + deltaY);
+    try {
+      // Windows下添加简单的节流，避免过于频繁的调用
+      const now = Date.now();
+      if (process.platform === 'win32' && now - lastMoveTime < 8) {
+        return; // 8ms节流，保持流畅
+      }
+      lastMoveTime = now;
+
+      // 确保参数为整数
+      const intDeltaX = Math.round(Number(deltaX) || 0);
+      const intDeltaY = Math.round(Number(deltaY) || 0);
+
+      // 如果移动距离为0则不处理
+      if (intDeltaX === 0 && intDeltaY === 0) return;
+
+      // 获取当前位置并计算新位置
+      const [currentX, currentY] = mainWindow.getPosition();
+      const newX = currentX + intDeltaX;
+      const newY = currentY + intDeltaY;
+
+      // 设置新位置，禁用动画
+      mainWindow.setPosition(newX, newY, false);
+    } catch (err) {
+      console.error('移动窗口错误:', err, 'deltaX=', deltaX, 'deltaY=', deltaY);
+    }
   }
 });
 

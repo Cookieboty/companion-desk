@@ -4,6 +4,9 @@
   "description": "基于 Electron 的看板娘桌面应用",
   "private": true,
   "scripts": {
+    "generate:models": "node scripts/generate-model-list.js",
+    "prebuild": "npm run generate:models",
+    "predev": "npm run generate:models",
     "dev": "turbo run dev",
     "start": "turbo run dev --parallel",
     "build": "turbo run build",

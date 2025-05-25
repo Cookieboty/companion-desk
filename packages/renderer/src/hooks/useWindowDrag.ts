@@ -4,26 +4,16 @@ import logger from '@/utils/logger';
 
 interface DragState {
   isDragging: boolean;
-  initialX: number;
-  initialY: number;
   lastX: number;
   lastY: number;
-  windowX: number;
-  windowY: number;
-  animationFrameId: number | null;
 }
 
 export function useWindowDrag(canvasElementId: string = 'live2d') {
   const { state } = useLive2D();
   const dragStateRef = useRef<DragState>({
     isDragging: false,
-    initialX: 0,
-    initialY: 0,
     lastX: 0,
-    lastY: 0,
-    windowX: 0,
-    windowY: 0,
-    animationFrameId: null
+    lastY: 0
   });
 
   useEffect(() => {
@@ -44,109 +34,48 @@ export function useWindowDrag(canvasElementId: string = 'live2d') {
     // 获取全局电子API
     const electronAPI = (window as any).electronAPI;
 
-    // 初始化时尝试获取当前窗口位置
-    const initPosition = async () => {
-      try {
-        if (electronAPI?.getPosition) {
-          const position = await electronAPI.getPosition();
-          if (Array.isArray(position) && position.length === 2) {
-            dragStateRef.current.windowX = position[0];
-            dragStateRef.current.windowY = position[1];
-          }
-        }
-      } catch (err) {
-        logger.error('获取初始窗口位置失败:', err);
-      }
-    };
-
-    // 立即执行获取初始位置
-    initPosition();
-
-    // 移动动画函数
-    const moveWindow = () => {
-      if (!dragStateRef.current.isDragging) return;
-
-      try {
-        if (electronAPI && electronAPI.setPosition) {
-          // 确保坐标为整数
-          const newX = Math.round(dragStateRef.current.windowX);
-          const newY = Math.round(dragStateRef.current.windowY);
-
-          // 发送位置更新
-          electronAPI.setPosition(newX, newY);
-        }
-      } catch (err) {
-        logger.error('设置窗口位置失败:', err);
-        stopDragging();
-      }
-    };
-
     // 鼠标移动处理函数
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStateRef.current.isDragging) return;
 
-      // 计算移动距离
+      // 计算相对移动距离
       const deltaX = e.screenX - dragStateRef.current.lastX;
       const deltaY = e.screenY - dragStateRef.current.lastY;
 
       // 如果鼠标没有移动，则不更新
       if (deltaX === 0 && deltaY === 0) return;
 
-      // 更新窗口位置
-      dragStateRef.current.windowX += deltaX;
-      dragStateRef.current.windowY += deltaY;
-
       // 更新上次鼠标位置
       dragStateRef.current.lastX = e.screenX;
       dragStateRef.current.lastY = e.screenY;
+
+      // 使用相对移动，避免坐标累积错误
+      try {
+        if (electronAPI && electronAPI.moveWindow) {
+          electronAPI.moveWindow(deltaX, deltaY);
+        }
+      } catch (err) {
+        logger.error('移动窗口失败:', err);
+        stopDragging();
+      }
     };
 
     // 停止拖动
     const stopDragging = () => {
       dragStateRef.current.isDragging = false;
-
-      if (dragStateRef.current.animationFrameId !== null) {
-        cancelAnimationFrame(dragStateRef.current.animationFrameId);
-        dragStateRef.current.animationFrameId = null;
-      }
-
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', stopDragging);
     };
 
-    // 动画循环
-    const animationLoop = () => {
-      moveWindow();
-
-      if (dragStateRef.current.isDragging) {
-        dragStateRef.current.animationFrameId = requestAnimationFrame(animationLoop);
-      }
-    };
-
     // 开始拖动
-    const startDragging = async (e: MouseEvent) => {
+    const startDragging = (e: MouseEvent) => {
       // 忽略右键点击
       if (e.button === 2) return;
 
       e.preventDefault();
 
-      // 获取最新窗口位置
-      try {
-        if (electronAPI?.getPosition) {
-          const position = await electronAPI.getPosition();
-          if (Array.isArray(position) && position.length === 2) {
-            dragStateRef.current.windowX = position[0];
-            dragStateRef.current.windowY = position[1];
-          }
-        }
-      } catch (err) {
-        logger.error('获取窗口位置失败:', err);
-      }
-
-      // 记录鼠标初始位置
-      dragStateRef.current.initialX = e.screenX;
+      // 记录鼠标位置
       dragStateRef.current.lastX = e.screenX;
-      dragStateRef.current.initialY = e.screenY;
       dragStateRef.current.lastY = e.screenY;
 
       // 标记开始拖动
@@ -155,9 +84,6 @@ export function useWindowDrag(canvasElementId: string = 'live2d') {
       // 添加事件监听
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', stopDragging);
-
-      // 启动动画循环
-      dragStateRef.current.animationFrameId = requestAnimationFrame(animationLoop);
     };
 
     // 注册鼠标按下事件
@@ -176,11 +102,6 @@ export function useWindowDrag(canvasElementId: string = 'live2d') {
         stopDragging();
       }
 
-      if (dragStateRef.current.animationFrameId !== null) {
-        cancelAnimationFrame(dragStateRef.current.animationFrameId);
-        dragStateRef.current.animationFrameId = null;
-      }
-
       logger.info('拖动事件监听已移除');
     };
   }, [state.dragEnabled, canvasElementId]);
@@ -188,4 +109,4 @@ export function useWindowDrag(canvasElementId: string = 'live2d') {
   return {
     isDragging: dragStateRef.current.isDragging
   };
-} 
+}
