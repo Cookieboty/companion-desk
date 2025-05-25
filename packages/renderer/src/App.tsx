@@ -14,7 +14,6 @@ const App: React.FC = () => {
   // Live2D Widget配置
   const live2dConfig: ModelConfig = {
     waifuPath: './assets/waifu-tips.json', // 使用相对路径
-    cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
     cubism2Path: isElectron ? './assets/live2d.min.js' : '/assets/live2d.min.js', // 在Electron中使用相对路径
     tools: ['switch-model', 'switch-texture', 'photo', 'info', 'toggle-top', 'quit'],
     logLevel: 'warn',

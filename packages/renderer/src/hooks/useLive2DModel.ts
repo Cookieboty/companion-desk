@@ -53,61 +53,153 @@ export function useLive2DModel() {
       loadingRef.current = true;
       dispatchRef.current({ type: 'SET_LOADING', payload: true });
 
-      // 使用本地模型扫描器加载模型
-      const { getLocalModelScanner } = await import('@/utils/localModelScanner');
-      const scanner = getLocalModelScanner();
-      const { models: scannedModels, groups: scannedGroups } = await scanner.scanLocalModels();
+      // 尝试加载本地模型配置文件
+      try {
+        console.log('尝试加载本地模型配置文件...');
+        const response = await customFetch('./assets/model_list.json');
+        const modelConfig = await response.json();
 
-      if (scannedModels.length > 0) {
-        console.log('成功扫描到本地模型:', scannedModels.length, '个');
-        console.log('本地模型列表:', scannedModels);
+        if (modelConfig && modelConfig.models && modelConfig.models.length > 0) {
+          console.log('成功加载本地模型配置:', modelConfig.models.length, '个模型');
 
-        // 转换为项目所需的格式
-        const formattedList: ModelItem[] = scannedModels.map((model: any) => ({
-          name: model.name,
-          path: model.path,
-          message: model.message,
-          textures: model.textures || [model.path]
-        }));
+          // 转换为项目所需的格式
+          const formattedList: ModelItem[] = [];
+          const modelGroups: ModelGroup[] = [];
 
-        modelGroupsRef.current = scannedGroups;
-        dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
+          for (let index = 0; index < modelConfig.models.length; index++) {
+            const model = modelConfig.models[index];
+            const message = modelConfig.messages?.[index] || '本地模型';
 
-        // 尝试从缓存中恢复上次保存的模型
-        const savedModelName = await getCache<string>('modelName');
-        if (savedModelName) {
-          console.log('从缓存中恢复的模型名称:', savedModelName);
-          const modelIndex = formattedList.findIndex((model: ModelItem) =>
-            model.name === savedModelName || model.path.includes(savedModelName)
-          );
-          if (modelIndex >= 0) {
-            console.log('找到匹配的模型索引:', modelIndex);
-            dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
+            if (Array.isArray(model)) {
+              // 模型组（同一角色的不同服装）
+              modelGroups.push({
+                models: model,
+                message: message,
+                currentIndex: 0
+              });
 
-            // 恢复纹理索引
-            const savedTextureId = await getCache<number>('modelTexturesId') || 0;
-            if (savedTextureId < formattedList[modelIndex].textures!.length) {
-              dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: savedTextureId });
-              // 更新模型组的当前索引
-              if (scannedGroups[modelIndex]) {
-                scannedGroups[modelIndex].currentIndex = savedTextureId;
+              // 添加组中的第一个模型到列表
+              const firstModel = model[0];
+              const modelPath = constructModelPath(firstModel);
+
+              formattedList.push({
+                name: firstModel,
+                path: modelPath,
+                message: message,
+                textures: model.map(m => constructModelPath(m))
+              });
+            } else {
+              // 单个模型
+              modelGroups.push({
+                models: [model],
+                message: message,
+                currentIndex: 0
+              });
+
+              const modelPath = constructModelPath(model);
+              formattedList.push({
+                name: model,
+                path: modelPath,
+                message: message,
+                textures: [modelPath]
+              });
+            }
+          }
+
+          modelGroupsRef.current = modelGroups;
+          dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
+
+          // 尝试从缓存中恢复上次保存的模型
+          const savedModelName = await getCache<string>('modelName');
+          if (savedModelName) {
+            console.log('从缓存中恢复的模型名称:', savedModelName);
+            const modelIndex = formattedList.findIndex((model: ModelItem) =>
+              model.name === savedModelName || model.path.includes(savedModelName)
+            );
+            if (modelIndex >= 0) {
+              console.log('找到匹配的模型索引:', modelIndex);
+              dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
+
+              // 恢复纹理索引
+              const savedTextureId = await getCache<number>('modelTexturesId') || 0;
+              if (savedTextureId < formattedList[modelIndex].textures!.length) {
+                dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: savedTextureId });
+                // 更新模型组的当前索引
+                if (modelGroups[modelIndex]) {
+                  modelGroups[modelIndex].currentIndex = savedTextureId;
+                }
               }
             }
           }
+
+          modelListLoadedRef.current = true;
+          console.log('本地模型配置加载完成');
+        } else {
+          console.warn('模型配置文件为空或格式错误');
+          dispatchRef.current({
+            type: 'SET_MESSAGE',
+            payload: {
+              text: '模型配置文件为空或格式错误',
+              priority: 100
+            }
+          });
+        }
+      } catch (configError) {
+        console.warn('本地模型配置文件加载失败，尝试fallback方案:', configError);
+
+        // Fallback: 尝试加载一些已知存在的模型
+        const fallbackModels = [
+          { name: '22.default', message: '22号舰娘默认' },
+          { name: '33.default', message: '33号舰娘默认' },
+          { name: 'miku', message: '初音未来' },
+          { name: 'unitychan', message: 'Unity酱' }
+        ];
+
+        const formattedList: ModelItem[] = [];
+        const modelGroups: ModelGroup[] = [];
+
+        for (const model of fallbackModels) {
+          const modelPath = `./assets/models/moc/${model.name}/${model.name}.model.json`;
+
+          // 检查模型文件是否存在
+          try {
+            await customFetch(modelPath);
+
+            formattedList.push({
+              name: model.name,
+              path: modelPath,
+              message: model.message,
+              textures: [modelPath]
+            });
+
+            modelGroups.push({
+              models: [model.name],
+              message: model.message,
+              currentIndex: 0
+            });
+
+            console.log('成功找到模型:', model.name);
+          } catch {
+            // 模型文件不存在，跳过
+            console.log('模型文件不存在:', modelPath);
+          }
         }
 
-        modelListLoadedRef.current = true;
-        console.log('本地模型加载完成');
-      } else {
-        console.warn('未找到本地模型文件');
-        // 如果没有本地模型，显示错误信息
-        dispatchRef.current({
-          type: 'SET_MESSAGE',
-          payload: {
-            text: '未找到本地模型文件，请检查模型目录',
-            priority: 100
-          }
-        });
+        if (formattedList.length > 0) {
+          modelGroupsRef.current = modelGroups;
+          dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
+          modelListLoadedRef.current = true;
+          console.log('使用fallback方案成功加载', formattedList.length, '个模型');
+        } else {
+          console.error('无法找到任何可用的模型文件');
+          dispatchRef.current({
+            type: 'SET_MESSAGE',
+            payload: {
+              text: '无法找到任何可用的模型文件，请检查模型目录',
+              priority: 100
+            }
+          });
+        }
       }
 
     } catch (error) {
@@ -128,82 +220,26 @@ export function useLive2DModel() {
     }
   }, []); // 移除config和dispatch依赖，避免重复调用
 
-  // 处理模型列表的通用函数
-  const processModelList = useCallback(async (modelList: any, basePath: string) => {
-    // 处理模型列表，保持原有的组结构
-    const formattedList: ModelItem[] = [];
-    const modelGroups: ModelGroup[] = [];
-
-    for (let index = 0; index < modelList.models.length; index++) {
-      const model = modelList.models[index];
-      const message = modelList.messages?.[index] || '模型已加载';
-
-      if (Array.isArray(model)) {
-        // 模型组（同一角色的不同服装）
-        modelGroups.push({
-          models: model,
-          message: message,
-          currentIndex: 0 // 默认选择第一个
-        });
-
-        // 添加组中的第一个模型到列表
-        const firstModel = model[0];
-        // 统一使用CDN路径格式
-        const modelPath = `${basePath}model/${firstModel}/index.json`;
-
-        formattedList.push({
-          name: firstModel,
-          path: modelPath,
-          message: message,
-          textures: model.map(m => `${basePath}model/${m}/index.json`)
-        });
-      } else {
-        // 单个模型
-        modelGroups.push({
-          models: [model],
-          message: message,
-          currentIndex: 0
-        });
-
-        // 统一使用CDN路径格式
-        const modelPath = `${basePath}model/${model}/index.json`;
-
-        formattedList.push({
-          name: model,
-          path: modelPath,
-          message: message,
-          textures: [modelPath]
-        });
-      }
-    }
-
-    console.log('格式化后的模型列表:', formattedList);
-    console.log('模型组信息:', modelGroups);
-
-    modelGroupsRef.current = modelGroups;
-    dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
-
-    // 尝试从缓存中恢复上次保存的模型
-    const savedModelName = await getCache<string>('modelName');
-    if (savedModelName) {
-      console.log('从缓存中恢复的模型名称:', savedModelName);
-      const modelIndex = formattedList.findIndex((model: ModelItem) => model.name === savedModelName);
-      if (modelIndex >= 0) {
-        console.log('找到匹配的模型索引:', modelIndex);
-        dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
-
-        // 恢复纹理索引
-        const savedTextureId = await getCache<number>('modelTexturesId') || 0;
-        if (savedTextureId < formattedList[modelIndex].textures!.length) {
-          dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: savedTextureId });
-          // 更新模型组的当前索引
-          if (modelGroups[modelIndex]) {
-            modelGroups[modelIndex].currentIndex = savedTextureId;
-          }
-        }
-      }
+  // 构造模型路径的辅助函数
+  const constructModelPath = useCallback((modelName: string): string => {
+    // 根据模型名称判断使用哪种路径格式
+    if (modelName.includes('/')) {
+      // 如 "Potion-Maker/Pio" 或 "HyperdimensionNeptunia/neptune_classic"
+      return `./assets/models/${modelName}/index.json`;
+    } else if (modelName.startsWith('bilibili-')) {
+      // 如 "bilibili-22" 或 "bilibili-33" 
+      const seriesName = modelName.replace('bilibili-', '');
+      return `./assets/models/moc/${seriesName}.default/${seriesName}.default.model.json`;
+    } else if (modelName.includes('.')) {
+      // 如 "22.default" 或 "33.2017.school"
+      return `./assets/models/moc/${modelName}/${modelName}.model.json`;
+    } else {
+      // 普通单个模型，如 "miku", "unitychan"
+      return `./assets/models/moc/${modelName}/${modelName}.model.json`;
     }
   }, []);
+
+
 
   // 加载模型设置
   const fetchModelSetting = useCallback(async (modelPath: string) => {
@@ -390,13 +426,8 @@ export function useLive2DModel() {
     try {
       const newModelName = currentModelGroup.models[newTextureId];
 
-      // 构建CDN路径（因为所有模型都从CDN加载）
-      if (!configRef.current.cdnPath) {
-        throw new Error('CDN路径未配置');
-      }
-
-      const cdnPath = configRef.current.cdnPath.endsWith('/') ? configRef.current.cdnPath : `${configRef.current.cdnPath}/`;
-      const newModelPath = `${cdnPath}model/${newModelName}/index.json`;
+      // 构建本地模型路径
+      const newModelPath = constructModelPath(newModelName);
 
       console.log('加载新模型路径:', newModelPath);
 
