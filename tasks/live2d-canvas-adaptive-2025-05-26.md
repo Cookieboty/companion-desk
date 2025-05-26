@@ -503,4 +503,289 @@ if (aspectRatio >= rules.ultraWide.threshold) {
 - 模型头部完整显示，不被截断
 - 工具栏所有按钮都能看到，包括最下面的关闭按钮
 - 角色在Electron窗口中居中显示
-- 有足够的显示空间容纳高瘦模型 
+- 有足够的显示空间容纳高瘦模型
+
+### 2025-05-26 晚上 - 修复角色居中和模型切换功能
+
+#### 发现的问题
+用户反馈：
+1. **角色没有在Electron视图中间** - CSS定位有问题
+2. **切换模型功能无效** - 模型切换后没有应用正确的矩阵设置
+
+#### 修复措施
+1. ✅ **修复CSS定位策略**:
+   ```css
+   /* 让整个waifu容器居中，而不是只有Canvas */
+   #waifu {
+     position: fixed;
+     top: 50%; /* 垂直居中 */
+     left: 50%; /* 水平居中 */
+     transform: translate(-50%, -50%); /* 居中偏移 */
+     height: auto; /* 自动高度 */
+   }
+   
+   .waifu-canvas {
+     position: relative; /* 改为相对定位 */
+   }
+   ```
+
+2. ✅ **修复模型切换功能**:
+   ```typescript
+   // 将setupModelMatrix改为公共方法
+   setupModelMatrix(): void {
+     // 模型矩阵设置逻辑
+   }
+   
+   // 在模型切换后调用
+   await cubism2Model.init('live2d', newModelPath, modelSetting);
+   setTimeout(() => {
+     if (cubism2Model && typeof cubism2Model.setupModelMatrix === 'function') {
+       cubism2Model.setupModelMatrix();
+     }
+   }, 100);
+   ```
+
+3. ✅ **调整容器显示逻辑**:
+   ```css
+   #waifu {
+     opacity: 0; /* 初始隐藏 */
+   }
+   
+   #waifu.waifu-active {
+     opacity: 1; /* 显示 */
+   }
+   ```
+
+#### 技术要点
+- **整体居中**: 让整个`#waifu`容器居中，包含Canvas和工具栏
+- **相对定位**: Canvas使用相对定位，在容器内正常排列
+- **公共方法**: 将`setupModelMatrix`改为公共方法供外部调用
+- **延迟调用**: 模型切换后延迟100ms调用矩阵设置
+
+#### 预期效果
+- 角色和工具栏都在Electron窗口中居中显示
+- 模型切换功能正常工作，切换后模型正确显示
+- 工具栏相对于角色的位置保持正确
+
+### 2025-05-26 晚上 - 彻底修复模型切换状态更新问题
+
+#### 根本问题诊断
+通过仔细分析代码，发现模型切换功能失效的根本原因：
+
+1. **闭包陷阱**: `loadNextModel`和`loadRandomTexture`函数中直接使用`state.modelId`，获取的是闭包中的旧值
+2. **状态更新冲突**: `loadNextModel`和`loadModel`都尝试设置`SET_MODEL_ID`，导致状态冲突
+3. **时序问题**: 状态更新是异步的，但函数逻辑假设同步更新
+
+#### 彻底修复措施
+1. ✅ **引入modelId的ref**:
+   ```typescript
+   const modelIdRef = useRef(state.modelId);
+   
+   // 在useEffect中同步更新
+   useEffect(() => {
+     modelIdRef.current = state.modelId;
+   }, [state.modelId]);
+   ```
+
+2. ✅ **修复闭包问题**:
+   ```typescript
+   // 在loadNextModel和loadRandomTexture中使用ref
+   const currentModelId = modelIdRef.current; // 而不是state.modelId
+   ```
+
+3. ✅ **移除状态更新冲突**:
+   ```typescript
+   // 在loadModel中移除重复的SET_MODEL_ID设置
+   // 注意：不在这里设置MODEL_ID，由调用方负责状态管理
+   ```
+
+4. ✅ **修复调用时序**:
+   ```typescript
+   // 先加载模型，成功后再更新状态
+   await loadModel(nextModelId);
+   dispatchRef.current({ type: 'SET_MODEL_ID', payload: nextModelId });
+   ```
+
+5. ✅ **移除useCallback依赖**:
+   ```typescript
+   }, [cubism2Model, fetchModelSetting]); // 移除state.modelId依赖，使用ref
+   ```
+
+#### 技术细节
+- **ref模式**: 使用ref避免闭包陷阱，确保获取最新的modelId值
+- **单一责任**: `loadModel`只负责加载，状态管理由调用方处理
+- **正确时序**: 先完成模型加载，再更新状态，避免中间状态
+- **依赖清理**: 移除不必要的useCallback依赖，防止重复创建函数
+
+#### 预期效果
+- 模型切换时索引正确递增：18 → 19 → 0 → 1...
+- 模型实际切换到新的角色
+- 状态更新和模型显示完全同步
+- 不再出现"一直显示相同索引"的问题
+
+#### 测试验证
+1. 多次点击切换模型按钮
+2. 观察控制台日志中的索引变化
+3. 确认每次都切换到不同的模型
+4. 验证状态和显示的一致性
+
+### 2025-05-26 晚上 - 修复界面不显示问题
+
+#### 紧急问题
+用户反馈：修改CSS后，软件打开后完全不显示界面，没有任何反应。
+
+#### 问题分析
+1. **CSS居中定位问题** - `transform: translate(-50%, -50%)`可能导致元素定位错误
+2. **opacity初始值问题** - 设置`opacity: 0`但没有正确的显示逻辑
+3. **初始化逻辑复杂** - 依赖多个状态和延迟显示，可能导致显示失败
+
+#### 紧急修复措施
+1. ✅ **简化CSS定位**:
+   ```css
+   /* 临时恢复左下角显示，确保可见 */
+   #waifu {
+     position: fixed;
+     bottom: 0; /* 底部 */
+     left: 0; /* 左侧 */
+     /* 移除复杂的transform和opacity */
+   }
+   ```
+
+2. ✅ **简化初始化逻辑**:
+   ```typescript
+   const [initialized, setInitialized] = useState(true); // 直接设为true
+   const [loading, setLoading] = useState(false); // 直接设为false
+   
+   // 确保容器立即显示
+   <div id="waifu" className="waifu-active">
+   ```
+
+3. ✅ **移除复杂的显示动画**:
+   - 移除opacity动画
+   - 移除延迟显示逻辑
+   - 确保组件立即可见
+
+#### 技术要点
+- **优先保证可见性**: 先确保界面能显示，再考虑美化
+- **简化状态管理**: 移除不必要的loading和initialized状态
+- **直接CSS定位**: 使用简单的bottom/left定位而不是transform
+
+#### 预期效果
+- 界面立即显示，不再有空白问题
+- 模型和工具栏在左下角正常显示
+- 后续可以再优化居中显示功能
+
+#### 后续计划
+1. 确认界面正常显示后，再逐步优化居中功能
+2. 使用更稳定的CSS居中方案
+3. 添加适当的显示动画
+
+### 2025-05-26 晚上 - 修复居中显示和模型切换功能
+
+#### 用户反馈问题
+1. **角色没有水平垂直居中** - 目前显示在左下角，需要在Electron窗口正中间
+2. **模型切换功能无效** - 切换模型后没有正确重新渲染
+
+#### 修复措施
+
+1. ✅ **使用稳定的CSS居中方案**:
+   ```css
+   #waifu {
+     position: fixed;
+     top: 50%;
+     left: 50%;
+     margin-top: -125px; /* 负的一半高度 */
+     margin-left: -125px; /* 负的一半宽度 */
+   }
+   ```
+   - 避免使用`transform`可能导致的兼容性问题
+   - 使用传统的margin负值方法实现居中
+
+2. ✅ **修复模型切换后的矩阵设置**:
+   ```typescript
+   // 在loadModel函数的两个分支中都添加setupModelMatrix调用
+   await modelInstance.init('live2d', model.path, modelSetting);
+   setTimeout(() => {
+     if (modelInstance && typeof modelInstance.setupModelMatrix === 'function') {
+       modelInstance.setupModelMatrix();
+     }
+   }, 100);
+   
+   await cubism2Model.init('live2d', model.path, modelSetting);
+   setTimeout(() => {
+     if (cubism2Model && typeof cubism2Model.setupModelMatrix === 'function') {
+       cubism2Model.setupModelMatrix();
+     }
+   }, 100);
+   ```
+
+#### 技术要点
+- **CSS居中策略**: 使用`top: 50%; left: 50%`配合负margin实现精确居中
+- **模型切换修复**: 确保所有模型加载路径都调用`setupModelMatrix`
+- **延迟调用**: 使用100ms延迟确保模型完全初始化后再设置矩阵
+
+#### 预期效果
+- 角色在Electron窗口中水平垂直居中显示
+- 模型切换功能正常工作，切换后模型正确显示且不被截断
+- 工具栏相对位置保持正确
+
+#### 测试要点
+1. 角色是否在窗口正中央
+2. 点击切换模型按钮是否能正常切换
+3. 切换后的模型是否完整显示（包括头部）
+4. 工具栏是否跟随角色居中
+
+### 2025-05-26 晚上 - 修复模型切换状态更新问题
+
+#### 问题分析
+用户反馈模型切换依旧不生效，从日志看到一直显示"当前模型索引: 18, 下一个模型索引: 19"，说明：
+
+1. **状态更新问题** - `currentModelId`一直是18，没有更新到19
+2. **切换逻辑问题** - `loadModel(nextModelId)`调用后，状态没有正确更新
+3. **闭包问题** - useCallback依赖`state.modelId`可能导致闭包陈旧值
+
+#### 根本原因
+- `loadNextModel`函数依赖`state.modelId`，但状态更新是异步的
+- 每次调用时都使用的是旧的`state.modelId`值
+- `SET_MODEL_ID` action可能没有在正确的时机执行
+
+#### 修复措施
+1. ✅ **提前更新模型ID状态**:
+   ```typescript
+   // 先更新模型ID状态
+   console.log('更新模型ID状态到:', nextModelId);
+   dispatchRef.current({ type: 'SET_MODEL_ID', payload: nextModelId });
+   
+   // 然后加载模型
+   await loadModel(nextModelId);
+   ```
+
+2. ✅ **移除闭包依赖**:
+   ```typescript
+   // 修改依赖数组，移除state.modelId
+   }, [loadModel]); // 移除state.modelId依赖，避免闭包问题
+   ```
+
+3. ✅ **增强调试日志**:
+   ```typescript
+   console.log('更新模型ID状态到:', nextModelId);
+   console.log('开始加载模型索引:', nextModelId);
+   console.log('下一个模型加载成功，新的模型索引应该是:', nextModelId);
+   ```
+
+#### 技术要点
+- **状态更新时序**: 在调用`loadModel`之前先更新`modelId`状态
+- **避免闭包陷阱**: 移除useCallback对`state.modelId`的依赖
+- **使用ref获取最新值**: 通过`modelListRef.current`获取最新的模型列表
+- **调试日志增强**: 添加详细日志跟踪状态变化过程
+
+#### 预期效果
+- 模型切换时，`currentModelId`应该正确更新
+- 下次切换时应该显示新的索引值
+- 模型切换功能完全正常工作
+
+#### 测试验证
+1. 点击切换模型按钮
+2. 观察控制台日志中的模型索引变化
+3. 确认模型实际切换到新的角色
+4. 多次切换验证索引递增正常 

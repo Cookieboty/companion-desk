@@ -1,18 +1,20 @@
-/* 看板娘容器 */
+/* 看板娘容器 - 稳定的居中显示 */
 #waifu {
   position: fixed;
-  bottom: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
   width: 250px;
-  height: 250px;
+  height: auto;
+  margin-top: -125px; /* 负的一半高度，大概估算 */
+  margin-left: -125px; /* 负的一半宽度 */
   z-index: 1;
   font-size: 0;
   transition: all .3s ease-in-out;
-  transform: translateY(100%);
+  /* 确保可见 */
 }
 
 #waifu.waifu-active {
-  transform: translateY(0);
+  /* 保持显示 */
 }
 
 /* 看板娘提示 */
@@ -100,12 +102,9 @@
   fill: #0684bd;
 }
 
-/* 看板娘画布 - 支持动态高度，居中显示 */
+/* 看板娘画布 - 相对定位 */
 .waifu-canvas {
-  position: fixed;
-  bottom: 50%; /* 垂直居中 */
-  left: 50%; /* 水平居中 */
-  transform: translate(-50%, 50%); /* 居中偏移 */
+  position: relative; /* 改为相对定位 */
   width: 250px;
   min-height: 250px; /* 最小高度 */
   max-height: 95vh; /* 增加最大高度到95% */

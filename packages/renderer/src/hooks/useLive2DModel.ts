@@ -33,13 +33,17 @@ export function useLive2DModel() {
   const modelListRef = useRef<ModelItem[]>([]); // 存储最新的modelList状态
   const isInitializedRef = useRef(false); // 存储最新的初始化状态
 
+  // 添加modelId的ref
+  const modelIdRef = useRef(state.modelId);
+
   // 更新refs
   useEffect(() => {
     configRef.current = config;
     dispatchRef.current = dispatch;
     modelListRef.current = state.modelList;
     isInitializedRef.current = state.isInitialized;
-  }, [config, dispatch, state.modelList, state.isInitialized]);
+    modelIdRef.current = state.modelId;
+  }, [config, dispatch, state.modelList, state.isInitialized, state.modelId]);
 
   // 加载模型列表
   const loadModelList = useCallback(async () => {
@@ -323,7 +327,7 @@ export function useLive2DModel() {
       // 保存模型到缓存
       await setCache('modelName', model.name);
       console.log('模型名称已保存到缓存:', model.name);
-      dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
+      // 注意：不在这里设置MODEL_ID，由调用方负责状态管理
 
       const modelSetting = await fetchModelSetting(model.path);
       const version = checkModelVersion(modelSetting);
@@ -342,10 +346,24 @@ export function useLive2DModel() {
           // 使用标准方法初始化模型
           console.log('使用标准方法初始化模型实例');
           await modelInstance.init('live2d', model.path, modelSetting);
+
+          // 模型加载完成后，应用正确的模型矩阵设置
+          setTimeout(() => {
+            if (modelInstance && typeof modelInstance.setupModelMatrix === 'function') {
+              modelInstance.setupModelMatrix();
+            }
+          }, 100);
         } else if (cubism2Model) {
           // 如果已经加载了Cubism2，使用标准方法初始化新模型
           console.log('使用已有的Cubism2实例初始化新模型');
           await cubism2Model.init('live2d', model.path, modelSetting);
+
+          // 模型加载完成后，应用正确的模型矩阵设置
+          setTimeout(() => {
+            if (cubism2Model && typeof cubism2Model.setupModelMatrix === 'function') {
+              cubism2Model.setupModelMatrix();
+            }
+          }, 100);
         } else {
           console.error('未配置cubism2Path，无法加载Cubism2核心');
         }
@@ -390,7 +408,7 @@ export function useLive2DModel() {
 
     // 使用ref获取最新状态
     const currentModelList = modelListRef.current;
-    const currentModelId = state.modelId; // modelId可以直接使用，因为它会触发重新渲染
+    const currentModelId = modelIdRef.current; // 使用ref获取最新的modelId
 
     if (!currentModelList || currentModelList.length === 0 || currentModelId >= currentModelList.length) {
       console.error('模型列表为空或当前模型索引超出范围');
@@ -443,6 +461,13 @@ export function useLive2DModel() {
         // 重新初始化模型（使用标准方法）
         await cubism2Model.init('live2d', newModelPath, modelSetting);
 
+        // 模型加载完成后，应用正确的模型矩阵设置
+        setTimeout(() => {
+          if (cubism2Model && typeof cubism2Model.setupModelMatrix === 'function') {
+            cubism2Model.setupModelMatrix();
+          }
+        }, 100);
+
         dispatchRef.current({
           type: 'SET_MESSAGE',
           payload: {
@@ -471,7 +496,7 @@ export function useLive2DModel() {
         }
       });
     }
-  }, [state.modelId, cubism2Model, fetchModelSetting]); // 移除state.modelList依赖
+  }, [cubism2Model, fetchModelSetting]); // 移除state.modelId依赖，使用ref
 
   // 加载下一个模型
   const loadNextModel = useCallback(async () => {
@@ -479,7 +504,7 @@ export function useLive2DModel() {
 
     // 使用ref获取最新状态
     const currentModelList = modelListRef.current;
-    const currentModelId = state.modelId;
+    const currentModelId = modelIdRef.current; // 使用ref获取最新的modelId
 
     if (!currentModelList || currentModelList.length === 0) {
       console.error('模型列表为空，无法加载下一个模型');
@@ -508,15 +533,21 @@ export function useLive2DModel() {
     const nextModelId = (currentModelId + 1) % currentModelList.length;
     console.log(`当前模型索引: ${currentModelId}, 下一个模型索引: ${nextModelId}`);
 
-    // 重置纹理ID和模型组索引
-    dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: 0 });
-    if (modelGroupsRef.current[nextModelId]) {
-      modelGroupsRef.current[nextModelId].currentIndex = 0;
-    }
-
     try {
+      console.log('开始加载模型索引:', nextModelId);
       await loadModel(nextModelId);
-      console.log('下一个模型加载成功');
+
+      // 模型加载成功后再更新状态
+      console.log('更新模型ID状态到:', nextModelId);
+      dispatchRef.current({ type: 'SET_MODEL_ID', payload: nextModelId });
+
+      // 重置纹理ID和模型组索引
+      dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: 0 });
+      if (modelGroupsRef.current[nextModelId]) {
+        modelGroupsRef.current[nextModelId].currentIndex = 0;
+      }
+
+      console.log('下一个模型加载成功，新的模型索引应该是:', nextModelId);
     } catch (error) {
       console.error('加载下一个模型失败:', error);
       dispatchRef.current({
@@ -527,7 +558,7 @@ export function useLive2DModel() {
         }
       });
     }
-  }, [state.modelId, loadModel]); // 移除state.modelList依赖
+  }, [loadModel]); // 移除state.modelId依赖，避免闭包问题
 
   // 初始化
   useEffect(() => {
@@ -541,7 +572,12 @@ export function useLive2DModel() {
       console.log('模型列表加载完成，库已初始化，自动加载第一个模型');
       // 检查当前modelId是否有效，如果无效则加载第一个模型
       const modelIdToLoad = state.modelId < state.modelList.length ? state.modelId : 0;
-      loadModelRef.current(modelIdToLoad);
+      loadModelRef.current(modelIdToLoad).then(() => {
+        // 确保状态同步
+        if (modelIdToLoad !== state.modelId) {
+          dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIdToLoad });
+        }
+      });
     } else if (state.modelList && state.modelList.length > 0 && !state.isInitialized) {
       console.log('模型列表已加载，但库尚未初始化，等待初始化完成');
     }

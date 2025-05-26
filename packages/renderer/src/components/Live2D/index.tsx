@@ -13,8 +13,8 @@ import './style.css';
 export type Live2DProps = ModelConfig;
 
 export const Live2D: React.FC<Live2DProps> = (props) => {
-  const [initialized, setInitialized] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // 扩展默认工具列表
   const defaultTools = [
@@ -33,34 +33,15 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
     tools: props.tools || defaultTools
   };
 
-  // 初始化Live2D组件
-  useEffect(() => {
-    // 配置初始化逻辑
-    const initLive2D = async () => {
-      setLoading(true);
-
-      // 允许一些时间来加载资源和初始化
-      setTimeout(() => {
-        setLoading(false);
-        setInitialized(true);
-      }, 500);
-    };
-
-    // 执行初始化
-    initLive2D();
-
-    // 组件加载后立即显示主容器
-    const waifuElement = document.getElementById('waifu');
-    if (waifuElement) {
-      setTimeout(() => {
-        waifuElement.classList.add('waifu-active');
-      }, 100);
-    }
-  }, []);
-
   // 确保组件始终可见
   useEffect(() => {
     document.body.classList.add('waifu-body');
+
+    // 确保容器立即显示
+    const waifuElement = document.getElementById('waifu');
+    if (waifuElement) {
+      waifuElement.classList.add('waifu-active');
+    }
 
     return () => {
       document.body.classList.remove('waifu-body');
@@ -69,7 +50,7 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
 
   return (
     <Live2DProvider config={mergedProps}>
-      <div id="waifu" className={initialized ? 'waifu-active' : ''}>
+      <div id="waifu" className="waifu-active">
         {loading && <LoadingIndicator />}
         <MessageBubble />
         <Live2DCanvas />
