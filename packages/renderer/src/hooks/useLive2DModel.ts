@@ -254,7 +254,13 @@ export function useLive2DModel() {
     // 检查缓存中是否有此模型设置
     if (modelPath in modelJSONCache.current) {
       console.log('使用缓存的模型设置');
-      return modelJSONCache.current[modelPath];
+      const cachedSetting = modelJSONCache.current[modelPath];
+      // 移除背景图片配置，确保透明背景
+      if (cachedSetting.background) {
+        delete cachedSetting.background;
+        console.log('已移除缓存模型配置中的背景图片设置');
+      }
+      return cachedSetting;
     }
 
     // 如果没有则从网络加载
@@ -262,6 +268,14 @@ export function useLive2DModel() {
       console.log('从网络加载模型设置');
       const response = await customFetch(modelPath);
       const modelSetting = await response.json();
+
+      // 移除背景图片配置，确保透明背景
+      if (modelSetting.background) {
+        console.log('检测到模型配置中的背景图片，正在移除:', modelSetting.background);
+        delete modelSetting.background;
+        console.log('已移除模型配置中的背景图片设置');
+      }
+
       modelJSONCache.current[modelPath] = modelSetting;
       console.log('模型设置加载成功');
       return modelSetting;
@@ -456,17 +470,10 @@ export function useLive2DModel() {
         // 获取新模型设置
         const modelSetting = await fetchModelSetting(newModelPath);
 
-        console.log('使用新模型设置重新初始化模型');
+        console.log('使用changeModelWithJSON切换模型');
 
-        // 重新初始化模型（使用标准方法）
-        await cubism2Model.init('live2d', newModelPath, modelSetting);
-
-        // 模型加载完成后，应用正确的模型矩阵设置
-        setTimeout(() => {
-          if (cubism2Model && typeof cubism2Model.setupModelMatrix === 'function') {
-            cubism2Model.setupModelMatrix();
-          }
-        }, 100);
+        // 使用changeModelWithJSON方法切换模型，不要重新初始化
+        await cubism2Model.changeModelWithJSON(newModelPath, modelSetting);
 
         dispatchRef.current({
           type: 'SET_MESSAGE',
