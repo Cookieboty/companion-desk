@@ -3,6 +3,7 @@ import { useLive2D } from '@/contexts/Live2DContext';
 import { getCache, setCache } from '@/utils/cache';
 import { customFetch } from '@/utils/live2d-utils';
 import logger from '@/utils/logger';
+import { DEFAULT_ADAPTIVE_CONFIG } from '@/config/adaptive-defaults';
 
 // 定义模型项的接口
 interface ModelItem {
@@ -338,11 +339,11 @@ export function useLive2DModel() {
           const modelInstance = new Cubism2Model();
           setCubism2Model(modelInstance);
 
-          // 初始化模型
-          console.log('初始化模型实例');
+          // 使用标准方法初始化模型
+          console.log('使用标准方法初始化模型实例');
           await modelInstance.init('live2d', model.path, modelSetting);
         } else if (cubism2Model) {
-          // 如果已经加载了Cubism2，直接初始化新模型
+          // 如果已经加载了Cubism2，使用标准方法初始化新模型
           console.log('使用已有的Cubism2实例初始化新模型');
           await cubism2Model.init('live2d', model.path, modelSetting);
         } else {
@@ -439,7 +440,7 @@ export function useLive2DModel() {
 
         console.log('使用新模型设置重新初始化模型');
 
-        // 重新初始化模型
+        // 重新初始化模型（使用标准方法）
         await cubism2Model.init('live2d', newModelPath, modelSetting);
 
         dispatchRef.current({

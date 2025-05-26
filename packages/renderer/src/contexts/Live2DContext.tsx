@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useReducer, ReactNode, useRef, useEffect } from 'react';
 import { Live2DProps } from '@/components/Live2D';
+import { AdaptiveConfig, CanvasSize, DisplaySize } from '@/types/adaptive';
+import { DEFAULT_ADAPTIVE_CONFIG } from '@/config/adaptive-defaults';
 
 // 模型类型定义
 export interface ModelItem {
@@ -21,6 +23,11 @@ export interface Live2DState {
   modelList: ModelItem[];
   isInitialized: boolean;
   dragEnabled: boolean;
+  // 新增自适应相关状态
+  canvasSize: CanvasSize;
+  displaySize: DisplaySize;
+  adaptiveConfig: AdaptiveConfig;
+  isAdaptiveEnabled: boolean;
 }
 
 // Action类型
@@ -34,7 +41,12 @@ type Live2DAction =
   | { type: 'TOGGLE_ALWAYS_ON_TOP' }
   | { type: 'SET_MODEL_LIST'; payload: ModelItem[] }
   | { type: 'SET_INITIALIZED'; payload: boolean }
-  | { type: 'TOGGLE_DRAG'; payload: boolean };
+  | { type: 'TOGGLE_DRAG'; payload: boolean }
+  // 新增自适应相关Action
+  | { type: 'SET_CANVAS_SIZE'; payload: CanvasSize }
+  | { type: 'SET_DISPLAY_SIZE'; payload: DisplaySize }
+  | { type: 'UPDATE_ADAPTIVE_CONFIG'; payload: Partial<AdaptiveConfig> }
+  | { type: 'TOGGLE_ADAPTIVE'; payload: boolean };
 
 // 初始状态
 const initialState: Live2DState = {
@@ -47,7 +59,12 @@ const initialState: Live2DState = {
   alwaysOnTop: false,
   modelList: [],
   isInitialized: false,
-  dragEnabled: false
+  dragEnabled: false,
+  // 新增自适应相关初始状态
+  canvasSize: { width: 800, height: 800 },
+  displaySize: { width: 250, height: 250 },
+  adaptiveConfig: DEFAULT_ADAPTIVE_CONFIG,
+  isAdaptiveEnabled: true
 };
 
 // Reducer函数
@@ -85,6 +102,18 @@ function live2DReducer(state: Live2DState, action: Live2DAction): Live2DState {
       return { ...state, isInitialized: action.payload };
     case 'TOGGLE_DRAG':
       return { ...state, dragEnabled: action.payload };
+    // 新增自适应相关Reducer
+    case 'SET_CANVAS_SIZE':
+      return { ...state, canvasSize: action.payload };
+    case 'SET_DISPLAY_SIZE':
+      return { ...state, displaySize: action.payload };
+    case 'UPDATE_ADAPTIVE_CONFIG':
+      return {
+        ...state,
+        adaptiveConfig: { ...state.adaptiveConfig, ...action.payload }
+      };
+    case 'TOGGLE_ADAPTIVE':
+      return { ...state, isAdaptiveEnabled: action.payload };
     default:
       return state;
   }

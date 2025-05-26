@@ -100,11 +100,27 @@
   fill: #0684bd;
 }
 
-/* 看板娘画布 */
+/* 看板娘画布 - 支持动态高度，居中显示 */
 .waifu-canvas {
-  position: relative;
+  position: fixed;
+  bottom: 50%; /* 垂直居中 */
+  left: 50%; /* 水平居中 */
+  transform: translate(-50%, 50%); /* 居中偏移 */
   width: 250px;
-  height: 250px;
+  min-height: 250px; /* 最小高度 */
+  max-height: 95vh; /* 增加最大高度到95% */
+  z-index: 1000;
+  pointer-events: auto;
+  user-select: none;
+  transition: all 0.3s ease;
+  overflow: visible; /* 允许高瘦模型显示完整 */
+}
+
+.waifu-canvas canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 90vh; /* 限制最大高度 */
+  object-fit: contain; /* 保持宽高比 */
 }
 
 /* 加载动画 */
@@ -156,6 +172,35 @@
   } 40% { 
     transform: scale(1.0); 
   }
+}
+
+/* 自适应调试信息 */
+.waifu-adaptive-debug {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px;
+  font-size: 10px;
+  border-radius: 3px;
+  z-index: 1001;
+  pointer-events: auto;
+  font-family: monospace;
+  line-height: 1.2;
+}
+
+.waifu-adaptive-debug button {
+  margin-top: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.waifu-adaptive-debug button:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes shake {
