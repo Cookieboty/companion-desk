@@ -80,14 +80,19 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
 
                     const checkInitialized = () => {
                       attempts++;
-                      // 检查Live2D关键对象是否已初始化
+                      // 检查Live2D核心对象是否已初始化
                       if (typeof window.Live2D !== 'undefined' &&
                         typeof window.AMotion !== 'undefined' &&
                         typeof window.Live2DMotion !== 'undefined') {
-                        console.log('Live2D库全局对象已成功初始化');
+                        console.log('Live2D库核心对象已成功初始化');
                         resolve();
                       } else {
                         console.log(`等待Live2D库初始化... (${attempts}/${maxAttempts})`);
+                        console.log('当前状态:', {
+                          Live2D: typeof window.Live2D,
+                          AMotion: typeof window.AMotion,
+                          Live2DMotion: typeof window.Live2DMotion
+                        });
                         // 如果未初始化且未超过最大尝试次数，延迟后再次检查
                         if (attempts < maxAttempts) {
                           setTimeout(checkInitialized, 100);
@@ -152,15 +157,20 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
         // 对于Live2D库，需要特殊处理确保完全加载
         if (isLive2DLibrary) {
           tag.onload = () => {
-            // 检查Live2D关键对象是否已初始化
+            // 检查Live2D核心对象是否已初始化
             const checkInitialized = () => {
               if (typeof window.Live2D !== 'undefined' &&
                 typeof window.AMotion !== 'undefined' &&
                 typeof window.Live2DMotion !== 'undefined') {
-                console.log('Live2D库全局对象已成功初始化');
+                console.log('Live2D库核心对象已成功初始化');
                 resolve(tag);
               } else {
                 console.log('等待Live2D库初始化...');
+                console.log('当前状态:', {
+                  Live2D: typeof window.Live2D,
+                  AMotion: typeof window.AMotion,
+                  Live2DMotion: typeof window.Live2DMotion
+                });
                 // 如果未初始化，延迟100ms后再次检查
                 setTimeout(checkInitialized, 100);
               }
