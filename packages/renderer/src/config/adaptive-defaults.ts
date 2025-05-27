@@ -28,6 +28,6 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveConfig = {
   enableCache: true,
   cacheSize: 50,
 
-  showDebugInfo: true,
+  showDebugInfo: process.env.NODE_ENV === 'development' ? true : false,
   logAdaptiveChanges: true
 }; 
