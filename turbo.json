@@ -13,7 +13,7 @@
     },
     "package": {
       "cache": false,
-      "dependsOn": ["build"]
+      "dependsOn": ["^build"]
     },
     "package:prod": {
       "cache": false,

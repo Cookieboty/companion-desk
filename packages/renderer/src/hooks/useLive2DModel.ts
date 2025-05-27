@@ -248,9 +248,9 @@ export function useLive2DModel() {
             }
           }, 100);
         } else if (cubism2Model) {
-          // 如果已经加载了Cubism2，使用标准方法初始化新模型
-          console.log('使用已有的Cubism2实例初始化新模型');
-          await cubism2Model.init('live2d', modelPath, modelSetting);
+          // 如果已经加载了Cubism2，使用changeModelWithJSON方法切换模型
+          console.log('使用已有的Cubism2实例，切换到新模型');
+          await cubism2Model.changeModelWithJSON(modelPath, modelSetting);
 
           // 模型加载完成后，应用正确的模型矩阵设置
           setTimeout(() => {

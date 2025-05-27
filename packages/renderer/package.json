@@ -4,9 +4,7 @@
   "description": "基于React的前端UI",
   "scripts": {
     "dev": "vite",
-    "prebuild": "npm run copy-assets",
     "build": "tsc && vite build",
-    "copy-assets": "mkdir -p dist/assets/live2d-models && cp -R public/assets/* dist/assets/ && mkdir -p dist/assets/live2d-widget",
     "clean": "rimraf dist",
     "test": "vitest run"
   },

@@ -24,7 +24,6 @@ const Live2dWidget: React.FC<Live2dWidgetProps> = ({ config }) => {
   return (
     <Live2D
       waifuPath={config.waifuPath || ''}
-      cdnPath={config.cdnPath}
       cubism2Path={config.cubism2Path || ''}
       tools={config.tools}
       drag={config.drag}

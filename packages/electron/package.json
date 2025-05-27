@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "concurrently \" tsc -w\" \"cross-env NODE_ENV=development electron .\"",
     "prebuild": "npm run clean",
-    "build": "tsc && npm run copy-renderer",
+    "build": "tsc ",
     "copy-renderer": "node scripts/copy-renderer.js",
     "clean": "rimraf dist",
-    "package": "npm run package:prod",
+    "package": "npm run copy-renderer && npm run package:prod",
     "package:prod": "npm run build && electron-builder build",
     "package:prod:mac": "npm run build && electron-builder build --mac",
     "package:prod:win": "npm run build && electron-builder build --win",
@@ -36,7 +36,7 @@
   },
   "build": {
     "appId": "com.ig-live.electron",
-    "productName": "AI看板娘",
+    "productName": "智能小助手",
     "files": [
       "dist/**/*",
       "package.json"
@@ -65,7 +65,7 @@
     },
     "protocols": [
       {
-        "name": "AI看板娘",
+        "name": "智能小助手",
         "schemes": ["ai-live"]
       }
     ]
