@@ -202,11 +202,33 @@ export async function customFetch(
   timeout = 10000,
   retries = 2
 ): Promise<Response> {
-  // 检查是否为相对URL，并且在Electron环境中
-  if (!url.startsWith('http') && !url.startsWith('blob:') && window.electronAPI) {
+  // 对URL进行编码处理，确保特殊字符正确处理
+  let processedUrl = url;
+
+  // 如果URL包含非ASCII字符，进行编码处理
+  if (!/^[\x00-\x7F]*$/.test(url)) {
     try {
-      console.log('通过Electron API加载本地JSON:', url);
-      const data = await window.electronAPI.readLocalFile(url);
+      // 分离路径和文件名
+      const urlParts = url.split('/');
+      const encodedParts = urlParts.map(part => {
+        // 如果部分包含非ASCII字符，进行编码
+        if (!/^[\x00-\x7F]*$/.test(part)) {
+          return encodeURIComponent(part);
+        }
+        return part;
+      });
+      processedUrl = encodedParts.join('/');
+      console.log('URL编码处理:', url, '->', processedUrl);
+    } catch (error) {
+      console.warn('URL编码处理失败，使用原始URL:', error);
+    }
+  }
+
+  // 检查是否为相对URL，并且在Electron环境中
+  if (!processedUrl.startsWith('http') && !processedUrl.startsWith('blob:') && window.electronAPI) {
+    try {
+      console.log('通过Electron API加载本地JSON:', processedUrl);
+      const data = await window.electronAPI.readLocalFile(processedUrl);
 
       if (data) {
         console.log('成功通过Electron API加载本地JSON');
@@ -227,7 +249,7 @@ export async function customFetch(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(processedUrl, {
       ...options,
       signal: controller.signal
     });
