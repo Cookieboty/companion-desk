@@ -8,7 +8,8 @@ export interface ModelItem {
   name: string;
   path: string;
   message?: string;
-  textures?: string[];
+  textures?: string[]; // 保留向后兼容性
+  costumes?: string[]; // 新的换装列表
 }
 
 // Live2D状态

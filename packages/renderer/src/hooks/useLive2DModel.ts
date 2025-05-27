@@ -1,39 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useLive2D } from '@/contexts/Live2DContext';
+import { useLive2D, ModelItem } from '@/contexts/Live2DContext';
 import { getCache, setCache } from '@/utils/cache';
 import { customFetch } from '@/utils/live2d-utils';
 import logger from '@/utils/logger';
 import { DEFAULT_ADAPTIVE_CONFIG } from '@/config/adaptive-defaults';
 
-// 定义模型项的接口
-interface ModelItem {
+// 使用新的模型结构定义，与costume_model_list.json保持一致
+interface CostumeModelItem {
   name: string;
   path: string;
-  message?: string;
-  textures?: string[]; // 同一模型的不同纹理路径
+  message: string;
+  costumes?: string[]; // 换装列表，包含不同服装的模型路径
 }
 
-// 定义模型组的接口（用于处理数组格式的模型）
-interface ModelGroup {
-  models: string[]; // 模型名称数组
-  message: string;
-  currentIndex: number; // 当前选中的模型索引
+// 模型列表结构
+interface ModelList {
+  models: CostumeModelItem[];
 }
 
 export function useLive2DModel() {
   const { state, dispatch, config } = useLive2D();
   const [cubism2Model, setCubism2Model] = useState<any>(null);
   const modelJSONCache = useRef<Record<string, any>>({});
-  const modelGroupsRef = useRef<ModelGroup[]>([]); // 存储模型组信息
   const loadingRef = useRef(false);
-  const modelListLoadedRef = useRef(false); // 添加加载状态标记
-  const configRef = useRef(config); // 存储config引用
-  const dispatchRef = useRef(dispatch); // 存储dispatch引用
-  const loadModelRef = useRef<((modelIndex: number) => Promise<void>) | null>(null); // 存储loadModel函数引用
-  const modelListRef = useRef<ModelItem[]>([]); // 存储最新的modelList状态
-  const isInitializedRef = useRef(false); // 存储最新的初始化状态
-
-  // 添加modelId的ref
+  const modelListLoadedRef = useRef(false);
+  const configRef = useRef(config);
+  const dispatchRef = useRef(dispatch);
+  const loadModelRef = useRef<((modelIndex: number) => Promise<void>) | null>(null);
+  const modelListRef = useRef<ModelItem[]>([]);
+  const isInitializedRef = useRef(false);
   const modelIdRef = useRef(state.modelId);
 
   // 更新refs
@@ -45,177 +40,79 @@ export function useLive2DModel() {
     modelIdRef.current = state.modelId;
   }, [config, dispatch, state.modelList, state.isInitialized, state.modelId]);
 
-  // 加载模型列表
+  // 加载模型列表 - 使用新的costume_model_list.json结构
   const loadModelList = useCallback(async () => {
-    // 避免重复加载
     if (loadingRef.current || modelListLoadedRef.current) {
       console.log('模型列表已加载或正在加载中，跳过重复请求');
       return;
     }
 
     try {
-      console.log('开始加载本地模型列表...');
+      console.log('开始加载模型列表...');
       loadingRef.current = true;
       dispatchRef.current({ type: 'SET_LOADING', payload: true });
 
-      // 尝试加载本地模型配置文件
-      try {
-        console.log('尝试加载本地模型配置文件...');
-        const response = await customFetch('./assets/model_list.json');
-        const modelConfig = await response.json();
+      // 加载新的costume_model_list.json文件
+      const response = await customFetch('./assets/costume_model_list.json');
+      const modelConfig: ModelList = await response.json();
 
-        if (modelConfig && modelConfig.models && modelConfig.models.length > 0) {
-          console.log('成功加载本地模型配置:', modelConfig.models.length, '个模型');
+      if (modelConfig && modelConfig.models && modelConfig.models.length > 0) {
+        console.log('成功加载模型配置:', modelConfig.models.length, '个模型');
 
-          // 转换为项目所需的格式
-          const formattedList: ModelItem[] = [];
-          const modelGroups: ModelGroup[] = [];
+        // 直接使用新结构，无需转换
+        const formattedList: ModelItem[] = modelConfig.models.map((model: CostumeModelItem) => ({
+          name: model.name,
+          path: `./assets/models/${model.path}`,
+          message: model.message,
+          costumes: model.costumes ? model.costumes.map((costume: string) => `./assets/models/${costume}`) : undefined
+        }));
 
-          for (let index = 0; index < modelConfig.models.length; index++) {
-            const model = modelConfig.models[index];
-            const message = modelConfig.messages?.[index] || '本地模型';
+        dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
 
-            if (Array.isArray(model)) {
-              // 模型组（同一角色的不同服装）
-              modelGroups.push({
-                models: model,
-                message: message,
-                currentIndex: 0
-              });
+        // 尝试从缓存中恢复上次保存的模型
+        const savedModelName = await getCache<string>('modelName');
+        if (savedModelName) {
+          console.log('从缓存中恢复的模型名称:', savedModelName);
+          const modelIndex = formattedList.findIndex((model: ModelItem) =>
+            model.name === savedModelName
+          );
+          if (modelIndex >= 0) {
+            console.log('找到匹配的模型索引:', modelIndex);
+            dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
 
-              // 添加组中的第一个模型到列表
-              const firstModel = model[0];
-              const modelPath = constructModelPath(firstModel);
+            // 恢复换装索引
+            const savedTextureId = await getCache<number>('modelTexturesId') || 0;
+            const currentModel = formattedList[modelIndex];
+            const maxCostumes = currentModel.costumes ? currentModel.costumes.length : 1;
 
-              formattedList.push({
-                name: firstModel,
-                path: modelPath,
-                message: message,
-                textures: model.map(m => constructModelPath(m))
-              });
-            } else {
-              // 单个模型
-              modelGroups.push({
-                models: [model],
-                message: message,
-                currentIndex: 0
-              });
-
-              const modelPath = constructModelPath(model);
-              formattedList.push({
-                name: model,
-                path: modelPath,
-                message: message,
-                textures: [modelPath]
-              });
+            if (savedTextureId < maxCostumes) {
+              dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: savedTextureId });
             }
-          }
-
-          modelGroupsRef.current = modelGroups;
-          dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
-
-          // 尝试从缓存中恢复上次保存的模型
-          const savedModelName = await getCache<string>('modelName');
-          if (savedModelName) {
-            console.log('从缓存中恢复的模型名称:', savedModelName);
-            const modelIndex = formattedList.findIndex((model: ModelItem) =>
-              model.name === savedModelName || model.path.includes(savedModelName)
-            );
-            if (modelIndex >= 0) {
-              console.log('找到匹配的模型索引:', modelIndex);
-              dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
-
-              // 恢复纹理索引
-              const savedTextureId = await getCache<number>('modelTexturesId') || 0;
-              if (savedTextureId < formattedList[modelIndex].textures!.length) {
-                dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: savedTextureId });
-                // 更新模型组的当前索引
-                if (modelGroups[modelIndex]) {
-                  modelGroups[modelIndex].currentIndex = savedTextureId;
-                }
-              }
-            }
-          }
-
-          modelListLoadedRef.current = true;
-          console.log('本地模型配置加载完成');
-        } else {
-          console.warn('模型配置文件为空或格式错误');
-          dispatchRef.current({
-            type: 'SET_MESSAGE',
-            payload: {
-              text: '模型配置文件为空或格式错误',
-              priority: 100
-            }
-          });
-        }
-      } catch (configError) {
-        console.warn('本地模型配置文件加载失败，尝试fallback方案:', configError);
-
-        // Fallback: 尝试加载一些已知存在的模型
-        const fallbackModels = [
-          { name: '22.default', message: '22号舰娘默认' },
-          { name: '33.default', message: '33号舰娘默认' },
-          { name: 'miku', message: '初音未来' },
-          { name: 'unitychan', message: 'Unity酱' }
-        ];
-
-        const formattedList: ModelItem[] = [];
-        const modelGroups: ModelGroup[] = [];
-
-        for (const model of fallbackModels) {
-          const modelPath = `./assets/models/moc/${model.name}/${model.name}.model.json`;
-
-          // 检查模型文件是否存在
-          try {
-            await customFetch(modelPath);
-
-            formattedList.push({
-              name: model.name,
-              path: modelPath,
-              message: model.message,
-              textures: [modelPath]
-            });
-
-            modelGroups.push({
-              models: [model.name],
-              message: model.message,
-              currentIndex: 0
-            });
-
-            console.log('成功找到模型:', model.name);
-          } catch {
-            // 模型文件不存在，跳过
-            console.log('模型文件不存在:', modelPath);
           }
         }
 
-        if (formattedList.length > 0) {
-          modelGroupsRef.current = modelGroups;
-          dispatchRef.current({ type: 'SET_MODEL_LIST', payload: formattedList });
-          modelListLoadedRef.current = true;
-          console.log('使用fallback方案成功加载', formattedList.length, '个模型');
-        } else {
-          console.error('无法找到任何可用的模型文件');
-          dispatchRef.current({
-            type: 'SET_MESSAGE',
-            payload: {
-              text: '无法找到任何可用的模型文件，请检查模型目录',
-              priority: 100
-            }
-          });
-        }
+        modelListLoadedRef.current = true;
+        console.log('模型配置加载完成');
+      } else {
+        console.warn('模型配置文件为空或格式错误');
+        dispatchRef.current({
+          type: 'SET_MESSAGE',
+          payload: {
+            text: '模型配置文件为空或格式错误',
+            priority: 100
+          }
+        });
       }
 
     } catch (error) {
-      console.error('加载本地模型列表失败:', error);
-      logger.error('加载本地模型列表失败:', error);
+      console.error('加载模型列表失败:', error);
+      logger.error('加载模型列表失败:', error);
 
       // 显示错误信息
       dispatchRef.current({
         type: 'SET_MESSAGE',
         payload: {
-          text: '本地模型加载失败，请检查模型文件',
+          text: '模型加载失败，请检查模型文件',
           priority: 100
         }
       });
@@ -223,30 +120,7 @@ export function useLive2DModel() {
       loadingRef.current = false;
       dispatchRef.current({ type: 'SET_LOADING', payload: false });
     }
-  }, []); // 移除config和dispatch依赖，避免重复调用
-
-  // 构造模型路径的辅助函数
-  const constructModelPath = useCallback((modelName: string): string => {
-    // 根据模型名称判断使用哪种路径格式
-    if (modelName.includes('/')) {
-      // 如 "HyperdimensionNeptunia/neptune_classic"
-      return `./assets/models/${modelName}/index.json`;
-    } else if (modelName.startsWith('potion-Maker-')) {
-      // 如 "potion-Maker-Pio" 或 "potion-Maker-Tia"
-      return `./assets/models/moc/${modelName}/index.json`;
-    } else if (modelName.startsWith('bilibili-')) {
-      // 如 "bilibili-22" 或 "bilibili-33" 
-      return `./assets/models/moc/${modelName}/index.json`;
-    } else if (modelName.includes('.')) {
-      // 如 "22.default" 或 "33.2017.school"
-      return `./assets/models/moc/${modelName}/${modelName}.model.json`;
-    } else {
-      // 普通单个模型，如 "miku", "unitychan"
-      return `./assets/models/moc/${modelName}/${modelName}.model.json`;
-    }
   }, []);
-
-
 
   // 加载模型设置
   const fetchModelSetting = useCallback(async (modelPath: string) => {
@@ -302,19 +176,16 @@ export function useLive2DModel() {
       return;
     }
 
-    // 使用ref获取最新的modelList状态
     const currentModelList = modelListRef.current;
     const currentIsInitialized = isInitializedRef.current;
 
     if (!currentModelList || currentModelList.length === 0) {
       console.error('模型列表为空，无法加载模型');
-      console.log('当前modelList状态:', currentModelList);
       return;
     }
 
     if (!currentModelList[modelIndex]) {
       console.error(`模型索引 ${modelIndex} 无效，超出范围`);
-      console.log('当前modelList长度:', currentModelList.length);
       return;
     }
 
@@ -341,9 +212,18 @@ export function useLive2DModel() {
       // 保存模型到缓存
       await setCache('modelName', model.name);
       console.log('模型名称已保存到缓存:', model.name);
-      // 注意：不在这里设置MODEL_ID，由调用方负责状态管理
 
-      const modelSetting = await fetchModelSetting(model.path);
+      // 获取当前要加载的模型路径（考虑换装）
+      const currentTextureId = state.textureId || 0;
+      let modelPath = model.path;
+
+      // 如果有换装且当前纹理ID大于0，使用换装路径
+      if (model.costumes && currentTextureId > 0 && currentTextureId <= model.costumes.length) {
+        modelPath = model.costumes[currentTextureId - 1];
+        console.log('使用换装路径:', modelPath);
+      }
+
+      const modelSetting = await fetchModelSetting(modelPath);
       const version = checkModelVersion(modelSetting);
       console.log(`模型${model.name}版本:`, version);
 
@@ -359,7 +239,7 @@ export function useLive2DModel() {
 
           // 使用标准方法初始化模型
           console.log('使用标准方法初始化模型实例');
-          await modelInstance.init('live2d', model.path, modelSetting);
+          await modelInstance.init('live2d', modelPath, modelSetting);
 
           // 模型加载完成后，应用正确的模型矩阵设置
           setTimeout(() => {
@@ -370,7 +250,7 @@ export function useLive2DModel() {
         } else if (cubism2Model) {
           // 如果已经加载了Cubism2，使用标准方法初始化新模型
           console.log('使用已有的Cubism2实例初始化新模型');
-          await cubism2Model.init('live2d', model.path, modelSetting);
+          await cubism2Model.init('live2d', modelPath, modelSetting);
 
           // 模型加载完成后，应用正确的模型矩阵设置
           setTimeout(() => {
@@ -393,217 +273,128 @@ export function useLive2DModel() {
         });
       } else {
         console.warn(`不支持的模型版本: ${version}`);
-        logger.warn(`Model ${model.path} has version ${version} which is not supported`);
+        logger.warn(`Model ${modelPath} has version ${version} which is not supported`);
       }
     } catch (error) {
       console.error('加载模型失败:', error);
       logger.error('加载模型失败:', error);
+
       dispatchRef.current({
         type: 'SET_MESSAGE',
         payload: {
-          text: '模型加载失败',
-          priority: 10
+          text: '模型加载失败，请检查模型文件',
+          priority: 100
         }
       });
     } finally {
       loadingRef.current = false;
       dispatchRef.current({ type: 'SET_LOADING', payload: false });
     }
-  }, [fetchModelSetting, checkModelVersion, cubism2Model]); // 移除state.modelList依赖，在函数内部使用最新的state
+  }, [state.textureId, cubism2Model]);
 
-  // 更新loadModel引用
+  // 存储loadModel函数引用
   useEffect(() => {
     loadModelRef.current = loadModel;
   }, [loadModel]);
 
-  // 加载随机纹理 - 修复换装功能
-  const loadRandomTexture = useCallback(async () => {
-    console.log('尝试换装');
-
-    // 使用ref获取最新状态
-    const currentModelList = modelListRef.current;
-    const currentModelId = modelIdRef.current; // 使用ref获取最新的modelId
-
-    if (!currentModelList || currentModelList.length === 0 || currentModelId >= currentModelList.length) {
-      console.error('模型列表为空或当前模型索引超出范围');
-      return;
-    }
-
-    const currentModelGroup = modelGroupsRef.current[currentModelId];
-    if (!currentModelGroup || currentModelGroup.models.length <= 1) {
-      console.log('当前模型组没有多个服装可供切换');
-      dispatchRef.current({
-        type: 'SET_MESSAGE',
-        payload: {
-          text: '当前模型没有其他服装可供更换',
-          priority: 10
-        }
-      });
-      return;
-    }
-
-    // 在模型组内随机选择一个不同的模型
-    let newTextureId;
-    do {
-      newTextureId = Math.floor(Math.random() * currentModelGroup.models.length);
-    } while (newTextureId === currentModelGroup.currentIndex && currentModelGroup.models.length > 1);
-
-    console.log(`切换到模型组内索引: ${newTextureId}, 模型: ${currentModelGroup.models[newTextureId]}`);
-
-    // 更新模型组的当前索引
-    currentModelGroup.currentIndex = newTextureId;
-
-    // 保存纹理ID到缓存
-    await setCache('modelTexturesId', newTextureId);
-    dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: newTextureId });
-
-    // 加载新模型
-    try {
-      const newModelName = currentModelGroup.models[newTextureId];
-
-      // 构建本地模型路径
-      const newModelPath = constructModelPath(newModelName);
-
-      console.log('加载新模型路径:', newModelPath);
-
-      if (cubism2Model) {
-        // 获取新模型设置
-        const modelSetting = await fetchModelSetting(newModelPath);
-
-        console.log('使用changeModelWithJSON切换模型');
-
-        // 使用changeModelWithJSON方法切换模型，不要重新初始化
-        await cubism2Model.changeModelWithJSON(newModelPath, modelSetting);
-
-        dispatchRef.current({
-          type: 'SET_MESSAGE',
-          payload: {
-            text: '服装更换成功',
-            priority: 10
-          }
-        });
-      } else {
-        console.error('Cubism2模型实例不存在，无法更换服装');
-        dispatchRef.current({
-          type: 'SET_MESSAGE',
-          payload: {
-            text: '更换服装失败:模型未初始化',
-            priority: 10
-          }
-        });
-      }
-    } catch (error) {
-      console.error('加载新模型失败:', error);
-      logger.error('加载新模型失败:', error);
-      dispatchRef.current({
-        type: 'SET_MESSAGE',
-        payload: {
-          text: '服装更换失败',
-          priority: 10
-        }
-      });
-    }
-  }, [cubism2Model, fetchModelSetting]); // 移除state.modelId依赖，使用ref
-
-  // 加载下一个模型
+  // 切换到下一个模型
   const loadNextModel = useCallback(async () => {
-    console.log('尝试加载下一个模型');
-
-    // 使用ref获取最新状态
     const currentModelList = modelListRef.current;
-    const currentModelId = modelIdRef.current; // 使用ref获取最新的modelId
+    const currentModelId = modelIdRef.current;
 
     if (!currentModelList || currentModelList.length === 0) {
-      console.error('模型列表为空，无法加载下一个模型');
-      dispatchRef.current({
-        type: 'SET_MESSAGE',
-        payload: {
-          text: '没有可用的模型',
-          priority: 10
-        }
-      });
-      return;
-    }
-
-    if (currentModelList.length <= 1) {
-      console.log('只有一个模型可用，无需切换');
-      dispatchRef.current({
-        type: 'SET_MESSAGE',
-        payload: {
-          text: '没有其他模型可供切换',
-          priority: 10
-        }
-      });
+      console.warn('模型列表为空，无法切换模型');
       return;
     }
 
     const nextModelId = (currentModelId + 1) % currentModelList.length;
-    console.log(`当前模型索引: ${currentModelId}, 下一个模型索引: ${nextModelId}`);
+    console.log(`切换到下一个模型: ${currentModelId} -> ${nextModelId}`);
 
-    try {
-      console.log('开始加载模型索引:', nextModelId);
-      await loadModel(nextModelId);
+    // 重置纹理ID为0（默认服装）
+    dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: 0 });
+    dispatchRef.current({ type: 'SET_MODEL_ID', payload: nextModelId });
 
-      // 模型加载成功后再更新状态
-      console.log('更新模型ID状态到:', nextModelId);
-      dispatchRef.current({ type: 'SET_MODEL_ID', payload: nextModelId });
+    // 加载新模型
+    if (loadModelRef.current) {
+      await loadModelRef.current(nextModelId);
+    }
+  }, []);
 
-      // 重置纹理ID和模型组索引
-      dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: 0 });
-      if (modelGroupsRef.current[nextModelId]) {
-        modelGroupsRef.current[nextModelId].currentIndex = 0;
-      }
+  // 优化的换装功能 - 使用新的costumes结构
+  const loadRandomTexture = useCallback(async () => {
+    const currentModelList = modelListRef.current;
+    const currentModelId = modelIdRef.current;
+    const currentTextureId = state.textureId;
 
-      console.log('下一个模型加载成功，新的模型索引应该是:', nextModelId);
-    } catch (error) {
-      console.error('加载下一个模型失败:', error);
+    if (!currentModelList || currentModelList.length === 0) {
+      console.warn('模型列表为空，无法切换换装');
+      return;
+    }
+
+    const currentModel = currentModelList[currentModelId];
+    if (!currentModel) {
+      console.warn('当前模型不存在');
+      return;
+    }
+
+    // 计算可用的换装数量（包括默认服装）
+    const totalCostumes = currentModel.costumes ? currentModel.costumes.length + 1 : 1;
+
+    if (totalCostumes <= 1) {
+      console.log('当前模型没有换装');
       dispatchRef.current({
         type: 'SET_MESSAGE',
         payload: {
-          text: '切换模型失败',
-          priority: 10
+          text: '当前模型没有换装',
+          priority: 5
         }
       });
+      return;
     }
-  }, [loadModel]); // 移除state.modelId依赖，避免闭包问题
 
-  // 初始化
+    // 切换到下一个换装
+    const nextTextureId = (currentTextureId + 1) % totalCostumes;
+    console.log(`切换换装: ${currentTextureId} -> ${nextTextureId}`);
+
+    dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: nextTextureId });
+
+    // 保存换装索引到缓存
+    await setCache('modelTexturesId', nextTextureId);
+
+    // 重新加载模型以应用新的换装
+    if (loadModelRef.current) {
+      await loadModelRef.current(currentModelId);
+    }
+
+    // 显示换装消息
+    const costumeMessage = nextTextureId === 0 ? '默认服装' : `换装 ${nextTextureId}`;
+    dispatchRef.current({
+      type: 'SET_MESSAGE',
+      payload: {
+        text: `${currentModel.name} - ${costumeMessage}`,
+        priority: 5
+      }
+    });
+  }, [state.textureId]);
+
+  // 初始化时加载模型列表
   useEffect(() => {
-    console.log('useLive2DModel初始化，加载模型列表');
-    loadModelList();
+    if (!modelListLoadedRef.current) {
+      loadModelList();
+    }
   }, [loadModelList]);
-
-  // 当模型列表加载完成后，如果库已初始化则自动加载第一个模型
-  useEffect(() => {
-    if (state.modelList && state.modelList.length > 0 && !loadingRef.current && state.isInitialized && loadModelRef.current) {
-      console.log('模型列表加载完成，库已初始化，自动加载第一个模型');
-      // 检查当前modelId是否有效，如果无效则加载第一个模型
-      const modelIdToLoad = state.modelId < state.modelList.length ? state.modelId : 0;
-      loadModelRef.current(modelIdToLoad).then(() => {
-        // 确保状态同步
-        if (modelIdToLoad !== state.modelId) {
-          dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIdToLoad });
-        }
-      });
-    } else if (state.modelList && state.modelList.length > 0 && !state.isInitialized) {
-      console.log('模型列表已加载，但库尚未初始化，等待初始化完成');
-    }
-  }, [state.modelList, state.isInitialized]); // 移除loadModel依赖，避免循环依赖
 
   // 当模型ID变化时加载对应模型
   useEffect(() => {
-    console.log('模型ID变更:', state.modelId);
-    if (state.modelList && state.modelList.length > 0 && state.modelId < state.modelList.length && state.isInitialized) {
-      console.log('模型ID变更触发加载:', state.modelId);
-      // 为了避免无限循环，不要在这里加载模型
-      // 模型加载应该由切换动作触发
+    if (state.isInitialized && state.modelList.length > 0 && loadModelRef.current) {
+      loadModelRef.current(state.modelId);
     }
-  }, [state.modelId, state.modelList, state.isInitialized]);
+  }, [state.modelId, state.isInitialized, state.modelList.length]);
 
   return {
-    loadModel,
-    loadRandomTexture,
-    loadNextModel,
     cubism2Model,
+    loadNextModel,
+    loadRandomTexture,
+    loadModelList
   };
 } 

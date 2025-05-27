@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // 模型目录路径
-const MOC_DIR = path.join(__dirname, '../packages/renderer/public/assets/models/moc');
+const MOC_DIR = path.join(__dirname, '../packages/renderer/public/assets/models');
 const OUTPUT_FILE = path.join(__dirname, '../packages/renderer/public/assets/costume_model_list.json');
 
 // 模型名称到显示名称的映射
@@ -211,7 +211,7 @@ function getModelCostumes(modelDir, modelName) {
 
 
 /**
- * 扫描 moc 目录并生成模型列表
+ * 扫描 models 目录并生成模型列表
  */
 function scanModels() {
   if (!fs.existsSync(MOC_DIR)) {
