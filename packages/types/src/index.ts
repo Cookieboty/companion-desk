@@ -8,6 +8,7 @@ export interface IpcApi {
   saveModel: (modelName: string) => void;
   getSavedModel: () => Promise<string>;
   readLocalFile: (filePath: string) => Promise<string | Blob>;
+  getCursorPosition: () => Promise<{ x: number; y: number }>;
 }
 
 // 在渲染进程中可用的Electron API

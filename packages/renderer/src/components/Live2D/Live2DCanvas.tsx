@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useLive2D } from '@/contexts/Live2DContext';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import { useWindowDrag } from '@/hooks/useWindowDrag';
+import { useCanvasAdaptive } from '@/hooks/useCanvasAdaptive';
 import { loadExternalResource } from '@/utils/live2d-utils';
 import logger from '@/utils/logger';
 
@@ -18,60 +19,77 @@ declare global {
 
 export const Live2DCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { state, config, dispatch } = useLive2D();
   const { cubism2Model } = useLive2DModel();
+  const { adaptiveParams, canvasSize, isAdaptiveEnabled } = useCanvasAdaptive(containerRef, cubism2Model);
+
+  // 计算适合的Canvas尺寸
+  const calculateCanvasSize = useCallback(() => {
+    if (!cubism2Model) return { width: 800, height: 800 };
+
+    const modelSize = cubism2Model.getModelCanvasSize();
+    if (!modelSize) return { width: 800, height: 800 };
+
+    const modelAspect = modelSize.width / modelSize.height;
+
+    // 对于高瘦模型，使用更合适的Canvas尺寸，确保有足够高度
+    if (modelAspect < 0.6) {
+      // 非常高的模型：使用更高的Canvas，确保模型和工具栏都能完整显示
+      return { width: 500, height: 1200 }; // 增加高度
+    } else if (modelAspect < 0.8) {
+      // 较高的模型
+      return { width: 600, height: 1000 };
+    } else {
+      // 正常比例的模型
+      return { width: 800, height: 800 };
+    }
+  }, [cubism2Model]);
+
+  const [dynamicCanvasSize, setDynamicCanvasSize] = useState({ width: 800, height: 800 });
+
+  // 当模型加载后更新Canvas尺寸
+  useEffect(() => {
+    if (cubism2Model) {
+      const newSize = calculateCanvasSize();
+      setDynamicCanvasSize(newSize);
+
+      // 更新全局状态
+      dispatch({ type: 'SET_CANVAS_SIZE', payload: newSize });
+    }
+  }, [cubism2Model, calculateCanvasSize, dispatch]);
 
   // 启用拖拽功能
   useWindowDrag('live2d');
 
-  // 初始化canvas和加载Cubism库
   useEffect(() => {
     const initCanvas = async () => {
-      if (!canvasRef.current || !config.cubism2Path) {
-        console.log('Canvas或cubism2Path未准备好');
-        return;
-      }
-
-      // 检查是否已经初始化过
-      if (state.isInitialized) {
-        console.log('Live2D库已经初始化，跳过重复初始化');
-        return;
-      }
-
       try {
-        console.log('开始加载Cubism库:', config.cubism2Path);
+        // 加载Cubism2库
+        await loadExternalResource(config.cubism2Path || '', 'js');
 
-        // 加载Cubism库(已增强，会等待库完全初始化)
-        await loadExternalResource(config.cubism2Path, 'js');
+        // 检查Live2D是否成功加载
+        if (typeof window.Live2D === 'undefined') {
+          throw new Error('Live2D库加载失败');
+        }
 
-        // 额外检查确保Live2D全局对象已经可用
-        let attempts = 0;
-        const maxAttempts = 50;
+        // 初始化Live2D
+        window.Live2D.init();
 
-        const checkLive2DReady = () => {
-          attempts++;
-          console.log(`检查Live2D库是否就绪... (${attempts}/${maxAttempts})`);
+        logger.info('Live2D引擎初始化成功');
 
-          if (typeof window.Live2D !== 'undefined' &&
-            typeof window.Live2DMotion !== 'undefined' &&
-            typeof window.AMotion !== 'undefined') {
-            console.log('Live2D库全局对象确认可用');
-            logger.info('Cubism库加载成功');
+        dispatch({
+          type: 'SET_INITIALIZED',
+          payload: true
+        });
 
-            // 设置初始化状态
-            dispatch({ type: 'SET_INITIALIZED', payload: true });
-            console.log('Live2D初始化状态已设置为true');
-          } else if (attempts < maxAttempts) {
-            console.log('Live2D库尚未完全就绪，继续等待...');
-            setTimeout(checkLive2DReady, 100);
-          } else {
-            console.error('Live2D库初始化超时');
-            throw new Error('Live2D库初始化超时');
+        dispatch({
+          type: 'SET_MESSAGE',
+          payload: {
+            text: '看板娘加载完成！',
+            priority: 1
           }
-        };
-
-        // 开始检查Live2D是否就绪
-        setTimeout(checkLive2DReady, 50);
+        });
 
       } catch (error) {
         console.error('加载Cubism库失败:', error);
@@ -89,26 +107,90 @@ export const Live2DCanvas: React.FC = () => {
     initCanvas();
   }, [config.cubism2Path, dispatch, state.isInitialized]);
 
+  // 应用自适应参数到Cubism2Model
+  useEffect(() => {
+    if (cubism2Model && adaptiveParams && isAdaptiveEnabled) {
+      cubism2Model.updateAdaptiveLayout(
+        state.canvasSize.width,
+        state.canvasSize.height,
+        state.displaySize.width,
+        state.displaySize.height
+      );
+    }
+  }, [cubism2Model, adaptiveParams, isAdaptiveEnabled, state.canvasSize, state.displaySize]);
+
+  // 当自适应配置变化时，更新Cubism2Model的配置
+  useEffect(() => {
+    if (cubism2Model) {
+      cubism2Model.updateAdaptiveConfig(state.adaptiveConfig);
+      cubism2Model.setAdaptiveMode(state.isAdaptiveEnabled);
+    }
+  }, [cubism2Model, state.adaptiveConfig, state.isAdaptiveEnabled]);
+
   // 当模型或纹理ID变化时进行重绘
   useEffect(() => {
     // 实际的模型加载在useLive2DModel中处理
   }, [state.modelId, state.textureId]);
 
+  // 测试自适应功能的函数
+  const testAdaptive = () => {
+    if (cubism2Model && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      console.log('手动触发自适应测试:', {
+        containerSize: { width: rect.width, height: rect.height },
+        canvasSize: canvasSize,
+        displaySize: state.displaySize,
+        isAdaptiveEnabled,
+        modelCanvasSize: cubism2Model.getModelCanvasSize()
+      });
+
+      // 如果启用了自适应，强制重新计算Canvas尺寸
+      if (state.adaptiveConfig.enabled) {
+        const success = cubism2Model.applyAdaptiveCanvasSize(rect.width);
+        console.log('Canvas自适应结果:', success);
+      } else {
+        // 强制更新自适应布局
+        cubism2Model.updateAdaptiveLayout(
+          state.canvasSize.width,
+          state.canvasSize.height,
+          rect.width,
+          rect.height
+        );
+      }
+    }
+  };
+
   return (
-    <div id="waifu-canvas" className="waifu-canvas">
+    <div
+      ref={containerRef}
+      id="waifu-canvas"
+      className="waifu-canvas"
+    >
       <canvas
         id="live2d"
         ref={canvasRef}
-        width="800"
-        height="800"
+        width={dynamicCanvasSize.width}
+        height={dynamicCanvasSize.height}
         style={{
           width: '250px',
-          height: '250px',
-          position: 'absolute',
-          bottom: '0',
-          left: '0'
+          height: `${250 * (dynamicCanvasSize.height / dynamicCanvasSize.width)}px`,
+          position: 'relative',
+          display: 'block'
         }}
       />
+      {state.adaptiveConfig.showDebugInfo && (
+        <div className="waifu-adaptive-debug">
+          Canvas: {dynamicCanvasSize.width}×{dynamicCanvasSize.height}<br />
+          Display: 250×{Math.round(250 * (dynamicCanvasSize.height / dynamicCanvasSize.width))}<br />
+          Model: {cubism2Model?.getModelCanvasSize() ?
+            `${cubism2Model.getModelCanvasSize().width}×${cubism2Model.getModelCanvasSize().height}` :
+            'N/A'}<br />
+          Adaptive: {isAdaptiveEnabled ? 'ON' : 'OFF'}<br />
+          <button onClick={testAdaptive} style={{ fontSize: '10px', padding: '2px 4px' }}>
+            Test Adaptive
+          </button>
+        </div>
+      )}
     </div>
   );
 }; 

@@ -80,14 +80,19 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
 
                     const checkInitialized = () => {
                       attempts++;
-                      // 检查Live2D关键对象是否已初始化
+                      // 检查Live2D核心对象是否已初始化
                       if (typeof window.Live2D !== 'undefined' &&
                         typeof window.AMotion !== 'undefined' &&
                         typeof window.Live2DMotion !== 'undefined') {
-                        console.log('Live2D库全局对象已成功初始化');
+                        console.log('Live2D库核心对象已成功初始化');
                         resolve();
                       } else {
                         console.log(`等待Live2D库初始化... (${attempts}/${maxAttempts})`);
+                        console.log('当前状态:', {
+                          Live2D: typeof window.Live2D,
+                          AMotion: typeof window.AMotion,
+                          Live2DMotion: typeof window.Live2DMotion
+                        });
                         // 如果未初始化且未超过最大尝试次数，延迟后再次检查
                         if (attempts < maxAttempts) {
                           setTimeout(checkInitialized, 100);
@@ -152,15 +157,20 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
         // 对于Live2D库，需要特殊处理确保完全加载
         if (isLive2DLibrary) {
           tag.onload = () => {
-            // 检查Live2D关键对象是否已初始化
+            // 检查Live2D核心对象是否已初始化
             const checkInitialized = () => {
               if (typeof window.Live2D !== 'undefined' &&
                 typeof window.AMotion !== 'undefined' &&
                 typeof window.Live2DMotion !== 'undefined') {
-                console.log('Live2D库全局对象已成功初始化');
+                console.log('Live2D库核心对象已成功初始化');
                 resolve(tag);
               } else {
                 console.log('等待Live2D库初始化...');
+                console.log('当前状态:', {
+                  Live2D: typeof window.Live2D,
+                  AMotion: typeof window.AMotion,
+                  Live2DMotion: typeof window.Live2DMotion
+                });
                 // 如果未初始化，延迟100ms后再次检查
                 setTimeout(checkInitialized, 100);
               }
@@ -202,11 +212,33 @@ export async function customFetch(
   timeout = 10000,
   retries = 2
 ): Promise<Response> {
-  // 检查是否为相对URL，并且在Electron环境中
-  if (!url.startsWith('http') && !url.startsWith('blob:') && window.electronAPI) {
+  // 对URL进行编码处理，确保特殊字符正确处理
+  let processedUrl = url;
+
+  // 如果URL包含非ASCII字符，进行编码处理
+  if (!/^[\x00-\x7F]*$/.test(url)) {
     try {
-      console.log('通过Electron API加载本地JSON:', url);
-      const data = await window.electronAPI.readLocalFile(url);
+      // 分离路径和文件名
+      const urlParts = url.split('/');
+      const encodedParts = urlParts.map(part => {
+        // 如果部分包含非ASCII字符，进行编码
+        if (!/^[\x00-\x7F]*$/.test(part)) {
+          return encodeURIComponent(part);
+        }
+        return part;
+      });
+      processedUrl = encodedParts.join('/');
+      console.log('URL编码处理:', url, '->', processedUrl);
+    } catch (error) {
+      console.warn('URL编码处理失败，使用原始URL:', error);
+    }
+  }
+
+  // 检查是否为相对URL，并且在Electron环境中
+  if (!processedUrl.startsWith('http') && !processedUrl.startsWith('blob:') && window.electronAPI) {
+    try {
+      console.log('通过Electron API加载本地JSON:', processedUrl);
+      const data = await window.electronAPI.readLocalFile(processedUrl);
 
       if (data) {
         console.log('成功通过Electron API加载本地JSON');
@@ -227,7 +259,7 @@ export async function customFetch(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(processedUrl, {
       ...options,
       signal: controller.signal
     });

@@ -31,10 +31,7 @@ export interface ModelConfig {
    */
   apiPath?: string;
 
-  /**
-   * CDN路径，用于从CDN加载模型（可选）
-   */
-  cdnPath?: string;
+
 
   /**
    * Cubism2核心路径，用于加载Cubism2模型（可选）
