@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "clean": "rimraf dist",
-    "test": "vitest run"
+    "test": "vitest run",
+    "package": "echo 'Renderer build completed, no packaging needed'"
   },
   "author": "",
   "license": "MIT",

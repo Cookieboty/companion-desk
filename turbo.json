@@ -11,9 +11,17 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "package": {
+    "@ig-live/electron#package": {
       "cache": false,
-      "dependsOn": ["^build"]
+      "dependsOn": ["@ig-live/electron#build", "@ig-live/renderer#build"]
+    },
+    "@ig-live/renderer#package": {
+      "cache": false,
+      "dependsOn": ["@ig-live/renderer#build"]
+    },
+    "@ig-live/types#package": {
+      "cache": false,
+      "dependsOn": ["@ig-live/types#build"]
     },
     "package:prod": {
       "cache": false,

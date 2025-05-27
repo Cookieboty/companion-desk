@@ -178,7 +178,7 @@ export const Live2DCanvas: React.FC = () => {
           display: 'block'
         }}
       />
-      {state.adaptiveConfig.showDebugInfo && (
+      {/* {state.adaptiveConfig.showDebugInfo && (
         <div className="waifu-adaptive-debug">
           Canvas: {dynamicCanvasSize.width}×{dynamicCanvasSize.height}<br />
           Display: 250×{Math.round(250 * (dynamicCanvasSize.height / dynamicCanvasSize.width))}<br />
@@ -190,7 +190,7 @@ export const Live2DCanvas: React.FC = () => {
             Test Adaptive
           </button>
         </div>
-      )}
+      )} */}
     </div>
   );
 }; 
