@@ -107,12 +107,28 @@ function hasValidModelFile(modelDir) {
   try {
     const files = fs.readdirSync(modelDir);
 
-    // 检查是否有模型文件：.model.json, model.json, index.json
-    const modelFiles = files.filter(file =>
-      file.endsWith('.model.json') ||
-      file === 'model.json' ||
-      file === 'index.json'
-    );
+    // 检查是否有模型文件：.model.json, model.json, index.json，排除配置文件
+    const modelFiles = files.filter(file => {
+      // 只包含模型文件
+      if (file.endsWith('.model.json') || file === 'model.json' || file === 'index.json') {
+        return true;
+      }
+
+      // 对于其他.json文件，排除配置文件
+      if (file.endsWith('.json')) {
+        const excludePatterns = [
+          '.physics.json', '.pose.json', '.settings.json',
+          'physics.json', 'pose.json', 'settings.json',
+          'params.json', 'textures_order.json'
+        ];
+
+        return !excludePatterns.some(pattern =>
+          file.endsWith(pattern) || file.includes(pattern.replace('.json', '.'))
+        );
+      }
+
+      return false;
+    });
 
     return modelFiles.length > 0;
   } catch (error) {
@@ -148,12 +164,30 @@ function hasCostumeFeature(modelDir) {
 function getModelCostumes(modelDir, modelName) {
   const files = fs.readdirSync(modelDir);
 
-  // 获取所有模型文件：.model.json, model.json, index.json
-  const modelFiles = files.filter(file =>
-    file.endsWith('.model.json') ||
-    file === 'model.json' ||
-    file === 'index.json'
-  );
+  // 获取所有模型文件：.model.json, model.json, index.json，排除配置文件
+  const modelFiles = files.filter(file => {
+    // 只包含模型文件
+    if (file.endsWith('.model.json') || file === 'model.json' || file === 'index.json') {
+      return true;
+    }
+
+    // 对于其他.json文件，排除配置文件
+    if (file.endsWith('.json')) {
+      const excludePatterns = [
+        '.physics.json', '.pose.json', '.settings.json',
+        'physics.json', 'pose.json', 'settings.json',
+        'params.json', 'textures_order.json'
+      ];
+
+      return !excludePatterns.some(pattern =>
+        file.endsWith(pattern) || file.includes(pattern.replace('.json', '.'))
+      );
+    }
+
+    return false;
+  });
+
+
 
   // 查找默认模型文件，优先级顺序
   let defaultFile = null;
@@ -187,6 +221,8 @@ function getModelCostumes(modelDir, modelName) {
     defaultFile = modelFiles[0];
   }
 
+
+
   // 构建默认模型路径
   const defaultPath = `${modelName}/${defaultFile}`;
 
@@ -202,6 +238,8 @@ function getModelCostumes(modelDir, modelName) {
   const costumes = modelFiles
     .filter(file => file !== defaultFile)
     .map(file => `${modelName}/${file}`);
+
+
 
   return {
     path: defaultPath,
