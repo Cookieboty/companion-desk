@@ -182,7 +182,9 @@ export const Live2DCanvas: React.FC = () => {
           width: '250px',
           height: `${250 * (dynamicCanvasSize.height / dynamicCanvasSize.width)}px`,
           position: 'relative',
-          display: 'block'
+          display: 'block',
+          background: 'transparent',
+          backgroundColor: 'transparent'
         }}
       />
       {/* {state.adaptiveConfig.showDebugInfo && (

@@ -17,17 +17,18 @@
   /* 保持显示 */
 }
 
-/* 看板娘提示 */
+/* 看板娘提示 - 完全透明背景 */
 #waifu-tips {
   opacity: 0;
   width: 250px;
   min-height: 70px;
   margin: -70px 20px;
   padding: 5px 10px;
-  border: 1px solid rgba(224, 186, 140, 0.62);
+  border: none; /* 移除边框 */
   border-radius: 12px;
-  background-color: rgba(236, 217, 188, 0.8);
-  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.2);
+  background-color: transparent !important; /* 强制透明背景 */
+  background: transparent !important; /* 强制透明背景 */
+  box-shadow: none; /* 移除阴影 */
   font-size: 14px;
   line-height: 24px;
   word-break: break-all;
@@ -41,11 +42,15 @@
   animation-timing-function: ease-in-out;
   transition: opacity 0.3s;
   z-index: 20;
+  color: transparent; /* 让文字也透明，彻底隐藏消息气泡 */
 }
 
 #waifu-tips.waifu-tips-active {
-  opacity: 1;
+  opacity: 0; /* 即使激活状态也保持透明 */
   transition: opacity 0.3s;
+  background-color: transparent !important; /* 强制透明背景 */
+  background: transparent !important; /* 强制透明背景 */
+  color: transparent !important; /* 强制透明文字 */
 }
 
 /* 看板娘工具栏 */
@@ -120,6 +125,8 @@
   max-width: 100%;
   max-height: 90vh; /* 限制最大高度 */
   object-fit: contain; /* 保持宽高比 */
+  background: transparent !important; /* 强制透明背景 */
+  background-color: transparent !important; /* 强制透明背景色 */
 }
 
 /* 加载动画 */
