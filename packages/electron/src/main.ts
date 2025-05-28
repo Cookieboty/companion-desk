@@ -126,15 +126,9 @@ function createWindow() {
 
       if (isInWindow !== mouseInWindow) {
         mouseInWindow = isInWindow;
-        console.log(`鼠标状态变化: ${isInWindow ? '进入' : '离开'}窗口`, {
-          cursor: cursorPos,
-          window: windowBounds,
-          isInWindow
-        });
 
         if (mainWindow.webContents) {
           const eventName = isInWindow ? 'window-mouse-enter' : 'window-mouse-leave';
-          console.log(`发送事件: ${eventName}`);
           mainWindow.webContents.send(eventName);
         }
       }
@@ -181,11 +175,6 @@ function createWindow() {
     // 在生产环境中，从本地构建目录或extraResources中加载渲染器
     let rendererPath: string | undefined;
 
-    // 打印应用路径信息用于调试
-    console.log('应用程序路径(app.getAppPath()):', app.getAppPath());
-    console.log('exe路径(app.getPath(exe)):', app.getPath('exe'));
-    console.log('isPackaged:', app.isPackaged);
-    console.log('__dirname:', __dirname);
 
     // 构建各种可能的路径
 
@@ -217,35 +206,17 @@ function createWindow() {
     // 本地dist/renderer目录
     const localRendererPath = path.join(__dirname, 'renderer', 'index.html');
 
-    // 输出所有路径用于调试
-    console.log('macOS资源渲染器路径:', macOSResourcesPath);
-    console.log('macOS应用渲染器路径:', macOSAppPath);
-    console.log('资源渲染器路径:', resourceRendererPath);
-    console.log('本地渲染器路径:', localRendererPath);
-
-    // 检查路径是否存在
-    console.log('macOSResourcesPath存在:', fs.existsSync(macOSResourcesPath));
-    console.log('macOSAppPath存在:', fs.existsSync(macOSAppPath));
-    console.log('resourceRendererPath存在:', fs.existsSync(resourceRendererPath));
-    console.log('localRendererPath存在:', fs.existsSync(localRendererPath));
-
     // 尝试按顺序使用各种路径
     if (process.platform === 'darwin' && fs.existsSync(macOSResourcesPath)) {
       rendererPath = macOSResourcesPath;
-      console.log('使用macOS资源路径:', macOSResourcesPath);
     } else if (process.platform === 'darwin' && fs.existsSync(macOSAppPath)) {
       rendererPath = macOSAppPath;
-      console.log('使用macOS应用路径:', macOSAppPath);
     } else if (fs.existsSync(resourceRendererPath)) {
-      rendererPath = resourceRendererPath;
-      console.log('使用资源渲染器路径:', resourceRendererPath);
     } else if (fs.existsSync(localRendererPath)) {
       rendererPath = localRendererPath;
-      console.log('使用本地渲染器路径:', localRendererPath);
     } else {
       // 尝试列出目录内容以辅助调试
       try {
-        console.log('列出可能的目录内容:');
 
         // 列出应用程序目录
         const appDir = app.getAppPath();
@@ -257,13 +228,6 @@ function createWindow() {
             path.dirname(path.dirname(app.getPath('exe'))),
             'Resources'
           );
-          console.log('macOS Resources目录内容:', fs.existsSync(macResourcesDir) ? fs.readdirSync(macResourcesDir) : '目录不存在');
-
-          // 查看是否有renderer目录
-          const macRendererDir = path.join(macResourcesDir, 'renderer');
-          if (fs.existsSync(macRendererDir)) {
-            console.log('macOS renderer目录内容:', fs.readdirSync(macRendererDir));
-          }
         }
       } catch (err) {
         console.error('列出目录内容失败:', err);
@@ -695,61 +659,6 @@ ipcMain.handle('read-local-file', async (event, filePath) => {
     // 检查文件是否存在
     if (!fs.existsSync(absolutePath)) {
       console.error('文件不存在:', absolutePath);
-
-      // 尝试列出可能的目录内容以辅助调试
-      try {
-        console.log('列出可能的目录内容:');
-
-        // 列出renderer目录
-        if (app.isPackaged) {
-          if (process.platform === 'darwin') {
-            const resourcesDir = path.join(
-              path.dirname(path.dirname(app.getPath('exe'))),
-              'Resources'
-            );
-            console.log('Resources目录内容:', fs.existsSync(resourcesDir) ? fs.readdirSync(resourcesDir) : '目录不存在');
-
-            const rendererDir = path.join(resourcesDir, 'renderer');
-            if (fs.existsSync(rendererDir)) {
-              console.log('renderer目录内容:', fs.readdirSync(rendererDir));
-
-              const assetsDir = path.join(rendererDir, 'assets');
-              if (fs.existsSync(assetsDir)) {
-                console.log('assets目录内容:', fs.readdirSync(assetsDir));
-              }
-            }
-          } else {
-            const resourcesDir = path.join(
-              path.dirname(app.getPath('exe')),
-              'resources'
-            );
-            console.log('resources目录内容:', fs.existsSync(resourcesDir) ? fs.readdirSync(resourcesDir) : '目录不存在');
-
-            const rendererDir = path.join(resourcesDir, 'renderer');
-            if (fs.existsSync(rendererDir)) {
-              console.log('renderer目录内容:', fs.readdirSync(rendererDir));
-
-              const assetsDir = path.join(rendererDir, 'assets');
-              if (fs.existsSync(assetsDir)) {
-                console.log('assets目录内容:', fs.readdirSync(assetsDir));
-              }
-            }
-          }
-        } else {
-          const rendererDir = path.join(app.getAppPath(), 'packages', 'renderer', 'dist');
-          if (fs.existsSync(rendererDir)) {
-            console.log('renderer/dist目录内容:', fs.readdirSync(rendererDir));
-
-            const assetsDir = path.join(rendererDir, 'assets');
-            if (fs.existsSync(assetsDir)) {
-              console.log('renderer/dist/assets目录内容:', fs.readdirSync(assetsDir));
-            }
-          }
-        }
-      } catch (err) {
-        console.error('列出目录内容失败:', err);
-      }
-
       return null;
     }
 

@@ -26,19 +26,22 @@
   -webkit-tap-highlight-color: transparent !important;
 }
 
-.active {
+/* .active {
   opacity: 1;
   transition: opacity 0.3s ease-in-out;
-}
+} */
 
 /* 确保消息气泡在所有状态下都没有focus效果 */
 .messageBubble:focus,
 .messageBubble:active,
 .messageBubble:hover {
   outline: none !important;
-  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3) !important; /* 保持原有阴影 */
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  /* box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3) !important; 
   border: 1px solid rgba(224, 186, 140, 0.62) !important;
-  background-color: rgba(236, 217, 188, 0.9) !important;
+  background-color: rgba(236, 217, 188, 0.9) !important; */
 }
 
 /* 添加消息气泡的小三角箭头指向看板娘 */
