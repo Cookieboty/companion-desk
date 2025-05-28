@@ -29,7 +29,7 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
 
     // 如果不是外部URL，尝试使用electron API获取本地资源路径
     if (!isExternalUrl && window.electronAPI && type === 'js') {
-      console.log('通过Electron API加载本地资源:', url);
+
 
       // 为Electron环境准备多个可能的路径
       const filename = url.split('/').pop();
@@ -47,7 +47,7 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
         `packages/renderer/public/assets/${filename}` // 源码路径
       ];
 
-      console.log('尝试以下可能的路径:', possiblePaths);
+
 
       // 使用全局模式创建script标签
       const scriptTag = document.createElement('script');
@@ -61,12 +61,12 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
           if (loaded) break;
 
           try {
-            console.log('尝试加载路径:', path);
+
             // 先加载本地文件，然后作为内联脚本插入
             const content = await window.electronAPI.readLocalFile(path).catch(() => null);
 
             if (content) {
-              console.log('成功通过Electron API加载本地资源:', path);
+
               // 将内容作为内联脚本插入
               scriptTag.textContent = typeof content === 'string' ? content : '';
               document.head.appendChild(scriptTag);
@@ -84,15 +84,8 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
                       if (typeof window.Live2D !== 'undefined' &&
                         typeof window.AMotion !== 'undefined' &&
                         typeof window.Live2DMotion !== 'undefined') {
-                        console.log('Live2D库核心对象已成功初始化');
                         resolve();
                       } else {
-                        console.log(`等待Live2D库初始化... (${attempts}/${maxAttempts})`);
-                        console.log('当前状态:', {
-                          Live2D: typeof window.Live2D,
-                          AMotion: typeof window.AMotion,
-                          Live2DMotion: typeof window.Live2DMotion
-                        });
                         // 如果未初始化且未超过最大尝试次数，延迟后再次检查
                         if (attempts < maxAttempts) {
                           setTimeout(checkInitialized, 100);
@@ -162,15 +155,8 @@ export function loadExternalResource(url: string, type: 'js' | 'css'): Promise<H
               if (typeof window.Live2D !== 'undefined' &&
                 typeof window.AMotion !== 'undefined' &&
                 typeof window.Live2DMotion !== 'undefined') {
-                console.log('Live2D库核心对象已成功初始化');
                 resolve(tag);
               } else {
-                console.log('等待Live2D库初始化...');
-                console.log('当前状态:', {
-                  Live2D: typeof window.Live2D,
-                  AMotion: typeof window.AMotion,
-                  Live2DMotion: typeof window.Live2DMotion
-                });
                 // 如果未初始化，延迟100ms后再次检查
                 setTimeout(checkInitialized, 100);
               }
@@ -228,7 +214,7 @@ export async function customFetch(
         return part;
       });
       processedUrl = encodedParts.join('/');
-      console.log('URL编码处理:', url, '->', processedUrl);
+
     } catch (error) {
       console.warn('URL编码处理失败，使用原始URL:', error);
     }
@@ -237,11 +223,11 @@ export async function customFetch(
   // 检查是否为相对URL，并且在Electron环境中
   if (!processedUrl.startsWith('http') && !processedUrl.startsWith('blob:') && window.electronAPI) {
     try {
-      console.log('通过Electron API加载本地JSON:', processedUrl);
+
       const data = await window.electronAPI.readLocalFile(processedUrl);
 
       if (data) {
-        console.log('成功通过Electron API加载本地JSON');
+
         // 创建一个Response对象
         return new Response(data, {
           status: 200,

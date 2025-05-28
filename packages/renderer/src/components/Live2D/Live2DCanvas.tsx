@@ -76,6 +76,13 @@ export const Live2DCanvas: React.FC = () => {
         // 初始化Live2D
         window.Live2D.init();
 
+        // 禁用Live2D库的调试日志输出，避免控制台被大量调试信息刷屏
+        // Q._$so 是Live2D库内部的调试标志，设置为false可以禁用调试日志
+        if (typeof (window as any).Q !== 'undefined' && typeof (window as any).Q._$so !== 'undefined') {
+          (window as any).Q._$so = false;
+          logger.info('Live2D调试日志已禁用');
+        }
+
         logger.info('Live2D引擎初始化成功');
 
         dispatch({
