@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Live2DCanvas } from './Live2DCanvas';
 import { MessageBubble } from './MessageBubble';
-import { ToolBar } from './ToolBar';
 import { LoadingIndicator } from './LoadingIndicator';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
@@ -57,7 +56,6 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
       <div id="waifu" className="waifu-active">
         {loading && <LoadingIndicator />}
         <Live2DCanvas />
-        <ToolBar />
       </div>
     </Live2DProvider>
   );

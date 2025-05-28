@@ -9,6 +9,9 @@ export interface IpcApi {
   getSavedModel: () => Promise<string>;
   readLocalFile: (filePath: string) => Promise<string | Blob>;
   getCursorPosition: () => Promise<{ x: number; y: number }>;
+  onWindowMouseEnter: (callback: () => void) => void;
+  onWindowMouseLeave: (callback: () => void) => void;
+  removeWindowMouseListeners: () => void;
 }
 
 // 在渲染进程中可用的Electron API

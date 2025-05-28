@@ -108,6 +108,49 @@ function createWindow() {
     }
   });
 
+  // 添加窗口鼠标事件监听
+  let mouseInWindow = false;
+
+  // 定期检查鼠标位置
+  const checkMousePosition = () => {
+    if (!mainWindow) return;
+
+    try {
+      const cursorPos = screen.getCursorScreenPoint();
+      const windowBounds = mainWindow.getBounds();
+
+      const isInWindow = cursorPos.x >= windowBounds.x &&
+        cursorPos.x <= windowBounds.x + windowBounds.width &&
+        cursorPos.y >= windowBounds.y &&
+        cursorPos.y <= windowBounds.y + windowBounds.height;
+
+      if (isInWindow !== mouseInWindow) {
+        mouseInWindow = isInWindow;
+        console.log(`鼠标状态变化: ${isInWindow ? '进入' : '离开'}窗口`, {
+          cursor: cursorPos,
+          window: windowBounds,
+          isInWindow
+        });
+
+        if (mainWindow.webContents) {
+          const eventName = isInWindow ? 'window-mouse-enter' : 'window-mouse-leave';
+          console.log(`发送事件: ${eventName}`);
+          mainWindow.webContents.send(eventName);
+        }
+      }
+    } catch (error) {
+      console.error('检查鼠标位置时出错:', error);
+    }
+  };
+
+  // 每100ms检查一次鼠标位置
+  const mouseCheckInterval = setInterval(checkMousePosition, 100);
+
+  // 窗口关闭时清理定时器
+  mainWindow.on('closed', () => {
+    clearInterval(mouseCheckInterval);
+  });
+
   // 加载应用
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -203,6 +246,7 @@ function createWindow() {
       // 尝试列出目录内容以辅助调试
       try {
         console.log('列出可能的目录内容:');
+
         // 列出应用程序目录
         const appDir = app.getAppPath();
         console.log('应用程序目录内容:', fs.existsSync(appDir) ? fs.readdirSync(appDir) : '目录不存在');

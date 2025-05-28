@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Live2dWidget from './components/Live2dWidget';
+import { ToolBar } from './components/ToolBar';
 import type { ModelConfig } from './types/live2d';
 
 const App: React.FC = () => {
@@ -23,6 +24,8 @@ const App: React.FC = () => {
   return (
     <div className="app">
       <Live2dWidget config={live2dConfig} />
+      {/* 独立的工具栏组件 - 完全不影响Live2D */}
+      <ToolBar />
     </div>
   );
 };

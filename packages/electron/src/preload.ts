@@ -45,5 +45,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 获取鼠标位置
   getCursorPosition: async () => {
     return await ipcRenderer.invoke('get-cursor-position');
+  },
+  // 监听窗口鼠标事件
+  onWindowMouseEnter: (callback: () => void) => {
+    ipcRenderer.on('window-mouse-enter', callback);
+  },
+  onWindowMouseLeave: (callback: () => void) => {
+    ipcRenderer.on('window-mouse-leave', callback);
+  },
+  // 移除窗口鼠标事件监听
+  removeWindowMouseListeners: () => {
+    ipcRenderer.removeAllListeners('window-mouse-enter');
+    ipcRenderer.removeAllListeners('window-mouse-leave');
   }
 } as IpcApi); 
