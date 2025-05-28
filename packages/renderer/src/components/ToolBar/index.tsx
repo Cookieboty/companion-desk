@@ -10,21 +10,47 @@ import {
   fa_thumbtack
 } from '@/utils/icons';
 import { getCache, setCache } from '@/utils/cache';
-import './style.css';
+import { useLive2DModel } from '@/hooks/useLive2DModel';
+import styles from './style.module.css';
 
 export const ToolBar: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false); // 默认隐藏
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
+  const { loadNextModel, loadRandomTexture } = useLive2DModel();
 
   // 配置可用的工具
   const availableTools = [
     'switch-model',
-    'switch-texture',
     'photo',
     'info',
     'quit',
     'toggle-top'
   ];
+
+  // 强制清除按钮focus状态的函数
+  const clearButtonFocus = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    const button = event.currentTarget;
+    // 立即移除focus
+    button.blur();
+    // 强制重置样式
+    button.style.outline = 'none';
+    button.style.boxShadow = '';
+    button.style.transform = '';
+    button.style.background = '';
+
+    // 延迟一帧后再次确保清除
+    requestAnimationFrame(() => {
+      button.blur();
+      button.style.outline = 'none';
+    });
+  }, []);
+
+  // Focus事件处理函数
+  const handleButtonFocus = useCallback((event: React.FocusEvent<HTMLButtonElement>) => {
+    const button = event.currentTarget;
+    button.blur();
+    button.style.outline = 'none';
+  }, []);
 
   // 鼠标事件监听
   useEffect(() => {
@@ -32,16 +58,12 @@ export const ToolBar: React.FC = () => {
     const electronAPI = (window as any).electronAPI;
 
     if (electronAPI) {
-      console.log('ToolBar: 检测到Electron环境');
-
       // 定义事件处理函数
       const handleWindowMouseEnter = () => {
-        console.log('ToolBar: 鼠标进入窗口');
         setIsVisible(true);
       };
 
       const handleWindowMouseLeave = () => {
-        console.log('ToolBar: 鼠标离开窗口');
         setIsVisible(false);
       };
 
@@ -55,16 +77,12 @@ export const ToolBar: React.FC = () => {
         electronAPI.removeWindowMouseListeners();
       };
     } else {
-      console.log('ToolBar: 非Electron环境，使用简单的鼠标事件');
-
       // 简单的鼠标事件处理
       const handleMouseEnter = () => {
-        console.log('ToolBar: 鼠标进入');
         setIsVisible(true);
       };
 
       const handleMouseLeave = () => {
-        console.log('ToolBar: 鼠标离开');
         setIsVisible(false);
       };
 
@@ -73,7 +91,6 @@ export const ToolBar: React.FC = () => {
       document.addEventListener('mouseleave', handleMouseLeave);
 
       return () => {
-        console.log('ToolBar: 清理DOM事件监听器');
         document.removeEventListener('mouseenter', handleMouseEnter);
         document.removeEventListener('mouseleave', handleMouseLeave);
       };
@@ -87,20 +104,44 @@ export const ToolBar: React.FC = () => {
 
   // 显示消息的简单实现
   const showMessage = useCallback((message: string, timeout: number = 4000) => {
-    // 创建或获取消息气泡元素
-    let messageElement = document.querySelector('.waifu-tips-independent') as HTMLElement;
+    // 通过ID获取消息气泡元素（MessageBubble组件已经设置了ID）
+    let messageElement = document.getElementById('waifu-tips-independent') as HTMLElement;
     if (!messageElement) {
+      // 如果找不到MessageBubble组件，创建一个临时的消息元素
       messageElement = document.createElement('div');
-      messageElement.className = 'waifu-tips-independent';
+      messageElement.id = 'waifu-tips-temp';
+      messageElement.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        width: 200px;
+        min-height: 70px;
+        margin-left: -100px;
+        padding: 8px 12px;
+        border: 1px solid rgba(224, 186, 140, 0.62);
+        border-radius: 12px;
+        background-color: rgba(236, 217, 188, 0.9);
+        box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3);
+        font-size: 14px;
+        line-height: 24px;
+        word-break: break-all;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        color: #8a6e2f;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+        z-index: 10000;
+        pointer-events: none;
+      `;
       document.body.appendChild(messageElement);
     }
 
     messageElement.innerHTML = message;
-    messageElement.classList.add('waifu-tips-active');
+    messageElement.style.opacity = '1';
 
     // 自动隐藏
     setTimeout(() => {
-      messageElement.classList.remove('waifu-tips-active');
+      messageElement.style.opacity = '0';
     }, timeout);
   }, []);
 
@@ -193,15 +234,27 @@ export const ToolBar: React.FC = () => {
     }
   }, [showMessage]);
 
-  // 切换模型 - 简化实现
-  const switchModel = useCallback(() => {
-    showMessage('切换模型功能需要Live2D Context支持');
-  }, [showMessage]);
+  // 切换模型 - 恢复完整功能
+  const switchModel = useCallback(async () => {
+    try {
+      await loadNextModel();
+      showMessage('正在切换模型...');
+    } catch (error) {
+      console.error('切换模型失败:', error);
+      showMessage('切换模型失败');
+    }
+  }, [loadNextModel, showMessage]);
 
-  // 切换纹理 - 简化实现
-  const switchTexture = useCallback(() => {
-    showMessage('切换纹理功能需要Live2D Context支持');
-  }, [showMessage]);
+  // 切换纹理 - 恢复完整功能
+  const switchTexture = useCallback(async () => {
+    try {
+      await loadRandomTexture();
+      showMessage('正在切换服装...');
+    } catch (error) {
+      console.error('切换服装失败:', error);
+      showMessage('切换服装失败');
+    }
+  }, [loadRandomTexture, showMessage]);
 
   // 获取工具图标
   const getToolIcon = (toolId: string): string => {
@@ -286,17 +339,45 @@ export const ToolBar: React.FC = () => {
 
   console.log('ToolBar: 渲染组件，isVisible =', isVisible);
 
+  // 获取按钮的CSS类名
+  const getButtonClassName = (toolId: string) => {
+    const baseClass = styles.button;
+    switch (toolId) {
+      case 'quit':
+        return `${baseClass} ${styles.closeButton}`;
+      case 'toggle-top':
+        return `${baseClass} ${styles.topButton}`;
+      case 'photo':
+        return `${baseClass} ${styles.photoButton}`;
+      default:
+        return baseClass;
+    }
+  };
+
+  // 创建按钮点击处理函数
+  const createButtonHandler = useCallback((handler: () => void) => {
+    return (event: React.MouseEvent<HTMLButtonElement>) => {
+      // 先清除focus状态
+      clearButtonFocus(event);
+      // 然后执行原始处理函数
+      handler();
+    };
+  }, [clearButtonFocus]);
+
   return (
-    <div className={`live2d-toolbar ${isVisible ? 'live2d-toolbar--visible' : 'live2d-toolbar--hidden'}`}>
+    <div className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}>
       {availableTools.map((tool) => (
         <button
           key={tool}
-          className="live2d-toolbar__button"
-          onClick={getToolHandler(tool)}
+          className={getButtonClassName(tool)}
+          onClick={createButtonHandler(getToolHandler(tool))}
+          onMouseDown={clearButtonFocus}
+          onMouseUp={clearButtonFocus}
+          onFocus={handleButtonFocus}
           title={getToolTip(tool)}
         >
           <div
-            className="live2d-toolbar__icon"
+            className={styles.icon}
             dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
           />
         </button>

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useLive2D } from '@/contexts/Live2DContext';
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
+import styles from './style.module.css';
 
 export const MessageBubble: React.FC = () => {
   const { state } = useLive2D();
   const [active, setActive] = useState(false);
-  const { showMessage } = useWaifuMessage();
 
   // 当消息变化时，添加/移除活跃类
   useEffect(() => {
@@ -23,16 +23,10 @@ export const MessageBubble: React.FC = () => {
     }
   }, [state.currentMessage]);
 
-  console.log('MessageBubble render:', {
-    currentMessage: state.currentMessage,
-    active,
-    className: `waifu-tips-independent ${active ? 'waifu-tips-active' : ''}`
-  });
-
   return (
     <div
       id="waifu-tips-independent"
-      className={`waifu-tips-independent ${active ? 'waifu-tips-active' : ''}`}
+      className={`${styles.messageBubble} ${active ? styles.active : ''}`}
       dangerouslySetInnerHTML={{ __html: state.currentMessage || '' }}
     />
   );

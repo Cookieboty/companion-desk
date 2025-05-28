@@ -1,0 +1,56 @@
+/* 独立的消息气泡 - 完全解耦，不影响看板娘主体 */
+.messageBubble {
+  position: fixed;
+  top: 20px; /* 简化定位，在屏幕顶部显示 */
+  left: 50%;
+  width: 200px; /* 从250px缩短到200px，避免遮挡右侧按钮 */
+  min-height: 70px;
+  margin-left: -100px; /* 调整居中对齐，从-125px改为-100px */
+  padding: 8px 12px;
+  border: 1px solid rgba(224, 186, 140, 0.62);
+  border-radius: 12px;
+  background-color: rgba(236, 217, 188, 0.9);
+  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3);
+  font-size: 14px;
+  line-height: 24px;
+  word-break: break-all;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  color: #8a6e2f;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 10000; /* 确保在工具栏之上 */
+  pointer-events: none; /* 不阻挡鼠标事件 */
+  /* 重置focus状态 */
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.active {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* 确保消息气泡在所有状态下都没有focus效果 */
+.messageBubble:focus,
+.messageBubble:active,
+.messageBubble:hover {
+  outline: none !important;
+  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3) !important; /* 保持原有阴影 */
+  border: 1px solid rgba(224, 186, 140, 0.62) !important;
+  background-color: rgba(236, 217, 188, 0.9) !important;
+}
+
+/* 添加消息气泡的小三角箭头指向看板娘 */
+.messageBubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid rgba(236, 217, 188, 0.9);
+} 

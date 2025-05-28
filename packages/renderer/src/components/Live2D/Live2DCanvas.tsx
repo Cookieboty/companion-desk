@@ -5,6 +5,7 @@ import { useWindowDrag } from '@/hooks/useWindowDrag';
 import { useCanvasAdaptive } from '@/hooks/useCanvasAdaptive';
 import { loadExternalResource } from '@/utils/live2d-utils';
 import logger from '@/utils/logger';
+import styles from './style.module.css';
 
 // 声明全局Live2D类型
 declare global {
@@ -171,7 +172,7 @@ export const Live2DCanvas: React.FC = () => {
     <div
       ref={containerRef}
       id="waifu-canvas"
-      className="waifu-canvas"
+      className={styles.waifuCanvas}
     >
       <canvas
         id="live2d"

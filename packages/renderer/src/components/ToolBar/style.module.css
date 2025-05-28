@@ -1,0 +1,217 @@
+/* 独立工具栏样式 - 与模型完全分离 */
+.toolbar {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9998;
+  display: none; /* 默认完全不显示 */
+  flex-direction: column;
+  gap: 10px; /* 增加按钮间距 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.visible {
+  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.hidden {
+  display: none; /* 完全不显示，不占据任何空间 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+/* 基础按钮样式 - 使用最高优先级 */
+.button {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 彻底清除所有状态 */
+.button,
+.button:focus,
+.button:active,
+.button:visited,
+.button:target {
+  outline: 0 !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* hover效果 */
+.button:hover {
+  transform: translateY(-3px) scale(1.08);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* 图标样式 */
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.icon svg {
+  width: 22px;
+  height: 22px;
+  fill: #475569;
+  transition: all 0.25s ease;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.button:hover .icon svg {
+  fill: #1e293b;
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+/* 特殊按钮样式 - 关闭按钮 */
+.closeButton {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(254, 242, 242, 0.9));
+}
+
+.closeButton:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.9));
+  box-shadow: 0 12px 32px rgba(239, 68, 68, 0.3), 0 6px 16px rgba(220, 38, 38, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px) scale(1.08);
+}
+
+.closeButton:hover .icon svg {
+  fill: white;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transform: scale(1.15);
+}
+
+/* 特殊按钮样式 - 置顶按钮 */
+.topButton {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 253, 244, 0.9));
+}
+
+.topButton:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.9));
+  box-shadow: 0 12px 32px rgba(34, 197, 94, 0.3), 0 6px 16px rgba(22, 163, 74, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px) scale(1.08);
+}
+
+.topButton:hover .icon svg {
+  fill: white;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transform: scale(1.15);
+}
+
+/* 特殊按钮样式 - 拍照按钮 */
+.photoButton {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(239, 246, 255, 0.9));
+}
+
+.photoButton:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.9));
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3), 0 6px 16px rgba(37, 99, 235, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px) scale(1.08);
+}
+
+.photoButton:hover .icon svg {
+  fill: white;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transform: scale(1.15);
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .toolbar {
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+  
+  .button {
+    width: 42px;
+    height: 42px;
+  }
+  
+  .icon svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* 动画效果 */
+@keyframes toolbarSlideIn {
+  0% {
+    display: flex;
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  1% {
+    display: flex;
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    display: flex;
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toolbarSlideOut {
+  0% {
+    display: flex;
+    opacity: 1;
+    transform: translateX(0);
+  }
+  99% {
+    display: flex;
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    display: none;
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.visible {
+  animation: toolbarSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.hidden {
+  animation: toolbarSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+} 

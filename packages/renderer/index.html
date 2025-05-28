@@ -4,6 +4,70 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>看板娘</title>
+    <style>
+      /* 全局重置，防止元素点击后残留 */
+      * {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+
+      *:focus {
+        outline: none !important;
+        box-shadow: none !important;
+      }
+
+      *:active {
+        outline: none !important;
+      }
+
+      /* 强制重置所有可能的残留状态 */
+      *:not(:hover):not(:focus):not(:active) {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+
+      /* 特别针对按钮元素的重置 */
+      button {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+
+      button:active,
+      button:focus {
+        outline: none !important;
+      }
+
+      /* 特别针对canvas元素的重置 */
+      canvas {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+
+      canvas:active,
+      canvas:focus,
+      canvas:hover {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      /* 确保body和html没有默认样式 */
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+
+      /* 防止选中文本 */
+      body {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

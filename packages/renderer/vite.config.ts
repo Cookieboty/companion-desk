@@ -27,6 +27,15 @@ export default defineConfig({
     minify: 'terser',
   },
 
+  // CSS配置
+  css: {
+    modules: {
+      // CSS Modules配置
+      localsConvention: 'camelCase',
+      generateScopedName: '[name]__[local]___[hash:base64:5]'
+    }
+  },
+
   // 解析配置
   resolve: {
     alias: {
