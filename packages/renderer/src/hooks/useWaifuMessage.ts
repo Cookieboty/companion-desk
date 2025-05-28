@@ -6,18 +6,9 @@ import { Time } from '@/types/live2d';
 // 显示消息的hook
 export function useWaifuMessage() {
   const { state, dispatch } = useLive2D();
-  const messageTimerRef = useRef<NodeJS.Timeout | null>(null);
   const userActionRef = useRef(false);
   const userActionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastHoverElementRef = useRef<string | null>(null);
-
-  // 清除现有消息定时器
-  const clearMessageTimer = useCallback(() => {
-    if (messageTimerRef.current) {
-      clearTimeout(messageTimerRef.current);
-      messageTimerRef.current = null;
-    }
-  }, []);
 
   // 显示消息
   const showMessage = useCallback((
@@ -31,9 +22,6 @@ export function useWaifuMessage() {
       return;
     }
 
-    // 清理现有计时器
-    clearMessageTimer();
-
     // 随机选择一条消息
     const selectedText = Array.isArray(text) ? text[Math.floor(Math.random() * text.length)] : text;
 
@@ -46,27 +34,17 @@ export function useWaifuMessage() {
       setTimeout(() => {
         dispatch({
           type: 'SET_MESSAGE',
-          payload: { text: selectedText, priority }
+          payload: { text: selectedText, priority, timeout }
         });
-
-        // 设置自动隐藏的计时器
-        messageTimerRef.current = setTimeout(() => {
-          dispatch({ type: 'CLEAR_MESSAGE' });
-        }, timeout);
       }, 100);
     } else {
-      // 直接显示新消息
+      // 直接显示新消息，让Live2DContext的增强dispatch处理自动关闭
       dispatch({
         type: 'SET_MESSAGE',
-        payload: { text: selectedText, priority }
+        payload: { text: selectedText, priority, timeout }
       });
-
-      // 设置自动隐藏的计时器
-      messageTimerRef.current = setTimeout(() => {
-        dispatch({ type: 'CLEAR_MESSAGE' });
-      }, timeout);
     }
-  }, [state.currentMessage, state.messagePriority, dispatch, clearMessageTimer]);
+  }, [state.currentMessage, state.messagePriority, dispatch]);
 
   // 根据时间显示欢迎消息
   const welcomeMessage = useCallback((time: Time, template: string): string => {
@@ -149,10 +127,8 @@ export function useWaifuMessage() {
       if (userActionTimerRef.current) {
         clearInterval(userActionTimerRef.current);
       }
-
-      clearMessageTimer();
     };
-  }, [showMessage, clearMessageTimer]);
+  }, [showMessage]);
 
   // 注册鼠标悬停事件监听
   const registerMouseoverEvents = useCallback((events: Array<{ selector: string, text: string | string[] }>) => {

@@ -50,9 +50,12 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
 
   return (
     <Live2DProvider config={mergedProps}>
+      {/* 消息气泡独立定位，不影响看板娘主体 */}
+      <MessageBubble />
+
+      {/* 看板娘主体容器 - 保持完全透明 */}
       <div id="waifu" className="waifu-active">
         {loading && <LoadingIndicator />}
-        <MessageBubble />
         <Live2DCanvas />
         <ToolBar />
       </div>

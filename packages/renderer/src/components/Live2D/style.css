@@ -1,4 +1,4 @@
-/* 看板娘容器 - 稳定的居中显示 */
+/* 看板娘容器 - 稳定的居中显示，完全透明背景 */
 #waifu {
   position: fixed;
   top: 50%;
@@ -10,6 +10,8 @@
   z-index: 1;
   font-size: 0;
   transition: all .3s ease-in-out;
+  background: transparent !important;
+  background-color: transparent !important;
   /* 确保可见 */
 }
 
@@ -17,40 +19,64 @@
   /* 保持显示 */
 }
 
-/* 看板娘提示 - 完全透明背景 */
+/* 原有的waifu-tips样式 - 已废弃，保持透明以防冲突 */
 #waifu-tips {
-  opacity: 0;
+  opacity: 0 !important;
+  display: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#waifu-tips.waifu-tips-active {
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* 独立的消息气泡 - 完全解耦，不影响看板娘主体 */
+.waifu-tips-independent {
+  position: fixed;
+  top: 20px; /* 简化定位，在屏幕顶部显示 */
+  left: 50%;
   width: 250px;
   min-height: 70px;
-  margin: -70px 20px;
-  padding: 5px 10px;
-  border: none; /* 移除边框 */
+  margin-left: -125px; /* 居中对齐 */
+  padding: 8px 12px;
+  border: 1px solid rgba(224, 186, 140, 0.62);
   border-radius: 12px;
-  background-color: transparent !important; /* 强制透明背景 */
-  background: transparent !important; /* 强制透明背景 */
-  box-shadow: none; /* 移除阴影 */
+  background-color: rgba(236, 217, 188, 0.9);
+  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3);
   font-size: 14px;
   line-height: 24px;
   word-break: break-all;
   text-overflow: ellipsis;
   overflow: hidden;
-  position: absolute;
-  animation-delay: 5s;
-  animation-duration: 50s;
-  animation-iteration-count: infinite;
-  animation-name: shake;
-  animation-timing-function: ease-in-out;
-  transition: opacity 0.3s;
-  z-index: 20;
-  color: transparent; /* 让文字也透明，彻底隐藏消息气泡 */
+  color: #8a6e2f;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 9999; /* 提高z-index确保显示 */
+  pointer-events: none; /* 不阻挡鼠标事件 */
 }
 
-#waifu-tips.waifu-tips-active {
-  opacity: 0; /* 即使激活状态也保持透明 */
-  transition: opacity 0.3s;
-  background-color: transparent !important; /* 强制透明背景 */
-  background: transparent !important; /* 强制透明背景 */
-  color: transparent !important; /* 强制透明文字 */
+.waifu-tips-independent.waifu-tips-active {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* 添加消息气泡的小三角箭头指向看板娘 */
+.waifu-tips-independent::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid rgba(236, 217, 188, 0.9);
 }
 
 /* 看板娘工具栏 */
