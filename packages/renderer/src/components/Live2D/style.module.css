@@ -3,10 +3,10 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 250px;
+  width: 250px; /* 恢复原始尺寸，使用模型矩阵缩放 */
   height: auto;
-  margin-top: -125px; /* 负的一半高度，大概估算 */
-  margin-left: -125px; /* 负的一半宽度 */
+  margin-top: -125px; /* 恢复原始负边距 */
+  margin-left: -125px; /* 恢复原始负边距 */
   z-index: 1;
   font-size: 0;
   transition: all .3s ease-in-out;
@@ -30,9 +30,9 @@
 /* 看板娘画布 - 相对定位 */
 .waifuCanvas {
   position: relative; /* 改为相对定位 */
-  width: 250px;
-  min-height: 250px; /* 最小高度 */
-  max-height: 95vh; /* 增加最大高度到95% */
+  width: 300px; /* 300x300 */
+  min-height: 300px; /* 300x300 */
+  max-height: none; /* 移除最大高度限制 */
   z-index: 1000;
   pointer-events: auto;
   user-select: none;
@@ -55,8 +55,8 @@
 /* 修复Canvas白色底纹问题 - 确保所有状态下都透明 */
 .waifuCanvas canvas {
   display: block;
-  max-width: 100%;
-  max-height: 90vh; /* 限制最大高度 */
+  width: 300px !important; /* 300x300 */
+  height: 300px !important; /* 300x300 */
   object-fit: contain; /* 保持宽高比 */
   background: transparent !important; /* 强制透明背景 */
   background-color: transparent !important; /* 强制透明背景色 */
