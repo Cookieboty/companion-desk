@@ -241,27 +241,11 @@ export function useLive2DModel() {
           console.log('使用标准方法初始化模型实例');
           await modelInstance.init('live2d', modelPath, modelSetting);
 
-          // 模型加载完成后的处理
-          if (modelInstance && typeof modelInstance.setupCanvasSize === 'function') {
-            // 使用当前Canvas尺寸重新设置
-            const canvas = document.getElementById('live2d') as HTMLCanvasElement;
-            if (canvas) {
-              modelInstance.setupCanvasSize(canvas.width, canvas.height);
-            }
-          }
         } else if (cubism2Model) {
           // 如果已经加载了Cubism2，使用changeModelWithJSON方法切换模型
           console.log('使用已有的Cubism2实例，切换到新模型');
           await cubism2Model.changeModelWithJSON(modelPath, modelSetting);
 
-          // 模型加载完成后的处理
-          if (cubism2Model && typeof cubism2Model.setupCanvasSize === 'function') {
-            // 使用当前Canvas尺寸重新设置
-            const canvas = document.getElementById('live2d') as HTMLCanvasElement;
-            if (canvas) {
-              cubism2Model.setupCanvasSize(canvas.width, canvas.height);
-            }
-          }
         } else {
           console.error('未配置cubism2Path，无法加载Cubism2核心');
         }
