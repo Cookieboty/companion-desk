@@ -12,20 +12,14 @@ import {
 import { getCache, setCache } from '@/utils/cache';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import styles from './style.module.css';
+import { useLive2D } from '@/contexts/Live2DContext';
 
 export const ToolBar: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false); // 默认隐藏
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
-  const { loadNextModel, loadRandomTexture } = useLive2DModel();
+  const { loadNextModel, loadRandomTexture, } = useLive2DModel();
+  const { config: { tools: availableTools = [] } } = useLive2D();
 
-  // 配置可用的工具
-  const availableTools = [
-    'switch-model',
-    'photo',
-    'info',
-    'quit',
-    'toggle-top'
-  ];
 
   // 强制清除按钮focus状态的函数
   const clearButtonFocus = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -43,6 +37,18 @@ export const ToolBar: React.FC = () => {
       button.blur();
       button.style.outline = 'none';
     });
+
+    // 同时清除页面上所有Canvas的focus状态
+    const canvases = document.querySelectorAll('canvas');
+    canvases.forEach(canvas => {
+      if (canvas instanceof HTMLCanvasElement) {
+        canvas.blur();
+        canvas.style.outline = 'none';
+        canvas.style.outlineWidth = '0';
+        canvas.style.outlineStyle = 'none';
+        canvas.style.outlineColor = 'transparent';
+      }
+    });
   }, []);
 
   // Focus事件处理函数
@@ -50,6 +56,15 @@ export const ToolBar: React.FC = () => {
     const button = event.currentTarget;
     button.blur();
     button.style.outline = 'none';
+
+    // 同时清除页面上所有Canvas的focus状态
+    const canvases = document.querySelectorAll('canvas');
+    canvases.forEach(canvas => {
+      if (canvas instanceof HTMLCanvasElement) {
+        canvas.blur();
+        canvas.style.outline = 'none';
+      }
+    });
   }, []);
 
   // 鼠标事件监听
@@ -365,23 +380,29 @@ export const ToolBar: React.FC = () => {
   }, [clearButtonFocus]);
 
   return (
-    <div className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}>
-      {availableTools.map((tool) => (
-        <button
-          key={tool}
-          className={getButtonClassName(tool)}
-          onClick={createButtonHandler(getToolHandler(tool))}
-          onMouseDown={clearButtonFocus}
-          onMouseUp={clearButtonFocus}
-          onFocus={handleButtonFocus}
-          title={getToolTip(tool)}
-        >
-          <div
-            className={styles.icon}
-            dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
-          />
-        </button>
-      ))}
-    </div>
+    <>
+      {
+        isVisible && (
+          <div className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}>
+            {availableTools.map((tool) => (
+              <button
+                key={tool}
+                className={getButtonClassName(tool)}
+                onClick={createButtonHandler(getToolHandler(tool))}
+                onMouseDown={clearButtonFocus}
+                onMouseUp={clearButtonFocus}
+                onFocus={handleButtonFocus}
+                title={getToolTip(tool)}
+              >
+                <div
+                  className={styles.icon}
+                  dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
+                />
+              </button>
+            ))}
+          </div>
+        )
+      }
+    </>
   );
 }; 

@@ -16,6 +16,7 @@
   /* 重置所有可能的focus和active状态 */
   outline: none !important;
   -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .waifu:focus,
@@ -23,6 +24,7 @@
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 /* 看板娘画布 - 相对定位 */
@@ -39,6 +41,7 @@
   /* 重置focus状态 */
   outline: none !important;
   -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
 }
 
 .waifuCanvas:focus,
@@ -46,6 +49,7 @@
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 /* 修复Canvas白色底纹问题 - 确保所有状态下都透明 */
@@ -59,17 +63,77 @@
   /* 重置canvas的focus和active状态 */
   outline: none !important;
   -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  /* 强制移除所有可能的outline样式 */
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  /* 移除Firefox特有的focus样式 */
+  -moz-outline: none !important;
+  -moz-outline-style: none !important;
+  /* 移除WebKit特有的focus样式 */
+  -webkit-focus-ring-color: transparent !important;
+  /* 确保tabindex不会产生focus */
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
 }
 
 /* 确保canvas在所有状态下都没有边框或阴影 */
 .waifuCanvas canvas:focus,
 .waifuCanvas canvas:active,
-.waifuCanvas canvas:hover {
+.waifuCanvas canvas:hover,
+.waifuCanvas canvas:visited,
+.waifuCanvas canvas:target {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
   background-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+  /* 强制移除所有可能的outline样式 */
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  /* 移除Firefox特有的focus样式 */
+  -moz-outline: none !important;
+  -moz-outline-style: none !important;
+  /* 移除WebKit特有的focus样式 */
+  -webkit-focus-ring-color: transparent !important;
+}
+
+/* 全局Canvas outline清除 - 针对所有Canvas元素 */
+canvas {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  -moz-outline: none !important;
+  -moz-outline-style: none !important;
+  -webkit-focus-ring-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+canvas:focus,
+canvas:active,
+canvas:hover,
+canvas:visited,
+canvas:target {
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  -moz-outline: none !important;
+  -moz-outline-style: none !important;
+  -webkit-focus-ring-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 /* 加载动画 */

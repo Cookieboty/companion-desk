@@ -11,6 +11,15 @@
   pointer-events: none;
 }
 
+.toolbar:focus,
+.toolbar:active,
+.toolbar:hover {
+  outline: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
 .visible {
   display: flex;
   opacity: 1;
@@ -214,4 +223,6 @@
 
 .hidden {
   animation: toolbarSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  box-shadow: none !important;
+  display: none !important;
 } 

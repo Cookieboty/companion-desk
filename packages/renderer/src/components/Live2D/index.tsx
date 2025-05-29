@@ -33,20 +33,14 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
     tools: props.tools || defaultTools
   };
 
-  // 确保组件始终可见
-  useEffect(() => {
-    document.body.classList.add('waifu-body');
-
-    // 确保容器立即显示
-    const waifuElement = document.getElementById('waifu');
-    if (waifuElement) {
-      waifuElement.classList.add('waifu-active');
-    }
-
-    return () => {
-      document.body.classList.remove('waifu-body');
-    };
-  }, []);
+  // // 确保组件始终可见
+  // useEffect(() => {
+  //   // 确保容器立即显示
+  //   const waifuElement = document.getElementById('waifu');
+  //   if (waifuElement) {
+  //     waifuElement.classList.add('waifu-active');
+  //   }
+  // }, []);
 
   return (
     <Live2DProvider config={mergedProps}>
