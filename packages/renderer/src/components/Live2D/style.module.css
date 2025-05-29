@@ -55,8 +55,8 @@
 /* 修复Canvas白色底纹问题 - 确保所有状态下都透明 */
 .waifuCanvas canvas {
   display: block;
-  width: 300px !important; /* 固定显示尺寸 */
-  height: 300px !important; /* 固定显示尺寸 */
+  width: 300px !important; /* 保持300x300的显示尺寸 */
+  height: 300px !important; /* 保持300x300的显示尺寸 */
   object-fit: contain; /* 保持宽高比 */
   background: transparent !important; /* 强制透明背景 */
   background-color: transparent !important; /* 强制透明背景色 */

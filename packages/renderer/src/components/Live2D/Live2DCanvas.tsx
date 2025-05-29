@@ -23,15 +23,8 @@ export const Live2DCanvas: React.FC = () => {
   const { state, config, dispatch } = useLive2D();
   const { cubism2Model } = useLive2DModel();
 
-  // 固定Canvas尺寸为300x300 - 保持原始设计不变
-  const CANVAS_SIZE = 300;
-
-  // 当模型加载完成时，设置Canvas尺寸
-  useEffect(() => {
-    if (cubism2Model) {
-      cubism2Model.setupCanvasSize(CANVAS_SIZE, CANVAS_SIZE);
-    }
-  }, [cubism2Model]);
+  // 修改Canvas尺寸为800x800 - 与原始项目保持一致，提高渲染清晰度
+  const CANVAS_SIZE = 800;
 
   // 启用拖拽功能
   useWindowDrag('live2d');
@@ -99,8 +92,6 @@ export const Live2DCanvas: React.FC = () => {
         width={CANVAS_SIZE}
         height={CANVAS_SIZE}
         style={{
-          width: `${CANVAS_SIZE}px`,
-          height: `${CANVAS_SIZE}px`,
           position: 'relative',
           display: 'block',
           background: 'transparent',
