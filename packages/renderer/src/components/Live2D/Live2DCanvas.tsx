@@ -23,7 +23,7 @@ export const Live2DCanvas: React.FC = () => {
   const { state, config, dispatch } = useLive2D();
   const { cubism2Model } = useLive2DModel();
 
-  // 固定Canvas尺寸为300x300
+  // 固定Canvas尺寸为300x300 - 保持原始设计不变
   const CANVAS_SIZE = 300;
 
   // 当模型加载完成时，设置Canvas尺寸

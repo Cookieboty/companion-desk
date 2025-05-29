@@ -55,11 +55,12 @@
 /* 修复Canvas白色底纹问题 - 确保所有状态下都透明 */
 .waifuCanvas canvas {
   display: block;
-  width: 300px !important; /* 300x300 */
-  height: 300px !important; /* 300x300 */
+  width: 300px !important; /* 固定显示尺寸 */
+  height: 300px !important; /* 固定显示尺寸 */
   object-fit: contain; /* 保持宽高比 */
   background: transparent !important; /* 强制透明背景 */
   background-color: transparent !important; /* 强制透明背景色 */
+  
   /* 重置canvas的focus和active状态 */
   outline: none !important;
   -webkit-tap-highlight-color: transparent !important;
