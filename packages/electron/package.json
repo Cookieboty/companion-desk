@@ -21,6 +21,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "node-global-key-listener": "^0.3.0"
   },
   "devDependencies": {
     "@ig-live/types": "workspace:*",
@@ -66,7 +67,9 @@
     "protocols": [
       {
         "name": "智能小助手",
-        "schemes": ["ai-live"]
+        "schemes": [
+          "ai-live"
+        ]
       }
     ]
   }

@@ -57,5 +57,56 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeWindowMouseListeners: () => {
     ipcRenderer.removeAllListeners('window-mouse-enter');
     ipcRenderer.removeAllListeners('window-mouse-leave');
+  },
+
+  // 语音相关API - 简化后只保留必要的
+  getVoiceSettings: async () => {
+    return await ipcRenderer.invoke('get-voice-settings');
+  },
+  saveVoiceSettings: (settings: any) => {
+    ipcRenderer.send('save-voice-settings', settings);
+  },
+
+  // 键盘监听API
+  startKeyboardListener: () => {
+    console.log('preload: 发送启动键盘监听请求');
+    ipcRenderer.send('start-keyboard-listener');
+  },
+  stopKeyboardListener: () => {
+    console.log('preload: 发送停止键盘监听请求');
+    ipcRenderer.send('stop-keyboard-listener');
+  },
+  onKeyboardEvent: (callback: (event: any) => void) => {
+    console.log('preload: 注册键盘事件监听器');
+
+    // 移除之前的监听器，避免重复注册
+    ipcRenderer.removeAllListeners('keyboard-event');
+
+    ipcRenderer.on('keyboard-event', (_, event) => {
+      console.log('preload: 收到键盘事件:', event);
+      console.log('preload: 调用回调函数');
+      try {
+        callback(event);
+        console.log('preload: 回调函数执行成功');
+      } catch (error) {
+        console.error('preload: 回调函数执行失败:', error);
+      }
+    });
+
+    console.log('preload: 键盘事件监听器注册完成');
+  },
+  onKeyboardListenerStarted: (callback: () => void) => {
+    console.log('preload: 注册键盘监听启动成功监听器');
+    ipcRenderer.on('keyboard-listener-started', callback);
+  },
+  onKeyboardListenerError: (callback: (error: string) => void) => {
+    console.log('preload: 注册键盘监听错误监听器');
+    ipcRenderer.on('keyboard-listener-error', (_, error) => callback(error));
+  },
+  removeKeyboardListeners: () => {
+    console.log('preload: 移除所有键盘事件监听器');
+    ipcRenderer.removeAllListeners('keyboard-event');
+    ipcRenderer.removeAllListeners('keyboard-listener-started');
+    ipcRenderer.removeAllListeners('keyboard-listener-error');
   }
 } as IpcApi); 

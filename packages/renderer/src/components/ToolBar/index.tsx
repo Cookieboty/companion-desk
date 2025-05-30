@@ -7,19 +7,63 @@ import {
   fa_camera_retro,
   fa_info_circle,
   fa_xmark,
-  fa_thumbtack
+  fa_thumbtack,
+  fa_volume_up,
+  fa_volume_off
 } from '@/utils/icons';
 import { getCache, setCache } from '@/utils/cache';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import styles from './style.module.css';
 import { useLive2D } from '@/contexts/Live2DContext';
+import { VoiceSettings } from '../VoiceSettings';
+import { VoiceService } from '../../services/VoiceService';
+
+// 创建全局语音服务实例
+let globalVoiceService: VoiceService | null = null;
 
 export const ToolBar: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false); // 默认隐藏
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const { loadNextModel, loadRandomTexture, } = useLive2DModel();
   const { config: { tools: availableTools = [] } } = useLive2D();
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [voiceService, setVoiceService] = useState<VoiceService | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false); // 语音功能状态，默认禁用
 
+  // 初始化语音服务
+  useEffect(() => {
+    console.log('ToolBar: 开始初始化语音服务');
+
+    // 立即创建VoiceService，不等待异步初始化
+    if (!globalVoiceService) {
+      console.log('ToolBar: 创建新的VoiceService实例');
+      globalVoiceService = new VoiceService();
+      console.log('ToolBar: VoiceService实例创建成功');
+    }
+
+    // 立即设置到状态中
+    setVoiceService(globalVoiceService);
+    console.log('ToolBar: VoiceService设置完成');
+
+    // 初始状态设为禁用，需要用户手动启用
+    setVoiceEnabled(false);
+    console.log('ToolBar: 语音状态初始化为禁用');
+  }, []);
+
+  // 初始化置顶状态
+  useEffect(() => {
+    const loadAlwaysOnTopState = async () => {
+      try {
+        const currentState = await getCache<boolean>('waifu-always-on-top') === true;
+        setAlwaysOnTop(currentState);
+        console.log('ToolBar: 置顶状态加载完成:', currentState);
+      } catch (error) {
+        console.error('ToolBar: 加载置顶状态失败:', error);
+      }
+    };
+
+    loadAlwaysOnTopState();
+  }, []);
 
   // 强制清除按钮focus状态的函数
   const clearButtonFocus = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -290,6 +334,8 @@ export const ToolBar: React.FC = () => {
         return fa_xmark;
       case 'toggle-top':
         return fa_thumbtack;
+      case 'voice-settings':
+        return voiceEnabled ? fa_volume_up : fa_volume_off;
       default:
         return '';
     }
@@ -312,6 +358,35 @@ export const ToolBar: React.FC = () => {
         return quitApp;
       case 'toggle-top':
         return toggleAlwaysOnTop;
+      case 'voice-settings':
+        return () => {
+          console.log('ToolBar: 语音设置按钮被点击');
+
+          // 如果VoiceService还没有初始化，显示提示
+          if (!voiceService) {
+            showMessage('语音服务正在初始化中，请稍后再试...');
+            return;
+          }
+
+          // 切换语音启用状态
+          const newEnabled = !voiceEnabled;
+          console.log('ToolBar: 切换语音状态从', voiceEnabled, '到', newEnabled);
+
+          // 立即更新UI状态
+          setVoiceEnabled(newEnabled);
+
+          // 更新VoiceService中的设置
+          voiceService.updateSettings({ enabled: newEnabled });
+
+          // 显示消息
+          if (newEnabled) {
+            showMessage('语音功能已启用！');
+          } else {
+            showMessage('语音功能已禁用！');
+          }
+
+          console.log('ToolBar: 语音状态切换完成:', newEnabled);
+        };
       case 'asteroids':
         return () => {
           if ((window as any).Asteroids) {
@@ -347,12 +422,17 @@ export const ToolBar: React.FC = () => {
         return '关闭';
       case 'toggle-top':
         return alwaysOnTop ? '取消置顶' : '置顶';
+      case 'voice-settings':
+        return voiceEnabled ? '语音功能 (已启用) - 左键切换，右键设置' : '语音功能 (已禁用) - 左键切换，右键设置';
       default:
         return '';
     }
   };
 
   console.log('ToolBar: 渲染组件，isVisible =', isVisible);
+  console.log('ToolBar: 可用工具列表:', availableTools);
+  console.log('ToolBar: 语音服务状态:', !!voiceService, voiceEnabled);
+  console.log('ToolBar: 语音设置弹窗状态:', showVoiceSettings);
 
   // 获取按钮的CSS类名
   const getButtonClassName = (toolId: string) => {
@@ -361,9 +441,13 @@ export const ToolBar: React.FC = () => {
       case 'quit':
         return `${baseClass} ${styles.closeButton}`;
       case 'toggle-top':
-        return `${baseClass} ${styles.topButton}`;
+        // 根据置顶状态显示不同样式
+        return `${baseClass} ${alwaysOnTop ? styles.topButtonActive : styles.topButton}`;
       case 'photo':
         return `${baseClass} ${styles.photoButton}`;
+      case 'voice-settings':
+        // 根据语音启用状态显示不同样式
+        return `${baseClass} ${voiceEnabled ? styles.voiceButton : styles.voiceButtonDisabled}`;
       default:
         return baseClass;
     }
@@ -379,6 +463,30 @@ export const ToolBar: React.FC = () => {
     };
   }, [clearButtonFocus]);
 
+  // 语音设置按钮点击处理
+  const handleVoiceSettingsClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    console.log('ToolBar: 语音设置按钮被点击');
+    // 手动清除focus状态
+    const button = event.currentTarget;
+    button.blur();
+    button.style.outline = 'none';
+
+    console.log('ToolBar: 设置showVoiceSettings为true');
+    setShowVoiceSettings(true);
+  }, []);
+
+  // 关闭语音设置
+  const handleCloseVoiceSettings = useCallback(() => {
+    setShowVoiceSettings(false);
+  }, []);
+
+  // 语音设置变化回调
+  const handleVoiceSettingsChange = useCallback(() => {
+    // 立即更新语音状态
+    const settings = globalVoiceService?.getSettings();
+    setVoiceEnabled(settings?.enabled ?? false);
+  }, []);
+
   return (
     <>
       {
@@ -389,6 +497,11 @@ export const ToolBar: React.FC = () => {
                 key={tool}
                 className={getButtonClassName(tool)}
                 onClick={createButtonHandler(getToolHandler(tool))}
+                onContextMenu={tool === 'voice-settings' ? (e) => {
+                  e.preventDefault();
+                  console.log('ToolBar: 语音按钮右键点击，打开设置');
+                  setShowVoiceSettings(true);
+                } : undefined}
                 onMouseDown={clearButtonFocus}
                 onMouseUp={clearButtonFocus}
                 onFocus={handleButtonFocus}
@@ -403,6 +516,16 @@ export const ToolBar: React.FC = () => {
           </div>
         )
       }
+
+      {/* 语音设置弹窗 */}
+      {voiceService && (
+        <VoiceSettings
+          voiceService={voiceService}
+          isVisible={showVoiceSettings}
+          onClose={handleCloseVoiceSettings}
+          onSettingsChange={handleVoiceSettingsChange}
+        />
+      )}
     </>
   );
 }; 

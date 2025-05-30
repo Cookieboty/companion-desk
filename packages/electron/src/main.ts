@@ -3,6 +3,16 @@ import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
 
+// 添加全局键盘监听依赖
+let globalKeyboardListener: any = null;
+try {
+  // 尝试导入 node-global-key-listener
+  const { GlobalKeyboardListener } = require('node-global-key-listener');
+  globalKeyboardListener = GlobalKeyboardListener;
+} catch (error) {
+  console.warn('node-global-key-listener 未安装，全局键盘监听功能将不可用');
+}
+
 // 配置文件路径
 const userDataPath = app.getPath('userData');
 const configPath = path.join(userDataPath, 'config.json');
@@ -12,11 +22,27 @@ const configPath = path.join(userDataPath, 'config.json');
 interface AppConfig {
   windowPosition: { x: number; y: number };
   modelName: string;
+  voiceSettings: VoiceSettings;
+}
+
+interface VoiceSettings {
+  enabled: boolean;
+  volume: number;
+  keyboardListening: boolean;
+  timeAnnouncement: boolean;
+  voicePackPath: string;
 }
 
 const defaultConfig: AppConfig = {
   windowPosition: { x: 0, y: 0 },
-  modelName: ''
+  modelName: '',
+  voiceSettings: {
+    enabled: true,
+    volume: 0.8,
+    keyboardListening: true,
+    timeAnnouncement: true,
+    voicePackPath: 'packages/renderer/public/assets/voice'
+  }
 };
 
 // 加载配置
@@ -66,6 +92,10 @@ if (isDev) {
 // 保持一个对窗口对象的全局引用，如果不这样做，当 JavaScript 对象被
 // 垃圾回收，窗口会自动关闭
 let mainWindow: BrowserWindow | null = null;
+
+// 全局键盘监听器实例
+let keyboardListener: any = null;
+let isKeyboardListening = false;
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -320,6 +350,17 @@ app.on('before-quit', () => {
     const config = loadConfig();
     config.windowPosition = { x: position[0], y: position[1] };
     saveConfig(config);
+  }
+
+  // 清理键盘监听器
+  if (keyboardListener && isKeyboardListening) {
+    try {
+      keyboardListener.kill();
+      keyboardListener = null;
+      isKeyboardListening = false;
+    } catch (error) {
+      console.error('清理键盘监听器失败:', error);
+    }
   }
 });
 
@@ -678,5 +719,85 @@ ipcMain.handle('read-local-file', async (event, filePath) => {
   } catch (error) {
     console.error('读取文件失败:', error);
     return null;
+  }
+});
+
+// 获取语音设置
+ipcMain.handle('get-voice-settings', async () => {
+  const config = loadConfig();
+  return config.voiceSettings;
+});
+
+// 保存语音设置
+ipcMain.on('save-voice-settings', (_, settings: VoiceSettings) => {
+  const config = loadConfig();
+  config.voiceSettings = { ...config.voiceSettings, ...settings };
+  saveConfig(config);
+});
+
+// 启动键盘监听
+ipcMain.on('start-keyboard-listener', () => {
+  console.log('主进程: 收到启动键盘监听请求');
+
+  if (!globalKeyboardListener) {
+    console.log('主进程: node-global-key-listener 不可用，无法启动键盘监听');
+    return;
+  }
+
+  if (isKeyboardListening) {
+    console.log('主进程: 键盘监听已经在运行中');
+    return;
+  }
+
+  try {
+    console.log('主进程: 正在创建键盘监听器...');
+    keyboardListener = new globalKeyboardListener();
+
+    keyboardListener.addListener((e: any, down: any) => {
+      const keyEvent = {
+        key: e.name,
+        timestamp: Date.now(),
+        type: e.state === 'DOWN' ? 'keydown' : 'keyup'
+      };
+
+      console.log('主进程: 收到键盘事件:', keyEvent);
+
+      // 发送键盘事件到渲染进程
+      if (mainWindow && mainWindow.webContents) {
+        console.log('主进程: 发送键盘事件到渲染进程');
+        mainWindow.webContents.send('keyboard-event', keyEvent);
+      } else {
+        console.log('主进程: 无法发送键盘事件，mainWindow不可用');
+      }
+    });
+
+    isKeyboardListening = true;
+    console.log('主进程: 全局键盘监听已启动成功');
+
+    // 发送启动成功消息到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-started');
+    }
+  } catch (error) {
+    console.error('主进程: 启动键盘监听失败:', error);
+
+    // 发送启动失败消息到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-error', String(error));
+    }
+  }
+});
+
+// 停止键盘监听
+ipcMain.on('stop-keyboard-listener', () => {
+  if (keyboardListener && isKeyboardListening) {
+    try {
+      keyboardListener.kill();
+      keyboardListener = null;
+      isKeyboardListening = false;
+      console.log('全局键盘监听已停止');
+    } catch (error) {
+      console.error('停止键盘监听失败:', error);
+    }
   }
 }); 

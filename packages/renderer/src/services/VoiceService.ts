@@ -1,0 +1,723 @@
+import { VoiceConfig, VoiceSettings, KeyboardEvent, VoiceContribute } from '@ig-live/types';
+
+/**
+ * 语音服务类
+ * 负责管理语音播放、键盘监听和定时播报功能
+ */
+export class VoiceService {
+  private voiceConfig: VoiceConfig | null = null;
+  private voiceSettings: VoiceSettings | null = null;
+  private keyBuffer: string[] = [];
+  private keyBufferTimeout: NodeJS.Timeout | null = null;
+  private timeAnnouncementInterval: NodeJS.Timeout | null = null;
+  private lastAnnouncementTime: number = 0;
+  private audioContext: AudioContext | null = null;
+  private currentAudio: HTMLAudioElement | null = null;
+  private isInitialized: boolean = false;
+  private initPromise: Promise<void> | null = null;
+
+  constructor() {
+    console.log('VoiceService: 构造函数开始');
+    console.log('VoiceService: 检查window对象:', typeof window);
+    console.log('VoiceService: 检查electronAPI:', !!(window as any).electronAPI);
+
+    this.initPromise = this.init();
+    console.log('VoiceService: 构造函数完成，initPromise已创建');
+  }
+
+  /**
+   * 等待初始化完成
+   */
+  public async waitForInit(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
+    }
+  }
+
+  /**
+   * 检查是否已初始化
+   */
+  public isReady(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * 初始化语音服务
+   */
+  private async init() {
+    try {
+      console.log('VoiceService: 开始初始化语音服务');
+      console.log('VoiceService: 当前环境检查 - window:', typeof window);
+      console.log('VoiceService: 当前环境检查 - electronAPI:', !!(window as any).electronAPI);
+
+      // 1. 首先设置键盘监听器（只设置事件监听器，不启动）
+      console.log('VoiceService: 步骤1 - 设置键盘监听器');
+      this.setupKeyboardListener();
+
+      // 2. 设置音频播放监听
+      console.log('VoiceService: 步骤2 - 设置音频播放监听');
+      this.setupAudioListener();
+
+      // 3. 加载语音配置
+      console.log('VoiceService: 步骤3 - 加载语音配置');
+      await this.loadVoiceConfig();
+
+      // 4. 加载语音设置
+      console.log('VoiceService: 步骤4 - 加载语音设置');
+      await this.loadVoiceSettings();
+
+      // 5. 在设置加载完成后启动键盘监听
+      console.log('VoiceService: 步骤5 - 启动键盘监听');
+      this.startKeyboardListener();
+
+      // 6. 启动定时播报
+      console.log('VoiceService: 步骤6 - 启动定时播报');
+      this.startTimeAnnouncement();
+
+      console.log('VoiceService: 语音服务初始化完成');
+      console.log('VoiceService: 最终状态:', {
+        voiceConfig: !!this.voiceConfig,
+        voiceSettings: this.voiceSettings,
+        configContributes: this.voiceConfig?.contributes?.length || 0
+      });
+
+      this.isInitialized = true;
+      console.log('VoiceService: 初始化标志已设置为true');
+    } catch (error) {
+      console.error('VoiceService: 初始化失败:', error);
+      this.isInitialized = false;
+    }
+  }
+
+  /**
+   * 加载语音配置
+   */
+  private async loadVoiceConfig() {
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI) {
+        // 使用相对路径，与模型加载保持一致
+        const configPath = './assets/voice/contributes.json';
+        console.log('VoiceService: 加载语音配置:', configPath);
+
+        try {
+          // 尝试通过Electron API加载
+          const configData = await electronAPI.readLocalFile(configPath);
+          if (configData) {
+            this.voiceConfig = JSON.parse(configData);
+            console.log('VoiceService: 通过Electron API加载语音配置成功:', this.voiceConfig);
+            return;
+          }
+        } catch (error) {
+          console.error('VoiceService: 通过Electron API加载语音配置失败:', error);
+        }
+
+        // 回退到标准fetch（开发环境）
+        try {
+          const response = await fetch(configPath);
+          if (response.ok) {
+            this.voiceConfig = await response.json();
+            console.log('VoiceService: 通过fetch加载语音配置成功:', this.voiceConfig);
+            return;
+          }
+        } catch (error) {
+          console.error('VoiceService: 通过fetch加载语音配置失败:', error);
+        }
+      } else {
+        console.error('VoiceService: electronAPI 不可用，无法加载语音配置');
+      }
+    } catch (error) {
+      console.error('VoiceService: 加载语音配置失败:', error);
+    }
+  }
+
+  /**
+   * 加载语音设置
+   */
+  private async loadVoiceSettings() {
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI) {
+        this.voiceSettings = await electronAPI.getVoiceSettings();
+        console.log('VoiceService: 语音设置加载完成:', this.voiceSettings);
+      } else {
+        console.error('VoiceService: electronAPI 不可用，无法加载语音设置');
+      }
+    } catch (error) {
+      console.error('VoiceService: 加载语音设置失败:', error);
+    }
+  }
+
+  /**
+   * 设置键盘监听
+   */
+  private setupKeyboardListener() {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI) {
+      console.error('VoiceService: electronAPI 不可用，无法设置键盘监听');
+      return;
+    }
+
+    console.log('VoiceService: 开始设置键盘监听器...');
+
+    // 先测试electronAPI是否可用
+    console.log('VoiceService: electronAPI可用方法:', Object.keys(electronAPI));
+
+    // 立即注册键盘事件监听器
+    try {
+      electronAPI.onKeyboardEvent((event: KeyboardEvent) => {
+        console.log('VoiceService: 收到键盘事件:', event);
+
+        // 简化条件检查
+        if (event.type === 'keydown' && event.key && event.key !== 'undefined') {
+          console.log('VoiceService: 处理按键:', event.key);
+          this.handleKeyboardInput(event.key);
+        }
+      });
+
+      console.log('VoiceService: 键盘事件监听器注册成功');
+    } catch (error) {
+      console.error('VoiceService: 注册键盘事件监听器失败:', error);
+    }
+
+    // 监听键盘监听器启动成功事件
+    electronAPI.onKeyboardListenerStarted(() => {
+      console.log('VoiceService: 键盘监听器启动成功');
+    });
+
+    // 监听键盘监听器错误事件
+    electronAPI.onKeyboardListenerError((error: string) => {
+      console.error('VoiceService: 键盘监听器启动失败:', error);
+    });
+
+    console.log('VoiceService: 键盘监听器设置完成');
+  }
+
+  /**
+   * 启动键盘监听
+   */
+  private startKeyboardListener() {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI) {
+      console.error('VoiceService: electronAPI 不可用，无法启动键盘监听');
+      return;
+    }
+
+    console.log('VoiceService: 强制启动键盘监听');
+    electronAPI.startKeyboardListener();
+
+    // 添加延迟重试机制
+    setTimeout(() => {
+      console.log('VoiceService: 延迟重试启动键盘监听');
+      electronAPI.startKeyboardListener();
+    }, 2000);
+  }
+
+  /**
+   * 设置音频播放监听
+   */
+  private setupAudioListener() {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI) return;
+
+    // 注意：这个监听器现在不再需要，因为我们直接在playVoice中处理音频播放
+    // electronAPI.onPlayAudioFile((filePath: string, volume: number) => {
+    //   this.playAudioFile(filePath, volume);
+    // });
+  }
+
+  /**
+   * 处理键盘输入
+   */
+  private handleKeyboardInput(key: string) {
+    console.log('VoiceService: 处理键盘输入:', key);
+
+    // 将按键添加到缓冲区
+    this.keyBuffer.push(key.toLowerCase());
+
+    // 限制缓冲区大小
+    if (this.keyBuffer.length > 50) {
+      this.keyBuffer.shift();
+    }
+
+    console.log('VoiceService: 当前按键缓冲区:', this.keyBuffer);
+
+    // 清除之前的超时
+    if (this.keyBufferTimeout) {
+      clearTimeout(this.keyBufferTimeout);
+    }
+
+    // 设置新的超时，在停止输入后分析按键序列
+    this.keyBufferTimeout = setTimeout(() => {
+      this.analyzeKeySequence();
+      this.keyBuffer = [];
+    }, 1000); // 1秒后分析
+  }
+
+  /**
+   * 分析按键序列并触发相应语音
+   */
+  private analyzeKeySequence() {
+    if (!this.voiceConfig || !this.voiceSettings?.enabled) {
+      console.log('VoiceService: 语音配置或设置不可用，跳过分析', {
+        voiceConfig: !!this.voiceConfig,
+        enabled: this.voiceSettings?.enabled
+      });
+      return;
+    }
+
+    const keySequence = this.keyBuffer.join('');
+    console.log('VoiceService: 分析按键序列:', keySequence);
+
+    // 检查是否匹配任何关键词
+    for (const contribute of this.voiceConfig.contributes) {
+      for (const keyword of contribute.keywords) {
+        // 跳过时间相关的关键词（这些由定时播报处理）
+        if (keyword.startsWith('$time_')) continue;
+
+        if (keySequence.includes(keyword.toLowerCase())) {
+          console.log('VoiceService: 匹配到关键词:', keyword, '语音文件:', contribute.voices);
+          this.playRandomVoice(contribute.voices);
+          return; // 找到匹配后立即返回，避免重复播放
+        }
+      }
+    }
+
+    console.log('VoiceService: 没有匹配到任何关键词，不播放音频');
+  }
+
+  /**
+   * 播放随机语音
+   */
+  private playRandomVoice(voices: string[]) {
+    if (voices.length === 0) return;
+
+    const randomIndex = Math.floor(Math.random() * voices.length);
+    const selectedVoice = voices[randomIndex];
+
+    this.playVoice(selectedVoice);
+  }
+
+  /**
+   * 播放指定语音文件
+   */
+  private async playVoice(voiceFile: string) {
+    try {
+      console.log('VoiceService: 播放语音文件:', voiceFile);
+
+      // 构建语音文件的相对路径，与模型加载保持一致
+      const voicePath = `./assets/voice/${voiceFile}`;
+      console.log('VoiceService: 语音文件路径:', voicePath);
+
+      // 检查是否在Electron环境中
+      const electronAPI = (window as any).electronAPI;
+
+      if (electronAPI) {
+        // 在Electron环境中，使用readLocalFile API加载音频数据
+        try {
+          console.log('VoiceService: 尝试通过Electron API加载音频');
+          const audioData = await electronAPI.readLocalFile(voicePath);
+          if (audioData) {
+            console.log('VoiceService: 通过Electron API加载音频数据成功，数据类型:', typeof audioData);
+
+            // 检查数据类型
+            if (audioData instanceof ArrayBuffer) {
+              this.playAudioFromData(audioData, this.voiceSettings?.volume || 0.8);
+            } else if (typeof audioData === 'string') {
+              // 如果是字符串，可能是base64编码的数据
+              this.playAudioFromData(audioData, this.voiceSettings?.volume || 0.8);
+            } else {
+              console.error('VoiceService: 未知的音频数据类型:', typeof audioData);
+              // 回退到URL播放
+              this.playAudioFromUrl(voicePath, this.voiceSettings?.volume || 0.8);
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('VoiceService: 通过Electron API加载音频失败:', error);
+        }
+      }
+
+      // 回退到标准的音频播放方式（开发环境）
+      console.log('VoiceService: 使用标准方式播放音频');
+      this.playAudioFromUrl(voicePath, this.voiceSettings?.volume || 0.8);
+
+    } catch (error) {
+      console.error('VoiceService: 播放语音失败:', error);
+    }
+  }
+
+  /**
+   * 从URL播放音频（开发环境）
+   */
+  private playAudioFromUrl(audioUrl: string, volume: number) {
+    try {
+      // 停止当前播放的音频
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
+
+      // 创建新的音频元素
+      this.currentAudio = new Audio();
+      this.currentAudio.src = audioUrl;
+      this.currentAudio.volume = Math.max(0, Math.min(1, volume));
+
+      // 添加事件监听器
+      this.currentAudio.addEventListener('error', (e) => {
+        console.error('VoiceService: 音频加载失败:', e, '路径:', audioUrl);
+      });
+
+      this.currentAudio.addEventListener('loadstart', () => {
+        console.log('VoiceService: 开始加载音频');
+      });
+
+      this.currentAudio.addEventListener('canplay', () => {
+        console.log('VoiceService: 音频可以播放');
+      });
+
+      // 播放音频
+      this.currentAudio.play().then(() => {
+        console.log('VoiceService: 音频播放成功');
+      }).catch(error => {
+        console.error('VoiceService: 播放音频失败:', error);
+      });
+
+      // 播放完成后清理
+      this.currentAudio.addEventListener('ended', () => {
+        console.log('VoiceService: 音频播放完成');
+        this.currentAudio = null;
+      });
+
+    } catch (error) {
+      console.error('VoiceService: 播放音频失败:', error);
+    }
+  }
+
+  /**
+   * 从二进制数据播放音频（生产环境）
+   */
+  private playAudioFromData(audioData: ArrayBuffer | string | Buffer, volume: number) {
+    try {
+      console.log('VoiceService: 开始处理音频数据，类型:', typeof audioData, '是否为ArrayBuffer:', audioData instanceof ArrayBuffer);
+
+      // 停止当前播放的音频
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
+
+      let buffer: ArrayBuffer;
+
+      // 处理不同类型的数据
+      if (audioData instanceof ArrayBuffer) {
+        buffer = audioData;
+        console.log('VoiceService: 使用ArrayBuffer数据，大小:', buffer.byteLength);
+      } else if (typeof audioData === 'string') {
+        console.log('VoiceService: 处理字符串数据，长度:', audioData.length);
+
+        // 检查是否是base64编码
+        if (audioData.startsWith('data:')) {
+          // 如果是data URL，直接使用
+          this.currentAudio = new Audio();
+          this.currentAudio.src = audioData;
+          this.currentAudio.volume = Math.max(0, Math.min(1, volume));
+
+          this.currentAudio.addEventListener('error', (e) => {
+            console.error('VoiceService: 音频播放失败:', e);
+          });
+
+          this.currentAudio.play().then(() => {
+            console.log('VoiceService: data URL音频播放成功');
+          }).catch(error => {
+            console.error('VoiceService: 播放data URL音频失败:', error);
+          });
+
+          return;
+        } else {
+          // 尝试作为base64解码
+          try {
+            const binaryString = atob(audioData);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            buffer = bytes.buffer;
+            console.log('VoiceService: base64解码成功，大小:', buffer.byteLength);
+          } catch (error) {
+            console.error('VoiceService: base64解码失败:', error);
+            // 如果解码失败，尝试直接作为二进制字符串处理
+            const bytes = new Uint8Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+              bytes[i] = audioData.charCodeAt(i);
+            }
+            buffer = bytes.buffer;
+            console.log('VoiceService: 二进制字符串转换成功，大小:', buffer.byteLength);
+          }
+        }
+      } else if (audioData && typeof audioData === 'object' && 'buffer' in audioData) {
+        // 处理Node.js Buffer对象
+        const bufferData = audioData as any;
+        buffer = bufferData.buffer.slice(bufferData.byteOffset, bufferData.byteOffset + bufferData.byteLength) as ArrayBuffer;
+        console.log('VoiceService: 使用Buffer数据，大小:', buffer.byteLength);
+      } else {
+        console.error('VoiceService: 不支持的音频数据类型:', typeof audioData);
+        return;
+      }
+
+      // 创建Blob URL
+      const blob = new Blob([buffer], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(blob);
+      console.log('VoiceService: 创建Blob URL成功:', audioUrl);
+
+      // 创建新的音频元素
+      this.currentAudio = new Audio();
+      this.currentAudio.src = audioUrl;
+      this.currentAudio.volume = Math.max(0, Math.min(1, volume));
+
+      // 添加事件监听器
+      this.currentAudio.addEventListener('error', (e) => {
+        console.error('VoiceService: 音频播放失败:', e);
+        URL.revokeObjectURL(audioUrl); // 清理Blob URL
+      });
+
+      this.currentAudio.addEventListener('loadstart', () => {
+        console.log('VoiceService: 开始加载音频数据');
+      });
+
+      this.currentAudio.addEventListener('canplay', () => {
+        console.log('VoiceService: 音频数据可以播放');
+      });
+
+      // 播放音频
+      this.currentAudio.play().then(() => {
+        console.log('VoiceService: 音频数据播放成功');
+      }).catch(error => {
+        console.error('VoiceService: 播放音频数据失败:', error);
+        URL.revokeObjectURL(audioUrl); // 清理Blob URL
+      });
+
+      // 播放完成后清理
+      this.currentAudio.addEventListener('ended', () => {
+        console.log('VoiceService: 音频播放完成');
+        URL.revokeObjectURL(audioUrl); // 清理Blob URL
+        this.currentAudio = null;
+      });
+
+    } catch (error) {
+      console.error('VoiceService: 播放音频数据失败:', error);
+    }
+  }
+
+  /**
+   * 播放音频文件（通过HTML5 Audio）
+   */
+  private playAudioFile(filePath: string, volume: number) {
+    try {
+      console.log('VoiceService: 尝试播放音频文件:', filePath);
+
+      // 停止当前播放的音频
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
+
+      // 创建新的音频元素
+      this.currentAudio = new Audio();
+
+      // 处理文件路径 - 在Electron中需要特殊处理
+      let audioSrc = filePath;
+      if (filePath.startsWith('/')) {
+        // 绝对路径，使用file://协议
+        audioSrc = `file://${filePath}`;
+      } else if (!filePath.startsWith('http') && !filePath.startsWith('file://')) {
+        // 相对路径，转换为绝对路径
+        audioSrc = `file://${filePath}`;
+      }
+
+      console.log('VoiceService: 音频源路径:', audioSrc);
+
+      this.currentAudio.src = audioSrc;
+      this.currentAudio.volume = Math.max(0, Math.min(1, volume));
+
+      // 添加错误处理
+      this.currentAudio.addEventListener('error', (e) => {
+        console.error('音频加载失败:', e, '路径:', audioSrc);
+      });
+
+      this.currentAudio.addEventListener('loadstart', () => {
+        console.log('VoiceService: 开始加载音频');
+      });
+
+      this.currentAudio.addEventListener('canplay', () => {
+        console.log('VoiceService: 音频可以播放');
+      });
+
+      // 播放音频
+      this.currentAudio.play().then(() => {
+        console.log('VoiceService: 音频播放成功');
+      }).catch(error => {
+        console.error('VoiceService: 播放音频失败:', error);
+
+        // 尝试使用不同的路径格式
+        if (audioSrc.startsWith('file://')) {
+          const alternativeSrc = filePath.replace(/\\/g, '/');
+          console.log('VoiceService: 尝试备用路径:', alternativeSrc);
+          this.currentAudio!.src = alternativeSrc;
+          this.currentAudio!.play().catch(err => {
+            console.error('VoiceService: 备用路径也失败:', err);
+          });
+        }
+      });
+
+      // 播放完成后清理
+      this.currentAudio.addEventListener('ended', () => {
+        console.log('VoiceService: 音频播放完成');
+        this.currentAudio = null;
+      });
+
+    } catch (error) {
+      console.error('VoiceService: 播放音频文件失败:', error);
+    }
+  }
+
+  /**
+   * 启动定时播报
+   */
+  private startTimeAnnouncement() {
+    if (!this.voiceSettings?.timeAnnouncement) return;
+
+    // 每分钟检查一次是否需要播报
+    this.timeAnnouncementInterval = setInterval(() => {
+      this.checkTimeAnnouncement();
+    }, 60000); // 60秒
+
+    // 立即检查一次
+    this.checkTimeAnnouncement();
+  }
+
+  /**
+   * 检查时间播报
+   */
+  private checkTimeAnnouncement() {
+    if (!this.voiceConfig || !this.voiceSettings?.enabled) return;
+
+    const now = new Date();
+    const currentTime = now.getTime();
+
+    // 避免频繁播报（至少间隔30分钟）
+    if (currentTime - this.lastAnnouncementTime < 30 * 60 * 1000) {
+      return;
+    }
+
+    const hour = now.getHours();
+    let timeKeyword = '';
+
+    // 根据时间确定关键词
+    if (hour >= 6 && hour < 11) {
+      timeKeyword = '$time_morning';
+    } else if (hour >= 11 && hour < 13) {
+      timeKeyword = '$time_before_noon';
+    } else if (hour >= 13 && hour < 14) {
+      timeKeyword = '$time_noon';
+    } else if (hour >= 17 && hour < 22) {
+      timeKeyword = '$time_evening';
+    } else if (hour >= 22 || hour < 6) {
+      timeKeyword = '$time_midnight';
+    }
+
+    // 每小时播报
+    if (now.getMinutes() === 0) {
+      timeKeyword = '$time_each_hour';
+    }
+
+    if (timeKeyword) {
+      const contribute = this.voiceConfig.contributes.find((c: VoiceContribute) =>
+        c.keywords.includes(timeKeyword)
+      );
+
+      if (contribute) {
+        this.playRandomVoice(contribute.voices);
+        this.lastAnnouncementTime = currentTime;
+      }
+    }
+  }
+
+  /**
+   * 更新语音设置
+   */
+  public async updateSettings(newSettings: Partial<VoiceSettings>) {
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI) return;
+
+      // 合并设置
+      this.voiceSettings = { ...this.voiceSettings, ...newSettings } as VoiceSettings;
+
+      // 保存设置
+      electronAPI.saveVoiceSettings(this.voiceSettings);
+
+      // 重新启动相关服务
+      if (newSettings.keyboardListening !== undefined) {
+        if (newSettings.keyboardListening) {
+          electronAPI.startKeyboardListener();
+        } else {
+          electronAPI.stopKeyboardListener();
+        }
+      }
+
+      if (newSettings.timeAnnouncement !== undefined) {
+        if (this.timeAnnouncementInterval) {
+          clearInterval(this.timeAnnouncementInterval);
+          this.timeAnnouncementInterval = null;
+        }
+
+        if (newSettings.timeAnnouncement) {
+          this.startTimeAnnouncement();
+        }
+      }
+
+      console.log('语音设置已更新:', this.voiceSettings);
+    } catch (error) {
+      console.error('更新语音设置失败:', error);
+    }
+  }
+
+  /**
+   * 获取当前设置
+   */
+  public getSettings(): VoiceSettings | null {
+    return this.voiceSettings;
+  }
+
+  /**
+   * 销毁服务
+   */
+  public destroy() {
+    const electronAPI = (window as any).electronAPI;
+
+    // 停止键盘监听
+    if (electronAPI) {
+      electronAPI.stopKeyboardListener();
+      electronAPI.removeKeyboardListeners();
+      electronAPI.removeAudioListeners();
+    }
+
+    // 清理定时器
+    if (this.keyBufferTimeout) {
+      clearTimeout(this.keyBufferTimeout);
+    }
+
+    if (this.timeAnnouncementInterval) {
+      clearInterval(this.timeAnnouncementInterval);
+    }
+
+    // 停止当前音频
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+
+    console.log('语音服务已销毁');
+  }
+} 
