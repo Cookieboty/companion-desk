@@ -24,6 +24,7 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
     'photo',
     'asteroids',
     'info',
+    'voice-settings',
     'toggle-top',
     'quit'
   ];

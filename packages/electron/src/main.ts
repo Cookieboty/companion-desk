@@ -3,6 +3,17 @@ import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
 
+// 添加全局键盘监听依赖
+let globalKeyboardListener: any = null;
+try {
+  // 尝试导入 node-global-key-listener
+  const { GlobalKeyboardListener } = require('node-global-key-listener');
+  globalKeyboardListener = GlobalKeyboardListener;
+} catch (error) {
+  console.error('主进程: node-global-key-listener加载失败:', error);
+  console.warn('主进程: 全局键盘监听功能将不可用');
+}
+
 // 配置文件路径
 const userDataPath = app.getPath('userData');
 const configPath = path.join(userDataPath, 'config.json');
@@ -12,11 +23,27 @@ const configPath = path.join(userDataPath, 'config.json');
 interface AppConfig {
   windowPosition: { x: number; y: number };
   modelName: string;
+  voiceSettings: VoiceSettings;
+}
+
+interface VoiceSettings {
+  enabled: boolean;
+  volume: number;
+  keyboardListening: boolean;
+  timeAnnouncement: boolean;
+  voicePackPath: string;
 }
 
 const defaultConfig: AppConfig = {
   windowPosition: { x: 0, y: 0 },
-  modelName: ''
+  modelName: '',
+  voiceSettings: {
+    enabled: true,
+    volume: 0.8,
+    keyboardListening: true,
+    timeAnnouncement: true,
+    voicePackPath: 'packages/renderer/public/assets/voice'
+  }
 };
 
 // 加载配置
@@ -57,7 +84,6 @@ if (isDev) {
         path.join(__dirname, '..', '..', 'renderer', 'dist', '**')
       ]
     });
-    console.log('开发模式：热重载已启用');
   } catch (err) {
     console.error('无法启用热重载，请确保已安装electron-reload:', err);
   }
@@ -66,6 +92,10 @@ if (isDev) {
 // 保持一个对窗口对象的全局引用，如果不这样做，当 JavaScript 对象被
 // 垃圾回收，窗口会自动关闭
 let mainWindow: BrowserWindow | null = null;
+
+// 全局键盘监听器实例
+let keyboardListener: any = null;
+let isKeyboardListening = false;
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -158,8 +188,6 @@ function createWindow() {
     process.env.DEBUG === 'true' ||
     !!require('../package.json').debug;
 
-  console.log('应用启动模式:', { isDev, isDebugMode, args: process.argv });
-
   let startUrl: string = 'about:blank'; // 默认值，确保startUrl一定有值
   if (isDev) {
     startUrl = 'http://localhost:3000';
@@ -217,10 +245,8 @@ function createWindow() {
     } else {
       // 尝试列出目录内容以辅助调试
       try {
-
         // 列出应用程序目录
         const appDir = app.getAppPath();
-        console.log('应用程序目录内容:', fs.existsSync(appDir) ? fs.readdirSync(appDir) : '目录不存在');
 
         // 如果在macOS上，列出Resources目录
         if (process.platform === 'darwin') {
@@ -291,6 +317,17 @@ function createWindow() {
     mainWindow = null;
   });
 
+  // 窗口加载完成后检查键盘监听器状态
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (!globalKeyboardListener) {
+      console.error('主进程: 键盘监听功能不可用，请检查node-global-key-listener依赖');
+      // 向渲染进程发送错误信息
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('keyboard-listener-error', 'node-global-key-listener依赖不可用');
+      }
+    }
+  });
+
   // 监听窗口移动事件，保存位置
   mainWindow.on('moved', () => {
     if (mainWindow) {
@@ -303,7 +340,12 @@ function createWindow() {
 }
 
 // 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  if (!globalKeyboardListener) {
+    console.error('主进程: 警告 - 键盘监听功能不可用！');
+  }
+  createWindow();
+});
 
 // 在所有窗口关闭时退出应用
 app.on('window-all-closed', () => {
@@ -320,6 +362,17 @@ app.on('before-quit', () => {
     const config = loadConfig();
     config.windowPosition = { x: position[0], y: position[1] };
     saveConfig(config);
+  }
+
+  // 清理键盘监听器
+  if (keyboardListener && isKeyboardListening) {
+    try {
+      keyboardListener.kill();
+      keyboardListener = null;
+      isKeyboardListening = false;
+    } catch (error) {
+      console.error('清理键盘监听器失败:', error);
+    }
   }
 });
 
@@ -357,7 +410,6 @@ const positionUpdate = () => {
     w = width;
     h = height;
     rectSetted = true;
-    console.log('记录窗口原始尺寸:', { width, height });
   };
 
   const setShouldUpdateRect = () => {
@@ -376,7 +428,6 @@ const positionUpdate = () => {
         y: Math.round(y)
       };
 
-      console.log('设置窗口位置和尺寸:', bounds);
       mainWindow.setBounds(bounds);
     } catch (err) {
       console.error('设置窗口位置错误:', err);
@@ -506,7 +557,6 @@ ipcMain.handle('read-local-json', async (_, filePath: string) => {
 
     // 读取并解析JSON文件
     const data = fs.readFileSync(resolvedPath, 'utf8');
-    console.log(`成功读取文件: ${resolvedPath}`);
     return JSON.parse(data);
   } catch (error) {
     console.error('读取本地JSON文件失败:', error);
@@ -536,8 +586,6 @@ ipcMain.handle('file-exists', (_, filePath: string) => {
 // 在IPC事件处理程序部分添加读取本地文件功能
 ipcMain.handle('read-local-file', async (event, filePath) => {
   try {
-    console.log('正在读取本地文件:', filePath);
-
     // 构建绝对路径
     let absolutePath;
 
@@ -654,8 +702,6 @@ ipcMain.handle('read-local-file', async (event, filePath) => {
       absolutePath = filePath;
     }
 
-    console.log('尝试读取文件路径:', absolutePath);
-
     // 检查文件是否存在
     if (!fs.existsSync(absolutePath)) {
       console.error('文件不存在:', absolutePath);
@@ -678,5 +724,82 @@ ipcMain.handle('read-local-file', async (event, filePath) => {
   } catch (error) {
     console.error('读取文件失败:', error);
     return null;
+  }
+});
+
+// 获取语音设置
+ipcMain.handle('get-voice-settings', async () => {
+  const config = loadConfig();
+  return config.voiceSettings;
+});
+
+// 保存语音设置
+ipcMain.on('save-voice-settings', (_, settings: VoiceSettings) => {
+  const config = loadConfig();
+  config.voiceSettings = { ...config.voiceSettings, ...settings };
+  saveConfig(config);
+});
+
+// 启动键盘监听
+ipcMain.on('start-keyboard-listener', () => {
+  if (!globalKeyboardListener) {
+    console.error('主进程: globalKeyboardListener未初始化，键盘监听功能不可用');
+    // 发送启动失败消息到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-error', 'globalKeyboardListener未初始化，可能是node-global-key-listener依赖未正确安装');
+    }
+    return;
+  }
+
+  if (isKeyboardListening) {
+    // 发送已启动消息
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-started');
+    }
+    return;
+  }
+
+  try {
+    keyboardListener = new globalKeyboardListener();
+
+    keyboardListener.addListener((e: any, down: any) => {
+      const keyEvent = {
+        key: e.name,
+        timestamp: Date.now(),
+        type: e.state === 'DOWN' ? 'keydown' : 'keyup'
+      };
+
+      // 发送键盘事件到渲染进程
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('keyboard-event', keyEvent);
+      }
+    });
+
+    isKeyboardListening = true;
+
+    // 发送启动成功消息到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-started');
+    }
+  } catch (error) {
+    console.error('主进程: 启动键盘监听失败:', error);
+
+    // 发送启动失败消息到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-error', String(error));
+    }
+  }
+});
+
+// 停止键盘监听
+ipcMain.on('stop-keyboard-listener', () => {
+  if (keyboardListener && isKeyboardListening) {
+    try {
+      keyboardListener.kill();
+      keyboardListener = null;
+      isKeyboardListening = false;
+    } catch (error) {
+      console.error('停止键盘监听失败:', error);
+    }
   }
 }); 

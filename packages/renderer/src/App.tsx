@@ -15,7 +15,15 @@ const App: React.FC = () => {
   const live2dConfig: ModelConfig = {
     waifuPath: './assets/waifu-tips.json', // 使用相对路径
     cubism2Path: isElectron ? './assets/live2d.min.js' : '/assets/live2d.min.js', // 在Electron中使用相对路径
-    tools: ['switch-model', 'photo', 'info', 'toggle-top', 'quit'],
+    tools: [
+      // 'hitokoto',
+      'switch-model',
+      'photo',
+      'info',
+      'voice-settings',
+      'toggle-top',
+      'quit'
+    ],
     logLevel: 'warn',
     drag: true,
   };

@@ -43,12 +43,10 @@ export function useLive2DModel() {
   // 加载模型列表 - 使用新的costume_model_list.json结构
   const loadModelList = useCallback(async () => {
     if (loadingRef.current || modelListLoadedRef.current) {
-      console.log('模型列表已加载或正在加载中，跳过重复请求');
       return;
     }
 
     try {
-      console.log('开始加载模型列表...');
       loadingRef.current = true;
       dispatchRef.current({ type: 'SET_LOADING', payload: true });
 
@@ -57,8 +55,6 @@ export function useLive2DModel() {
       const modelConfig: ModelList = await response.json();
 
       if (modelConfig && modelConfig.models && modelConfig.models.length > 0) {
-        console.log('成功加载模型配置:', modelConfig.models.length, '个模型');
-
         // 直接使用新结构，无需转换
         const formattedList: ModelItem[] = modelConfig.models.map((model: CostumeModelItem) => ({
           name: model.name,
@@ -72,12 +68,10 @@ export function useLive2DModel() {
         // 尝试从缓存中恢复上次保存的模型
         const savedModelName = await getCache<string>('modelName');
         if (savedModelName) {
-          console.log('从缓存中恢复的模型名称:', savedModelName);
           const modelIndex = formattedList.findIndex((model: ModelItem) =>
             model.name === savedModelName
           );
           if (modelIndex >= 0) {
-            console.log('找到匹配的模型索引:', modelIndex);
             dispatchRef.current({ type: 'SET_MODEL_ID', payload: modelIndex });
 
             // 恢复换装索引
@@ -92,7 +86,6 @@ export function useLive2DModel() {
         }
 
         modelListLoadedRef.current = true;
-        console.log('模型配置加载完成');
       } else {
         console.warn('模型配置文件为空或格式错误');
         dispatchRef.current({
@@ -124,34 +117,27 @@ export function useLive2DModel() {
 
   // 加载模型设置
   const fetchModelSetting = useCallback(async (modelPath: string) => {
-    console.log('加载模型设置:', modelPath);
     // 检查缓存中是否有此模型设置
     if (modelPath in modelJSONCache.current) {
-      console.log('使用缓存的模型设置');
       const cachedSetting = modelJSONCache.current[modelPath];
       // 移除背景图片配置，确保透明背景
       if (cachedSetting.background) {
         delete cachedSetting.background;
-        console.log('已移除缓存模型配置中的背景图片设置');
       }
       return cachedSetting;
     }
 
     // 如果没有则从网络加载
     try {
-      console.log('从网络加载模型设置');
       const response = await customFetch(modelPath);
       const modelSetting = await response.json();
 
       // 移除背景图片配置，确保透明背景
       if (modelSetting.background) {
-        console.log('检测到模型配置中的背景图片，正在移除:', modelSetting.background);
         delete modelSetting.background;
-        console.log('已移除模型配置中的背景图片设置');
       }
 
       modelJSONCache.current[modelPath] = modelSetting;
-      console.log('模型设置加载成功');
       return modelSetting;
     } catch (error) {
       console.error(`加载模型设置失败: ${modelPath}`, error);
@@ -170,9 +156,7 @@ export function useLive2DModel() {
 
   // 加载Live2D模型
   const loadModel = useCallback(async (modelIndex: number) => {
-    console.log(`开始加载模型, 索引: ${modelIndex}`);
     if (loadingRef.current) {
-      console.log('模型加载中，忽略请求');
       return;
     }
 
@@ -191,7 +175,6 @@ export function useLive2DModel() {
 
     // 检查Live2D库是否已初始化
     if (!currentIsInitialized) {
-      console.warn('Live2D库尚未初始化，无法加载模型');
       dispatchRef.current({
         type: 'SET_MESSAGE',
         payload: {
@@ -207,11 +190,9 @@ export function useLive2DModel() {
 
     try {
       const model = currentModelList[modelIndex];
-      console.log('加载模型:', model);
 
       // 保存模型到缓存
       await setCache('modelName', model.name);
-      console.log('模型名称已保存到缓存:', model.name);
 
       // 获取当前要加载的模型路径（考虑换装）
       const currentTextureId = state.textureId || 0;
@@ -220,38 +201,29 @@ export function useLive2DModel() {
       // 如果有换装且当前纹理ID大于0，使用换装路径
       if (model.costumes && currentTextureId > 0 && currentTextureId <= model.costumes.length) {
         modelPath = model.costumes[currentTextureId - 1];
-        console.log('使用换装路径:', modelPath);
       }
 
       const modelSetting = await fetchModelSetting(modelPath);
       const version = checkModelVersion(modelSetting);
-      console.log(`模型${model.name}版本:`, version);
 
       if (version === 2) {
         // 初始化Cubism2模型
-        console.log('开始初始化Cubism2模型');
         if (!cubism2Model && configRef.current.cubism2Path) {
-          console.log('首次加载Cubism2引擎，路径:', configRef.current.cubism2Path);
           // 动态导入Cubism2
           const { default: Cubism2Model } = await import('@/cubism2/index');
           const modelInstance = new Cubism2Model();
           setCubism2Model(modelInstance);
 
           // 使用标准方法初始化模型
-          console.log('使用标准方法初始化模型实例');
           await modelInstance.init('live2d', modelPath, modelSetting);
-
         } else if (cubism2Model) {
           // 如果已经加载了Cubism2，使用changeModelWithJSON方法切换模型
-          console.log('使用已有的Cubism2实例，切换到新模型');
           await cubism2Model.changeModelWithJSON(modelPath, modelSetting);
-
         } else {
           console.error('未配置cubism2Path，无法加载Cubism2核心');
         }
 
         // 显示消息
-        console.log('发送模型加载完成消息');
         dispatchRef.current({
           type: 'SET_MESSAGE',
           payload: {
@@ -296,7 +268,6 @@ export function useLive2DModel() {
     }
 
     const nextModelId = (currentModelId + 1) % currentModelList.length;
-    console.log(`切换到下一个模型: ${currentModelId} -> ${nextModelId}`);
 
     // 重置纹理ID为0（默认服装）
     dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: 0 });
@@ -329,7 +300,6 @@ export function useLive2DModel() {
     const totalCostumes = currentModel.costumes ? currentModel.costumes.length + 1 : 1;
 
     if (totalCostumes <= 1) {
-      console.log('当前模型没有换装');
       dispatchRef.current({
         type: 'SET_MESSAGE',
         payload: {
@@ -342,7 +312,6 @@ export function useLive2DModel() {
 
     // 切换到下一个换装
     const nextTextureId = (currentTextureId + 1) % totalCostumes;
-    console.log(`切换换装: ${currentTextureId} -> ${nextTextureId}`);
 
     dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: nextTextureId });
 
