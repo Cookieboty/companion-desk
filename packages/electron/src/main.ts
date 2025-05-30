@@ -92,13 +92,13 @@ function createWindow() {
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
+    hasShadow: false, // 关闭阴影
     x: x,
     y: y,
     backgroundColor: '#00000000',
     // Windows特定优化
     ...(process.platform === 'win32' && {
       thickFrame: false,
-      hasShadow: false
     }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

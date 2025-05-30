@@ -3,28 +3,18 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 250px; /* 恢复原始尺寸，使用模型矩阵缩放 */
+  width: 250px;
   height: auto;
   margin-top: -125px; /* 恢复原始负边距 */
   margin-left: -125px; /* 恢复原始负边距 */
   z-index: 1;
   font-size: 0;
   transition: all .3s ease-in-out;
-  background: transparent !important;
-  background-color: transparent !important;
-  /* 确保可见 */
-  /* 重置所有可能的focus和active状态 */
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent !important;
-  box-shadow: none !important;
 }
 
 .waifu:focus,
 .waifu:active {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-  -webkit-tap-highlight-color: transparent !important;
+	cursor: grabbing;
 }
 
 /* 看板娘画布 - 相对定位 */
@@ -37,150 +27,20 @@
   pointer-events: auto;
   user-select: none;
   transition: all 0.3s ease;
-  overflow: visible; /* 允许高瘦模型显示完整 */
-  /* 重置focus状态 */
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent !important;
-  -webkit-touch-callout: none !important;
+  /* overflow: visible; */
 }
 
 .waifuCanvas:focus,
 .waifuCanvas:active {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-  -webkit-tap-highlight-color: transparent !important;
+	cursor: grabbing;
 }
+
 
 /* 修复Canvas白色底纹问题 - 确保所有状态下都透明 */
 .waifuCanvas canvas {
   display: block;
   width: 300px !important; /* 保持300x300的显示尺寸 */
   height: 300px !important; /* 保持300x300的显示尺寸 */
-  object-fit: contain; /* 保持宽高比 */
-  background: transparent !important; /* 强制透明背景 */
-  background-color: transparent !important; /* 强制透明背景色 */
-  
-  /* 重置canvas的focus和active状态 */
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent !important;
-  -webkit-touch-callout: none !important;
-  /* 强制移除所有可能的outline样式 */
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  outline-offset: 0 !important;
-  /* 移除Firefox特有的focus样式 */
-  -moz-outline: none !important;
-  -moz-outline-style: none !important;
-  /* 移除WebKit特有的focus样式 */
-  -webkit-focus-ring-color: transparent !important;
-  /* 确保tabindex不会产生focus */
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
-}
-
-/* 确保canvas在所有状态下都没有边框或阴影 */
-.waifuCanvas canvas:focus,
-.waifuCanvas canvas:active,
-.waifuCanvas canvas:hover,
-.waifuCanvas canvas:visited,
-.waifuCanvas canvas:target {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  -webkit-tap-highlight-color: transparent !important;
-  /* 强制移除所有可能的outline样式 */
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  outline-offset: 0 !important;
-  /* 移除Firefox特有的focus样式 */
-  -moz-outline: none !important;
-  -moz-outline-style: none !important;
-  /* 移除WebKit特有的focus样式 */
-  -webkit-focus-ring-color: transparent !important;
-}
-
-/* 全局Canvas outline清除 - 针对所有Canvas元素 */
-canvas {
-  outline: none !important;
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  outline-offset: 0 !important;
-  -moz-outline: none !important;
-  -moz-outline-style: none !important;
-  -webkit-focus-ring-color: transparent !important;
-  -webkit-tap-highlight-color: transparent !important;
-}
-
-canvas:focus,
-canvas:active,
-canvas:hover,
-canvas:visited,
-canvas:target {
-  outline: none !important;
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  outline-offset: 0 !important;
-  -moz-outline: none !important;
-  -moz-outline-style: none !important;
-  -webkit-focus-ring-color: transparent !important;
-  -webkit-tap-highlight-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-/* 加载动画 */
-.loading {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 30;
-}
-
-.loadingSpinner {
-  margin: 20px auto;
-  width: 70px;
-  text-align: center;
-}
-
-.loadingSpinner > div {
-  width: 18px;
-  height: 18px;
-  background-color: #0684bd;
-  border-radius: 100%;
-  display: inline-block;
-  animation: sk-bouncedelay 1.4s infinite ease-in-out both;
-}
-
-.loadingSpinner .loadingBounce1 {
-  animation-delay: -0.32s;
-}
-
-.loadingSpinner .loadingBounce2 {
-  animation-delay: -0.16s;
-}
-
-.loadingSpinner .loadingBounce3 {
-  animation-delay: 0s;
-}
-
-.loadingText {
-  color: #0684bd;
-  font-size: 14px;
 }
 
 @keyframes sk-bouncedelay {
