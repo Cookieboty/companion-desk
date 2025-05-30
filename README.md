@@ -1,13 +1,16 @@
-# 智能小助手桌面应用
+# 智能编程助手桌面应用
 
-基于Electron和React的桌面看板娘应用，支持Live2D模型展示、实时互动和热重载开发。
+基于Electron和React的桌面看板娘应用，专为程序员设计的智能语音助手，支持Live2D模型展示、编程关键词语音反馈和智能时间播报。
 
 ## 🚀 项目特点
 
 - 🎭 **Live2D模型支持** - 完整的Live2D Cubism SDK集成，支持模型动画和互动
 - 🪟 **透明无边框窗口** - 现代化的桌面应用界面设计
-- 🎯 **窗口置顶功能** - 可切换的窗口置顶状态
-- 🖱️ **拖拽移动** - 支持窗口拖拽移动
+- 🎯 **窗口置顶功能** - 可切换的窗口置顶状态，编程时的贴心伴侣
+- 🖱️ **拖拽移动** - 支持窗口拖拽移动，随心所欲调整位置
+- ⌨️ **智能键盘监听** - 全局监听编程关键词，实时语音反馈
+- 🔊 **编程语音助手** - 识别function、if、for、await等关键词并播放相应语音
+- ⏰ **智能时间播报** - 根据时间段自动播放问候语音（早上、中午、晚上等）
 - 🔄 **热重载开发** - 开发模式下支持代码热重载
 - 💬 **消息气泡** - 模型互动和消息显示
 - 🎨 **模型换装** - 支持模型服装和配饰切换
@@ -20,19 +23,26 @@ ig-live-monorepo/
 ├── packages/
 │   ├── electron/           # Electron主进程和预加载脚本
 │   │   ├── src/
-│   │   │   ├── main.ts    # 主进程入口
-│   │   │   └── preload.ts # 预加载脚本
+│   │   │   ├── main.ts    # 主进程入口，全局键盘监听
+│   │   │   └── preload.ts # 预加载脚本，IPC通信桥梁
 │   │   └── package.json
 │   ├── renderer/          # React前端渲染器
 │   │   ├── src/
 │   │   │   ├── App.tsx    # 应用主组件
 │   │   │   ├── components/ # React组件
+│   │   │   │   ├── ToolBar/ # 工具栏组件
+│   │   │   │   └── VoiceSettings/ # 语音设置组件
+│   │   │   ├── services/  # 业务服务
+│   │   │   │   └── VoiceService.ts # 语音服务核心
+│   │   │   ├── hooks/     # React Hooks
 │   │   │   └── live2d/    # Live2D相关代码
 │   │   └── package.json
 │   └── types/             # 共享类型定义
-│       └── index.ts
+│       └── index.ts       # IPC API类型定义
 ├── scripts/               # 构建和工具脚本
 ├── tasks/                 # 开发任务记录
+├── assets/                # 静态资源
+│   └── voice/             # 语音文件和配置
 ├── design/                # 设计资源
 ├── pnpm-workspace.yaml    # 工作区配置
 ├── turbo.json            # Turborepo配置
@@ -45,6 +55,7 @@ ig-live-monorepo/
 
 - Node.js >= 16.0.0
 - pnpm >= 8.0.0
+- macOS/Windows/Linux
 
 ### 安装依赖
 
@@ -62,6 +73,7 @@ pnpm dev
 - React开发服务器 (Vite)
 - Electron应用
 - TypeScript编译监听
+- 模型列表自动生成
 
 开发模式下支持热重载，修改代码后应用会自动更新。
 
@@ -99,24 +111,37 @@ pnpm package:debug
 - `Alt+P`: 切换窗口置顶状态
 - `Alt+Q`: 退出应用
 
-## 🎮 功能特点
+## 🎮 核心功能
 
-### 核心功能
+### 智能语音助手
 
-- **透明无边框窗口** - 现代化的桌面应用界面
-- **窗口拖拽** - 支持鼠标拖拽移动窗口位置
-- **窗口置顶切换** - 可通过快捷键或界面切换置顶状态
-- **Live2D模型展示** - 完整的Live2D Cubism SDK集成
-- **模型互动** - 支持鼠标点击和触摸互动
-- **消息气泡** - 模型消息显示和互动反馈
+- **编程关键词识别** - 实时监听全局键盘输入，识别编程关键词
+- **语音反馈** - 当检测到关键词时播放相应的语音提示
+- **支持的关键词** - function、if、for、while、await、catch、import、export等
+- **智能缓冲** - 1秒内的连续输入会被合并分析，避免重复播放
 
-### Live2D功能
+### 时间播报功能
+
+- **智能时间段识别** - 自动识别早上、中午、下午、晚上、深夜时段
+- **定时问候** - 在合适的时间播放问候语音
+- **防重复播报** - 30分钟内不会重复播报相同内容
+- **整点播报** - 每小时整点时播放特殊提示音
+
+### Live2D模型系统
 
 - **模型加载** - 支持本地和远程模型加载
 - **动画播放** - 支持待机、触摸等各种动画
 - **换装系统** - 支持模型服装和配饰切换
 - **物理效果** - 支持Live2D物理引擎
 - **表情控制** - 支持表情参数调节
+- **模型互动** - 支持鼠标点击和触摸互动
+
+### 窗口管理
+
+- **透明无边框窗口** - 现代化的桌面应用界面
+- **窗口拖拽** - 支持鼠标拖拽移动窗口位置
+- **窗口置顶切换** - 可通过快捷键或界面切换置顶状态
+- **位置记忆** - 自动保存和恢复窗口位置
 
 ### 开发功能
 
@@ -125,60 +150,73 @@ pnpm package:debug
 - **模块化架构** - 清晰的包结构和依赖管理
 - **构建优化** - 使用Turborepo进行高效构建
 
-## 🎨 模型仓库
+## 🎨 语音配置
 
-本项目并不包含任何模型，需要单独配置模型仓库来显示Live2D模型。
-
-### 模型结构
-
-模型仓库应该具有以下结构：
+### 语音文件结构
 
 ```
-models/
-├── model_list.json        # 模型列表配置
-├── [模型名称1]/
-│   ├── index.json        # 模型配置文件
-│   ├── model.json        # Live2D模型定义
-│   ├── model.moc         # 模型数据文件
-│   ├── textures/         # 纹理文件夹
-│   │   ├── texture_00.png
-│   │   └── ...
-│   ├── physics.json      # 物理配置
-│   ├── motions/          # 动作文件夹
-│   │   ├── idle/
-│   │   ├── tap_body/
-│   │   └── ...
-│   └── expressions/      # 表情文件夹
-└── [模型名称2]/
-    └── ...
+assets/voice/
+├── contributes.json       # 语音配置文件
+├── function/             # 函数相关语音
+├── condition/            # 条件语句语音
+├── loop/                 # 循环语句语音
+├── async/                # 异步操作语音
+├── greeting/             # 问候语音
+└── time/                 # 时间播报语音
 ```
 
-### 模型配置
+### 语音配置示例
 
-`model_list.json` 示例：
+`contributes.json` 配置文件定义了关键词和对应的语音文件：
 
 ```json
 {
-  "models": [
+  "contributes": [
     {
-      "name": "模型名称",
-      "path": "模型文件夹名",
-      "preview": "预览图片路径",
-      "description": "模型描述"
+      "keywords": ["function", "def", "func"],
+      "voices": ["function/voice1.mp3", "function/voice2.mp3"]
+    },
+    {
+      "keywords": ["if", "else", "elif"],
+      "voices": ["condition/voice1.mp3", "condition/voice2.mp3"]
+    },
+    {
+      "keywords": ["$time_morning"],
+      "voices": ["greeting/morning1.mp3", "greeting/morning2.mp3"]
     }
   ]
 }
 ```
 
-### 推荐的模型资源
+### 语音设置
 
-出于研究和学习目的，您可以参考以下模型仓库：
+应用提供了完整的语音设置界面：
 
-- [live2d-model-assets](https://github.com/zenghongtu/live2d-model-assets)
-- [live2d_api](https://github.com/fghrsh/live2d_api)
-- [Live2D官方示例](https://www.live2d.com/download/sample-data/)
+- **总开关** - 启用/禁用语音功能
+- **音量控制** - 调节语音播放音量
+- **键盘监听** - 开启/关闭编程关键词监听
+- **时间播报** - 开启/关闭智能时间播报
+- **实时预览** - 设置界面提供功能说明和使用指南
 
-**请确保您遵守所使用模型的许可条款。**
+## 🎯 使用场景
+
+### 编程学习
+
+- 帮助初学者熟悉编程关键词
+- 通过语音反馈加深对语法的理解
+- 提供编程时的陪伴感
+
+### 日常编程
+
+- 长时间编程时的语音陪伴
+- 智能时间提醒，避免过度疲劳
+- 可爱的桌面伴侣，缓解编程压力
+
+### 直播编程
+
+- 为观众提供有趣的互动元素
+- 语音反馈让直播更加生动
+- Live2D模型增加视觉吸引力
 
 ## 🔧 配置说明
 
@@ -195,6 +233,7 @@ models/
 - **TypeScript** - 类型安全的JavaScript超集
 - **Electron Builder** - Electron应用打包工具
 - **Turborepo** - 高性能的monorepo构建系统
+- **node-global-key-listener** - 全局键盘监听库
 
 ## 📝 开发指南
 
@@ -202,20 +241,28 @@ models/
 
 1. 在对应的包中添加代码
 2. 更新类型定义 (`packages/types`)
-3. 添加必要的测试
+3. 更新语音配置文件（如需要）
 4. 更新文档
+
+### 添加新的语音关键词
+
+1. 在 `assets/voice/contributes.json` 中添加关键词配置
+2. 准备对应的语音文件
+3. 重启应用以加载新配置
 
 ### 调试技巧
 
 - 使用 `pnpm package:debug` 构建调试版本
 - 开发模式下可以使用浏览器开发者工具
 - 查看 `tasks/` 目录中的开发记录
+- 语音服务会在控制台输出错误信息
 
 ### 代码规范
 
 - 使用TypeScript进行类型安全开发
 - 遵循React最佳实践
 - 保持代码模块化和可维护性
+- 重要的错误信息使用console.error输出
 
 ## 🙏 致谢
 
@@ -232,6 +279,7 @@ models/
 
 ### 开发工具与依赖
 
+- [node-global-key-listener](https://github.com/LaunchMenu/node-global-key-listener) - 全局键盘监听功能
 - [electron-reload](https://github.com/yan-foto/electron-reload) - 提供Electron应用的热重载功能
 - [concurrently](https://github.com/open-cli-tools/concurrently) - 同时运行多个命令的工具
 - [pnpm](https://pnpm.io/) - 快速、节省磁盘空间的包管理器
