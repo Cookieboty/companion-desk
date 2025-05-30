@@ -41,6 +41,9 @@ export class VoiceService {
    */
   private async init() {
     try {
+      // 0. 等待electronAPI准备就绪
+      await this.waitForElectronAPI();
+
       // 1. 首先设置键盘监听器（只设置事件监听器，不启动）
       this.setupKeyboardListener();
 
@@ -64,6 +67,32 @@ export class VoiceService {
       console.error('VoiceService: 初始化失败:', error);
       this.isInitialized = false;
     }
+  }
+
+  /**
+   * 等待electronAPI准备就绪
+   */
+  private async waitForElectronAPI(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 50; // 最多等待5秒
+
+      const checkAPI = () => {
+        attempts++;
+        const electronAPI = (window as any).electronAPI;
+
+        if (electronAPI) {
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          console.error('VoiceService: 等待electronAPI超时');
+          reject(new Error('electronAPI准备超时'));
+        } else {
+          setTimeout(checkAPI, 100);
+        }
+      };
+
+      checkAPI();
+    });
   }
 
   /**
@@ -143,11 +172,6 @@ export class VoiceService {
       console.error('VoiceService: 注册键盘事件监听器失败:', error);
     }
 
-    // 监听键盘监听器启动成功事件
-    electronAPI.onKeyboardListenerStarted(() => {
-      // 键盘监听器启动成功
-    });
-
     // 监听键盘监听器错误事件
     electronAPI.onKeyboardListenerError((error: string) => {
       console.error('VoiceService: 键盘监听器启动失败:', error);
@@ -164,14 +188,32 @@ export class VoiceService {
       return;
     }
 
-    console.log('VoiceService: 强制启动键盘监听');
-    electronAPI.startKeyboardListener();
-
-    // 添加延迟重试机制
+    // 添加延迟，确保主进程完全启动
     setTimeout(() => {
-      console.log('VoiceService: 延迟重试启动键盘监听');
       electronAPI.startKeyboardListener();
-    }, 2000);
+    }, 1000);
+
+    // 添加智能重试机制
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 3000; // 增加重试间隔
+
+    const retryStart = () => {
+      retryCount++;
+      if (retryCount <= maxRetries) {
+        setTimeout(() => {
+          electronAPI.startKeyboardListener();
+          if (retryCount < maxRetries) {
+            setTimeout(retryStart, retryDelay);
+          }
+        }, retryDelay);
+      } else {
+        console.error('VoiceService: 键盘监听启动重试次数已达上限');
+      }
+    };
+
+    // 启动重试序列
+    setTimeout(retryStart, retryDelay);
   }
 
   /**
@@ -180,6 +222,11 @@ export class VoiceService {
   private setupAudioListener() {
     const electronAPI = (window as any).electronAPI;
     if (!electronAPI) return;
+
+    // 注意：这个监听器现在不再需要，因为我们直接在playVoice中处理音频播放
+    // electronAPI.onPlayAudioFile((filePath: string, volume: number) => {
+    //   this.playAudioFile(filePath, volume);
+    // });
   }
 
   /**
@@ -337,9 +384,8 @@ export class VoiceService {
       if (audioData instanceof ArrayBuffer) {
         buffer = audioData;
       } else if (typeof audioData === 'string') {
-        // 检查是否是base64编码
+        // 检查是否是data URL，直接使用
         if (audioData.startsWith('data:')) {
-          // 如果是data URL，直接使用
           this.currentAudio = new Audio();
           this.currentAudio.src = audioData;
           this.currentAudio.volume = Math.max(0, Math.min(1, volume));
@@ -410,6 +456,62 @@ export class VoiceService {
 
     } catch (error) {
       console.error('VoiceService: 播放音频数据失败:', error);
+    }
+  }
+
+  /**
+   * 播放音频文件（通过HTML5 Audio）
+   */
+  private playAudioFile(filePath: string, volume: number) {
+    try {
+      // 停止当前播放的音频
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
+
+      // 创建新的音频元素
+      this.currentAudio = new Audio();
+
+      // 处理文件路径 - 在Electron中需要特殊处理
+      let audioSrc = filePath;
+      if (filePath.startsWith('/')) {
+        // 绝对路径，使用file://协议
+        audioSrc = `file://${filePath}`;
+      } else if (!filePath.startsWith('http') && !filePath.startsWith('file://')) {
+        // 相对路径，转换为绝对路径
+        audioSrc = `file://${filePath}`;
+      }
+
+      this.currentAudio.src = audioSrc;
+      this.currentAudio.volume = Math.max(0, Math.min(1, volume));
+
+      // 添加错误处理
+      this.currentAudio.addEventListener('error', (e) => {
+        console.error('音频加载失败:', e, '路径:', audioSrc);
+      });
+
+      // 播放音频
+      this.currentAudio.play().catch(error => {
+        console.error('VoiceService: 播放音频失败:', error);
+
+        // 尝试使用不同的路径格式
+        if (audioSrc.startsWith('file://')) {
+          const alternativeSrc = filePath.replace(/\\/g, '/');
+          this.currentAudio!.src = alternativeSrc;
+          this.currentAudio!.play().catch(err => {
+            console.error('VoiceService: 备用路径也失败:', err);
+          });
+        }
+      });
+
+      // 播放完成后清理
+      this.currentAudio.addEventListener('ended', () => {
+        this.currentAudio = null;
+      });
+
+    } catch (error) {
+      console.error('VoiceService: 播放音频文件失败:', error);
     }
   }
 

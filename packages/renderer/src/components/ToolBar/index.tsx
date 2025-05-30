@@ -32,22 +32,64 @@ export const ToolBar: React.FC = () => {
 
   // 初始化语音服务
   useEffect(() => {
-    console.log('ToolBar: 开始初始化语音服务');
 
-    // 立即创建VoiceService，不等待异步初始化
-    if (!globalVoiceService) {
-      console.log('ToolBar: 创建新的VoiceService实例');
-      globalVoiceService = new VoiceService();
-      console.log('ToolBar: VoiceService实例创建成功');
-    }
+    const initVoiceService = async () => {
+      // 等待electronAPI准备就绪
+      const waitForElectronAPI = () => {
+        return new Promise<void>((resolve) => {
+          const checkAPI = () => {
+            if ((window as any).electronAPI) {
+              console.log('ToolBar: electronAPI已准备就绪');
+              resolve();
+            } else {
+              console.log('ToolBar: 等待electronAPI准备就绪...');
+              setTimeout(checkAPI, 100);
+            }
+          };
+          checkAPI();
+        });
+      };
 
-    // 立即设置到状态中
-    setVoiceService(globalVoiceService);
-    console.log('ToolBar: VoiceService设置完成');
+      try {
+        // 等待electronAPI准备就绪
+        await waitForElectronAPI();
 
-    // 初始状态设为禁用，需要用户手动启用
-    setVoiceEnabled(false);
-    console.log('ToolBar: 语音状态初始化为禁用');
+        // 延迟一点时间确保所有API都完全加载
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 创建VoiceService实例
+        if (!globalVoiceService) {
+          console.log('ToolBar: 创建新的VoiceService实例');
+          globalVoiceService = new VoiceService();
+          console.log('ToolBar: VoiceService实例创建成功');
+
+          // 等待VoiceService初始化完成
+          console.log('ToolBar: 等待VoiceService初始化完成');
+          await globalVoiceService.waitForInit();
+          console.log('ToolBar: VoiceService初始化完成，状态:', globalVoiceService.isReady());
+        }
+
+        // 设置到状态中
+        setVoiceService(globalVoiceService);
+        console.log('ToolBar: VoiceService设置完成');
+
+        // 获取VoiceService中的实际设置状态
+        const actualSettings = globalVoiceService.getSettings();
+        const actualEnabled = actualSettings?.enabled ?? false;
+
+        // 同步UI状态和实际状态
+        setVoiceEnabled(actualEnabled);
+        console.log('ToolBar: 语音状态同步完成，实际状态:', actualEnabled);
+
+      } catch (error) {
+        console.error('ToolBar: 初始化语音服务失败:', error);
+        // 即使失败也要设置状态，避免组件卡住
+        setVoiceService(globalVoiceService);
+        setVoiceEnabled(false);
+      }
+    };
+
+    initVoiceService();
   }, []);
 
   // 初始化置顶状态

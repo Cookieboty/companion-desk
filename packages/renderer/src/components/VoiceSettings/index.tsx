@@ -165,17 +165,6 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     }
   };
 
-  const handleTestVoice = async (keyword: string) => {
-    setIsLoading(true);
-    try {
-      await voiceService.testVoice(keyword);
-    } catch (error) {
-      console.error('测试语音失败:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   if (!isVisible || !settings) {
     return null;
   }
@@ -258,54 +247,6 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
                 />
                 定时播报（根据时间播放问候语音）
               </label>
-            </div>
-          </div>
-
-          {/* 测试区域 */}
-          <div style={styles.settingGroup}>
-            <h4 style={styles.groupTitle}>语音测试</h4>
-            <div style={{ marginBottom: '15px' }}>
-              <button
-                onClick={() => voiceService.testVoice('function')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginRight: '10px'
-                }}
-              >
-                测试编程语音
-              </button>
-              <button
-                onClick={() => voiceService.testVoice('time')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginRight: '10px'
-                }}
-              >
-                测试时间语音
-              </button>
-              <button
-                onClick={() => voiceService.testKeyboardListener()}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#FF9800',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                测试键盘监听
-              </button>
             </div>
           </div>
 

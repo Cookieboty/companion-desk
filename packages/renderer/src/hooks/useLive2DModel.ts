@@ -268,7 +268,6 @@ export function useLive2DModel() {
     }
 
     const nextModelId = (currentModelId + 1) % currentModelList.length;
-    console.log(`切换到下一个模型: ${currentModelId} -> ${nextModelId}`);
 
     // 重置纹理ID为0（默认服装）
     dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: 0 });
@@ -301,7 +300,6 @@ export function useLive2DModel() {
     const totalCostumes = currentModel.costumes ? currentModel.costumes.length + 1 : 1;
 
     if (totalCostumes <= 1) {
-      console.log('当前模型没有换装');
       dispatchRef.current({
         type: 'SET_MESSAGE',
         payload: {
@@ -314,7 +312,6 @@ export function useLive2DModel() {
 
     // 切换到下一个换装
     const nextTextureId = (currentTextureId + 1) % totalCostumes;
-    console.log(`切换换装: ${currentTextureId} -> ${nextTextureId}`);
 
     dispatchRef.current({ type: 'SET_TEXTURE_ID', payload: nextTextureId });
 

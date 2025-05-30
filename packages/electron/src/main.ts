@@ -10,7 +10,8 @@ try {
   const { GlobalKeyboardListener } = require('node-global-key-listener');
   globalKeyboardListener = GlobalKeyboardListener;
 } catch (error) {
-  console.warn('node-global-key-listener 未安装，全局键盘监听功能将不可用');
+  console.error('主进程: node-global-key-listener加载失败:', error);
+  console.warn('主进程: 全局键盘监听功能将不可用');
 }
 
 // 配置文件路径
@@ -316,6 +317,17 @@ function createWindow() {
     mainWindow = null;
   });
 
+  // 窗口加载完成后检查键盘监听器状态
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (!globalKeyboardListener) {
+      console.error('主进程: 键盘监听功能不可用，请检查node-global-key-listener依赖');
+      // 向渲染进程发送错误信息
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('keyboard-listener-error', 'node-global-key-listener依赖不可用');
+      }
+    }
+  });
+
   // 监听窗口移动事件，保存位置
   mainWindow.on('moved', () => {
     if (mainWindow) {
@@ -328,7 +340,12 @@ function createWindow() {
 }
 
 // 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  if (!globalKeyboardListener) {
+    console.error('主进程: 警告 - 键盘监听功能不可用！');
+  }
+  createWindow();
+});
 
 // 在所有窗口关闭时退出应用
 app.on('window-all-closed', () => {
@@ -726,10 +743,19 @@ ipcMain.on('save-voice-settings', (_, settings: VoiceSettings) => {
 // 启动键盘监听
 ipcMain.on('start-keyboard-listener', () => {
   if (!globalKeyboardListener) {
+    console.error('主进程: globalKeyboardListener未初始化，键盘监听功能不可用');
+    // 发送启动失败消息到渲染进程
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-error', 'globalKeyboardListener未初始化，可能是node-global-key-listener依赖未正确安装');
+    }
     return;
   }
 
   if (isKeyboardListening) {
+    // 发送已启动消息
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('keyboard-listener-started');
+    }
     return;
   }
 

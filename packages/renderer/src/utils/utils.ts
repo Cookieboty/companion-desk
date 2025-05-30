@@ -101,22 +101,18 @@ async function readLocalFile(url: string): Promise<any> {
 
   // 处理路径
   const localPath = processFilePath(url);
-  console.log(`处理后的本地路径: ${localPath}`);
 
   // 尝试读取文件
   let fileContent = await window.electronAPI.readLocalFile(localPath);
 
   // 如果读取失败，尝试替代路径
   if (!fileContent) {
-    console.log(`无法读取文件: ${localPath}，尝试替代路径`);
     const alternativePaths = generateAlternativePaths(localPath, url);
 
     // 尝试每一个替代路径
     for (const altPath of alternativePaths) {
-      console.log(`尝试替代路径: ${altPath}`);
       const altContent = await window.electronAPI.readLocalFile(altPath);
       if (altContent) {
-        console.log(`找到匹配的替代路径: ${altPath}`);
         fileContent = altContent;
         break;
       }
