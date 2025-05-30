@@ -3,21 +3,13 @@
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 9998;
+  z-index: 10000; /* 还原到合理的z-index值 */
   display: none; /* 默认完全不显示 */
   flex-direction: column;
   gap: 10px; /* 增加按钮间距 */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
-}
-
-.toolbar:focus,
-.toolbar:active,
-.toolbar:hover {
-  outline: none !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
+  -webkit-app-region: no-drag; /* 确保工具栏区域不被拖拽功能干扰 */
 }
 
 .visible {
@@ -25,7 +17,8 @@
   opacity: 1;
   visibility: visible;
   transform: translateX(0);
-  pointer-events: auto;
+  pointer-events: auto; /* 确保可见时启用所有指针事件 */
+  z-index: 10000; /* 还原到合理的z-index值 */
 }
 
 .hidden {
@@ -52,34 +45,19 @@
   justify-content: center;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  z-index: 1; /* 还原到合理的z-index值 */
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.3);
   outline: none;
   -webkit-tap-highlight-color: transparent;
+  pointer-events: auto; /* 强制启用点击事件 */
+  isolation: isolate; /* 创建新的层叠上下文 */
+  -webkit-app-region: no-drag; /* 确保按钮不被拖拽功能干扰 */
 }
 
-/* 彻底清除所有状态 */
-.button,
-.button:focus,
-.button:active,
-.button:visited,
-.button:target {
-  outline: 0 !important;
-  outline: none !important;
-  outline-width: 0 !important;
-  outline-style: none !important;
-  outline-color: transparent !important;
-  -webkit-tap-highlight-color: transparent !important;
-  -webkit-touch-callout: none !important;
-  -webkit-user-select: none !important;
-  -khtml-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
-}
-
-/* hover效果 */
+/* 简化hover效果 */
 .button:hover {
+  cursor: pointer;
   transform: translateY(-3px) scale(1.08);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -93,7 +71,8 @@
   width: 100%;
   height: 100%;
   position: relative;
-  z-index: 1;
+  z-index: 1; /* 还原到合理的z-index值 */
+  pointer-events: none; /* 图标本身不拦截点击事件，让事件传递给按钮 */
 }
 
 .icon svg {
