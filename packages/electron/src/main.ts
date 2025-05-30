@@ -83,7 +83,6 @@ if (isDev) {
         path.join(__dirname, '..', '..', 'renderer', 'dist', '**')
       ]
     });
-    console.log('开发模式：热重载已启用');
   } catch (err) {
     console.error('无法启用热重载，请确保已安装electron-reload:', err);
   }
@@ -188,8 +187,6 @@ function createWindow() {
     process.env.DEBUG === 'true' ||
     !!require('../package.json').debug;
 
-  console.log('应用启动模式:', { isDev, isDebugMode, args: process.argv });
-
   let startUrl: string = 'about:blank'; // 默认值，确保startUrl一定有值
   if (isDev) {
     startUrl = 'http://localhost:3000';
@@ -247,10 +244,8 @@ function createWindow() {
     } else {
       // 尝试列出目录内容以辅助调试
       try {
-
         // 列出应用程序目录
         const appDir = app.getAppPath();
-        console.log('应用程序目录内容:', fs.existsSync(appDir) ? fs.readdirSync(appDir) : '目录不存在');
 
         // 如果在macOS上，列出Resources目录
         if (process.platform === 'darwin') {
@@ -398,7 +393,6 @@ const positionUpdate = () => {
     w = width;
     h = height;
     rectSetted = true;
-    console.log('记录窗口原始尺寸:', { width, height });
   };
 
   const setShouldUpdateRect = () => {
@@ -417,7 +411,6 @@ const positionUpdate = () => {
         y: Math.round(y)
       };
 
-      console.log('设置窗口位置和尺寸:', bounds);
       mainWindow.setBounds(bounds);
     } catch (err) {
       console.error('设置窗口位置错误:', err);
@@ -547,7 +540,6 @@ ipcMain.handle('read-local-json', async (_, filePath: string) => {
 
     // 读取并解析JSON文件
     const data = fs.readFileSync(resolvedPath, 'utf8');
-    console.log(`成功读取文件: ${resolvedPath}`);
     return JSON.parse(data);
   } catch (error) {
     console.error('读取本地JSON文件失败:', error);
@@ -577,8 +569,6 @@ ipcMain.handle('file-exists', (_, filePath: string) => {
 // 在IPC事件处理程序部分添加读取本地文件功能
 ipcMain.handle('read-local-file', async (event, filePath) => {
   try {
-    console.log('正在读取本地文件:', filePath);
-
     // 构建绝对路径
     let absolutePath;
 
@@ -695,8 +685,6 @@ ipcMain.handle('read-local-file', async (event, filePath) => {
       absolutePath = filePath;
     }
 
-    console.log('尝试读取文件路径:', absolutePath);
-
     // 检查文件是否存在
     if (!fs.existsSync(absolutePath)) {
       console.error('文件不存在:', absolutePath);
@@ -737,20 +725,15 @@ ipcMain.on('save-voice-settings', (_, settings: VoiceSettings) => {
 
 // 启动键盘监听
 ipcMain.on('start-keyboard-listener', () => {
-  console.log('主进程: 收到启动键盘监听请求');
-
   if (!globalKeyboardListener) {
-    console.log('主进程: node-global-key-listener 不可用，无法启动键盘监听');
     return;
   }
 
   if (isKeyboardListening) {
-    console.log('主进程: 键盘监听已经在运行中');
     return;
   }
 
   try {
-    console.log('主进程: 正在创建键盘监听器...');
     keyboardListener = new globalKeyboardListener();
 
     keyboardListener.addListener((e: any, down: any) => {
@@ -760,19 +743,13 @@ ipcMain.on('start-keyboard-listener', () => {
         type: e.state === 'DOWN' ? 'keydown' : 'keyup'
       };
 
-      console.log('主进程: 收到键盘事件:', keyEvent);
-
       // 发送键盘事件到渲染进程
       if (mainWindow && mainWindow.webContents) {
-        console.log('主进程: 发送键盘事件到渲染进程');
         mainWindow.webContents.send('keyboard-event', keyEvent);
-      } else {
-        console.log('主进程: 无法发送键盘事件，mainWindow不可用');
       }
     });
 
     isKeyboardListening = true;
-    console.log('主进程: 全局键盘监听已启动成功');
 
     // 发送启动成功消息到渲染进程
     if (mainWindow && mainWindow.webContents) {
@@ -795,7 +772,6 @@ ipcMain.on('stop-keyboard-listener', () => {
       keyboardListener.kill();
       keyboardListener = null;
       isKeyboardListening = false;
-      console.log('全局键盘监听已停止');
     } catch (error) {
       console.error('停止键盘监听失败:', error);
     }
