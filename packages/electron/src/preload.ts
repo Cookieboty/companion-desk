@@ -96,5 +96,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('keyboard-event');
     ipcRenderer.removeAllListeners('keyboard-listener-started');
     ipcRenderer.removeAllListeners('keyboard-listener-error');
+  },
+
+  // 通用invoke方法，用于调用主进程的IPC处理器
+  invoke: async (channel: string, ...args: any[]) => {
+    return await ipcRenderer.invoke(channel, ...args);
+  },
+
+  // AI对话相关API
+  openAiChat: async () => {
+    return await ipcRenderer.invoke('open-ai-chat');
   }
 } as IpcApi); 

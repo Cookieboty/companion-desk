@@ -1,0 +1,65 @@
+.messageContainer {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.userMessage {
+  background-color: #007bff;
+  color: white;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.assistantMessage {
+  background-color: #f8f9fa;
+  color: #333;
+  margin-left: 0;
+  margin-right: auto;
+  border: 1px solid #e9ecef;
+}
+
+.messageHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.role {
+  font-weight: 600;
+}
+
+.timestamp {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.model {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.messageContent {
+  line-height: 1.5;
+}
+
+.contentText {
+  white-space: pre-wrap;
+}
+
+.errorMessage {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.errorText {
+  font-weight: 500;
+} 

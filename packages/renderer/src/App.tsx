@@ -16,9 +16,8 @@ const App: React.FC = () => {
     waifuPath: './assets/waifu-tips.json', // 使用相对路径
     cubism2Path: isElectron ? './assets/live2d.min.js' : '/assets/live2d.min.js', // 在Electron中使用相对路径
     tools: [
-      // 'hitokoto',
       'switch-model',
-      'photo',
+      'ai-chat',
       'info',
       'voice-settings',
       'toggle-top',

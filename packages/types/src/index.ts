@@ -24,6 +24,12 @@ export interface IpcApi {
   onKeyboardListenerStarted: (callback: () => void) => void;
   onKeyboardListenerError: (callback: (error: string) => void) => void;
   removeKeyboardListeners: () => void;
+
+  // 通用invoke方法
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
+
+  // AI对话相关API
+  openAiChat: () => Promise<{ success: boolean; error?: string }>;
 }
 
 // 在渲染进程中可用的Electron API

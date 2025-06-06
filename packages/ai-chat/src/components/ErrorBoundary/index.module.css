@@ -1,0 +1,104 @@
+.errorBoundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #f8f9fa;
+}
+
+.errorContainer {
+  max-width: 500px;
+  padding: 40px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.errorIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.errorTitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.errorMessage {
+  font-size: 16px;
+  color: #6c757d;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.errorDetails {
+  margin: 20px 0;
+  text-align: left;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.errorDetails summary {
+  padding: 12px 16px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  font-weight: 500;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.errorDetails summary:hover {
+  background-color: #e9ecef;
+}
+
+.errorStack {
+  padding: 16px;
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #721c24;
+  background-color: #f8d7da;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.errorActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.reloadButton, .refreshButton {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reloadButton {
+  background-color: #007bff;
+  color: #ffffff;
+}
+
+.reloadButton:hover {
+  background-color: #0056b3;
+}
+
+.refreshButton {
+  background-color: #6c757d;
+  color: #ffffff;
+}
+
+.refreshButton:hover {
+  background-color: #545b62;
+} 

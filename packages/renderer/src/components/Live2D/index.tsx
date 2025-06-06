@@ -22,6 +22,7 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
     'switch-model',
     'switch-texture',
     'photo',
+    'ai-chat',
     'asteroids',
     'info',
     'voice-settings',

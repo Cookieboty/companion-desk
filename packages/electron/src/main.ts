@@ -93,6 +93,9 @@ if (isDev) {
 // 垃圾回收，窗口会自动关闭
 let mainWindow: BrowserWindow | null = null;
 
+// AI对话窗口实例
+let aiChatWindow: BrowserWindow | null = null;
+
 // 全局键盘监听器实例
 let keyboardListener: any = null;
 let isKeyboardListening = false;
@@ -336,6 +339,115 @@ function createWindow() {
       config.windowPosition = { x: position[0], y: position[1] };
       saveConfig(config);
     }
+  });
+}
+
+// 创建AI对话窗口
+async function createAiChatWindow() {
+  if (aiChatWindow) {
+    aiChatWindow.focus();
+    aiChatWindow.show();
+    return;
+  }
+
+  // 获取屏幕尺寸，计算居中位置
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+  const windowWidth = 800;
+  const windowHeight = 600;
+  const x = Math.round((screenWidth - windowWidth) / 2);
+  const y = Math.round((screenHeight - windowHeight) / 2);
+
+  aiChatWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x: x,
+    y: y,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'ai-chat-preload.js'),
+      webSecurity: false // 开发环境需要，与renderer保持一致
+    },
+    title: 'AI对话助手',
+    resizable: true,
+    show: false,
+    center: true, // 确保窗口居中
+    autoHideMenuBar: true, // 隐藏菜单栏，与renderer保持一致
+    frame: true, // 显示窗口边框
+    titleBarStyle: 'default'
+  });
+
+  console.log('AI对话窗口创建完成，准备加载页面...');
+
+  try {
+    // 加载AI对话页面
+    const isDev = process.env.NODE_ENV === 'development';
+    console.log('当前环境:', isDev ? '开发环境' : '生产环境');
+    console.log('process.env.NODE_ENV:', process.env.NODE_ENV);
+
+    if (isDev) {
+      const devUrl = 'http://localhost:5175';
+      console.log('加载开发环境URL:', devUrl);
+
+      // 先检查服务是否可用
+      try {
+        const { net } = require('electron');
+        const request = net.request(devUrl);
+        request.on('response', (response) => {
+          console.log('AI对话开发服务器响应状态:', response.statusCode);
+        });
+        request.on('error', (error) => {
+          console.error('AI对话开发服务器连接失败:', error);
+        });
+        request.end();
+      } catch (netError) {
+        console.warn('网络检查失败:', netError);
+      }
+
+      await aiChatWindow.loadURL(devUrl);
+    } else {
+      // 生产环境加载构建后的文件
+      const aiChatPath = path.join(__dirname, '..', 'ai-chat', 'dist', 'index.html');
+      console.log('加载生产环境文件:', aiChatPath);
+
+      // 检查文件是否存在
+      const fs = require('fs');
+      if (fs.existsSync(aiChatPath)) {
+        console.log('AI对话构建文件存在');
+      } else {
+        console.error('AI对话构建文件不存在:', aiChatPath);
+      }
+
+      await aiChatWindow.loadFile(aiChatPath);
+    }
+
+    console.log('AI对话页面加载完成');
+  } catch (error) {
+    console.error('加载AI对话页面失败:', error);
+    throw error;
+  }
+
+  aiChatWindow.once('ready-to-show', () => {
+    console.log('AI对话窗口准备显示');
+    aiChatWindow?.show();
+    aiChatWindow?.focus();
+  });
+
+  aiChatWindow.on('closed', () => {
+    console.log('AI对话窗口已关闭');
+    aiChatWindow = null;
+  });
+
+  // 添加错误处理
+  aiChatWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('AI对话窗口加载失败:', errorCode, errorDescription);
+  });
+
+  aiChatWindow.webContents.on('did-finish-load', () => {
+    console.log('AI对话窗口内容加载完成');
   });
 }
 
@@ -802,4 +914,180 @@ ipcMain.on('stop-keyboard-listener', () => {
       console.error('停止键盘监听失败:', error);
     }
   }
+});
+
+// AI对话数据存储
+interface AIConfig {
+  models: any[];
+  chatHistory: any[];
+  settings: any;
+}
+
+let aiConfig: AIConfig = {
+  models: [
+    {
+      id: 'deepseek',
+      name: 'DeepSeek Chat',
+      provider: 'deepseek',
+      apiUrl: 'https://api.deepseek.com',
+      model: 'deepseek-chat',
+      enabled: false, // 默认禁用，需要用户配置API密钥
+      temperature: 0.7,
+      maxTokens: 2048
+    },
+    {
+      id: 'gpt-4',
+      name: 'GPT-4',
+      provider: 'openai',
+      apiUrl: 'https://api.openai.com',
+      model: 'gpt-4',
+      enabled: false, // 默认禁用，需要用户配置API密钥
+      temperature: 0.7,
+      maxTokens: 2048
+    }
+  ],
+  chatHistory: [],
+  settings: {
+    theme: 'light',
+    language: 'zh-CN',
+    fontSize: 14,
+    autoSave: true,
+    maxHistoryLength: 1000
+  }
+};
+
+// AI对话相关IPC处理器
+ipcMain.handle('open-ai-chat', async () => {
+  try {
+    console.log('收到打开AI对话窗口请求');
+    await createAiChatWindow();
+    console.log('AI对话窗口创建成功');
+    return { success: true };
+  } catch (error) {
+    console.error('打开AI对话窗口失败:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+// AI对话消息发送
+ipcMain.handle('ai-chat:message:send', async (_, { message, modelId }) => {
+  console.log('收到AI对话请求:', { message, modelId });
+
+  // 检查模型是否配置
+  const model = aiConfig.models.find(m => m.id === modelId);
+  if (!model || !model.enabled || !model.apiKey) {
+    throw new Error('模型未配置或API密钥缺失，请先在设置中配置');
+  }
+
+  // 模拟AI回复（实际应用中这里会调用真实的AI API）
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return `这是对"${message}"的模拟回复 (使用模型: ${model.name})`;
+});
+
+// AI对话流式消息发送
+ipcMain.handle('ai-chat:message:stream', async (event, { message, modelId }) => {
+  console.log('收到AI流式对话请求:', { message, modelId });
+
+  // 检查模型是否配置
+  const model = aiConfig.models.find(m => m.id === modelId);
+  if (!model || !model.enabled || !model.apiKey) {
+    event.sender.send('ai-chat:message:chunk', '');
+    throw new Error('模型未配置或API密钥缺失，请先在设置中配置');
+  }
+
+  // 模拟流式回复
+  const chunks = ['这是', '使用', model.name, '的', '流式', '回复', '内容'];
+  for (const chunk of chunks) {
+    event.sender.send('ai-chat:message:chunk', chunk + ' ');
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  event.sender.send('ai-chat:message:chunk', ''); // 结束标志
+});
+
+// 获取对话历史
+ipcMain.handle('ai-chat:message:getHistory', async () => {
+  return aiConfig.chatHistory;
+});
+
+// 清空对话历史
+ipcMain.handle('ai-chat:message:clearHistory', async () => {
+  aiConfig.chatHistory = [];
+  console.log('已清空对话历史');
+});
+
+// 保存消息到历史
+ipcMain.handle('ai-chat:message:save', async (_, message) => {
+  aiConfig.chatHistory.push(message);
+
+  // 限制历史长度
+  const maxLength = aiConfig.settings.maxHistoryLength || 1000;
+  if (aiConfig.chatHistory.length > maxLength) {
+    aiConfig.chatHistory = aiConfig.chatHistory.slice(-maxLength);
+  }
+});
+
+// 获取AI对话配置
+ipcMain.handle('ai-chat:config:get', async () => {
+  return aiConfig.settings;
+});
+
+// 更新AI对话配置
+ipcMain.handle('ai-chat:config:update', async (_, config) => {
+  aiConfig.settings = { ...aiConfig.settings, ...config };
+  console.log('已更新AI对话配置:', config);
+});
+
+// 获取可用模型列表
+ipcMain.handle('ai-chat:model:getAvailable', async () => {
+  return aiConfig.models;
+});
+
+// 添加模型
+ipcMain.handle('ai-chat:model:add', async (_, model) => {
+  // 检查ID是否已存在
+  if (aiConfig.models.find(m => m.id === model.id)) {
+    throw new Error(`模型ID ${model.id} 已存在`);
+  }
+
+  aiConfig.models.push(model);
+  console.log('已添加模型:', model.name);
+});
+
+// 删除模型
+ipcMain.handle('ai-chat:model:remove', async (_, modelId) => {
+  const index = aiConfig.models.findIndex(m => m.id === modelId);
+  if (index === -1) {
+    throw new Error(`模型 ${modelId} 不存在`);
+  }
+
+  const removed = aiConfig.models.splice(index, 1)[0];
+  console.log('已删除模型:', removed.name);
+});
+
+// 更新模型配置
+ipcMain.handle('ai-chat:model:update', async (_, modelId, updates) => {
+  const model = aiConfig.models.find(m => m.id === modelId);
+  if (!model) {
+    throw new Error(`模型 ${modelId} 不存在`);
+  }
+
+  Object.assign(model, updates);
+  console.log('已更新模型配置:', model.name);
+});
+
+// 测试模型连接
+ipcMain.handle('ai-chat:model:testConnection', async (_, modelId) => {
+  const model = aiConfig.models.find(m => m.id === modelId);
+  if (!model) {
+    return false;
+  }
+
+  if (!model.enabled || !model.apiKey) {
+    return false;
+  }
+
+  // 模拟连接测试
+  console.log('测试模型连接:', model.name);
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return true;
 }); 

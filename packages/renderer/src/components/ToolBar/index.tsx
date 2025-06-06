@@ -11,6 +11,9 @@ import {
   fa_volume_up,
   fa_volume_off
 } from '@/utils/icons';
+
+// 添加AI对话图标
+const fa_robot = '<svg viewBox="0 0 640 512"><path d="M320 0c17.7 0 32 14.3 32 32V96H472c39.8 0 72 32.2 72 72V440c0 39.8-32.2 72-72 72H168c-39.8 0-72-32.2-72-72V168c0-39.8 32.2-72 72-72H288V32c0-17.7 14.3-32 32-32zM208 384c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H208zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H304zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H400zM264 256a40 40 0 1 0 -80 0 40 40 0 1 0 80 0zm152 40a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"/></svg>';
 import { getCache, setCache } from '@/utils/cache';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import styles from './style.module.css';
@@ -378,6 +381,8 @@ export const ToolBar: React.FC = () => {
         return fa_thumbtack;
       case 'voice-settings':
         return voiceEnabled ? fa_volume_up : fa_volume_off;
+      case 'ai-chat':
+        return fa_robot;
       default:
         return '';
     }
@@ -429,6 +434,27 @@ export const ToolBar: React.FC = () => {
 
           console.log('ToolBar: 语音状态切换完成:', newEnabled);
         };
+      case 'ai-chat':
+        return () => {
+          console.log('ToolBar: AI对话按钮被点击');
+          const electronAPI = (window as any).electronAPI;
+          if (electronAPI && electronAPI.invoke) {
+            electronAPI.invoke('open-ai-chat').then((result: any) => {
+              console.log('ToolBar: AI对话窗口打开结果:', result);
+              if (result?.success) {
+                showMessage('AI对话窗口已打开');
+              } else {
+                showMessage(`打开失败: ${result?.error || '未知错误'}`);
+              }
+            }).catch((error: any) => {
+              console.error('打开AI对话窗口失败:', error);
+              showMessage('打开AI对话窗口失败，请稍后再试');
+            });
+          } else {
+            console.warn('Electron API不可用，无法打开AI对话窗口');
+            showMessage('AI对话功能需要在Electron环境中运行');
+          }
+        };
       case 'asteroids':
         return () => {
           if ((window as any).Asteroids) {
@@ -466,6 +492,8 @@ export const ToolBar: React.FC = () => {
         return alwaysOnTop ? '取消置顶' : '置顶';
       case 'voice-settings':
         return voiceEnabled ? '语音功能 (已启用) - 左键切换，右键设置' : '语音功能 (已禁用) - 左键切换，右键设置';
+      case 'ai-chat':
+        return 'AI对话助手';
       default:
         return '';
     }
