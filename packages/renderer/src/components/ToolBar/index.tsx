@@ -493,7 +493,7 @@ export const ToolBar: React.FC = () => {
       case 'voice-settings':
         return voiceEnabled ? '语音功能 (已启用) - 左键切换，右键设置' : '语音功能 (已禁用) - 左键切换，右键设置';
       case 'ai-chat':
-        return 'AI对话助手';
+        return '智能小助手';
       default:
         return '';
     }

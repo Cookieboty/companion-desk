@@ -355,8 +355,8 @@ async function createAiChatWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  const windowWidth = 800;
-  const windowHeight = 600;
+  const windowWidth = 1000;
+  const windowHeight = 800;
   const x = Math.round((screenWidth - windowWidth) / 2);
   const y = Math.round((screenHeight - windowHeight) / 2);
 
@@ -371,7 +371,7 @@ async function createAiChatWindow() {
       preload: path.join(__dirname, 'ai-chat-preload.js'),
       webSecurity: false // 开发环境需要，与renderer保持一致
     },
-    title: 'AI对话助手',
+    title: '智能助手',
     resizable: true,
     show: false,
     center: true, // 确保窗口居中

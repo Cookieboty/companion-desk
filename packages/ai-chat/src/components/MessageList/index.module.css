@@ -1,8 +1,12 @@
 .messageListContainer {
   flex: 1;
   overflow: hidden;
-  padding: 16px;
-  background-color: #ffffff;
+  padding: 24px;
+  background: transparent;
+  position: relative;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .messageListSimple {
@@ -10,7 +14,8 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 24px;
+  padding-bottom: 20px;
 }
 
 .virtualList {
@@ -18,31 +23,42 @@
 }
 
 .messageItem {
-  padding: 8px 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
+  animation: messageSlideIn 0.4s ease-out;
 }
 
 .loadingIndicator {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  color: #666;
+  gap: 16px;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  color: #64748b;
   font-size: 14px;
+  font-weight: 500;
+  margin: 12px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  animation: loadingFadeIn 0.3s ease-out;
 }
 
 .loadingDots {
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  align-items: center;
 }
 
 .loadingDots span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #007bff;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   animation: loadingPulse 1.4s ease-in-out infinite both;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 .loadingDots span:nth-child(1) {
@@ -53,11 +69,75 @@
   animation-delay: -0.16s;
 }
 
+.loadingDots span:nth-child(3) {
+  animation-delay: 0s;
+}
+
+/* 动画效果 */
 @keyframes loadingPulse {
   0%, 80%, 100% {
-    transform: scale(0);
+    transform: scale(0.6);
+    opacity: 0.4;
   }
   40% {
     transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes loadingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 滚动条样式 */
+.messageListSimple::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messageListSimple::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messageListSimple::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.messageListSimple::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .messageListContainer {
+    padding: 16px;
+  }
+  
+  .messageListSimple {
+    gap: 20px;
+  }
+  
+  .loadingIndicator {
+    padding: 16px 20px;
+    margin: 8px 0;
+    border-radius: 14px;
   }
 } 

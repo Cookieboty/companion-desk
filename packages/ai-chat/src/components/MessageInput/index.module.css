@@ -1,33 +1,48 @@
 .messageInputContainer {
-  padding: 16px;
-  border-top: 1px solid #e9ecef;
-  background-color: #ffffff;
+  padding: 0;
+  background: transparent;
 }
 
 .errorMessage {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 8px 12px;
-  border-radius: 4px;
-  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
   font-size: 14px;
-  border: 1px solid #f5c6cb;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorMessage::before {
+  content: "⚠️";
+  font-size: 16px;
 }
 
 .inputWrapper {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 8px;
-  transition: border-color 0.2s ease;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
 }
 
 .inputWrapper:focus-within {
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.inputWrapper:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .messageTextarea {
@@ -36,20 +51,23 @@
   outline: none;
   background: transparent;
   resize: none;
-  font-size: 14px;
-  line-height: 1.5;
-  min-height: 20px;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 24px;
   max-height: 120px;
   overflow-y: auto;
   font-family: inherit;
+  color: #1e293b;
+  padding: 0;
 }
 
 .messageTextarea::placeholder {
-  color: #6c757d;
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 .messageTextarea:disabled {
-  color: #6c757d;
+  color: #94a3b8;
   cursor: not-allowed;
 }
 
@@ -57,35 +75,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 6px;
-  background-color: #007bff;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .sendButton:hover:not(:disabled) {
-  background-color: #0056b3;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
 }
 
 .sendButton:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .sendButton:disabled {
-  background-color: #6c757d;
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
   cursor: not-allowed;
   transform: none;
+  box-shadow: 0 2px 4px rgba(148, 163, 184, 0.2);
 }
 
 .loadingSpinner {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 2px solid transparent;
   border-top: 2px solid currentColor;
   border-radius: 50%;
@@ -101,14 +123,64 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #6c757d;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #64748b;
+  padding: 0 4px;
 }
 
 .currentModel {
-  background-color: #e9ecef;
-  padding: 2px 8px;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  padding: 4px 12px;
+  border-radius: 8px;
   font-weight: 500;
+  font-size: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 滚动条样式 */
+.messageTextarea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.messageTextarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messageTextarea::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.messageTextarea::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .inputWrapper {
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+  
+  .messageTextarea {
+    font-size: 16px; /* 防止iOS缩放 */
+  }
+  
+  .sendButton {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  
+  .inputHint {
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  
+  .currentModel {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
 } 

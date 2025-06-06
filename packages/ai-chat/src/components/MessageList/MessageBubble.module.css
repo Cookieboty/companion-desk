@@ -1,65 +1,159 @@
 .messageContainer {
-  margin-bottom: 16px;
-  padding: 12px;
-  border-radius: 8px;
-  max-width: 80%;
+  margin-bottom: 0;
+  padding: 0;
+  max-width: 100%;
   word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .userMessage {
-  background-color: #007bff;
-  color: white;
-  margin-left: auto;
-  margin-right: 0;
+  align-items: flex-end;
 }
 
 .assistantMessage {
-  background-color: #f8f9fa;
-  color: #333;
-  margin-left: 0;
-  margin-right: auto;
-  border: 1px solid #e9ecef;
+  align-items: flex-start;
 }
 
 .messageHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  opacity: 0.8;
+  gap: 12px;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  padding: 0 4px;
+}
+
+.userMessage .messageHeader {
+  justify-content: flex-end;
+}
+
+.assistantMessage .messageHeader {
+  justify-content: flex-start;
 }
 
 .role {
   font-weight: 600;
+  color: #1e293b;
 }
 
 .timestamp {
-  color: inherit;
-  opacity: 0.7;
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .model {
-  background-color: rgba(255, 255, 255, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
 }
 
 .messageContent {
-  line-height: 1.5;
+  line-height: 1.6;
+  max-width: 85%;
+  position: relative;
+}
+
+.userMessage .messageContent {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 20px 20px 6px 20px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.assistantMessage .messageContent {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #1e293b;
+  padding: 16px 20px;
+  border-radius: 20px 20px 20px 6px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .contentText {
   white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.userMessage .contentText {
+  color: white;
+}
+
+.assistantMessage .contentText {
+  color: #1e293b;
 }
 
 .errorMessage {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+  color: #dc2626 !important;
+  border: 1px solid #fecaca !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1) !important;
 }
 
 .errorText {
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorText::before {
+  content: "⚠️";
+  font-size: 16px;
+}
+
+/* 悬停效果 */
+.messageContent:hover {
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.userMessage .messageContent:hover {
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+}
+
+.assistantMessage .messageContent:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .messageContent {
+    max-width: 90%;
+  }
+  
+  .userMessage .messageContent,
+  .assistantMessage .messageContent {
+    padding: 14px 18px;
+    border-radius: 18px 18px 6px 18px;
+  }
+  
+  .assistantMessage .messageContent {
+    border-radius: 18px 18px 18px 6px;
+  }
+  
+  .contentText {
+    font-size: 14px;
+  }
+  
+  .messageHeader {
+    font-size: 12px;
+    gap: 10px;
+  }
+  
+  .model {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
 } 
