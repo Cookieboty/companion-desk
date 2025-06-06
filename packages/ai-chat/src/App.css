@@ -30,49 +30,16 @@ body {
   height: 100vh;
 }
 
-/* 顶部标题栏 */
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  z-index: 100;
-  min-height: 64px;
-}
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-
-
-.app-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 
 .config-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 6px;
   background-color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -93,18 +60,18 @@ body {
   flex-direction: column;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   min-height: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 欢迎屏幕 */
 .welcome-screen {
-  flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 20px;
-  min-height: 0;
-  overflow-y: auto;
-  padding-top: 40px;
+  width: 100%;
+  max-width: 900px;
 }
 
 .welcome-content {
@@ -173,8 +140,10 @@ body {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
   border-top: 1px solid #e2e8f0;
-  padding: 16px 24px;
+  padding: 12px 16px;
 }
+
+
 
 /* 滚动条样式 */
 ::-webkit-scrollbar {
@@ -204,16 +173,13 @@ body {
     height: calc(100vh - 60px);
   }
   
-  .app-header {
-    padding: 8px 16px;
+  .input-container {
+    padding: 8px 12px;
   }
   
-  .app-title {
-    font-size: 18px;
-  }
-  
-  .header-right {
-    gap: 8px;
+  .config-button {
+    width: 24px;
+    height: 24px;
   }
   
   .welcome-title {

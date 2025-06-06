@@ -129,6 +129,12 @@
   padding: 0 4px;
 }
 
+.modelStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .currentModel {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   color: #475569;
@@ -137,6 +143,36 @@
   font-weight: 500;
   font-size: 12px;
   border: 1px solid #e2e8f0;
+}
+
+.noModel {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 12px;
+  border: 1px solid #fecaca;
+}
+
+.configButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #64748b;
+}
+
+.configButton:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
 }
 
 /* 滚动条样式 */
@@ -182,5 +218,19 @@
   .currentModel {
     font-size: 11px;
     padding: 3px 10px;
+  }
+  
+  .noModel {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+  
+  .configButton {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .modelStatus {
+    gap: 6px;
   }
 } 

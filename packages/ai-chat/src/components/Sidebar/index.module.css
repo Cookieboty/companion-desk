@@ -20,6 +20,7 @@
   min-height: 64px;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .logo {
@@ -35,45 +36,98 @@
   white-space: nowrap;
 }
 
+.logo.collapsed {
+  justify-content: center;
+}
+
+.logo.collapsed .logoText {
+  display: none;
+}
+
 .newChatSection {
   padding: 16px;
   border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.newChatSection.collapsed {
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
 }
 
 .newChatBtn {
   width: 100%;
   height: 44px;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  color: #1e293b;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.newChatBtn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.newChatBtn:hover::before {
+  left: 100%;
 }
 
 .newChatBtn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.25);
+  transform: translateY(-2px);
 }
 
 .newChatBtn:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
 }
 
 .newChatBtn.collapsed {
-  width: 44px;
-  height: 44px;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
   border-radius: 50%;
   padding: 0;
   justify-content: center;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+
+.newChatBtn.collapsed:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }
 
 .newChatBtn.collapsed span {
@@ -133,6 +187,37 @@
   color: #64748b;
 }
 
+/* 收起状态下的历史对话 */
+.collapsedHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.collapsedHistoryItem {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.collapsedHistoryItem:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-color: #3b82f6;
+  transform: scale(1.05);
+}
+
 .sidebarFooter {
   padding: 16px;
   border-top: 1px solid #e2e8f0;
@@ -155,24 +240,32 @@
 }
 
 .toggleButton {
-  width: 32px;
-  height: 32px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: #3b82f6;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #64748b;
   flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .toggleButton:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-color: #3b82f6;
+  color: white;
+  transform: scale(1.1) rotate(180deg);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.toggleButton:active {
+  transform: scale(1.05) rotate(180deg);
 }
 
 .userInfo {

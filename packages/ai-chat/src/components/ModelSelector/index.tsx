@@ -37,12 +37,6 @@ export const ModelSelector: React.FC = () => {
     return (
       <div className={styles.noModels}>
         <span>❌ 没有可用的AI模型</span>
-        <button
-          className={styles.configButton}
-          onClick={() => {/* TODO: 打开配置面板 */ }}
-        >
-          配置模型
-        </button>
       </div>
     );
   }
@@ -64,8 +58,8 @@ export const ModelSelector: React.FC = () => {
         </div>
         <svg
           className={`${styles.dropdownIcon} ${isOpen ? styles.open : ''}`}
-          width="16"
-          height="16"
+          width="12"
+          height="12"
           viewBox="0 0 24 24"
           fill="currentColor"
         >
