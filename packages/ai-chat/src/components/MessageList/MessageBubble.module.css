@@ -5,7 +5,8 @@
   word-wrap: break-word;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  animation: messageSlideIn 0.5s ease-out;
 }
 
 .userMessage {
@@ -21,9 +22,10 @@
   align-items: center;
   gap: 12px;
   font-size: 13px;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 500;
-  padding: 0 4px;
+  padding: 0 8px;
+  opacity: 0.8;
 }
 
 .userMessage .messageHeader {
@@ -36,47 +38,102 @@
 
 .role {
   font-weight: 600;
-  color: #1e293b;
+  color: #e2e8f0;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
 }
 
 .timestamp {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
+  opacity: 0.7;
 }
 
 .model {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  color: #475569;
-  padding: 3px 8px;
-  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #00d4ff;
+  padding: 4px 10px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 500;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .messageContent {
   line-height: 1.6;
   max-width: 85%;
   position: relative;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .userMessage .messageContent {
   align-self: flex-end;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: rgba(59, 130, 246, 0.9);
   color: white;
-  padding: 16px 20px;
-  border-radius: 20px 20px 6px 20px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  padding: 18px 24px;
+  border-radius: 24px 24px 8px 24px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 4px 16px rgba(59, 130, 246, 0.4),
+    0 0 24px rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 用户消息的发光边框 */
+.userMessage .messageContent::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(59, 130, 246, 0.3) 50%,
+    rgba(139, 92, 246, 0.3) 100%
+  );
+  border-radius: 24px 24px 8px 24px;
+  z-index: -1;
+  opacity: 0.6;
 }
 
 .assistantMessage .messageContent {
   align-self: flex-start;
-  background: #ffffff;
-  color: #1e293b;
-  padding: 16px 20px;
-  border-radius: 20px 20px 20px 6px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  padding: 18px 24px;
+  border-radius: 24px 24px 24px 8px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(59, 130, 246, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* AI消息的微妙发光效果 */
+.assistantMessage .messageContent::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.2) 0%,
+    rgba(6, 182, 212, 0.2) 50%,
+    rgba(34, 197, 94, 0.2) 100%
+  );
+  border-radius: 24px 24px 24px 8px;
+  z-index: -1;
+  opacity: 0.4;
+  animation: aiGlow 3s ease-in-out infinite;
 }
 
 .contentText {
@@ -84,21 +141,33 @@
   font-size: 15px;
   line-height: 1.6;
   margin: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .userMessage .contentText {
   color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .assistantMessage .contentText {
-  color: #1e293b;
+  color: #e2e8f0;
 }
 
 .errorMessage {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
-  color: #dc2626 !important;
-  border: 1px solid #fecaca !important;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1) !important;
+  background: rgba(127, 29, 29, 0.9) !important;
+  color: #fecaca !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 
+    0 8px 32px rgba(127, 29, 29, 0.4) !important,
+    0 4px 16px rgba(239, 68, 68, 0.3) !important;
+}
+
+.errorMessage::before {
+  background: linear-gradient(135deg, 
+    rgba(239, 68, 68, 0.3) 0%,
+    rgba(220, 38, 38, 0.3) 100%
+  ) !important;
 }
 
 .errorText {
@@ -106,41 +175,91 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  color: #fecaca;
 }
 
 .errorText::before {
   content: "⚠️";
   font-size: 16px;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
 }
 
 /* 悬停效果 */
 .messageContent:hover {
-  transform: translateY(-1px);
-  transition: all 0.2s ease;
+  transform: translateY(-2px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .userMessage .messageContent:hover {
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 
+    0 12px 48px rgba(0, 0, 0, 0.4),
+    0 6px 24px rgba(59, 130, 246, 0.5),
+    0 0 32px rgba(59, 130, 246, 0.3);
+}
+
+.userMessage .messageContent:hover::before {
+  opacity: 1;
 }
 
 .assistantMessage .messageContent:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 6px 24px rgba(59, 130, 246, 0.2),
+    0 0 24px rgba(59, 130, 246, 0.1);
+}
+
+.assistantMessage .messageContent:hover::before {
+  opacity: 0.7;
+}
+
+/* 动画效果 */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aiGlow {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .messageContainer {
+    gap: 10px;
+  }
+  
   .messageContent {
     max-width: 90%;
   }
   
   .userMessage .messageContent,
   .assistantMessage .messageContent {
-    padding: 14px 18px;
-    border-radius: 18px 18px 6px 18px;
+    padding: 16px 20px;
+    border-radius: 20px 20px 8px 20px;
   }
   
   .assistantMessage .messageContent {
-    border-radius: 18px 18px 18px 6px;
+    border-radius: 20px 20px 20px 8px;
+  }
+  
+  .userMessage .messageContent::before,
+  .assistantMessage .messageContent::before {
+    border-radius: 20px 20px 8px 20px;
+  }
+  
+  .assistantMessage .messageContent::before {
+    border-radius: 20px 20px 20px 8px;
   }
   
   .contentText {
@@ -150,10 +269,11 @@
   .messageHeader {
     font-size: 12px;
     gap: 10px;
+    padding: 0 6px;
   }
   
   .model {
     font-size: 10px;
-    padding: 2px 6px;
+    padding: 3px 8px;
   }
 } 

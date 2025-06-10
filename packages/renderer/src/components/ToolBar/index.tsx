@@ -475,25 +475,25 @@ export const ToolBar: React.FC = () => {
   const getToolTip = (toolId: string) => {
     switch (toolId) {
       case 'hitokoto':
-        return '一言';
+        return '获取一言名句';
       case 'asteroids':
-        return '小游戏';
+        return '启动小行星游戏';
       case 'switch-model':
-        return '切换模型';
+        return '切换Live2D模型';
       case 'switch-texture':
-        return '切换衣服';
+        return '更换角色服装';
       case 'photo':
-        return '拍照';
+        return '截图保存';
       case 'info':
-        return '关于';
+        return '查看应用信息';
       case 'quit':
-        return '关闭';
+        return '关闭应用';
       case 'toggle-top':
-        return alwaysOnTop ? '取消置顶' : '置顶';
+        return alwaysOnTop ? '取消窗口置顶' : '设置窗口置顶';
       case 'voice-settings':
-        return voiceEnabled ? '语音功能 (已启用) - 左键切换，右键设置' : '语音功能 (已禁用) - 左键切换，右键设置';
+        return voiceEnabled ? '语音功能已启用' : '语音功能已禁用';
       case 'ai-chat':
-        return '智能小助手';
+        return '打开AI智能助手';
       default:
         return '';
     }
@@ -518,6 +518,8 @@ export const ToolBar: React.FC = () => {
       case 'voice-settings':
         // 根据语音启用状态显示不同样式
         return `${baseClass} ${voiceEnabled ? styles.voiceButton : styles.voiceButtonDisabled}`;
+      case 'ai-chat':
+        return `${baseClass} ${styles.aiChatButton}`;
       default:
         return baseClass;
     }
@@ -562,26 +564,32 @@ export const ToolBar: React.FC = () => {
       {
         isVisible && (
           <div className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}>
-            {availableTools.map((tool) => (
-              <button
-                key={tool}
-                className={getButtonClassName(tool)}
-                onClick={createButtonHandler(getToolHandler(tool))}
-                onContextMenu={tool === 'voice-settings' ? (e) => {
-                  e.preventDefault();
-                  console.log('ToolBar: 语音按钮右键点击，打开设置');
-                  setShowVoiceSettings(true);
-                } : undefined}
-                onMouseDown={clearButtonFocus}
-                onMouseUp={clearButtonFocus}
-                onFocus={handleButtonFocus}
-                title={getToolTip(tool)}
-              >
-                <div
-                  className={styles.icon}
-                  dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
-                />
-              </button>
+            {availableTools.map((tool, index) => (
+              <div key={tool} className={styles.buttonContainer}>
+                <button
+                  className={getButtonClassName(tool)}
+                  onClick={createButtonHandler(getToolHandler(tool))}
+                  onContextMenu={tool === 'voice-settings' ? (e) => {
+                    e.preventDefault();
+                    console.log('ToolBar: 语音按钮右键点击，打开设置');
+                    setShowVoiceSettings(true);
+                  } : undefined}
+                  onMouseDown={clearButtonFocus}
+                  onMouseUp={clearButtonFocus}
+                  onFocus={handleButtonFocus}
+                >
+                  <div
+                    className={styles.icon}
+                    dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
+                  />
+                </button>
+                <div className={styles.tooltip}>
+                  {getToolTip(tool)}
+                </div>
+                {index === Math.floor(availableTools.length / 2) && (
+                  <div className={styles.groupIndicator}></div>
+                )}
+              </div>
             ))}
           </div>
         )
