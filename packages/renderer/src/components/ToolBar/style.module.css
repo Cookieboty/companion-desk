@@ -41,81 +41,89 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 两排布局 - 左排（奇数按钮） */
 .toolbar .buttonContainer:nth-child(1) {
-  top: 0%;
-  right: 0;
+  top: 5%;
+  right: 60px;
   transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(2) {
-  top: 12%;
-  right: 8px;
-  transform: translateX(-5px) rotate(-8deg);
 }
 
 .toolbar .buttonContainer:nth-child(3) {
-  top: 24%;
-  right: 12px;
-  transform: translateX(-8px) rotate(-12deg);
-}
-
-.toolbar .buttonContainer:nth-child(4) {
-  top: 36%;
-  right: 15px;
-  transform: translateX(-10px) rotate(-15deg);
-}
-
-.toolbar .buttonContainer:nth-child(5) {
-  top: 48%;
-  right: 15px;
-  transform: translateX(-10px) rotate(-15deg);
-}
-
-.toolbar .buttonContainer:nth-child(6) {
-  top: 60%;
-  right: 12px;
-  transform: translateX(-8px) rotate(-12deg);
-}
-
-.toolbar .buttonContainer:nth-child(7) {
-  top: 72%;
-  right: 8px;
-  transform: translateX(-5px) rotate(-8deg);
-}
-
-.toolbar .buttonContainer:nth-child(8) {
-  top: 84%;
-  right: 0;
+  top: 25%;
+  right: 60px;
   transform: translateX(0) rotate(0deg);
 }
 
-/* 悬停时的弧形展开效果 */
-.toolbar:hover .buttonContainer:nth-child(1) {
-  transform: translateX(-15px) rotate(-20deg);
+.toolbar .buttonContainer:nth-child(5) {
+  top: 45%;
+  right: 60px;
+  transform: translateX(0) rotate(0deg);
 }
 
-.toolbar:hover .buttonContainer:nth-child(2) {
-  transform: translateX(-25px) rotate(-25deg);
+.toolbar .buttonContainer:nth-child(7) {
+  top: 65%;
+  right: 60px;
+  transform: translateX(0) rotate(0deg);
+}
+
+/* 两排布局 - 右排（偶数按钮） */
+.toolbar .buttonContainer:nth-child(2) {
+  top: 5%;
+  right: 0px;
+  transform: translateX(0) rotate(0deg);
+}
+
+.toolbar .buttonContainer:nth-child(4) {
+  top: 25%;
+  right: 0px;
+  transform: translateX(0) rotate(0deg);
+}
+
+.toolbar .buttonContainer:nth-child(6) {
+  top: 45%;
+  right: 0px;
+  transform: translateX(0) rotate(0deg);
+}
+
+.toolbar .buttonContainer:nth-child(8) {
+  top: 65%;
+  right: 0px;
+  transform: translateX(0) rotate(0deg);
+}
+
+/* 悬停时的两排展开效果 */
+/* 左排悬停效果（奇数按钮） */
+.toolbar:hover .buttonContainer:nth-child(1) {
+  
 }
 
 .toolbar:hover .buttonContainer:nth-child(3) {
-  transform: translateX(-30px) rotate(-30deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(4) {
-  transform: translateX(-35px) rotate(-35deg);
+  transform: translateX(-10px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(5) {
-  transform: translateX(-30px) rotate(-30deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(6) {
-  transform: translateX(-25px) rotate(-25deg);
+  transform: translateX(-10px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(7) {
-  transform: translateX(-15px) rotate(-20deg);
+  transform: translateX(-10px) rotate(0deg);
+}
+
+/* 右排悬停效果（偶数按钮） */
+.toolbar:hover .buttonContainer:nth-child(2) {
+  transform: translateX(-10px) rotate(0deg);
+}
+
+.toolbar:hover .buttonContainer:nth-child(4) {
+  transform: translateX(-10px) rotate(0deg);
+}
+
+.toolbar:hover .buttonContainer:nth-child(6) {
+  transform: translateX(-10px) rotate(0deg);
+}
+
+.toolbar:hover .buttonContainer:nth-child(8) {
+  transform: translateX(-10px) rotate(0deg);
 }
 
 /* 增强可见性的现代化按钮设计 */

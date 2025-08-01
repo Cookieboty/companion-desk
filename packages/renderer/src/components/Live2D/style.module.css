@@ -20,7 +20,7 @@
   min-height: 300px; /* 300x300 */
   max-height: none; /* 移除最大高度限制 */
   z-index: 1000; /* 还原到原来的值 */
-  pointer-events: auto;
+  pointer-events: none; /* 修改为none，避免阻挡其他UI元素 */
   user-select: none;
   transition: all 0.3s ease;
   /* overflow: visible; */
@@ -37,6 +37,7 @@
   display: block;
   width: 300px !important; /* 保持300x300的显示尺寸 */
   height: 300px !important; /* 保持300x300的显示尺寸 */
+  pointer-events: auto; /* 只在画布上启用交互 */
 }
 
 @keyframes sk-bouncedelay {

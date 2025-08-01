@@ -115,32 +115,17 @@ export class CursorMCPSetup {
   private generateMCPConfig(): any {
     // 获取当前应用的路径，用于启动MCP服务器
     const currentDir = process.cwd();
-    const mcpServerPath = path.join(currentDir, 'packages', 'electron', 'src', 'mcp-server.ts');
+    const mcpServerPath = path.join(currentDir, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
 
     return {
       mcpServers: {
         'virtual-character': {
           command: 'node',
-          args: [
-            '--loader', 'ts-node/esm',
-            mcpServerPath
-          ],
+          args: [mcpServerPath],
           env: {
             NODE_ENV: 'production',
             MCP_SERVER_NAME: 'virtual-character',
             MCP_SERVER_VERSION: '1.0.0'
-          }
-        },
-        'conversation-notification': {
-          command: 'node',
-          args: [
-            '--loader', 'ts-node/esm',
-            mcpServerPath,
-            '--tool', 'conversation-notification'
-          ],
-          env: {
-            NODE_ENV: 'production',
-            MCP_TOOL_FOCUS: 'conversation-notification'
           }
         }
       }

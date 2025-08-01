@@ -377,18 +377,28 @@ export const ToolBar: React.FC = () => {
         const result = await electronAPI.mcp.setupCursorIntegration();
 
         if (result.success) {
-          showMessage('Cursor MCP配置已成功注入！请重启Cursor IDE');
+          showMessage('✅ Cursor MCP配置已成功注入！请重启Cursor IDE以使配置生效');
+
+          // 播放成功提示音
+          if (voiceService && voiceEnabled) {
+            try {
+              // 使用showMessage来播放语音提示
+              showMessage('MCP配置注入成功，请重启Cursor IDE');
+            } catch (voiceError) {
+              console.warn('ToolBar: 语音提示失败:', voiceError);
+            }
+          }
         } else {
-          showMessage(`MCP注入失败: ${result.error}`);
+          showMessage(`❌ MCP注入失败: ${result.error || '未知错误'}`);
         }
       } else {
-        showMessage('MCP功能不可用，请检查Electron环境');
+        showMessage('❌ MCP功能不可用，请检查Electron环境');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Cursor MCP注入失败:', error);
-      showMessage('MCP注入失败，请查看控制台');
+      showMessage(`❌ MCP注入异常: ${error?.message || '请查看控制台'}`);
     }
-  }, [showMessage]);
+  }, [showMessage, voiceService, voiceEnabled]);
 
   // 切换纹理 - 恢复完整功能
   const switchTexture = useCallback(async () => {

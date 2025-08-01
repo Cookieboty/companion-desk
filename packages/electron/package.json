@@ -18,7 +18,9 @@
     "package:debug:win": "cross-env DEBUG=true electron-builder build --win --config.asar=false -c.extraMetadata.debug=true",
     "launch:debug": "electron . --debug-mode",
     "mcp:start": "node dist/mcp-server.js",
-    "mcp:debug": "node --inspect dist/mcp-server.js --debug"
+    "mcp:debug": "node --inspect dist/mcp-server.js --debug",
+    "mcp:standalone": "node dist/standalone-mcp-server.js",
+    "mcp:standalone:debug": "node --inspect dist/standalone-mcp-server.js"
   },
   "author": "",
   "license": "MIT",

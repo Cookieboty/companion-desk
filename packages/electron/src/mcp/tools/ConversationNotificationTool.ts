@@ -12,6 +12,7 @@ export class ConversationNotificationTool extends BaseAdapter {
       '在Cursor IDE对话完成后发送语音或视觉提示',
       '1.0.0'
     );
+    console.log('ConversationNotificationTool: 工具已创建');
   }
 
   getInputSchema(): any {

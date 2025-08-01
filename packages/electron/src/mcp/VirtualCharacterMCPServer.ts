@@ -1,28 +1,162 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { Tool, Resource, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  Tool,
+  Resource,
+  CallToolResult,
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema
+} from '@modelcontextprotocol/sdk/types.js';
 import { BaseAdapter } from './tools/BaseAdapter.js';
-import { CodeExplanationTool } from './tools/CodeExplanationTool.js';
-import { AnimationTool } from './tools/AnimationTool.js';
-import { VoiceFeedbackTool } from './tools/VoiceFeedbackTool.js';
-import { GestureGuideTool } from './tools/GestureGuideTool.js';
 import { ConversationNotificationTool } from './tools/ConversationNotificationTool.js';
 import { MCPSecurityManager } from './security/MCPSecurityManager.js';
 import { MCPToolRegistry } from './MCPToolRegistry.js';
 
 /**
- * 3D虚拟人物MCP服务器
- * 实现Model Context Protocol，为Cursor IDE提供智能虚拟助手功能
+ * 对话通知MCP服务器
+ * 实现Model Context Protocol，为Cursor IDE提供对话通知功能
  */
 export class VirtualCharacterMCPServer {
   private tools: Map<string, BaseAdapter>;
   private securityManager: MCPSecurityManager;
   private toolRegistry: MCPToolRegistry;
   private isInitialized: boolean = false;
+  private server: Server;
 
   constructor() {
     this.tools = new Map();
     this.securityManager = new MCPSecurityManager();
     this.toolRegistry = new MCPToolRegistry();
+
+    // 创建MCP服务器实例
+    this.server = new Server(
+      {
+        name: 'conversation-notification',
+        version: '1.0.0'
+      },
+      {
+        capabilities: {
+          tools: {},
+          resources: {}
+        }
+      }
+    );
+
+    this.setupHandlers();
+  }
+
+  /**
+   * 设置MCP处理器
+   */
+  private setupHandlers(): void {
+    // 处理工具列表请求
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      const tools: Tool[] = [];
+
+      for (const [name, adapter] of this.tools) {
+        tools.push({
+          name,
+          description: adapter.getDescription(),
+          inputSchema: adapter.getInputSchema()
+        });
+      }
+
+      console.log(`VirtualCharacterMCPServer: 返回工具列表，共${tools.length}个工具`);
+      return { tools };
+    });
+
+    // 处理工具调用请求
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+
+      console.log(`VirtualCharacterMCPServer: 调用工具 ${name}`, args);
+
+      const tool = this.tools.get(name);
+      if (!tool) {
+        throw new Error(`Unknown tool: ${name}`);
+      }
+
+      try {
+        const result = await tool.execute(args || {});
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2)
+            }
+          ],
+          isError: false
+        };
+      } catch (error) {
+        console.error(`VirtualCharacterMCPServer: 工具执行失败:`, error);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`
+            }
+          ],
+          isError: true
+        };
+      }
+    });
+
+    // 处理资源列表请求
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      const resources = this.getResources();
+      console.log(`VirtualCharacterMCPServer: 返回资源列表，共${resources.length}个资源`);
+      return { resources };
+    });
+
+    // 处理资源读取请求
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const { uri } = request.params;
+      console.log(`VirtualCharacterMCPServer: 读取资源 ${uri}`);
+
+      // 简单的资源处理逻辑
+      if (uri === 'virtual-character://status') {
+        return {
+          contents: [
+            {
+              uri,
+              mimeType: 'application/json',
+              text: JSON.stringify({
+                status: 'running',
+                tools: this.tools.size,
+                timestamp: new Date().toISOString()
+              }, null, 2)
+            }
+          ]
+        };
+      }
+
+      throw new Error(`Resource not found: ${uri}`);
+    });
+  }
+
+  /**
+   * 启动MCP服务器
+   */
+  async start(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+
+    console.log('VirtualCharacterMCPServer: MCP服务器已启动');
+  }
+
+  /**
+   * 获取服务器实例
+   */
+  getServer(): Server {
+    return this.server;
   }
 
   /**
@@ -53,28 +187,21 @@ export class VirtualCharacterMCPServer {
     try {
       console.log('VirtualCharacterMCPServer: 注册工具...');
 
-      // 创建工具实例
-      const codeExplanationTool = new CodeExplanationTool();
-      const animationTool = new AnimationTool();
-      const voiceFeedbackTool = new VoiceFeedbackTool();
-      const gestureGuideTool = new GestureGuideTool();
+      // 创建工具实例 - 只保留对话通知工具
       const conversationNotificationTool = new ConversationNotificationTool();
 
       // 注册工具
-      this.tools.set('explain_code', codeExplanationTool);
-      this.tools.set('show_animation', animationTool);
-      this.tools.set('voice_feedback', voiceFeedbackTool);
-      this.tools.set('gesture_guide', gestureGuideTool);
       this.tools.set('conversation_notification', conversationNotificationTool);
 
       // 注册到工具注册中心
-      await this.toolRegistry.registerTool('explain_code', codeExplanationTool);
-      await this.toolRegistry.registerTool('show_animation', animationTool);
-      await this.toolRegistry.registerTool('voice_feedback', voiceFeedbackTool);
-      await this.toolRegistry.registerTool('gesture_guide', gestureGuideTool);
       await this.toolRegistry.registerTool('conversation_notification', conversationNotificationTool);
 
       console.log('VirtualCharacterMCPServer: 工具注册完成，总数:', this.tools.size);
+
+      // 输出每个工具的详细信息
+      for (const [name, tool] of this.tools) {
+        console.log(`  - ${name}: ${tool.getDescription()}`);
+      }
     } catch (error) {
       console.error('VirtualCharacterMCPServer: 工具注册失败:', error);
       throw error;
@@ -210,32 +337,19 @@ export class VirtualCharacterMCPServer {
    */
   private getCapabilities(): any {
     return {
-      name: 'virtual-character-3d',
+      name: 'conversation-notification',
       version: '1.0.0',
-      description: '3D虚拟人物智能助手，支持代码解释、动画演示、语音反馈和手势引导',
+      description: '对话通知工具，支持在Cursor IDE中显示对话消息通知',
       capabilities: {
-        codeExplanation: {
-          languages: ['javascript', 'typescript', 'python', 'java', 'cpp', 'csharp'],
-          features: ['语法解释', '概念说明', '示例演示', '错误分析']
-        },
-        animations: {
-          types: ['解释动作', '指向动作', '表情动作', '手势动作'],
-          features: ['动画混合', '序列播放', '交互响应']
-        },
-        voiceFeedback: {
-          engines: ['azure', 'local', 'webapi'],
-          features: ['多语言支持', '情感表达', '实时同步']
-        },
-        gestureGuide: {
-          types: ['编程概念', '操作指导', '注意提示'],
-          features: ['3D手势', '录制回放', '自定义库']
+        conversationNotification: {
+          types: ['消息通知', '状态提示', '系统消息'],
+          features: ['实时通知', '消息持久化', '状态同步']
         }
       },
       supportedPlatforms: ['win32', 'darwin'],
       requirements: {
         nodejs: '>=16.0.0',
-        electron: '>=20.0.0',
-        webgl: '2.0'
+        electron: '>=20.0.0'
       }
     };
   }
