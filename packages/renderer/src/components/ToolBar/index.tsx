@@ -25,7 +25,7 @@ import { VoiceService } from '../../services/VoiceService';
 let globalVoiceService: VoiceService | null = null;
 
 export const ToolBar: React.FC = () => {
-  const [isVisible, setIsVisible] = useState(false); // 默认隐藏
+  const [isVisible, setIsVisible] = useState(process.env.NODE_ENV === 'development'); // 开发环境默认显示
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const { loadNextModel, loadRandomTexture, } = useLive2DModel();
   const { config: { tools: availableTools = [] } } = useLive2D();

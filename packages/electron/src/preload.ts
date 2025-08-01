@@ -106,5 +106,41 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // AI对话相关API
   openAiChat: async () => {
     return await ipcRenderer.invoke('open-ai-chat');
+  },
+
+  // MCP集成相关API
+  mcp: {
+    // 获取MCP服务状态
+    getStatus: async () => {
+      return await ipcRenderer.invoke('mcp:getStatus');
+    },
+    // 获取MCP诊断信息
+    getDiagnostics: async () => {
+      return await ipcRenderer.invoke('mcp:getDiagnostics');
+    },
+    // 调用MCP工具
+    callTool: async (toolName: string, args: any) => {
+      return await ipcRenderer.invoke('mcp:callTool', toolName, args);
+    },
+    // 读取MCP资源
+    readResource: async (uri: string) => {
+      return await ipcRenderer.invoke('mcp:readResource', uri);
+    },
+    // 获取可用MCP工具列表
+    getAvailableTools: async () => {
+      return await ipcRenderer.invoke('mcp:getAvailableTools');
+    },
+    // 获取可用MCP资源列表
+    getAvailableResources: async () => {
+      return await ipcRenderer.invoke('mcp:getAvailableResources');
+    },
+    // 重启MCP服务
+    restart: async () => {
+      return await ipcRenderer.invoke('mcp:restart');
+    },
+    // 验证MCP配置
+    validateConfiguration: async () => {
+      return await ipcRenderer.invoke('mcp:validateConfiguration');
+    }
   }
 } as IpcApi); 

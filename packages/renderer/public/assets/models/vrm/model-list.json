@@ -1,0 +1,23 @@
+{
+  "models": [
+    {
+      "name": "default-character",
+      "displayName": "默认角色",
+      "description": "系统默认的3D虚拟角色",
+      "path": "/assets/models/vrm/default-character.vrm",
+      "thumbnail": "/assets/models/vrm/default-character-thumb.jpg",
+      "author": "Virtual Character Team",
+      "license": "MIT",
+      "version": "1.0.0",
+      "tags": ["default", "female", "casual"],
+      "features": {
+        "expressions": ["neutral", "happy", "sad", "angry", "surprised"],
+        "animations": ["idle", "wave", "nod", "dance"],
+        "lookAt": true,
+        "springBone": true
+      }
+    }
+  ],
+  "lastUpdated": "2025-01-08T00:00:00Z",
+  "version": "1.0.0"
+}

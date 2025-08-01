@@ -16,11 +16,14 @@
     "package:debug": "cross-env DEBUG=true electron-builder build --config.asar=false -c.extraMetadata.debug=true",
     "package:debug:mac": "cross-env DEBUG=true electron-builder build --mac --config.asar=false -c.extraMetadata.debug=true",
     "package:debug:win": "cross-env DEBUG=true electron-builder build --win --config.asar=false -c.extraMetadata.debug=true",
-    "launch:debug": "electron . --debug-mode"
+    "launch:debug": "electron . --debug-mode",
+    "mcp:start": "node dist/mcp-server.js",
+    "mcp:debug": "node --inspect dist/mcp-server.js --debug"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.1",
     "node-global-key-listener": "^0.3.0"
   },
   "devDependencies": {

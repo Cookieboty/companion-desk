@@ -3,6 +3,9 @@ import * as path from 'path';
 import * as url from 'url';
 import * as fs from 'fs';
 
+// 导入MCP集成服务
+import { getMCPIntegrationService } from './services/MCPIntegrationService.js';
+
 // 添加全局键盘监听依赖
 let globalKeyboardListener: any = null;
 try {
@@ -452,10 +455,22 @@ async function createAiChatWindow() {
 }
 
 // 当 Electron 完成初始化并准备创建浏览器窗口时调用此方法
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!globalKeyboardListener) {
     console.error('主进程: 警告 - 键盘监听功能不可用！');
   }
+
+  // 启动MCP集成服务
+  try {
+    console.log('🚀 启动MCP集成服务...');
+    const mcpService = getMCPIntegrationService();
+    await mcpService.start();
+    console.log('✅ MCP集成服务启动成功');
+  } catch (error) {
+    console.error('❌ MCP集成服务启动失败:', error);
+    // 不阻止应用启动，继续创建窗口
+  }
+
   createWindow();
 });
 
@@ -468,7 +483,7 @@ app.on('window-all-closed', () => {
 });
 
 // 应用退出前保存位置
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   if (mainWindow) {
     const position = mainWindow.getPosition();
     const config = loadConfig();
@@ -485,6 +500,16 @@ app.on('before-quit', () => {
     } catch (error) {
       console.error('清理键盘监听器失败:', error);
     }
+  }
+
+  // 清理MCP集成服务
+  try {
+    console.log('🧹 清理MCP集成服务...');
+    const mcpService = getMCPIntegrationService();
+    await mcpService.stop();
+    console.log('✅ MCP集成服务清理完成');
+  } catch (error) {
+    console.error('❌ MCP集成服务清理失败:', error);
   }
 });
 
@@ -1090,4 +1115,103 @@ ipcMain.handle('ai-chat:model:testConnection', async (_, modelId) => {
   console.log('测试模型连接:', model.name);
   await new Promise(resolve => setTimeout(resolve, 500));
   return true;
+});
+
+// ==================== MCP集成相关IPC处理器 ====================
+
+// 获取MCP服务状态
+ipcMain.handle('mcp:getStatus', async () => {
+  try {
+    const mcpService = getMCPIntegrationService();
+    return mcpService.getStatus();
+  } catch (error) {
+    console.error('获取MCP状态失败:', error);
+    return { isRunning: false, error: String(error) };
+  }
+});
+
+// 获取MCP诊断信息
+ipcMain.handle('mcp:getDiagnostics', async () => {
+  try {
+    const mcpService = getMCPIntegrationService();
+    return await mcpService.getDiagnostics();
+  } catch (error) {
+    console.error('获取MCP诊断信息失败:', error);
+    return { error: String(error) };
+  }
+});
+
+// 调用MCP工具
+ipcMain.handle('mcp:callTool', async (_, toolName, args) => {
+  try {
+    console.log(`主进程: 调用MCP工具 ${toolName}`, args);
+    const mcpService = getMCPIntegrationService();
+    const result = await mcpService.handleToolCall(toolName, args);
+    console.log(`主进程: MCP工具 ${toolName} 调用完成`);
+    return result;
+  } catch (error) {
+    console.error(`主进程: MCP工具 ${toolName} 调用失败:`, error);
+    throw error;
+  }
+});
+
+// 读取MCP资源
+ipcMain.handle('mcp:readResource', async (_, uri) => {
+  try {
+    console.log(`主进程: 读取MCP资源 ${uri}`);
+    const mcpService = getMCPIntegrationService();
+    const result = await mcpService.handleResourceRead(uri);
+    console.log(`主进程: MCP资源 ${uri} 读取完成`);
+    return result;
+  } catch (error) {
+    console.error(`主进程: MCP资源 ${uri} 读取失败:`, error);
+    throw error;
+  }
+});
+
+// 获取可用MCP工具列表
+ipcMain.handle('mcp:getAvailableTools', async () => {
+  try {
+    const mcpService = getMCPIntegrationService();
+    return mcpService.getAvailableTools();
+  } catch (error) {
+    console.error('获取MCP工具列表失败:', error);
+    return [];
+  }
+});
+
+// 获取可用MCP资源列表
+ipcMain.handle('mcp:getAvailableResources', async () => {
+  try {
+    const mcpService = getMCPIntegrationService();
+    return mcpService.getAvailableResources();
+  } catch (error) {
+    console.error('获取MCP资源列表失败:', error);
+    return [];
+  }
+});
+
+// 重启MCP服务
+ipcMain.handle('mcp:restart', async () => {
+  try {
+    console.log('主进程: 重启MCP服务...');
+    const mcpService = getMCPIntegrationService();
+    await mcpService.restart();
+    console.log('主进程: MCP服务重启完成');
+    return { success: true };
+  } catch (error) {
+    console.error('主进程: MCP服务重启失败:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+// 验证MCP配置
+ipcMain.handle('mcp:validateConfiguration', async () => {
+  try {
+    const mcpService = getMCPIntegrationService();
+    return await mcpService.validateConfiguration();
+  } catch (error) {
+    console.error('MCP配置验证失败:', error);
+    return { isValid: false, errors: [String(error)], warnings: [] };
+  }
 }); 
