@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Live2dWidget from './components/Live2dWidget';
 import VirtualCharacter3D from './components/VirtualCharacter3D';
+import { ToolBar } from './components/ToolBar';
+import { Live2DProvider } from './contexts/Live2DContext';
 import type { ModelConfig } from './types/live2d';
 
 const App: React.FC = () => {
@@ -35,6 +37,7 @@ const App: React.FC = () => {
       'info',
       'voice-settings',
       ...(enable3D ? ['3d-mode'] : []), // 如果支持3D，添加3D模式切换工具
+      'cursor-mcp', // 添加Cursor MCP注入工具
       'toggle-top',
       'quit'
     ],
@@ -45,48 +48,24 @@ const App: React.FC = () => {
   // 处理模式切换
   const handleModeChange = (mode: 'live2d' | '3d') => {
     console.log(`App: 切换到${mode}模式`);
+    setCurrentMode(mode);
   };
+
+  // 监听工具栏的模式切换事件
+  useEffect(() => {
+    const handleModeSwitch = (event: any) => {
+      const { mode } = event.detail;
+      setCurrentMode(mode);
+    };
+
+    window.addEventListener('mode-switch', handleModeSwitch);
+    return () => {
+      window.removeEventListener('mode-switch', handleModeSwitch);
+    };
+  }, []);
 
   return (
     <div className="app" style={{ width: '100%', height: '100vh', position: 'relative' }}>
-      {/* 模式切换按钮 */}
-      {enable3D && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          zIndex: 1000,
-          display: 'flex',
-          gap: '8px'
-        }}>
-          <button
-            onClick={() => setCurrentMode('live2d')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: 'none',
-              background: currentMode === 'live2d' ? '#007AFF' : '#666',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-          >
-            Live2D
-          </button>
-          <button
-            onClick={() => setCurrentMode('3d')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: 'none',
-              background: currentMode === '3d' ? '#007AFF' : '#666',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-          >
-            3D
-          </button>
-        </div>
-      )}
 
       {/* 角色渲染 */}
       {currentMode === 'live2d' && (
@@ -94,16 +73,21 @@ const App: React.FC = () => {
       )}
 
       {currentMode === '3d' && enable3D && (
-        <div style={{ width: '100%', height: '100%' }}>
-          <VirtualCharacter3D
-            enableMCPIntegration={true}
-            enableVoiceSync={true}
-            enableControls={process.env.NODE_ENV === 'development'}
-            transparent={true}
-            onReady={() => console.log('App: 3D角色就绪')}
-            onError={(error) => console.error('App: 3D角色错误:', error)}
-          />
-        </div>
+        <Live2DProvider config={live2dConfig}>
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            {/* 3D角色 */}
+            <VirtualCharacter3D
+              enableMCPIntegration={true}
+              enableVoiceSync={true}
+              enableControls={process.env.NODE_ENV === 'development'}
+              transparent={true}
+              onReady={() => console.log('App: 3D角色就绪')}
+              onError={(error) => console.error('App: 3D角色错误:', error)}
+            />
+            {/* 独立的工具栏，在3D模式下也显示 */}
+            <ToolBar />
+          </div>
+        </Live2DProvider>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import { useCharacter3DStore } from '../../stores/character3DStore';
 import { VRMCharacterControllerProps } from '../../types/character3d';
 import VRMModelFallback from './VRMModelFallback';
 import DefaultCharacter3D from './DefaultCharacter3D';
+import CuteCharacter3D from './CuteCharacter3D';
 
 /**
  * VRM角色控制器组件
@@ -274,14 +275,14 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     );
   }
 
-  // 如果使用回退模型，显示萌妹子角色
+  // 如果使用回退模型，显示超萌角色
   if (useFallback) {
     return (
-      <DefaultCharacter3D
+      <CuteCharacter3D
         scale={scale}
         position={position}
         onReady={() => {
-          console.log('VRMCharacterController: 萌妹子角色就绪');
+          console.log('VRMCharacterController: 超萌角色就绪');
           onModelLoaded?.(null);
         }}
       />

@@ -2,7 +2,7 @@
 .toolbar {
   position: fixed;
   top: 50%;
-  right: 20px;
+  right: 15px;
   z-index: 10000;
   display: none;
   transform: translateY(-50%);
@@ -13,7 +13,7 @@
   /* 创建弧形容器 */
   width: 80px;
   height: auto;
-  min-height: 200px;
+  min-height: 500px;
 }
 
 .visible {
@@ -41,45 +41,50 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 动态弧形定位 */
 .toolbar .buttonContainer:nth-child(1) {
-  top: 0;
+  top: 0%;
   right: 0;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(2) {
-  top: 15%;
+  top: 12%;
   right: 8px;
   transform: translateX(-5px) rotate(-8deg);
 }
 
 .toolbar .buttonContainer:nth-child(3) {
-  top: 30%;
+  top: 24%;
   right: 12px;
   transform: translateX(-8px) rotate(-12deg);
 }
 
 .toolbar .buttonContainer:nth-child(4) {
-  top: 45%;
+  top: 36%;
   right: 15px;
   transform: translateX(-10px) rotate(-15deg);
 }
 
 .toolbar .buttonContainer:nth-child(5) {
+  top: 48%;
+  right: 15px;
+  transform: translateX(-10px) rotate(-15deg);
+}
+
+.toolbar .buttonContainer:nth-child(6) {
   top: 60%;
   right: 12px;
   transform: translateX(-8px) rotate(-12deg);
 }
 
-.toolbar .buttonContainer:nth-child(6) {
-  top: 75%;
+.toolbar .buttonContainer:nth-child(7) {
+  top: 72%;
   right: 8px;
   transform: translateX(-5px) rotate(-8deg);
 }
 
-.toolbar .buttonContainer:nth-child(7) {
-  top: 90%;
+.toolbar .buttonContainer:nth-child(8) {
+  top: 84%;
   right: 0;
   transform: translateX(0) rotate(0deg);
 }

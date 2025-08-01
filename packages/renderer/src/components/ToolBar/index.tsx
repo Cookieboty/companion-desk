@@ -29,6 +29,9 @@ export const ToolBar: React.FC = () => {
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const { loadNextModel, loadRandomTexture, } = useLive2DModel();
   const { config: { tools: availableTools = [] } } = useLive2D();
+
+  // 3D模式切换状态
+  const [current3DMode, setCurrent3DMode] = useState<'live2d' | '3d'>('live2d');
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voiceService, setVoiceService] = useState<VoiceService | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false); // 语音功能状态，默认禁用
@@ -349,6 +352,44 @@ export const ToolBar: React.FC = () => {
     }
   }, [loadNextModel, showMessage]);
 
+  // 3D模式切换
+  const toggle3DMode = useCallback(() => {
+    const newMode = current3DMode === 'live2d' ? '3d' : 'live2d';
+    setCurrent3DMode(newMode);
+
+    // 通知App组件切换模式
+    const customEvent = new CustomEvent('mode-switch', {
+      detail: { mode: newMode }
+    });
+    window.dispatchEvent(customEvent);
+
+    showMessage(`已切换到${newMode === '3d' ? '3D' : 'Live2D'}模式`);
+  }, [current3DMode, showMessage]);
+
+  // Cursor MCP注入
+  const injectCursorMCP = useCallback(async () => {
+    try {
+      showMessage('正在为Cursor注入MCP配置...');
+
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.mcp) {
+        // 生成MCP配置并写入Cursor配置文件
+        const result = await electronAPI.mcp.setupCursorIntegration();
+
+        if (result.success) {
+          showMessage('Cursor MCP配置已成功注入！请重启Cursor IDE');
+        } else {
+          showMessage(`MCP注入失败: ${result.error}`);
+        }
+      } else {
+        showMessage('MCP功能不可用，请检查Electron环境');
+      }
+    } catch (error) {
+      console.error('Cursor MCP注入失败:', error);
+      showMessage('MCP注入失败，请查看控制台');
+    }
+  }, [showMessage]);
+
   // 切换纹理 - 恢复完整功能
   const switchTexture = useCallback(async () => {
     try {
@@ -383,6 +424,10 @@ export const ToolBar: React.FC = () => {
         return voiceEnabled ? fa_volume_up : fa_volume_off;
       case 'ai-chat':
         return fa_robot;
+      case '3d-mode':
+        return fa_street_view;
+      case 'cursor-mcp':
+        return '<svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>';
       default:
         return '';
     }
@@ -466,6 +511,10 @@ export const ToolBar: React.FC = () => {
             document.head.appendChild(script);
           }
         };
+      case '3d-mode':
+        return toggle3DMode;
+      case 'cursor-mcp':
+        return injectCursorMCP;
       default:
         return () => { };
     }
@@ -494,6 +543,10 @@ export const ToolBar: React.FC = () => {
         return voiceEnabled ? '语音功能已启用' : '语音功能已禁用';
       case 'ai-chat':
         return '打开AI智能助手';
+      case '3d-mode':
+        return current3DMode === 'live2d' ? '切换到3D模式' : '切换到Live2D模式';
+      case 'cursor-mcp':
+        return '为Cursor IDE注入MCP配置';
       default:
         return '';
     }
@@ -577,6 +630,7 @@ export const ToolBar: React.FC = () => {
                   onMouseDown={clearButtonFocus}
                   onMouseUp={clearButtonFocus}
                   onFocus={handleButtonFocus}
+                  title={getToolTip(tool)}
                 >
                   <div
                     className={styles.icon}

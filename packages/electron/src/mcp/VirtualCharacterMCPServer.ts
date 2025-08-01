@@ -5,6 +5,7 @@ import { CodeExplanationTool } from './tools/CodeExplanationTool.js';
 import { AnimationTool } from './tools/AnimationTool.js';
 import { VoiceFeedbackTool } from './tools/VoiceFeedbackTool.js';
 import { GestureGuideTool } from './tools/GestureGuideTool.js';
+import { ConversationNotificationTool } from './tools/ConversationNotificationTool.js';
 import { MCPSecurityManager } from './security/MCPSecurityManager.js';
 import { MCPToolRegistry } from './MCPToolRegistry.js';
 
@@ -57,18 +58,21 @@ export class VirtualCharacterMCPServer {
       const animationTool = new AnimationTool();
       const voiceFeedbackTool = new VoiceFeedbackTool();
       const gestureGuideTool = new GestureGuideTool();
+      const conversationNotificationTool = new ConversationNotificationTool();
 
       // 注册工具
       this.tools.set('explain_code', codeExplanationTool);
       this.tools.set('show_animation', animationTool);
       this.tools.set('voice_feedback', voiceFeedbackTool);
       this.tools.set('gesture_guide', gestureGuideTool);
+      this.tools.set('conversation_notification', conversationNotificationTool);
 
       // 注册到工具注册中心
       await this.toolRegistry.registerTool('explain_code', codeExplanationTool);
       await this.toolRegistry.registerTool('show_animation', animationTool);
       await this.toolRegistry.registerTool('voice_feedback', voiceFeedbackTool);
       await this.toolRegistry.registerTool('gesture_guide', gestureGuideTool);
+      await this.toolRegistry.registerTool('conversation_notification', conversationNotificationTool);
 
       console.log('VirtualCharacterMCPServer: 工具注册完成，总数:', this.tools.size);
     } catch (error) {

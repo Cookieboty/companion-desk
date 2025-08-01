@@ -1214,4 +1214,22 @@ ipcMain.handle('mcp:validateConfiguration', async () => {
     console.error('MCP配置验证失败:', error);
     return { isValid: false, errors: [String(error)], warnings: [] };
   }
+});
+
+// Cursor MCP配置注入
+ipcMain.handle('mcp:setupCursorIntegration', async () => {
+  try {
+    console.log('主进程: 开始处理Cursor MCP配置注入...');
+    const { CursorMCPSetup } = await import('./mcp/integration/CursorMCPSetup');
+    const cursorSetup = new CursorMCPSetup();
+    const result = await cursorSetup.setupCursorIntegration();
+    console.log('主进程: Cursor MCP配置注入结果:', result);
+    return result;
+  } catch (error) {
+    console.error('主进程: Cursor MCP配置注入失败:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
 }); 

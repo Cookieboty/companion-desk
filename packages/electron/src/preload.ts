@@ -141,6 +141,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 验证MCP配置
     validateConfiguration: async () => {
       return await ipcRenderer.invoke('mcp:validateConfiguration');
+    },
+    // 设置Cursor MCP集成
+    setupCursorIntegration: async () => {
+      return await ipcRenderer.invoke('mcp:setupCursorIntegration');
     }
   }
 } as IpcApi); 
