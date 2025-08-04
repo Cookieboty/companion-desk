@@ -146,8 +146,17 @@ async function playFixedVoice(urgency: string = 'normal'): Promise<boolean> {
     const isDev = process.env.NODE_ENV === 'development';
     let voicePath: string;
 
-    if (isDev) {
-      voicePath = path.join(process.cwd(), 'packages', 'electron', 'assets', selectedFile);
+    if (isDev || !process.resourcesPath) {
+      // 开发环境或者resourcesPath不存在时，使用相对于当前脚本的路径
+      const currentDir = process.cwd();
+
+      if (currentDir.includes('packages/electron')) {
+        // 如果当前目录在packages/electron中，直接使用assets
+        voicePath = path.join(currentDir, 'assets', selectedFile);
+      } else {
+        // 否则使用完整的项目路径
+        voicePath = path.join(currentDir, 'packages', 'electron', 'assets', selectedFile);
+      }
     } else {
       voicePath = path.join(process.resourcesPath, 'app', 'assets', selectedFile);
     }
