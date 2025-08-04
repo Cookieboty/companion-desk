@@ -16,29 +16,221 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import * as path from 'path';
+import * as fs from 'fs';
 import { spawn } from 'child_process';
+
+// MVP语音系统配置
+interface VoiceConfig {
+  voiceMode: 'fixed' | 'tts' | 'mixed';
+  enableProjectSummary: boolean;
+}
+
+let mvpConfig: VoiceConfig = {
+  voiceMode: 'mixed',
+  enableProjectSummary: true
+};
+
+// 预设语音文件列表
+const VOICE_FILES = [
+  'completion/normal/completion_01.mp3',
+  'completion/normal/completion_02.mp3',
+  'completion/excited/great_job_01.mp3',
+  'completion/calm/done_01.mp3'
+];
+
+/**
+ * MVP: 播放固定语音文件
+ */
+async function playFixedVoice(urgency: string = 'normal'): Promise<boolean> {
+  try {
+    // 根据urgency选择语音文件
+    let selectedFile: string;
+    switch (urgency) {
+      case 'high':
+        selectedFile = 'completion/excited/great_job_01.mp3';
+        break;
+      case 'low':
+        selectedFile = 'completion/calm/done_01.mp3';
+        break;
+      default:
+        // 随机选择normal语音
+        const normalFiles = ['completion/normal/completion_01.mp3', 'completion/normal/completion_02.mp3'];
+        selectedFile = normalFiles[Math.floor(Math.random() * normalFiles.length)];
+    }
+
+    // 构建语音文件路径
+    const isDev = process.env.NODE_ENV === 'development';
+    let voicePath: string;
+
+    if (isDev) {
+      voicePath = path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', selectedFile);
+    } else {
+      voicePath = path.join(process.resourcesPath, 'renderer', 'assets', 'voice', selectedFile);
+    }
+
+    // 检查文件是否存在
+    if (!fs.existsSync(voicePath)) {
+      console.log(`MCP: 语音文件不存在: ${voicePath}，fallback到TTS`);
+      return false;
+    }
+
+    console.log(`MCP: 播放固定语音: ${selectedFile}`);
+
+    // 播放音频文件
+    if (process.platform === 'darwin') {
+      spawn('afplay', [voicePath]);
+    } else if (process.platform === 'win32') {
+      spawn('powershell', ['-c', `(New-Object Media.SoundPlayer "${voicePath}").PlaySync()`]);
+    } else {
+      spawn('mpg123', [voicePath]).on('error', () => {
+        spawn('ffplay', ['-nodisp', '-autoexit', voicePath]);
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error('MCP: 固定语音播放失败:', error);
+    return false;
+  }
+}
+
+/**
+ * MVP: 简单项目分析
+ */
+async function analyzeProject(): Promise<string> {
+  try {
+    const currentDir = process.cwd();
+    console.log(`MCP: 分析项目目录: ${currentDir}`);
+
+    // 简单的文件统计
+    let fileCount = 0;
+    let recentChanges: string[] = [];
+
+    // 检查常见的项目文件
+    const projectFiles = [
+      'package.json',
+      'tsconfig.json',
+      'src',
+      'packages',
+      'README.md'
+    ];
+
+    const existingFiles = projectFiles.filter(file => {
+      const filePath = path.join(currentDir, file);
+      return fs.existsSync(filePath);
+    });
+
+    fileCount = existingFiles.length;
+
+    // 简单的项目类型检测
+    let projectType = '未知项目';
+    if (existingFiles.includes('package.json')) {
+      projectType = 'Node.js项目';
+    }
+    if (existingFiles.includes('packages')) {
+      projectType = 'Monorepo项目';
+    }
+
+    // 生成简单总结
+    const summary = `当前${projectType}，包含${fileCount}个主要文件，项目状态正常`;
+    console.log(`MCP: 项目分析结果: ${summary}`);
+
+    return summary;
+  } catch (error) {
+    console.error('MCP: 项目分析失败:', error);
+    return '项目分析失败，但工作继续进行中';
+  }
+}
+
+/**
+ * MVP: 执行语音播放（支持模式切换）
+ */
+async function executeVoicePlayback(message: string, urgency: string = 'normal', includeProjectSummary: boolean = false): Promise<boolean> {
+  try {
+    let finalMessage = message;
+
+    // 如果启用项目总结，添加到消息中
+    if (includeProjectSummary && mvpConfig.enableProjectSummary) {
+      const projectSummary = await analyzeProject();
+      finalMessage = `${message}。${projectSummary}`;
+    }
+
+    console.log(`MCP: 执行语音播放 - 模式: ${mvpConfig.voiceMode}, 消息: ${finalMessage}`);
+
+    let success = false;
+
+    switch (mvpConfig.voiceMode) {
+      case 'fixed':
+        success = await playFixedVoice(urgency);
+        if (!success) {
+          console.log('MCP: 固定语音失败，fallback到TTS');
+          await playTextToSpeech(finalMessage);
+          success = true;
+        }
+        break;
+
+      case 'tts':
+        await playTextToSpeech(finalMessage);
+        success = true;
+        break;
+
+      case 'mixed':
+      default:
+        // 混合模式：短消息用固定语音，长消息或包含项目总结用TTS
+        if (finalMessage.length > 20 || includeProjectSummary) {
+          await playTextToSpeech(finalMessage);
+          success = true;
+        } else {
+          success = await playFixedVoice(urgency);
+          if (!success) {
+            await playTextToSpeech(finalMessage);
+            success = true;
+          }
+        }
+        break;
+    }
+
+    return success;
+  } catch (error) {
+    console.error('MCP: 语音播放执行失败:', error);
+    return false;
+  }
+}
 
 /**
  * 执行对话完成通知
  */
-async function executeConversationComplete(message: string, type: string, urgency: string): Promise<void> {
+async function executeConversationComplete(message: string, type: string, urgency: string, voiceMode?: string, includeProjectSummary?: boolean): Promise<void> {
   try {
     console.log(`MCP: 执行对话完成通知 - ${message} (${type}, ${urgency})`);
+
+    // 临时切换语音模式（如果提供）
+    const originalMode = mvpConfig.voiceMode;
+    if (voiceMode && ['fixed', 'tts', 'mixed'].includes(voiceMode)) {
+      mvpConfig.voiceMode = voiceMode as 'fixed' | 'tts' | 'mixed';
+    }
 
     // 播放系统通知声音
     if (type === 'sound' || type === 'all') {
       await playSystemSound();
     }
 
-    // 使用系统TTS播放语音
+    // 使用MVP语音系统播放语音
     if (type === 'voice' || type === 'all') {
-      await playTextToSpeech(message);
+      const success = await executeVoicePlayback(message, urgency, includeProjectSummary || false);
+      if (!success) {
+        console.log('MCP: MVP语音播放失败，使用原始TTS');
+        await playTextToSpeech(message);
+      }
     }
 
     // 显示系统通知
     if (type === 'notification' || type === 'all') {
       await showSystemNotification(message, urgency);
     }
+
+    // 恢复原始语音模式
+    mvpConfig.voiceMode = originalMode;
 
   } catch (error) {
     console.error('MCP: 对话完成通知执行失败:', error);
@@ -153,7 +345,7 @@ const server = new Server(
 const tools = [
   {
     name: 'conversation_complete',
-    description: '在Cursor IDE对话完成时播放语音提示和显示通知',
+    description: '在Cursor IDE对话完成时播放语音提示和显示通知（MVP增强版）',
     inputSchema: {
       type: 'object',
       properties: {
@@ -174,8 +366,56 @@ const tools = [
           description: '紧急程度',
           default: 'normal',
         },
+        voiceMode: {
+          type: 'string',
+          enum: ['fixed', 'tts', 'mixed'],
+          description: '语音模式：fixed=固定语音文件，tts=文本转语音，mixed=混合模式',
+          default: 'mixed',
+        },
+        includeProjectSummary: {
+          type: 'boolean',
+          description: '是否包含项目总结',
+          default: true,
+        },
       },
       required: [],
+    },
+  },
+  {
+    name: 'project_summary_voice',
+    description: '播放当前项目的语音总结',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        voiceMode: {
+          type: 'string',
+          enum: ['tts', 'mixed'],
+          description: '语音模式',
+          default: 'tts',
+        },
+        urgency: {
+          type: 'string',
+          enum: ['low', 'normal', 'high'],
+          description: '紧急程度',
+          default: 'normal',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'switch_voice_mode',
+    description: '切换语音播放模式',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          enum: ['fixed', 'tts', 'mixed'],
+          description: '目标语音模式',
+        },
+      },
+      required: ['mode'],
     },
   },
   {
@@ -301,11 +541,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const message = String(args?.message || '对话已完成');
         const type = String(args?.type || 'all');
         const urgency = String(args?.urgency || 'normal');
+        const voiceMode = String(args?.voiceMode || 'mixed');
+        const includeProjectSummary = Boolean(args?.includeProjectSummary !== false);
 
         // 执行实际的通知功能
-        await executeConversationComplete(message, type, urgency);
+        await executeConversationComplete(message, type, urgency, voiceMode, includeProjectSummary);
 
-        result = `✅ 任务完成通知已发送\n消息: ${message}\n类型: ${type}\n级别: ${urgency}`;
+        result = `✅ MVP语音通知已发送\n消息: ${message}\n类型: ${type}\n级别: ${urgency}\n语音模式: ${voiceMode}\n项目总结: ${includeProjectSummary ? '已包含' : '未包含'}`;
+        actionPerformed = true;
+        break;
+
+      case 'project_summary_voice':
+        const summaryVoiceMode = String(args?.voiceMode || 'tts');
+        const summaryUrgency = String(args?.urgency || 'normal');
+
+        // 生成项目总结并播放
+        const projectSummary = await analyzeProject();
+        const success = await executeVoicePlayback(`项目总结：${projectSummary}`, summaryUrgency, false);
+
+        result = `📊 项目总结语音播放\n内容: ${projectSummary}\n语音模式: ${summaryVoiceMode}\n播放状态: ${success ? '成功' : '失败'}`;
+        actionPerformed = true;
+        break;
+
+      case 'switch_voice_mode':
+        const newMode = String(args?.mode);
+        const oldMode = mvpConfig.voiceMode;
+
+        if (['fixed', 'tts', 'mixed'].includes(newMode)) {
+          mvpConfig.voiceMode = newMode as 'fixed' | 'tts' | 'mixed';
+          result = `🔄 语音模式切换成功\n从: ${oldMode}\n到: ${newMode}`;
+        } else {
+          result = `❌ 无效的语音模式: ${newMode}\n支持的模式: fixed, tts, mixed`;
+        }
         actionPerformed = true;
         break;
 
