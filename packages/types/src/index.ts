@@ -62,6 +62,7 @@ export interface VoiceSettings {
   keyboardListening: boolean;
   timeAnnouncement: boolean;
   voicePackPath: string;
+  voiceMode: 'fixed' | 'tts' | 'mixed';
 }
 
 // ==================== MCP相关类型定义 ====================

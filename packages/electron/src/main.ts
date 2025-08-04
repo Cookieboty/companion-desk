@@ -35,6 +35,7 @@ interface VoiceSettings {
   keyboardListening: boolean;
   timeAnnouncement: boolean;
   voicePackPath: string;
+  voiceMode: 'fixed' | 'tts' | 'mixed';
 }
 
 const defaultConfig: AppConfig = {
@@ -45,7 +46,8 @@ const defaultConfig: AppConfig = {
     volume: 0.8,
     keyboardListening: true,
     timeAnnouncement: true,
-    voicePackPath: 'packages/renderer/public/assets/voice'
+    voicePackPath: 'packages/renderer/public/assets/voice',
+    voiceMode: 'mixed'
   }
 };
 

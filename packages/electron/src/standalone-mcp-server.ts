@@ -25,10 +25,82 @@ interface VoiceConfig {
   enableProjectSummary: boolean;
 }
 
+// 动态配置 - 从应用设置中读取
 let mvpConfig: VoiceConfig = {
-  voiceMode: 'mixed',
+  voiceMode: 'mixed', // 默认值，将从应用配置中读取
   enableProjectSummary: true
 };
+
+// 工具调用计数器
+let toolCallCounter: number = 0;
+const MAX_CALLS_BEFORE_PROMPT: number = 24;
+
+/**
+ * 重置调用计数器
+ */
+function resetCallCounter(): void {
+  toolCallCounter = 0;
+  console.log('MCP: 调用计数器已重置');
+}
+
+/**
+ * 增加调用计数并检查是否需要提示
+ */
+function incrementCallCounter(): boolean {
+  toolCallCounter++;
+  console.log(`MCP: 当前调用次数: ${toolCallCounter}/${MAX_CALLS_BEFORE_PROMPT}`);
+
+  if (toolCallCounter === MAX_CALLS_BEFORE_PROMPT) {
+    console.log('MCP: 达到最大调用次数，将在本次调用后提示用户进行下一步');
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * 从应用配置中读取语音设置
+ */
+function loadVoiceConfigFromApp(): VoiceConfig {
+  try {
+    // 尝试多个可能的配置路径
+    const possiblePaths = [
+      path.join(process.cwd(), 'config.json'),
+      path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json'),
+      path.join(process.cwd(), '..', '..', 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json')
+    ];
+
+    for (const configPath of possiblePaths) {
+      if (fs.existsSync(configPath)) {
+        console.log(`MCP: 尝试从路径读取配置: ${configPath}`);
+        const configData = fs.readFileSync(configPath, 'utf8');
+        const appConfig = JSON.parse(configData);
+
+        if (appConfig.settings?.voiceMode) {
+          mvpConfig.voiceMode = appConfig.settings.voiceMode;
+          mvpConfig.enableProjectSummary = appConfig.settings.enableProjectSummary !== false;
+          console.log(`MCP: 从应用配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+          console.log(`MCP: 项目总结功能: ${mvpConfig.enableProjectSummary ? '启用' : '禁用'}`);
+          break;
+        } else if (appConfig.voiceSettings?.voiceMode) {
+          mvpConfig.voiceMode = appConfig.voiceSettings.voiceMode;
+          console.log(`MCP: 从应用配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+          break;
+        } else if (appConfig.voiceMode) {
+          // 直接的voiceMode配置
+          mvpConfig.voiceMode = appConfig.voiceMode;
+          console.log(`MCP: 从应用配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('MCP: 读取应用配置失败，使用默认语音模式:', error);
+  }
+
+  console.log(`MCP: 当前语音配置: ${JSON.stringify(mvpConfig)}`);
+  return mvpConfig;
+}
 
 // 预设语音文件列表
 const VOICE_FILES = [
@@ -198,17 +270,40 @@ async function executeVoicePlayback(message: string, urgency: string = 'normal',
 }
 
 /**
+ * 执行第24次调用后的强制提示
+ */
+async function executeMaxCallsReachedPrompt(): Promise<void> {
+  try {
+    loadVoiceConfigFromApp();
+
+    const promptMessage = '已完成24次工具调用，请告诉我下一步应该做什么？';
+
+    console.log('MCP: 执行第24次调用强制提示');
+
+    // 强制播放语音提示
+    await executeVoicePlayback(promptMessage, 'high', false);
+
+    // 显示系统通知
+    await showSystemNotification(promptMessage, 'high');
+
+    // 注意：不在这里重置计数器，而是等待用户响应后再重置
+    // 这样可以避免无限循环，用户需要主动调用reset_call_counter工具
+
+  } catch (error) {
+    console.error('MCP: 第24次调用提示执行失败:', error);
+  }
+}
+
+/**
  * 执行对话完成通知
  */
-async function executeConversationComplete(message: string, type: string, urgency: string, voiceMode?: string, includeProjectSummary?: boolean): Promise<void> {
+async function executeConversationComplete(message: string, type: string, urgency: string, includeProjectSummary?: boolean): Promise<void> {
   try {
-    console.log(`MCP: 执行对话完成通知 - ${message} (${type}, ${urgency})`);
+    // 先从应用配置中读取最新的语音设置
+    loadVoiceConfigFromApp();
 
-    // 临时切换语音模式（如果提供）
-    const originalMode = mvpConfig.voiceMode;
-    if (voiceMode && ['fixed', 'tts', 'mixed'].includes(voiceMode)) {
-      mvpConfig.voiceMode = voiceMode as 'fixed' | 'tts' | 'mixed';
-    }
+    console.log(`MCP: 执行对话完成通知 - ${message} (${type}, ${urgency})`);
+    console.log(`MCP: 当前语音模式: ${mvpConfig.voiceMode}`);
 
     // 播放系统通知声音
     if (type === 'sound' || type === 'all') {
@@ -228,9 +323,6 @@ async function executeConversationComplete(message: string, type: string, urgenc
     if (type === 'notification' || type === 'all') {
       await showSystemNotification(message, urgency);
     }
-
-    // 恢复原始语音模式
-    mvpConfig.voiceMode = originalMode;
 
   } catch (error) {
     console.error('MCP: 对话完成通知执行失败:', error);
@@ -273,6 +365,8 @@ async function playSystemSound(): Promise<void> {
 async function playTextToSpeech(text: string): Promise<void> {
   return new Promise((resolve) => {
     try {
+      console.log('MCP: 使用系统TTS播放:', text);
+
       // macOS 使用 say 命令
       if (process.platform === 'darwin') {
         spawn('say', ['-v', 'Ting-Ting', text]);
@@ -290,7 +384,7 @@ async function playTextToSpeech(text: string): Promise<void> {
       // 给TTS一些时间播放
       setTimeout(resolve, 2000);
     } catch (error) {
-      console.error('TTS播放失败:', error);
+      console.error('MCP: TTS播放失败:', error);
       resolve();
     }
   });
@@ -366,12 +460,7 @@ const tools = [
           description: '紧急程度',
           default: 'normal',
         },
-        voiceMode: {
-          type: 'string',
-          enum: ['fixed', 'tts', 'mixed'],
-          description: '语音模式：fixed=固定语音文件，tts=文本转语音，mixed=混合模式',
-          default: 'mixed',
-        },
+
         includeProjectSummary: {
           type: 'boolean',
           description: '是否包含项目总结',
@@ -383,16 +472,10 @@ const tools = [
   },
   {
     name: 'project_summary_voice',
-    description: '播放当前项目的语音总结',
+    description: '播放当前项目总结的语音',
     inputSchema: {
       type: 'object',
       properties: {
-        voiceMode: {
-          type: 'string',
-          enum: ['tts', 'mixed'],
-          description: '语音模式',
-          default: 'tts',
-        },
         urgency: {
           type: 'string',
           enum: ['low', 'normal', 'high'],
@@ -403,6 +486,30 @@ const tools = [
       required: [],
     },
   },
+  {
+    name: 'reset_call_counter',
+    description: '重置工具调用计数器，将计数重置为0',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        confirm: {
+          type: 'boolean',
+          description: '确认重置计数器',
+          default: true,
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'check_call_status',
+    description: '检查当前工具调用计数状态和MCP服务器状态',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  }
 ];
 
 // 定义prompts
@@ -432,11 +539,6 @@ const prompts = [
         description: '触发条件：每次完成回复时都应调用',
         required: false,
       },
-      {
-        name: 'voice_preferences',
-        description: '语音偏好设置',
-        required: false,
-      },
     ],
   },
   {
@@ -451,6 +553,22 @@ const prompts = [
       {
         name: 'result_summary',
         description: '结果摘要',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: 'call_limit_behavior',
+    description: '🔄 指导AI助手在工具调用达到24次时必须播放提示并等待用户指导的行为规范',
+    arguments: [
+      {
+        name: 'notification_urgency',
+        description: '提醒紧急程度，默认为high',
+        required: false,
+      },
+      {
+        name: 'prompt_message',
+        description: '自定义提示消息内容',
         required: false,
       },
     ],
@@ -488,35 +606,80 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let result = '';
     let actionPerformed = false;
 
+    // 对于reset_call_counter工具，不增加计数
+    const shouldPromptNextStep = (name !== 'reset_call_counter') ? incrementCallCounter() : false;
+
     switch (name) {
       case 'conversation_complete':
         const message = String(args?.message || '对话已完成');
         const type = String(args?.type || 'all');
         const urgency = String(args?.urgency || 'normal');
-        const voiceMode = String(args?.voiceMode || 'mixed');
         const includeProjectSummary = Boolean(args?.includeProjectSummary !== false);
 
         // 执行实际的通知功能
-        await executeConversationComplete(message, type, urgency, voiceMode, includeProjectSummary);
+        await executeConversationComplete(message, type, urgency, includeProjectSummary);
 
-        result = `✅ MVP语音通知已发送\n消息: ${message}\n类型: ${type}\n级别: ${urgency}\n语音模式: ${voiceMode}\n项目总结: ${includeProjectSummary ? '已包含' : '未包含'}`;
+        result = `✅ MVP语音通知已发送\n消息: ${message}\n类型: ${type}\n级别: ${urgency}\n语音模式: ${mvpConfig.voiceMode} (从应用设置读取)\n项目总结: ${includeProjectSummary ? '已包含' : '未包含'}`;
         actionPerformed = true;
         break;
 
       case 'project_summary_voice':
-        const summaryVoiceMode = String(args?.voiceMode || 'tts');
         const summaryUrgency = String(args?.urgency || 'normal');
+
+        // 先读取应用配置
+        loadVoiceConfigFromApp();
 
         // 生成项目总结并播放
         const projectSummary = await analyzeProject();
         const success = await executeVoicePlayback(`项目总结：${projectSummary}`, summaryUrgency, false);
 
-        result = `📊 项目总结语音播放\n内容: ${projectSummary}\n语音模式: ${summaryVoiceMode}\n播放状态: ${success ? '成功' : '失败'}`;
+        result = `📊 项目总结语音播放\n内容: ${projectSummary}\n语音模式: ${mvpConfig.voiceMode} (从应用设置读取)\n播放状态: ${success ? '成功' : '失败'}`;
         actionPerformed = true;
         break;
 
+      case 'reset_call_counter':
+        const confirm = Boolean(args?.confirm !== false);
+
+        if (confirm) {
+          const previousCount = toolCallCounter;
+          resetCallCounter();
+          result = `🔄 调用计数器已重置\n之前计数: ${previousCount}/${MAX_CALLS_BEFORE_PROMPT}\n当前计数: ${toolCallCounter}/${MAX_CALLS_BEFORE_PROMPT}`;
+        } else {
+          result = `❌ 计数器重置被取消\n当前计数: ${toolCallCounter}/${MAX_CALLS_BEFORE_PROMPT}`;
+        }
+
+        actionPerformed = true;
+        break;
+
+      case 'check_call_status':
+        // 加载最新配置
+        loadVoiceConfigFromApp();
+
+        result = `📊 MCP服务器状态报告
+当前调用计数: ${toolCallCounter}/${MAX_CALLS_BEFORE_PROMPT}
+语音模式: ${mvpConfig.voiceMode}
+项目总结功能: ${mvpConfig.enableProjectSummary ? '启用' : '禁用'}
+服务器状态: 正常运行
+可用工具数量: ${tools.length}
+
+${toolCallCounter >= MAX_CALLS_BEFORE_PROMPT ?
+            '⚠️ 已达到最大调用次数！请使用reset_call_counter工具重置计数器。' :
+            `还可进行 ${MAX_CALLS_BEFORE_PROMPT - toolCallCounter} 次工具调用。`}`;
+
+        actionPerformed = true;
+        break;
+
+
+
       default:
         throw new Error(`未知工具: ${name}`);
+    }
+
+    // 检查是否需要在第24次调用后提示用户
+    if (shouldPromptNextStep) {
+      console.log('MCP: 正在执行第24次调用后的提示...');
+      await executeMaxCallsReachedPrompt();
+      result += `\n\n🔔 重要提醒：已完成${MAX_CALLS_BEFORE_PROMPT}次工具调用，请提供下一步指导。请使用reset_call_counter工具重置计数器后继续。`;
     }
 
     return {
@@ -587,23 +750,33 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             role: 'system',
             content: {
               type: 'text',
-              text: `📢 重要：作为AI助手，你应该在每次完成回复后自动调用conversation_complete工具。
+              text: `📢 重要：作为AI助手，你必须在每次完成回复后自动调用conversation_complete工具。
 
-触发时机：
+🔥 关键提醒：MCP工具不会自动触发，你必须主动调用！
+
+触发时机（每次都要调用）：
 ✅ 回答了用户问题时
 ✅ 完成了代码任务时  
 ✅ 提供了解释说明时
 ✅ 修复了问题时
 ✅ 完成了任何形式的帮助时
+✅ 即使是简单的确认或状态更新
 
 调用方式：
-使用conversation_complete工具，参数如下：
-- message: 简短描述你刚才提供的帮助
-- urgency: 根据任务重要性选择 low/normal/high
-- voiceMode: 推荐使用 "mixed" 模式
+在你的回复最后，必须调用conversation_complete工具：
+- message: 简短描述你刚才提供的帮助（必需）
+- urgency: 根据任务重要性选择 low/normal/high（可选，默认normal）
+- type: 选择 'all'（默认）包含语音+通知+声音
 - includeProjectSummary: 对于编程任务建议设为 true
 
-这样用户就能听到完成提示音，获得更好的交互体验。`,
+⚠️ 重要：如果计数器达到24次，系统会要求你停止并等待用户指导。请使用check_call_status工具检查状态。
+
+示例调用：
+conversation_complete({
+  "message": "代码问题已解决",
+  "urgency": "normal",
+  "includeProjectSummary": true
+})`,
             },
           },
         ],
