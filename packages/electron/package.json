@@ -45,12 +45,17 @@
     "productName": "智能小助手",
     "files": [
       "dist/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "../renderer/dist",
         "to": "renderer"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
       }
     ],
     "directories": {

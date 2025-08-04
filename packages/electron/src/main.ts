@@ -47,7 +47,7 @@ const defaultConfig: AppConfig = {
     keyboardListening: true,
     timeAnnouncement: true,
     voicePackPath: 'packages/renderer/public/assets/voice',
-    voiceMode: 'mixed'
+    voiceMode: 'fixed'
   }
 };
 

@@ -27,7 +27,7 @@ interface VoiceConfig {
 
 // 动态配置 - 从应用设置中读取
 let mvpConfig: VoiceConfig = {
-  voiceMode: 'mixed', // 默认值，将从应用配置中读取
+  voiceMode: 'fixed', // 默认值，将从应用配置中读取
   enableProjectSummary: true
 };
 
@@ -60,36 +60,56 @@ function incrementCallCounter(): boolean {
 
 /**
  * 从应用配置中读取语音设置
+ * 读取Electron应用的实际运行配置，而不是静态配置文件
  */
 function loadVoiceConfigFromApp(): VoiceConfig {
   try {
-    // 尝试多个可能的配置路径
-    const possiblePaths = [
+    // 优先从Electron应用的userData目录读取实际配置
+    const os = require('os');
+
+    // 构建Electron应用的userData路径（和main.ts中保持一致）
+    const userDataPaths = [
+      // 开发环境：使用默认userData路径
+      path.join(os.homedir(), 'Library', 'Application Support', 'Electron', 'config.json'),
+      // 生产环境：使用应用名称的userData路径  
+      path.join(os.homedir(), 'Library', 'Application Support', '智能小助手', 'config.json'),
+      // Windows路径
+      path.join(os.homedir(), 'AppData', 'Roaming', 'Electron', 'config.json'),
+      path.join(os.homedir(), 'AppData', 'Roaming', '智能小助手', 'config.json'),
+      // Linux路径
+      path.join(os.homedir(), '.config', 'Electron', 'config.json'),
+      path.join(os.homedir(), '.config', '智能小助手', 'config.json'),
+      // 开发环境fallback
       path.join(process.cwd(), 'config.json'),
+      // 静态配置作为最后fallback
       path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json'),
       path.join(process.cwd(), '..', '..', 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json')
     ];
 
-    for (const configPath of possiblePaths) {
+    for (const configPath of userDataPaths) {
       if (fs.existsSync(configPath)) {
         console.log(`MCP: 尝试从路径读取配置: ${configPath}`);
         const configData = fs.readFileSync(configPath, 'utf8');
         const appConfig = JSON.parse(configData);
 
-        if (appConfig.settings?.voiceMode) {
-          mvpConfig.voiceMode = appConfig.settings.voiceMode;
-          mvpConfig.enableProjectSummary = appConfig.settings.enableProjectSummary !== false;
-          console.log(`MCP: 从应用配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+        // 优先读取voiceSettings.voiceMode（应用实际保存的设置）
+        if (appConfig.voiceSettings?.voiceMode) {
+          mvpConfig.voiceMode = appConfig.voiceSettings.voiceMode;
+          mvpConfig.enableProjectSummary = appConfig.voiceSettings.enableProjectSummary !== false;
+          console.log(`MCP: 从应用运行配置中读取到语音模式: ${mvpConfig.voiceMode}`);
           console.log(`MCP: 项目总结功能: ${mvpConfig.enableProjectSummary ? '启用' : '禁用'}`);
           break;
-        } else if (appConfig.voiceSettings?.voiceMode) {
-          mvpConfig.voiceMode = appConfig.voiceSettings.voiceMode;
-          console.log(`MCP: 从应用配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+        } else if (appConfig.settings?.voiceMode) {
+          // 静态配置fallback
+          mvpConfig.voiceMode = appConfig.settings.voiceMode;
+          mvpConfig.enableProjectSummary = appConfig.settings.enableProjectSummary !== false;
+          console.log(`MCP: 从静态配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+          console.log(`MCP: 项目总结功能: ${mvpConfig.enableProjectSummary ? '启用' : '禁用'}`);
           break;
         } else if (appConfig.voiceMode) {
           // 直接的voiceMode配置
           mvpConfig.voiceMode = appConfig.voiceMode;
-          console.log(`MCP: 从应用配置中读取到语音模式: ${mvpConfig.voiceMode}`);
+          console.log(`MCP: 从直接配置中读取到语音模式: ${mvpConfig.voiceMode}`);
           break;
         }
       }
@@ -101,14 +121,6 @@ function loadVoiceConfigFromApp(): VoiceConfig {
   console.log(`MCP: 当前语音配置: ${JSON.stringify(mvpConfig)}`);
   return mvpConfig;
 }
-
-// 预设语音文件列表
-const VOICE_FILES = [
-  'completion/normal/completion_01.mp3',
-  'completion/normal/completion_02.mp3',
-  'completion/excited/great_job_01.mp3',
-  'completion/calm/done_01.mp3'
-];
 
 /**
  * MVP: 播放固定语音文件
@@ -130,14 +142,14 @@ async function playFixedVoice(urgency: string = 'normal'): Promise<boolean> {
         selectedFile = normalFiles[Math.floor(Math.random() * normalFiles.length)];
     }
 
-    // 构建语音文件路径
+    // 构建语音文件路径 - 新路径：packages/electron/assets/
     const isDev = process.env.NODE_ENV === 'development';
     let voicePath: string;
 
     if (isDev) {
-      voicePath = path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', selectedFile);
+      voicePath = path.join(process.cwd(), 'packages', 'electron', 'assets', selectedFile);
     } else {
-      voicePath = path.join(process.resourcesPath, 'renderer', 'assets', 'voice', selectedFile);
+      voicePath = path.join(process.resourcesPath, 'app', 'assets', selectedFile);
     }
 
     // 检查文件是否存在
@@ -305,18 +317,21 @@ async function executeConversationComplete(message: string, type: string, urgenc
     console.log(`MCP: 执行对话完成通知 - ${message} (${type}, ${urgency})`);
     console.log(`MCP: 当前语音模式: ${mvpConfig.voiceMode}`);
 
-    // 播放系统通知声音
-    if (type === 'sound' || type === 'all') {
-      await playSystemSound();
-    }
+    let voicePlaybackSuccess = false;
 
-    // 使用MVP语音系统播放语音
+    // 优先使用MVP语音系统播放语音
     if (type === 'voice' || type === 'all') {
-      const success = await executeVoicePlayback(message, urgency, includeProjectSummary || false);
-      if (!success) {
-        console.log('MCP: MVP语音播放失败，使用原始TTS');
-        await playTextToSpeech(message);
+      voicePlaybackSuccess = await executeVoicePlayback(message, urgency, includeProjectSummary || false);
+
+      // 如果语音播放失败且需要兜底声音，使用系统声音
+      if (!voicePlaybackSuccess && type === 'all') {
+        console.log('MCP: 语音播放失败，使用系统声音作为兜底');
+        await playSystemSound();
       }
+    }
+    // 如果只要求播放系统声音
+    else if (type === 'sound') {
+      await playSystemSound();
     }
 
     // 显示系统通知
@@ -326,6 +341,15 @@ async function executeConversationComplete(message: string, type: string, urgenc
 
   } catch (error) {
     console.error('MCP: 对话完成通知执行失败:', error);
+
+    // 最终兜底：如果一切都失败了，至少播放系统声音
+    if (type === 'sound' || type === 'voice' || type === 'all') {
+      try {
+        await playSystemSound();
+      } catch (fallbackError) {
+        console.error('MCP: 兜底系统声音也播放失败:', fallbackError);
+      }
+    }
   }
 }
 

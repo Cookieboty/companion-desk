@@ -172,10 +172,34 @@ export class CursorIDEIntegration {
     const isDev = process.env.NODE_ENV === 'development';
 
     if (isDev) {
-      return path.join(process.cwd(), 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
+      // 获取项目根目录的绝对路径，避免因工作目录不同导致路径错误
+      const projectRoot = this.getProjectRoot();
+      return path.join(projectRoot, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
     } else {
       return path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
     }
+  }
+
+  /**
+   * 获取项目根目录路径
+   */
+  private getProjectRoot(): string {
+    // 从当前文件路径向上查找，直到找到包含 package.json 和 pnpm-workspace.yaml 的目录
+    let currentDir = __dirname;
+
+    while (currentDir !== path.dirname(currentDir)) {
+      const packageJsonPath = path.join(currentDir, 'package.json');
+      const workspaceConfigPath = path.join(currentDir, 'pnpm-workspace.yaml');
+
+      if (require('fs').existsSync(packageJsonPath) && require('fs').existsSync(workspaceConfigPath)) {
+        return currentDir;
+      }
+
+      currentDir = path.dirname(currentDir);
+    }
+
+    // 如果找不到，回退到 process.cwd()
+    return process.cwd();
   }
 
   /**

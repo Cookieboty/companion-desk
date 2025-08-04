@@ -114,13 +114,13 @@ export class CursorMCPSetup {
    */
   private generateMCPConfig(): any {
     // 获取当前应用的路径，用于启动MCP服务器
-    const currentDir = process.cwd();
     const isDev = process.env.NODE_ENV === 'development';
 
     let mcpServerPath: string;
     if (isDev) {
-      // 开发环境：直接使用构建后的文件
-      mcpServerPath = path.join(currentDir, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
+      // 开发环境：使用项目根目录的绝对路径
+      const projectRoot = this.getProjectRoot();
+      mcpServerPath = path.join(projectRoot, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
     } else {
       // 生产环境：使用打包后的资源路径
       mcpServerPath = path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
@@ -273,6 +273,28 @@ show_animation({
         errors: [`配置文件验证失败: ${error instanceof Error ? error.message : String(error)}`]
       };
     }
+  }
+
+  /**
+   * 获取项目根目录路径
+   */
+  private getProjectRoot(): string {
+    // 从当前文件路径向上查找，直到找到包含 package.json 和 pnpm-workspace.yaml 的目录
+    let currentDir = __dirname;
+
+    while (currentDir !== path.dirname(currentDir)) {
+      const packageJsonPath = path.join(currentDir, 'package.json');
+      const workspaceConfigPath = path.join(currentDir, 'pnpm-workspace.yaml');
+
+      if (require('fs').existsSync(packageJsonPath) && require('fs').existsSync(workspaceConfigPath)) {
+        return currentDir;
+      }
+
+      currentDir = path.dirname(currentDir);
+    }
+
+    // 如果找不到，回退到 process.cwd()
+    return process.cwd();
   }
 }
 

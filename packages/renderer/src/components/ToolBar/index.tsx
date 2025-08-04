@@ -87,10 +87,12 @@ export const ToolBar: React.FC = () => {
         // 获取VoiceService中的实际设置状态
         const actualSettings = globalVoiceService.getSettings();
         const actualEnabled = actualSettings?.enabled ?? false;
+        const actualVoiceMode = actualSettings?.voiceMode ?? 'fixed';
 
         // 同步UI状态和实际状态
         setVoiceEnabled(actualEnabled);
-        console.log('ToolBar: 语音状态同步完成，实际状态:', actualEnabled);
+        setVoiceMode(actualVoiceMode as 'fixed' | 'tts');
+        console.log('ToolBar: 语音状态同步完成，实际状态:', actualEnabled, '语音模式:', actualVoiceMode);
 
       } catch (error) {
         console.error('ToolBar: 初始化语音服务失败:', error);
@@ -416,19 +418,34 @@ export const ToolBar: React.FC = () => {
     }
   }, [loadRandomTexture, showMessage]);
 
-  // 切换语音模式（本地切换，不依赖MCP）
-  const toggleVoiceMode = useCallback(() => {
+  // 切换语音模式（保存到应用配置）
+  const toggleVoiceMode = useCallback(async () => {
+    if (!voiceService) {
+      showMessage('语音服务尚未初始化，请稍后再试...');
+      return;
+    }
+
     const newMode = voiceMode === 'fixed' ? 'tts' : 'fixed';
 
-    // 直接更新本地状态
-    setVoiceMode(newMode);
+    try {
+      // 更新本地状态
+      setVoiceMode(newMode);
 
-    // 显示切换成功消息
-    const modeText = newMode === 'fixed' ? '固定语音' : 'TTS语音';
-    showMessage(`已切换到${modeText}模式`);
+      // 通过VoiceService保存到Electron配置
+      await voiceService.updateSettings({ voiceMode: newMode });
 
-    console.log('ToolBar: 语音模式切换到:', newMode);
-  }, [voiceMode, showMessage]);
+      // 显示切换成功消息
+      const modeText = newMode === 'fixed' ? '固定语音' : 'TTS语音';
+      showMessage(`已切换到${modeText}模式`);
+
+      console.log('ToolBar: 语音模式切换到:', newMode, '并已保存到配置');
+    } catch (error) {
+      console.error('ToolBar: 语音模式切换失败:', error);
+      showMessage('语音模式切换失败，请重试');
+      // 回滚状态
+      setVoiceMode(voiceMode);
+    }
+  }, [voiceMode, voiceService, showMessage]);
 
   // 获取工具图标
   const getToolIcon = (toolId: string): string => {
