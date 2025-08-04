@@ -2,16 +2,16 @@
 .toolbar {
   position: fixed;
   top: 50%;
-  right: 15px;
-  z-index: 10000;
+  right: 5px; /* 在窗口内靠右，留5px边距 */
+  z-index: 99999; /* 提高层级，确保在所有元素之上 */
   display: none;
-  transform: translateY(-50%);
+  transform: translateY(-35%); /* 往下移动，改为-35%使整体更靠下 */
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   -webkit-app-region: no-drag;
   
   /* 创建弧形容器 */
-  width: 80px;
+  width: 70px; /* 稍微减小宽度以适应380px窗口 */
   height: auto;
   min-height: 500px;
 }
@@ -21,7 +21,7 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  z-index: 10000;
+  z-index: 99999; /* 与.toolbar保持一致的超高层级 */
   
   /* 弧形排列动画 */
   animation: spatialReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;

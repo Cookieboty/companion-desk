@@ -115,7 +115,16 @@ export class CursorMCPSetup {
   private generateMCPConfig(): any {
     // 获取当前应用的路径，用于启动MCP服务器
     const currentDir = process.cwd();
-    const mcpServerPath = path.join(currentDir, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
+    const isDev = process.env.NODE_ENV === 'development';
+
+    let mcpServerPath: string;
+    if (isDev) {
+      // 开发环境：直接使用构建后的文件
+      mcpServerPath = path.join(currentDir, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
+    } else {
+      // 生产环境：使用打包后的资源路径
+      mcpServerPath = path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
+    }
 
     return {
       mcpServers: {
@@ -123,7 +132,7 @@ export class CursorMCPSetup {
           command: 'node',
           args: [mcpServerPath],
           env: {
-            NODE_ENV: 'production',
+            NODE_ENV: isDev ? 'development' : 'production',
             MCP_SERVER_NAME: 'virtual-character',
             MCP_SERVER_VERSION: '1.0.0'
           }

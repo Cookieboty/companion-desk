@@ -69,12 +69,24 @@ const App: React.FC = () => {
 
       {/* 角色渲染 */}
       {currentMode === 'live2d' && (
-        <Live2dWidget config={live2dConfig} />
+        <div style={{
+          width: '100%',
+          height: '100%',
+          position: 'relative'
+          /* 移除transform，在Live2D内部处理定位 */
+        }}>
+          <Live2dWidget config={live2dConfig} />
+        </div>
       )}
 
       {currentMode === '3d' && enable3D && (
         <Live2DProvider config={live2dConfig}>
-          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative'
+            /* 移除transform，使用内部定位 */
+          }}>
             {/* 3D角色 */}
             <VirtualCharacter3D
               enableMCPIntegration={true}
@@ -83,6 +95,9 @@ const App: React.FC = () => {
               transparent={true}
               onReady={() => console.log('App: 3D角色就绪')}
               onError={(error) => console.error('App: 3D角色错误:', error)}
+              style={{
+                transform: 'translateX(-40px)' /* 3D角色也稍微左移以配合布局 */
+              }}
             />
             {/* 独立的工具栏，在3D模式下也显示 */}
             <ToolBar />

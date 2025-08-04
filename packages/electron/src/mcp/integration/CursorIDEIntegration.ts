@@ -172,9 +172,9 @@ export class CursorIDEIntegration {
     const isDev = process.env.NODE_ENV === 'development';
 
     if (isDev) {
-      return path.join(process.cwd(), 'packages', 'electron', 'dist', 'mcp-server.js');
+      return path.join(process.cwd(), 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
     } else {
-      return path.join(process.resourcesPath, 'app', 'dist', 'mcp-server.js');
+      return path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
     }
   }
 

@@ -15,6 +15,124 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import * as path from 'path';
+import { spawn } from 'child_process';
+
+/**
+ * 执行对话完成通知
+ */
+async function executeConversationComplete(message: string, type: string, urgency: string): Promise<void> {
+  try {
+    console.log(`MCP: 执行对话完成通知 - ${message} (${type}, ${urgency})`);
+
+    // 播放系统通知声音
+    if (type === 'sound' || type === 'all') {
+      await playSystemSound();
+    }
+
+    // 使用系统TTS播放语音
+    if (type === 'voice' || type === 'all') {
+      await playTextToSpeech(message);
+    }
+
+    // 显示系统通知
+    if (type === 'notification' || type === 'all') {
+      await showSystemNotification(message, urgency);
+    }
+
+  } catch (error) {
+    console.error('MCP: 对话完成通知执行失败:', error);
+  }
+}
+
+/**
+ * 播放系统通知声音
+ */
+async function playSystemSound(): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      // macOS 系统通知声音
+      if (process.platform === 'darwin') {
+        spawn('afplay', ['/System/Library/Sounds/Glass.aiff']);
+      }
+      // Windows 系统通知声音
+      else if (process.platform === 'win32') {
+        spawn('powershell', ['-c', '(New-Object Media.SoundPlayer "C:\\Windows\\Media\\notify.wav").PlaySync()']);
+      }
+      // Linux 使用 aplay 或 paplay
+      else {
+        spawn('paplay', ['/usr/share/sounds/alsa/Front_Left.wav']).on('error', () => {
+          spawn('aplay', ['/usr/share/sounds/alsa/Front_Left.wav']);
+        });
+      }
+
+      // 短暂延迟后 resolve
+      setTimeout(resolve, 500);
+    } catch (error) {
+      console.error('播放系统声音失败:', error);
+      resolve();
+    }
+  });
+}
+
+/**
+ * 使用系统TTS播放语音
+ */
+async function playTextToSpeech(text: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      // macOS 使用 say 命令
+      if (process.platform === 'darwin') {
+        spawn('say', ['-v', 'Ting-Ting', text]);
+      }
+      // Windows 使用 PowerShell
+      else if (process.platform === 'win32') {
+        const script = `Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.Speak('${text}')`;
+        spawn('powershell', ['-Command', script]);
+      }
+      // Linux 使用 espeak
+      else {
+        spawn('espeak', [text]);
+      }
+
+      // 给TTS一些时间播放
+      setTimeout(resolve, 2000);
+    } catch (error) {
+      console.error('TTS播放失败:', error);
+      resolve();
+    }
+  });
+}
+
+/**
+ * 显示系统通知
+ */
+async function showSystemNotification(message: string, urgency: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const title = '对话完成';
+
+      // macOS
+      if (process.platform === 'darwin') {
+        spawn('osascript', ['-e', `display notification "${message}" with title "${title}"`]);
+      }
+      // Windows
+      else if (process.platform === 'win32') {
+        const script = `New-BurntToastNotification -Text '${title}', '${message}'`;
+        spawn('powershell', ['-Command', script]);
+      }
+      // Linux
+      else {
+        spawn('notify-send', [title, message]);
+      }
+
+      setTimeout(resolve, 100);
+    } catch (error) {
+      console.error('系统通知失败:', error);
+      resolve();
+    }
+  });
+}
 
 // 创建MCP服务器
 const server = new Server(
@@ -180,16 +298,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     switch (name) {
       case 'conversation_complete':
-        const message = args?.message || '对话已完成';
-        const type = args?.type || 'all';
-        const urgency = args?.urgency || 'normal';
+        const message = String(args?.message || '对话已完成');
+        const type = String(args?.type || 'all');
+        const urgency = String(args?.urgency || 'normal');
 
-        // 这里可以通过IPC与主程序通信
+        // 执行实际的通知功能
+        await executeConversationComplete(message, type, urgency);
+
         result = `✅ 任务完成通知已发送\n消息: ${message}\n类型: ${type}\n级别: ${urgency}`;
         actionPerformed = true;
-
-        // 可以在这里添加语音播放逻辑
-        console.log(`播放完成提示: ${message}`);
         break;
 
       case 'virtual_character_action':
