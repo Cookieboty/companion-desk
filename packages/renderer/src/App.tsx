@@ -36,6 +36,7 @@ const App: React.FC = () => {
       'ai-chat',
       'info',
       'voice-settings',
+      'voice-mode-toggle', // 添加语音模式切换按钮
       ...(enable3D ? ['3d-mode'] : []), // 如果支持3D，添加3D模式切换工具
       'cursor-mcp', // 添加Cursor MCP注入工具
       'toggle-top',

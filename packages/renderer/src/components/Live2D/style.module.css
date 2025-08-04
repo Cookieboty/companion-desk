@@ -1,10 +1,10 @@
 /* 看板娘容器 - 稳定的居中显示，完全透明背景 */
 .waifu {
     position: absolute;
-    left: calc(50% - 40px); /* 在中心位置左移40px，为工具栏留出空间 */
+    left: 20px; /* 固定左边距20px，确保不超出窗口 */
     top: 50%;
-    transform: translate(-50%, -50%); /* 完全居中 */
-    width: 250px;
+    transform: translateY(-50%); /* 只垂直居中 */
+    width: 250px; /* 220px * 1.3 = 286px */
     height: auto;
     z-index: 1;
     font-size: 0;
@@ -19,8 +19,8 @@
 /* 看板娘画布 - 相对定位 */
 .waifuCanvas {
   position: relative; /* 改为相对定位 */
-  width: 300px; /* 300x300 */
-  min-height: 300px; /* 300x300 */
+  width: 250px; /* 与容器宽度一致 */
+  min-height: 364px; /* 280px * 1.3 = 364px */
   max-height: none; /* 移除最大高度限制 */
   z-index: 1000; /* 还原到原来的值 */
   pointer-events: none; /* 修改为none，避免阻挡其他UI元素 */
@@ -38,8 +38,8 @@
 /* 修复Canvas白色底纹问题 - 确保所有状态下都透明 */
 .waifuCanvas canvas {
   display: block;
-  width: 300px !important; /* 保持300x300的显示尺寸 */
-  height: 300px !important; /* 保持300x300的显示尺寸 */
+  width: 286px !important; /* 与容器宽度一致 */
+  height: 364px !important; /* 280px * 1.3 = 364px */
   pointer-events: auto; /* 只在画布上启用交互 */
 }
 

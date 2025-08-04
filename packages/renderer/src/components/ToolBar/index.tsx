@@ -14,6 +14,10 @@ import {
 
 // 添加AI对话图标
 const fa_robot = '<svg viewBox="0 0 640 512"><path d="M320 0c17.7 0 32 14.3 32 32V96H472c39.8 0 72 32.2 72 72V440c0 39.8-32.2 72-72 72H168c-39.8 0-72-32.2-72-72V168c0-39.8 32.2-72 72-72H288V32c0-17.7 14.3-32 32-32zM208 384c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H208zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H304zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H400zM264 256a40 40 0 1 0 -80 0 40 40 0 1 0 80 0zm152 40a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"/></svg>';
+
+// 语音模式切换图标
+const fa_voice_fixed = '<svg viewBox="0 0 24 24"><path d="M12 2C13.1 2 14 2.9 14 4V12C14 13.1 13.1 14 12 14C10.9 14 10 13.1 10 12V4C10 2.9 10.9 2 12 2M19 10V12C19 15.3 16.3 18 13 18V20H16C16.6 20 17 20.4 17 21S16.6 22 16 22H8C7.4 22 7 21.6 7 21S7.4 20 8 20H11V18C7.7 18 5 15.3 5 12V10C5 9.4 5.4 9 6 9S7 9.4 7 10V12C7 14.2 8.8 16 11 16H13C15.2 16 17 14.2 17 12V10C17 9.4 17.4 9 18 9S19 9.4 19 10Z"/></svg>';
+const fa_voice_tts = '<svg viewBox="0 0 24 24"><path d="M9 5H7V7H9V5M9 11H7V15H9V11M17 9H15V7H17V9M17 15H15V13H17V15M12 1L21 5V19L12 23L3 19V5L12 1M12 4.33L5.5 6.8V17.2L12 19.67L18.5 17.2V6.8L12 4.33Z"/></svg>';
 import { getCache, setCache } from '@/utils/cache';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import styles from './style.module.css';
@@ -35,6 +39,7 @@ export const ToolBar: React.FC = () => {
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voiceService, setVoiceService] = useState<VoiceService | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false); // 语音功能状态，默认禁用
+  const [voiceMode, setVoiceMode] = useState<'fixed' | 'tts'>('fixed'); // 语音模式状态
 
   // 初始化语音服务
   useEffect(() => {
@@ -411,6 +416,20 @@ export const ToolBar: React.FC = () => {
     }
   }, [loadRandomTexture, showMessage]);
 
+  // 切换语音模式（本地切换，不依赖MCP）
+  const toggleVoiceMode = useCallback(() => {
+    const newMode = voiceMode === 'fixed' ? 'tts' : 'fixed';
+
+    // 直接更新本地状态
+    setVoiceMode(newMode);
+
+    // 显示切换成功消息
+    const modeText = newMode === 'fixed' ? '固定语音' : 'TTS语音';
+    showMessage(`已切换到${modeText}模式`);
+
+    console.log('ToolBar: 语音模式切换到:', newMode);
+  }, [voiceMode, showMessage]);
+
   // 获取工具图标
   const getToolIcon = (toolId: string): string => {
     switch (toolId) {
@@ -432,6 +451,8 @@ export const ToolBar: React.FC = () => {
         return fa_thumbtack;
       case 'voice-settings':
         return voiceEnabled ? fa_volume_up : fa_volume_off;
+      case 'voice-mode-toggle':
+        return voiceMode === 'fixed' ? fa_voice_fixed : fa_voice_tts;
       case 'ai-chat':
         return fa_robot;
       case '3d-mode':
@@ -489,6 +510,8 @@ export const ToolBar: React.FC = () => {
 
           console.log('ToolBar: 语音状态切换完成:', newEnabled);
         };
+      case 'voice-mode-toggle':
+        return toggleVoiceMode;
       case 'ai-chat':
         return () => {
           console.log('ToolBar: AI对话按钮被点击');
@@ -551,6 +574,8 @@ export const ToolBar: React.FC = () => {
         return alwaysOnTop ? '取消窗口置顶' : '设置窗口置顶';
       case 'voice-settings':
         return voiceEnabled ? '语音功能已启用' : '语音功能已禁用';
+      case 'voice-mode-toggle':
+        return voiceMode === 'fixed' ? '当前：固定语音模式，点击切换到TTS' : '当前：TTS语音模式，点击切换到固定语音';
       case 'ai-chat':
         return '打开AI智能助手';
       case '3d-mode':
@@ -581,6 +606,9 @@ export const ToolBar: React.FC = () => {
       case 'voice-settings':
         // 根据语音启用状态显示不同样式
         return `${baseClass} ${voiceEnabled ? styles.voiceButton : styles.voiceButtonDisabled}`;
+      case 'voice-mode-toggle':
+        // 根据语音模式显示不同样式
+        return `${baseClass} ${voiceMode === 'fixed' ? styles.voiceModeFixed : styles.voiceModeTts}`;
       case 'ai-chat':
         return `${baseClass} ${styles.aiChatButton}`;
       default:

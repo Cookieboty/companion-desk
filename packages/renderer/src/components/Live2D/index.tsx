@@ -26,6 +26,7 @@ export const Live2D: React.FC<Live2DProps> = (props) => {
     'asteroids',
     'info',
     'voice-settings',
+    'voice-mode-toggle',
     'toggle-top',
     'quit'
   ];

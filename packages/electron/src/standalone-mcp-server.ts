@@ -345,13 +345,13 @@ const server = new Server(
 const tools = [
   {
     name: 'conversation_complete',
-    description: '在Cursor IDE对话完成时播放语音提示和显示通知（MVP增强版）',
+    description: '🎯 当AI助手完成一次对话回复时自动调用此工具。用于播放完成提示音和语音反馈，增强用户体验。应该在每次助手回复结束时触发。',
     inputSchema: {
       type: 'object',
       properties: {
         message: {
           type: 'string',
-          description: '完成消息内容',
+          description: '对话完成的总结消息，建议包含完成的任务或提供的帮助',
           default: '对话已完成',
         },
         type: {
@@ -403,74 +403,42 @@ const tools = [
       required: [],
     },
   },
-  {
-    name: 'switch_voice_mode',
-    description: '切换语音播放模式',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        mode: {
-          type: 'string',
-          enum: ['fixed', 'tts', 'mixed'],
-          description: '目标语音模式',
-        },
-      },
-      required: ['mode'],
-    },
-  },
-  {
-    name: 'virtual_character_action',
-    description: '控制3D虚拟角色执行动作和表情',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['wave', 'celebrate', 'think', 'happy', 'sad', 'excited'],
-          description: '角色动作',
-        },
-        expression: {
-          type: 'string',
-          enum: ['smile', 'wink', 'surprised', 'neutral'],
-          description: '角色表情',
-        },
-        message: {
-          type: 'string',
-          description: '要显示的消息',
-        },
-      },
-      required: ['action'],
-    },
-  },
-  {
-    name: 'code_explanation',
-    description: '解释代码并通过虚拟角色展示',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: '要解释的代码',
-        },
-        language: {
-          type: 'string',
-          description: '编程语言',
-          default: 'javascript',
-        },
-        complexity: {
-          type: 'string',
-          enum: ['beginner', 'intermediate', 'advanced'],
-          description: '解释复杂度',
-          default: 'intermediate',
-        },
-      },
-      required: ['code'],
-    },
-  },
 ];
 
 // 定义prompts
 const prompts = [
+  {
+    name: 'conversation_completion_trigger',
+    description: '🤖 指导AI助手在完成回复后自动触发完成通知的系统提示',
+    arguments: [
+      {
+        name: 'conversation_type',
+        description: '对话类型：coding, debugging, explanation, general',
+        required: false,
+      },
+      {
+        name: 'completion_urgency',
+        description: '完成紧急程度：low, normal, high',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: 'auto_completion_behavior',
+    description: '📢 定义AI助手应该何时以及如何调用conversation_complete工具的行为规范',
+    arguments: [
+      {
+        name: 'trigger_conditions',
+        description: '触发条件：每次完成回复时都应调用',
+        required: false,
+      },
+      {
+        name: 'voice_preferences',
+        description: '语音偏好设置',
+        required: false,
+      },
+    ],
+  },
   {
     name: 'task_complete',
     description: '任务完成时的标准提示模板',
@@ -483,22 +451,6 @@ const prompts = [
       {
         name: 'result_summary',
         description: '结果摘要',
-        required: false,
-      },
-    ],
-  },
-  {
-    name: 'coding_assistance',
-    description: '编程辅助的对话模板',
-    arguments: [
-      {
-        name: 'programming_language',
-        description: '编程语言',
-        required: true,
-      },
-      {
-        name: 'difficulty_level',
-        description: '难度级别',
         required: false,
       },
     ],
@@ -563,37 +515,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         actionPerformed = true;
         break;
 
-      case 'switch_voice_mode':
-        const newMode = String(args?.mode);
-        const oldMode = mvpConfig.voiceMode;
-
-        if (['fixed', 'tts', 'mixed'].includes(newMode)) {
-          mvpConfig.voiceMode = newMode as 'fixed' | 'tts' | 'mixed';
-          result = `🔄 语音模式切换成功\n从: ${oldMode}\n到: ${newMode}`;
-        } else {
-          result = `❌ 无效的语音模式: ${newMode}\n支持的模式: fixed, tts, mixed`;
-        }
-        actionPerformed = true;
-        break;
-
-      case 'virtual_character_action':
-        const action = args?.action || 'wave';
-        const expression = args?.expression || 'smile';
-        const actionMessage = args?.message || '';
-
-        result = `🎭 虚拟角色执行动作\n动作: ${action}\n表情: ${expression}\n消息: ${actionMessage}`;
-        actionPerformed = true;
-        break;
-
-      case 'code_explanation':
-        const code = (args?.code as string) || '';
-        const language = args?.language || 'javascript';
-        const complexity = args?.complexity || 'intermediate';
-
-        result = `📚 代码解释模式已启动\n语言: ${language}\n复杂度: ${complexity}\n代码长度: ${code.length} 字符`;
-        actionPerformed = true;
-        break;
-
       default:
         throw new Error(`未知工具: ${name}`);
     }
@@ -633,6 +554,61 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   console.log(`MCP: 获取prompt ${name}`, args);
 
   switch (name) {
+    case 'conversation_completion_trigger':
+      const conversationType = args?.conversation_type || 'general';
+      const urgency = args?.completion_urgency || 'normal';
+
+      return {
+        description: '自动触发对话完成通知的系统指导',
+        messages: [
+          {
+            role: 'system',
+            content: {
+              type: 'text',
+              text: `🤖 系统指导：当你完成一次回复后，应该自动调用conversation_complete工具来播放完成提示音。这能提供更好的用户体验。
+
+对话类型：${conversationType}
+建议紧急程度：${urgency}
+
+请在你的回复结束时包含对conversation_complete工具的调用。示例：
+- 对于编程帮助：urgency设为"normal"，message设为"代码问题已解决"
+- 对于简单问答：urgency设为"low"，message设为"问题已回答"
+- 对于重要任务：urgency设为"high"，message设为"重要任务已完成"`,
+            },
+          },
+        ],
+      };
+
+    case 'auto_completion_behavior':
+      return {
+        description: 'AI助手自动完成行为规范',
+        messages: [
+          {
+            role: 'system',
+            content: {
+              type: 'text',
+              text: `📢 重要：作为AI助手，你应该在每次完成回复后自动调用conversation_complete工具。
+
+触发时机：
+✅ 回答了用户问题时
+✅ 完成了代码任务时  
+✅ 提供了解释说明时
+✅ 修复了问题时
+✅ 完成了任何形式的帮助时
+
+调用方式：
+使用conversation_complete工具，参数如下：
+- message: 简短描述你刚才提供的帮助
+- urgency: 根据任务重要性选择 low/normal/high
+- voiceMode: 推荐使用 "mixed" 模式
+- includeProjectSummary: 对于编程任务建议设为 true
+
+这样用户就能听到完成提示音，获得更好的交互体验。`,
+            },
+          },
+        ],
+      };
+
     case 'task_complete':
       const taskName = args?.task_name || '未知任务';
       const resultSummary = args?.result_summary || '任务成功完成';

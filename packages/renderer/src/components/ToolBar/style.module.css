@@ -2,16 +2,16 @@
 .toolbar {
   position: fixed;
   top: 50%;
-  right: 5px; /* 在窗口内靠右，留5px边距 */
+  right: 10px; /* 增加右边距，避免与Live2D重叠 */
   z-index: 99999; /* 提高层级，确保在所有元素之上 */
   display: none;
-  transform: translateY(-35%); /* 往下移动，改为-35%使整体更靠下 */
+  transform: translateY(-50%); /* 垂直居中 */
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   -webkit-app-region: no-drag;
   
   /* 创建弧形容器 */
-  width: 70px; /* 稍微减小宽度以适应380px窗口 */
+  width: 130px; /* 适应60px按钮的更大宽度 */
   height: auto;
   min-height: 500px;
 }
@@ -43,50 +43,62 @@
 
 /* 两排布局 - 左排（奇数按钮） */
 .toolbar .buttonContainer:nth-child(1) {
-  top: 5%;
-  right: 60px;
+  top: 20%;
+  right: 50px;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(3) {
-  top: 25%;
-  right: 60px;
+  top: 32%;
+  right: 50px;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(5) {
-  top: 45%;
-  right: 60px;
+  top: 44%;
+  right: 50px;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(7) {
-  top: 65%;
-  right: 60px;
+  top: 56%;
+  right: 50px;
+  transform: translateX(0) rotate(0deg);
+}
+
+.toolbar .buttonContainer:nth-child(9) {
+  top: 68%;
+  right: 50px;
   transform: translateX(0) rotate(0deg);
 }
 
 /* 两排布局 - 右排（偶数按钮） */
 .toolbar .buttonContainer:nth-child(2) {
-  top: 5%;
+  top: 20%;
   right: 0px;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(4) {
-  top: 25%;
+  top: 32%;
   right: 0px;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(6) {
-  top: 45%;
+  top: 44%;
   right: 0px;
   transform: translateX(0) rotate(0deg);
 }
 
 .toolbar .buttonContainer:nth-child(8) {
-  top: 65%;
+  top: 56%;
+  right: 0px;
+  transform: translateX(0) rotate(0deg);
+}
+
+.toolbar .buttonContainer:nth-child(10) {
+  top: 68%;
   right: 0px;
   transform: translateX(0) rotate(0deg);
 }
@@ -94,42 +106,50 @@
 /* 悬停时的两排展开效果 */
 /* 左排悬停效果（奇数按钮） */
 .toolbar:hover .buttonContainer:nth-child(1) {
-  
+  transform: translateX(-6px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(3) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(5) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(7) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
+}
+
+.toolbar:hover .buttonContainer:nth-child(9) {
+  transform: translateX(-6px) rotate(0deg);
 }
 
 /* 右排悬停效果（偶数按钮） */
 .toolbar:hover .buttonContainer:nth-child(2) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(4) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(6) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
 }
 
 .toolbar:hover .buttonContainer:nth-child(8) {
-  transform: translateX(-10px) rotate(0deg);
+  transform: translateX(-6px) rotate(0deg);
+}
+
+.toolbar:hover .buttonContainer:nth-child(10) {
+  transform: translateX(-6px) rotate(0deg);
 }
 
 /* 增强可见性的现代化按钮设计 */
 .button {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border: none;
   position: relative;
   cursor: pointer;
@@ -253,8 +273,8 @@
 }
 
 .icon svg {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   fill: #00d4ff;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.7));
@@ -391,6 +411,25 @@
   border-color: rgba(107, 114, 128, 0.5);
 }
 
+/* 语音模式切换按钮样式 */
+.voiceModeFixed {
+  background: rgba(139, 69, 19, 0.95);
+  border-color: rgba(234, 88, 12, 0.8);
+  box-shadow: 
+    0 15px 60px rgba(234, 88, 12, 0.4),
+    0 8px 30px rgba(234, 88, 12, 0.3),
+    0 4px 15px rgba(234, 88, 12, 0.2);
+}
+
+.voiceModeTts {
+  background: rgba(7, 89, 133, 0.95);
+  border-color: rgba(14, 165, 233, 0.8);
+  box-shadow: 
+    0 15px 60px rgba(14, 165, 233, 0.4),
+    0 8px 30px rgba(14, 165, 233, 0.3),
+    0 4px 15px rgba(14, 165, 233, 0.2);
+}
+
 /* 高级动画系统 */
 @keyframes spatialReveal {
   0% {
@@ -486,18 +525,18 @@
   }
   
   .button {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
   }
   
   .icon svg {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
   }
   
   .tooltip {
-    right: 65px;
+    right: 50px;
     font-size: 13px;
     padding: 10px 14px;
   }

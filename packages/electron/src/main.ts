@@ -121,7 +121,7 @@ function createWindow() {
 
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
-    width: 380,
+    width: 420,
     height: 450,
     frame: false,
     transparent: true,
@@ -533,7 +533,7 @@ ipcMain.on('set-always-on-top', (_, flag: boolean) => {
 });
 
 // Windows DPI问题修复 - 记住窗口的原始尺寸
-const WINDOW_WIDTH = 380;
+const WINDOW_WIDTH = 420;
 const WINDOW_HEIGHT = 450;
 
 // 位置更新状态管理器 - 修复Windows DPI缩放问题的关键
@@ -1227,9 +1227,9 @@ ipcMain.handle('mcp:setupCursorIntegration', async () => {
     return result;
   } catch (error) {
     console.error('主进程: Cursor MCP配置注入失败:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : String(error) 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
     };
   }
 }); 

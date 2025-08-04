@@ -10,7 +10,6 @@ import {
   ReadResourceRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { BaseAdapter } from './tools/BaseAdapter.js';
-import { ConversationNotificationTool } from './tools/ConversationNotificationTool.js';
 import { MCPSecurityManager } from './security/MCPSecurityManager.js';
 import { MCPToolRegistry } from './MCPToolRegistry.js';
 
@@ -187,14 +186,7 @@ export class VirtualCharacterMCPServer {
     try {
       console.log('VirtualCharacterMCPServer: 注册工具...');
 
-      // 创建工具实例 - 只保留对话通知工具
-      const conversationNotificationTool = new ConversationNotificationTool();
-
-      // 注册工具
-      this.tools.set('conversation_notification', conversationNotificationTool);
-
-      // 注册到工具注册中心
-      await this.toolRegistry.registerTool('conversation_notification', conversationNotificationTool);
+      // 所有工具已移至standalone-mcp-server.ts，这里不再注册工具
 
       console.log('VirtualCharacterMCPServer: 工具注册完成，总数:', this.tools.size);
 
