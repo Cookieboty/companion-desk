@@ -115,7 +115,8 @@ export class BootstrapManager implements IBootstrapManager {
       return this.metrics;
 
     } catch (error) {
-      this.logger.error('启动任务执行失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('启动任务执行失败', { error: errorMessage });
       throw error;
     }
   }
@@ -195,7 +196,8 @@ export class BootstrapManager implements IBootstrapManager {
         await Promise.all(mediumTasks.map(task => this.executeTask(task)));
         this.logger.info('中优先级任务执行完成');
       } catch (error) {
-        this.logger.error('中优先级任务执行失败', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('中优先级任务执行失败', { error: errorMessage });
       }
     }, 100);
 
@@ -210,7 +212,8 @@ export class BootstrapManager implements IBootstrapManager {
         this.logger.info('低优先级任务执行完成');
         eventBus.emit('bootstrap:all-complete', this.metrics);
       } catch (error) {
-        this.logger.error('低优先级任务执行失败', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('低优先级任务执行失败', { error: errorMessage });
       }
     }, 1000);
   }
@@ -282,21 +285,22 @@ export class BootstrapManager implements IBootstrapManager {
       this.runningTasks.delete(task.name);
 
       // 记录失败的任务指标
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.metrics?.taskMetrics.push({
         name: task.name,
         startTime: taskStartTime,
         endTime: taskEndTime,
         duration,
         success: false,
-        error: error.message
+        error: errorMessage
       });
 
       this.logger.error(`启动任务执行失败: ${task.name}`, {
-        error: error.message,
+        error: errorMessage,
         duration: `${duration}ms`
       });
 
-      eventBus.emit('bootstrap:task-error', { name: task.name, error: error.message });
+      eventBus.emit('bootstrap:task-error', { name: task.name, error: errorMessage });
 
       // 关键和高优先级任务失败时抛出错误
       if (task.priority === 'critical' || task.priority === 'high') {

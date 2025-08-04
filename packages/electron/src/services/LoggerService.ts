@@ -219,7 +219,8 @@ export class LoggerService implements ILoggerService {
         }
       });
     } catch (error) {
-      this.error('Failed to clean old logs', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.error('Failed to clean old logs', { error: errorMessage });
     }
   }
 }

@@ -23,13 +23,13 @@ export interface IApplication {
 
 export class Application implements IApplication {
   private container: IServiceContainer;
-  private logger: LoggerService;
-  private configService: ConfigService;
-  private cacheService: CacheService;
-  private windowManager: WindowManager;
-  private errorHandler: GlobalErrorHandler;
-  private ipcRegistry: IpcRegistry;
-  private bootstrapManager: BootstrapManager;
+  private logger!: LoggerService;
+  private configService!: ConfigService;
+  private cacheService!: CacheService;
+  private windowManager!: WindowManager;
+  private errorHandler!: GlobalErrorHandler;
+  private ipcRegistry!: IpcRegistry;
+  private bootstrapManager!: BootstrapManager;
   private isInitialized = false;
 
   constructor() {
@@ -68,7 +68,8 @@ export class Application implements IApplication {
 
       eventBus.emit('app:initialized');
     } catch (error) {
-      this.logger.error('应用初始化失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('应用初始化失败', { error: errorMessage });
       throw error;
     }
   }
@@ -84,13 +85,18 @@ export class Application implements IApplication {
     try {
       this.logger.info('启动应用...');
 
+      // 等待Electron app ready事件
+      await app.whenReady();
+      this.logger.info('Electron应用准备就绪');
+
       // 创建主窗口
       await this.windowManager.createMainWindow();
 
       this.logger.info('应用启动完成');
       eventBus.emit('app:started');
     } catch (error) {
-      this.logger.error('应用启动失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('应用启动失败', { error: errorMessage });
       throw error;
     }
   }
@@ -117,7 +123,8 @@ export class Application implements IApplication {
       this.logger.info('应用已停止');
       eventBus.emit('app:stopped');
     } catch (error) {
-      this.logger.error('应用停止失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('应用停止失败', { error: errorMessage });
       throw error;
     }
   }
@@ -252,7 +259,8 @@ export class Application implements IApplication {
         try {
           this.logger.cleanOldLogs(7); // 清理7天前的日志
         } catch (error) {
-          this.logger.warn('清理旧日志失败', { error: error.message });
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn('清理旧日志失败', { error: errorMessage });
         }
       }
     });

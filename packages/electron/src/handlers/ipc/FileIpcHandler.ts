@@ -58,7 +58,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         return jsonData;
       } catch (error) {
         this.logger.error('读取JSON文件失败', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           filePath
         });
         return null;
@@ -118,7 +118,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         return result;
       } catch (error) {
         this.logger.error('读取文件失败', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           filePath
         });
         return null;
@@ -137,7 +137,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         return exists;
       } catch (error) {
         this.logger.error('检查文件存在失败', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           filePath
         });
         return false;
@@ -200,7 +200,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         return fileStats;
       } catch (error) {
         this.logger.error('获取文件统计信息失败', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           filePath
         });
         return null;
@@ -246,7 +246,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         return items;
       } catch (error) {
         this.logger.error('列出目录内容失败', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           dirPath
         });
         return [];

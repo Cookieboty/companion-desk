@@ -91,7 +91,8 @@ export class WindowManager implements IWindowManager {
 
       return this.mainWindow;
     } catch (error) {
-      this.logger.error('主窗口创建失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('主窗口创建失败', { error: errorMessage });
       throw error;
     }
   }
@@ -142,7 +143,8 @@ export class WindowManager implements IWindowManager {
 
       return this.aiChatWindow;
     } catch (error) {
-      this.logger.error('AI对话窗口创建失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('AI对话窗口创建失败', { error: errorMessage });
       throw error;
     }
   }
@@ -288,7 +290,8 @@ export class WindowManager implements IWindowManager {
           window.webContents.send(eventName);
         }
       } catch (error) {
-        this.logger.error('检查鼠标位置时出错', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('检查鼠标位置时出错', { error: errorMessage });
       }
     };
 

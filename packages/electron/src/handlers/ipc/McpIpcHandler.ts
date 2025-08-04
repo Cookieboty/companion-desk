@@ -338,12 +338,13 @@ export class McpIpcHandler extends BaseIpcHandler {
         return stats;
 
       } catch (error) {
-        this.logger.error('获取MCP统计信息失败', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('获取MCP统计信息失败', { error: errorMessage });
         return {
           toolCount: 0,
           resourceCount: 0,
           isAvailable: false,
-          error: error.message
+          error: errorMessage
         };
       }
     });

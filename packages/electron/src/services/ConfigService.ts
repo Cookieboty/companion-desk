@@ -40,6 +40,9 @@ export interface IConfigService {
   getConfig(): AppConfig;
   updateConfig(updates: Partial<AppConfig>): void;
   reload(): Promise<void>;
+  reset(): void;
+  backup(): Promise<string>;
+  validateConfig(config: any): { isValid: boolean; errors: string[]; warnings: string[] };
 }
 
 export class ConfigService implements IConfigService {
@@ -94,7 +97,8 @@ export class ConfigService implements IConfigService {
         await this.save(); // 创建默认配置文件
       }
     } catch (error) {
-      this.logger?.error('配置加载失败', { error: error.message, path: this.configPath });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger?.error('配置加载失败', { error: errorMessage, path: this.configPath });
       this.config = { ...this.defaultConfig };
     }
   }
@@ -145,7 +149,8 @@ export class ConfigService implements IConfigService {
       fs.writeFileSync(this.configPath, configData);
       this.logger?.debug('配置保存成功', { path: this.configPath });
     } catch (error) {
-      this.logger?.error('配置保存失败', { error: error.message, path: this.configPath });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger?.error('配置保存失败', { error: errorMessage, path: this.configPath });
       throw error;
     }
   }
@@ -195,13 +200,14 @@ export class ConfigService implements IConfigService {
   /**
    * 验证配置
    */
-  validateConfig(config: any): { isValid: boolean; errors: string[] } {
+  validateConfig(config: any): { isValid: boolean; errors: string[]; warnings: string[] } {
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     // 基本类型检查
     if (typeof config !== 'object' || config === null) {
       errors.push('配置必须是一个对象');
-      return { isValid: false, errors };
+      return { isValid: false, errors, warnings };
     }
 
     // 验证窗口位置
@@ -225,7 +231,7 @@ export class ConfigService implements IConfigService {
       }
     }
 
-    return { isValid: errors.length === 0, errors };
+    return { isValid: errors.length === 0, errors, warnings };
   }
 
   /**
@@ -248,8 +254,11 @@ export class ConfigService implements IConfigService {
       this.logger?.info('配置备份成功', { backupPath });
       return backupPath;
     } catch (error) {
-      this.logger?.error('配置备份失败', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger?.error('配置备份失败', { error: errorMessage });
       throw error;
     }
   }
+
+
 }

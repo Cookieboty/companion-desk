@@ -53,9 +53,7 @@ export class EnvironmentConfig {
       await this.loadConfig('default');
 
       // 加载环境特定配置
-      if (this.environment !== 'default') {
-        await this.loadConfig(this.environment);
-      }
+      await this.loadConfig(this.environment);
 
       // 加载本地覆盖配置（不纳入版本控制）
       await this.loadConfig('local', false);
@@ -260,9 +258,11 @@ export class EnvironmentConfig {
 
     } catch (error) {
       if (required) {
-        throw new Error(`加载配置失败 ${configName}: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new Error(`加载配置失败 ${configName}: ${errorMessage}`);
       } else {
-        console.warn(`⚠️ 可选配置加载失败: ${configName}`, error.message);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn(`⚠️ 可选配置加载失败: ${configName}`, errorMessage);
       }
     }
   }

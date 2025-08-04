@@ -32,7 +32,7 @@ interface AIConfig {
 }
 
 export class AiChatIpcHandler extends BaseIpcHandler {
-  private aiConfig: AIConfig;
+  private aiConfig!: AIConfig;
 
   constructor(logger: ILoggerService) {
     super(logger);
@@ -102,7 +102,8 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return response;
 
       } catch (error) {
-        this.logger.error('AI对话失败', { error: error.message, message, modelId });
+        const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error);
+        this.logger.error('AI对话失败', { error: errorMessage, message, modelId });
         throw error;
       }
     });
@@ -132,7 +133,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         this.logger.info('AI流式对话完成', { modelId, chunkCount: chunks.length });
 
       } catch (error) {
-        this.logger.error('AI流式对话失败', { error: error.message, message, modelId });
+        this.logger.error('AI流式对话失败', { error: error instanceof Error ? error.message : String(error), message, modelId });
         throw error;
       }
     });
@@ -172,7 +173,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
 
       } catch (error) {
-        this.logger.error('保存消息到历史失败', { error: error.message, message });
+        this.logger.error('保存消息到历史失败', { error: error instanceof Error ? error.message : String(error), message });
         return this.createErrorResponse(error);
       }
     });
@@ -193,7 +194,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
 
       } catch (error) {
-        this.logger.error('更新AI对话配置失败', { error: error.message, config });
+        this.logger.error('更新AI对话配置失败', { error: error instanceof Error ? error.message : String(error), config });
         return this.createErrorResponse(error);
       }
     });
@@ -219,7 +220,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
 
       } catch (error) {
-        this.logger.error('添加模型失败', { error: error.message, model });
+        this.logger.error('添加模型失败', { error: error instanceof Error ? error.message : String(error), model });
         return this.createErrorResponse(error);
       }
     });
@@ -239,7 +240,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
 
       } catch (error) {
-        this.logger.error('删除模型失败', { error: error.message, modelId });
+        this.logger.error('删除模型失败', { error: error instanceof Error ? error.message : String(error), modelId });
         return this.createErrorResponse(error);
       }
     });
@@ -259,7 +260,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
 
       } catch (error) {
-        this.logger.error('更新模型配置失败', { error: error.message, modelId, updates });
+        this.logger.error('更新模型配置失败', { error: error instanceof Error ? error.message : String(error), modelId, updates });
         return this.createErrorResponse(error);
       }
     });
@@ -288,7 +289,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return true;
 
       } catch (error) {
-        this.logger.error('测试模型连接失败', { error: error.message, modelId });
+        this.logger.error('测试模型连接失败', { error: error instanceof Error ? error.message : String(error), modelId });
         return false;
       }
     });
@@ -319,7 +320,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return results;
 
       } catch (error) {
-        this.logger.error('搜索对话历史失败', { error: error.message, query });
+        this.logger.error('搜索对话历史失败', { error: error instanceof Error ? error.message : String(error), query });
         return [];
       }
     });
@@ -337,7 +338,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse(exportData);
 
       } catch (error) {
-        this.logger.error('导出对话历史失败', { error: error.message });
+        this.logger.error('导出对话历史失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });
@@ -367,7 +368,7 @@ export class AiChatIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
 
       } catch (error) {
-        this.logger.error('导入对话历史失败', { error: error.message });
+        this.logger.error('导入对话历史失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });

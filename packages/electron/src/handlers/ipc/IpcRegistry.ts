@@ -104,7 +104,7 @@ export class IpcRegistry implements IIpcRegistry {
           });
         } catch (error) {
           this.options.logger.error(`IPC处理器初始化失败: ${name}`, {
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
           // 继续初始化其他处理器，不因单个失败而停止
         }
@@ -117,7 +117,7 @@ export class IpcRegistry implements IIpcRegistry {
       });
 
     } catch (error) {
-      this.options.logger.error('IPC注册器初始化失败', { error: error.message });
+      this.options.logger.error('IPC注册器初始化失败', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -140,7 +140,7 @@ export class IpcRegistry implements IIpcRegistry {
           this.options.logger.debug(`IPC处理器清理完成: ${name}`);
         } catch (error) {
           this.options.logger.error(`IPC处理器清理失败: ${name}`, {
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
         }
       }
@@ -151,7 +151,7 @@ export class IpcRegistry implements IIpcRegistry {
       this.options.logger.info('IPC注册器清理完成');
 
     } catch (error) {
-      this.options.logger.error('IPC注册器清理失败', { error: error.message });
+      this.options.logger.error('IPC注册器清理失败', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -192,7 +192,7 @@ export class IpcRegistry implements IIpcRegistry {
         this.options.logger.info(`动态注册的IPC处理器初始化成功: ${name}`);
       } catch (error) {
         this.options.logger.error(`动态注册的IPC处理器初始化失败: ${name}`, {
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -215,7 +215,7 @@ export class IpcRegistry implements IIpcRegistry {
       return true;
     } catch (error) {
       this.options.logger.error(`注销IPC处理器失败: ${name}`, {
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
       return false;
     }
@@ -288,7 +288,8 @@ export class IpcRegistry implements IIpcRegistry {
         }
 
       } catch (error) {
-        issues.push(`处理器 ${name} 验证失败: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        issues.push(`处理器 ${name} 验证失败: ${errorMessage}`);
       }
     }
 

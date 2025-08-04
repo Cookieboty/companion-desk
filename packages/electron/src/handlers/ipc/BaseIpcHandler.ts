@@ -45,9 +45,9 @@ export abstract class BaseIpcHandler {
         return result;
       } catch (error) {
         this.logger.error(`IPC处理失败: ${channel}`, {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           args,
-          stack: error.stack
+          stack: error instanceof Error ? error.stack : undefined
         });
         throw error;
       }
@@ -69,9 +69,9 @@ export abstract class BaseIpcHandler {
         handler(event, ...args);
       } catch (error) {
         this.logger.error(`IPC事件处理失败: ${channel}`, {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           args,
-          stack: error.stack
+          stack: error instanceof Error ? error.stack : undefined
         });
       }
     });
@@ -101,10 +101,10 @@ export abstract class BaseIpcHandler {
   /**
    * 包装错误响应
    */
-  protected createErrorResponse(error: Error): { success: false; error: string } {
+  protected createErrorResponse(error: unknown): { success: false; error: string } {
     return {
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     };
   }
 

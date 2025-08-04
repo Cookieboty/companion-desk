@@ -40,7 +40,8 @@ export class WindowIpcHandler extends BaseIpcHandler {
         this.logger.info('AI对话窗口创建成功');
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('创建AI对话窗口失败', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('创建AI对话窗口失败', { error: errorMessage });
         return this.createErrorResponse(error);
       }
     });
@@ -77,8 +78,9 @@ export class WindowIpcHandler extends BaseIpcHandler {
           delta: [intDeltaX, intDeltaY]
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('移动窗口失败', {
-          error: error.message,
+          error: errorMessage,
           deltaX,
           deltaY
         });
@@ -114,8 +116,9 @@ export class WindowIpcHandler extends BaseIpcHandler {
         mainWindow.setPosition(intX, intY);
         this.logger.debug('设置窗口位置', { x: intX, y: intY });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('设置窗口位置失败', {
-          error: error.message,
+          error: errorMessage,
           x,
           y
         });
@@ -130,7 +133,8 @@ export class WindowIpcHandler extends BaseIpcHandler {
         this.logger.debug('获取鼠标位置', { position });
         return position;
       } catch (error) {
-        this.logger.error('获取鼠标位置失败', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('获取鼠标位置失败', { error: errorMessage });
         return { x: 0, y: 0 };
       }
     });
@@ -148,7 +152,8 @@ export class WindowIpcHandler extends BaseIpcHandler {
         this.logger.debug('获取屏幕信息', { screenInfo });
         return screenInfo;
       } catch (error) {
-        this.logger.error('获取屏幕信息失败', { error: error.message });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('获取屏幕信息失败', { error: errorMessage });
         throw error;
       }
     });

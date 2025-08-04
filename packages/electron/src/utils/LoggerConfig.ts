@@ -350,7 +350,7 @@ export function PerformanceLog(operation?: string) {
     const method = descriptor.value;
     const operationName = operation || `${target.constructor.name}.${propertyName}`;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (this: any, ...args: any[]) {
       const startTime = Date.now();
 
       try {
@@ -369,12 +369,13 @@ export function PerformanceLog(operation?: string) {
         return result;
       } catch (error) {
         const duration = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
         if (this.logger && typeof this.logger.error === 'function') {
           this.logger.error(`性能日志(失败): ${operationName}`, {
             operation: operationName,
             duration,
-            error: error.message
+            error: errorMessage
           });
         }
 

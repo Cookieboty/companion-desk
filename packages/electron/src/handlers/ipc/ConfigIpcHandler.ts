@@ -37,7 +37,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置更新成功', { updates });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置更新失败', { error: error.message, updates });
+        this.logger.error('配置更新失败', { error: error instanceof Error ? error.message : String(error), updates });
         return this.createErrorResponse(error);
       }
     });
@@ -61,7 +61,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置项更新成功', { key, value });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置项更新失败', { error: error.message, key, value });
+        this.logger.error('配置项更新失败', { error: error instanceof Error ? error.message : String(error), key, value });
         return this.createErrorResponse(error);
       }
     });
@@ -73,7 +73,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置重新加载成功');
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置重新加载失败', { error: error.message });
+        this.logger.error('配置重新加载失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });
@@ -85,11 +85,11 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       try {
         this.configService.set('modelName', modelName);
         this.configService.save().catch(error => {
-          this.logger.error('保存模型配置失败', { error: error.message });
+          this.logger.error('保存模型配置失败', { error: error instanceof Error ? error.message : String(error) });
         });
         this.logger.info('模型配置已保存', { modelName });
       } catch (error) {
-        this.logger.error('保存模型配置失败', { error: error.message, modelName });
+        this.logger.error('保存模型配置失败', { error: error instanceof Error ? error.message : String(error), modelName });
       }
     });
 
@@ -117,12 +117,12 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
         this.configService.set('voiceSettings', updatedSettings);
         this.configService.save().catch(error => {
-          this.logger.error('保存语音设置失败', { error: error.message });
+          this.logger.error('保存语音设置失败', { error: error instanceof Error ? error.message : String(error) });
         });
 
         this.logger.info('语音设置已保存', { settings: updatedSettings });
       } catch (error) {
-        this.logger.error('保存语音设置失败', { error: error.message, settings });
+        this.logger.error('保存语音设置失败', { error: error instanceof Error ? error.message : String(error), settings });
       }
     });
 
@@ -151,7 +151,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置已重置为默认值');
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('重置配置失败', { error: error.message });
+        this.logger.error('重置配置失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });
@@ -163,7 +163,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置备份成功', { backupPath });
         return this.createSuccessResponse(backupPath);
       } catch (error) {
-        this.logger.error('配置备份失败', { error: error.message });
+        this.logger.error('配置备份失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });
@@ -177,10 +177,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.debug('配置验证结果', { validation });
         return validation;
       } catch (error) {
-        this.logger.error('配置验证失败', { error: error.message });
+        this.logger.error('配置验证失败', { error: error instanceof Error ? error.message : String(error) });
         return {
           isValid: false,
-          errors: [error.message]
+          errors: [error instanceof Error ? error.message : String(error)]
         };
       }
     });
@@ -205,7 +205,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置导出成功');
         return this.createSuccessResponse(exportData);
       } catch (error) {
-        this.logger.error('配置导出失败', { error: error.message });
+        this.logger.error('配置导出失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });
@@ -232,7 +232,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置导入成功', { timestamp: importData.timestamp });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置导入失败', { error: error.message });
+        this.logger.error('配置导入失败', { error: error instanceof Error ? error.message : String(error) });
         return this.createErrorResponse(error);
       }
     });
