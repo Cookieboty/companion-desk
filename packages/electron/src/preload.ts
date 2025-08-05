@@ -108,6 +108,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('open-ai-chat');
   },
 
+  // TTS配置相关API
+  openTTSConfig: async () => {
+    return await ipcRenderer.invoke('open-tts-config');
+  },
+  getTTSConfig: async () => {
+    return await ipcRenderer.invoke('getTTSConfig');
+  },
+  saveTTSConfig: async (config: any) => {
+    return await ipcRenderer.invoke('saveTTSConfig', config);
+  },
+  testTTSConnection: async (config: any) => {
+    return await ipcRenderer.invoke('testTTSConnection', config);
+  },
+  resetTTSConfig: async () => {
+    return await ipcRenderer.invoke('resetTTSConfig');
+  },
+
   // MCP集成相关API
   mcp: {
     // 获取MCP服务状态

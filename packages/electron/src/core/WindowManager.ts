@@ -26,15 +26,18 @@ export interface WindowOptions {
 export interface IWindowManager {
   createMainWindow(): Promise<BrowserWindow>;
   createAiChatWindow(): Promise<BrowserWindow>;
+  createTTSConfigWindow(): Promise<BrowserWindow>;
   getMainWindow(): BrowserWindow | null;
   getAiChatWindow(): BrowserWindow | null;
+  getTTSConfigWindow(): BrowserWindow | null;
   closeAllWindows(): void;
-  setAlwaysOnTop(windowType: 'main' | 'aiChat', flag: boolean): void;
+  setAlwaysOnTop(windowType: 'main' | 'aiChat' | 'ttsConfig', flag: boolean): void;
 }
 
 export class WindowManager implements IWindowManager {
   private mainWindow: BrowserWindow | null = null;
   private aiChatWindow: BrowserWindow | null = null;
+  private ttsConfigWindow: BrowserWindow | null = null;
   private logger: ILoggerService;
   private configService: IConfigService;
 
@@ -150,6 +153,58 @@ export class WindowManager implements IWindowManager {
   }
 
   /**
+   * 创建TTS配置窗口
+   */
+  async createTTSConfigWindow(): Promise<BrowserWindow> {
+    if (this.ttsConfigWindow) {
+      this.ttsConfigWindow.focus();
+      this.ttsConfigWindow.show();
+      return this.ttsConfigWindow;
+    }
+
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+      const windowWidth = 850;
+      const windowHeight = 700;
+      const x = Math.round((screenWidth - windowWidth) / 2);
+      const y = Math.round((screenHeight - windowHeight) / 2);
+
+      const windowOptions: WindowOptions = {
+        width: windowWidth,
+        height: windowHeight,
+        x,
+        y,
+        frame: true,
+        transparent: false,
+        alwaysOnTop: false,
+        resizable: true,
+        show: false,
+        title: 'TTS语音配置',
+        preloadScript: 'preload.js'
+      };
+
+      this.ttsConfigWindow = await this.createWindow(windowOptions, 'ttsConfig');
+
+      // 设置窗口事件监听
+      this.setupTTSConfigWindowEvents(this.ttsConfigWindow);
+
+      // 加载TTS配置页面
+      await this.loadTTSConfigWindowContent(this.ttsConfigWindow);
+
+      this.logger.info('TTS配置窗口创建成功');
+      eventBus.emit('window:ttsConfig:created', this.ttsConfigWindow);
+
+      return this.ttsConfigWindow;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('TTS配置窗口创建失败', { error: errorMessage });
+      throw error;
+    }
+  }
+
+  /**
    * 获取主窗口
    */
   getMainWindow(): BrowserWindow | null {
@@ -164,9 +219,19 @@ export class WindowManager implements IWindowManager {
   }
 
   /**
+   * 获取TTS配置窗口
+   */
+  getTTSConfigWindow(): BrowserWindow | null {
+    return this.ttsConfigWindow;
+  }
+
+  /**
    * 关闭所有窗口
    */
   closeAllWindows(): void {
+    if (this.ttsConfigWindow) {
+      this.ttsConfigWindow.close();
+    }
     if (this.aiChatWindow) {
       this.aiChatWindow.close();
     }
@@ -178,8 +243,20 @@ export class WindowManager implements IWindowManager {
   /**
    * 设置窗口置顶状态
    */
-  setAlwaysOnTop(windowType: 'main' | 'aiChat', flag: boolean): void {
-    const window = windowType === 'main' ? this.mainWindow : this.aiChatWindow;
+  setAlwaysOnTop(windowType: 'main' | 'aiChat' | 'ttsConfig', flag: boolean): void {
+    let window: BrowserWindow | null = null;
+    switch (windowType) {
+      case 'main':
+        window = this.mainWindow;
+        break;
+      case 'aiChat':
+        window = this.aiChatWindow;
+        break;
+      case 'ttsConfig':
+        window = this.ttsConfigWindow;
+        break;
+    }
+
     if (window) {
       window.setAlwaysOnTop(flag);
       this.logger.debug(`窗口置顶状态已更新`, { windowType, flag });
@@ -215,6 +292,12 @@ export class WindowManager implements IWindowManager {
     // 通用窗口事件
     window.once('ready-to-show', () => {
       window.show();
+
+      // 开发环境打开开发者工具
+      if (process.env.NODE_ENV === 'development') {
+        window.webContents.openDevTools({ mode: 'detach' });
+      }
+
       eventBus.emit(`window:${type}:ready`, window);
     });
 
@@ -263,6 +346,29 @@ export class WindowManager implements IWindowManager {
 
     window.webContents.on('did-finish-load', () => {
       this.logger.info('AI对话窗口内容加载完成');
+    });
+
+    window.on('closed', () => {
+      this.aiChatWindow = null;
+      this.logger.info('AI对话窗口已关闭');
+    });
+  }
+
+  /**
+   * 设置TTS配置窗口事件监听
+   */
+  private setupTTSConfigWindowEvents(window: BrowserWindow): void {
+    window.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      this.logger.error('TTS配置窗口加载失败', { errorCode, errorDescription });
+    });
+
+    window.webContents.on('did-finish-load', () => {
+      this.logger.info('TTS配置窗口内容加载完成');
+    });
+
+    window.on('closed', () => {
+      this.ttsConfigWindow = null;
+      this.logger.info('TTS配置窗口已关闭');
     });
   }
 
@@ -336,6 +442,31 @@ export class WindowManager implements IWindowManager {
     } else {
       const aiChatPath = path.join(__dirname, '..', 'ai-chat', 'dist', 'index.html');
       await window.loadFile(aiChatPath);
+    }
+  }
+
+  /**
+   * 加载TTS配置窗口内容
+   */
+  private async loadTTSConfigWindowContent(window: BrowserWindow): Promise<void> {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    try {
+      if (isDev) {
+        // 开发环境：从dist/core目录向上找到renderer目录
+        const ttsConfigPath = path.join(__dirname, '..', '..', '..', 'renderer', 'tts-config.html');
+        this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
+        await window.loadFile(ttsConfigPath);
+      } else {
+        // 生产环境加载打包后的TTS配置页面
+        const ttsConfigPath = path.join(__dirname, '..', 'renderer', 'tts-config.html');
+        this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
+        await window.loadFile(ttsConfigPath);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('TTS配置窗口加载失败', { error: errorMessage });
+      throw error;
     }
   }
 

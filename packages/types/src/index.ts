@@ -17,6 +17,12 @@ export interface IpcApi {
   getVoiceSettings: () => Promise<VoiceSettings>;
   saveVoiceSettings: (settings: VoiceSettings) => void;
 
+  // TTS配置相关API
+  getTTSConfig: () => Promise<TTSConfig | null>;
+  saveTTSConfig: (config: TTSConfig) => Promise<void>;
+  testTTSConnection: (config: TTSConfig) => Promise<TTSTestResult>;
+  resetTTSConfig: () => Promise<void>;
+
   // 键盘监听API
   startKeyboardListener: () => void;
   stopKeyboardListener: () => void;
@@ -30,6 +36,9 @@ export interface IpcApi {
 
   // AI对话相关API
   openAiChat: () => Promise<{ success: boolean; error?: string }>;
+
+  // TTS配置窗口API
+  openTTSConfig: () => Promise<{ success: boolean; error?: string }>;
 
   // MCP集成相关API
   mcp: MCPApi;
@@ -63,6 +72,24 @@ export interface VoiceSettings {
   timeAnnouncement: boolean;
   voicePackPath: string;
   voiceMode: 'fixed' | 'tts' | 'mixed';
+}
+
+// TTS配置类型定义
+export interface TTSConfig {
+  enabled: boolean;
+  hostname: string;
+  port: number;
+  path: string;
+  audioUrl: string;
+  promptText: string;
+  lastModified: number;
+}
+
+// TTS连接测试结果
+export interface TTSTestResult {
+  success: boolean;
+  message: string;
+  latency?: number;
 }
 
 // ==================== MCP相关类型定义 ====================

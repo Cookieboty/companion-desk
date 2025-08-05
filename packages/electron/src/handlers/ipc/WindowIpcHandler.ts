@@ -46,6 +46,19 @@ export class WindowIpcHandler extends BaseIpcHandler {
       }
     });
 
+    // 打开TTS配置窗口
+    this.registerHandler('open-tts-config', async () => {
+      try {
+        await this.windowManager.createTTSConfigWindow();
+        this.logger.info('TTS配置窗口创建成功');
+        return this.createSuccessResponse();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('创建TTS配置窗口失败', { error: errorMessage });
+        return this.createErrorResponse(error);
+      }
+    });
+
     // 窗口移动
     this.registerListener('move-window', (_, deltaX: number, deltaY: number) => {
       this.validateArgs([deltaX, deltaY], 2, ['number', 'number']);

@@ -430,6 +430,41 @@
     0 4px 15px rgba(14, 165, 233, 0.2);
 }
 
+/* TTS配置按钮样式 */
+.ttsConfigButton {
+  background: rgba(101, 163, 13, 0.95);
+  border-color: rgba(132, 204, 22, 0.8);
+  box-shadow: 
+    0 15px 60px rgba(132, 204, 22, 0.4),
+    0 8px 30px rgba(132, 204, 22, 0.3),
+    0 4px 15px rgba(132, 204, 22, 0.2);
+}
+
+.ttsConfigButton::before {
+  background: linear-gradient(45deg, 
+    rgba(132, 204, 22, 0.8) 0%,
+    rgba(163, 230, 53, 0.8) 25%,
+    rgba(190, 242, 100, 0.8) 50%,
+    rgba(163, 230, 53, 0.8) 75%,
+    rgba(132, 204, 22, 0.8) 100%
+  );
+}
+
+.ttsConfigButton:hover {
+  background: rgba(118, 169, 0, 0.98);
+  border-color: rgba(132, 204, 22, 0.9);
+  box-shadow: 
+    0 20px 80px rgba(132, 204, 22, 0.5),
+    0 12px 40px rgba(132, 204, 22, 0.4),
+    0 6px 20px rgba(132, 204, 22, 0.3),
+    inset 0 3px 0 rgba(255, 255, 255, 0.25);
+}
+
+.ttsConfigButton .icon svg {
+  fill: #a3e635;
+  filter: drop-shadow(0 0 12px rgba(163, 230, 53, 0.8));
+}
+
 /* 高级动画系统 */
 @keyframes spatialReveal {
   0% {

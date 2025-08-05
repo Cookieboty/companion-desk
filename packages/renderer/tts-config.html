@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS语音配置</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 600px;
+        padding: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        color: #333;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .status-indicator.none {
+        background: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+        border: 1px solid rgba(108, 117, 125, 0.2);
+      }
+
+      .status-indicator.valid {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+      }
+
+      .status-indicator.invalid {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+      }
+
+      .editor-section {
+        margin-bottom: 25px;
+      }
+
+      .editor-label {
+        display: block;
+        margin-bottom: 10px;
+        color: #333;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .json-editor {
+        width: 100%;
+        height: 250px;
+        padding: 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        background: #f8f9fa;
+        resize: vertical;
+        transition: border-color 0.2s ease;
+      }
+
+      .json-editor:focus {
+        outline: none;
+        border-color: #007bff;
+        background: #fff;
+      }
+
+      .json-editor.error {
+        border-color: #dc3545;
+        background: rgba(220, 53, 69, 0.05);
+      }
+
+      .error-message {
+        color: #dc3545;
+        font-size: 13px;
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: rgba(220, 53, 69, 0.1);
+        border-radius: 8px;
+        border-left: 3px solid #dc3545;
+      }
+
+      .buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+
+      .btn {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 48px;
+        justify-content: center;
+        white-space: nowrap;
+        min-width: 120px;
+      }
+
+      .btn-wide {
+        grid-column: 1 / -1;
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, #0056b3, #004085);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+      }
+
+      .btn-secondary {
+        background: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+        border: 1px solid rgba(108, 117, 125, 0.2);
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        background: rgba(108, 117, 125, 0.2);
+        color: #495057;
+        transform: translateY(-1px);
+      }
+
+      .btn-success {
+        background: linear-gradient(135deg, #28a745, #1e7e34);
+        color: white;
+      }
+
+      .btn-success:hover:not(:disabled) {
+        background: linear-gradient(135deg, #1e7e34, #155724);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+      }
+
+      .btn-danger:hover:not(:disabled) {
+        background: linear-gradient(135deg, #c82333, #bd2130);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
+      }
+
+      .loading {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .result-message {
+        margin-top: 15px;
+        padding: 12px 15px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .result-message.success {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+      }
+
+      .result-message.error {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+      }
+
+      .help-text {
+        margin-top: 15px;
+        padding: 15px;
+        background: rgba(0, 123, 255, 0.05);
+        border-radius: 10px;
+        border-left: 3px solid #007bff;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.5;
+      }
+
+      .help-text strong {
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎤 TTS语音配置</h1>
+        <p>配置文本转语音服务参数，支持语音克隆功能</p>
+      </div>
+
+      <div id="status-indicator" class="status-indicator none">
+        <span>📋</span>
+        <span id="status-text">未配置TTS服务，将使用系统语音</span>
+      </div>
+
+      <div class="editor-section">
+        <label class="editor-label" for="config-editor">配置JSON</label>
+        <textarea 
+                id="config-editor" 
+                class="json-editor" 
+                placeholder="请输入TTS配置的JSON格式..."
+            ></textarea>
+        <div id="error-message" class="error-message" style="display: none;"></div>
+      </div>
+
+      <div class="buttons">
+        <button id="load-btn" class="btn btn-secondary">
+          <span>📂</span>
+          <span>加载配置</span>
+        </button>
+        <button id="test-btn" class="btn btn-secondary" disabled>
+          <span id="test-icon">🔗</span>
+          <span id="test-text">测试连接</span>
+        </button>
+        <button id="save-btn" class="btn btn-primary btn-wide" disabled>
+          <span>💾</span>
+          <span>保存配置</span>
+        </button>
+        <button id="reset-btn" class="btn btn-danger btn-wide">
+          <span>🗑️</span>
+          <span>重置配置</span>
+        </button>
+      </div>
+
+      <div id="result-message" style="display: none;"></div>
+
+      <div class="help-text">
+        <strong>配置说明：</strong><br>
+            • <strong>enabled</strong>: 是否启用TTS服务 (true/false)<br>
+            • <strong>hostname</strong>: TTS服务器地址<br>
+            • <strong>port</strong>: TTS服务器端口<br>
+            • <strong>path</strong>: API请求路径<br>
+            • <strong>audioUrl</strong>: 用于语音克隆的参考音频URL<br>
+            • <strong>promptText</strong>: 提示文本内容
+        </div>
+    </div>
+
+    <script>
+      // 获取DOM元素
+        const configEditor = document.getElementById('config-editor');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const errorMessage = document.getElementById('error-message');
+        const resultMessage = document.getElementById('result-message');
+        
+        const loadBtn = document.getElementById('load-btn');
+        const testBtn = document.getElementById('test-btn');
+        const testIcon = document.getElementById('test-icon');
+        const testText = document.getElementById('test-text');
+        const saveBtn = document.getElementById('save-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        // 默认配置模板
+        const defaultConfig = {
+            enabled: true,
+            hostname: "example.com",
+            port: 8443,
+            path: "/voice_clone_direct",
+            audioUrl: "https://example.com/audio.wav",
+            promptText: "这是TTS语音测试文本，用于验证语音克隆功能是否正常工作。"
+        };
+
+        // 当前配置和状态
+        let currentConfig = null;
+        let isLoading = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('TTS配置页面已加载');
+            console.log('ElectronAPI状态:', !!window.electronAPI);
+            
+            if (window.electronAPI) {
+                console.log('ElectronAPI可用方法:', Object.keys(window.electronAPI));
+            } else {
+                console.warn('ElectronAPI不可用，将使用默认配置');
+                showResult('ElectronAPI不可用，部分功能将不可使用', false);
+            }
+            
+            loadCurrentConfig();
+            
+            // 监听JSON编辑器变化
+            configEditor.addEventListener('input', handleEditorChange);
+            
+            // 按钮事件
+            loadBtn.addEventListener('click', loadCurrentConfig);
+            testBtn.addEventListener('click', testConnection);
+            saveBtn.addEventListener('click', saveConfig);
+            resetBtn.addEventListener('click', resetConfig);
+        });
+
+        // 处理编辑器内容变化
+        function handleEditorChange() {
+            const text = configEditor.value.trim();
+            
+            if (!text) {
+                updateStatus('none', '未配置TTS服务，将使用系统语音');
+                updateButtons(false, false);
+                hideError();
+                return;
+            }
+
+            try {
+                const config = JSON.parse(text);
+                const validation = validateConfig(config);
+                
+                if (validation.isValid) {
+                    updateStatus('valid', '配置格式正确');
+                    updateButtons(true, true);
+                    hideError();
+                } else {
+                    updateStatus('invalid', '配置格式有误');
+                    updateButtons(false, true);
+                    showError(validation.errors.join('\\n'));
+                }
+            } catch (error) {
+                updateStatus('invalid', 'JSON格式错误');
+                updateButtons(false, true);
+                showError('JSON格式错误: ' + error.message);
+            }
+        }
+
+        // 验证配置
+        function validateConfig(config) {
+            const errors = [];
+
+            if (typeof config.enabled !== 'boolean') {
+                errors.push('enabled 必须是 true 或 false');
+            }
+
+            if (!config.hostname || typeof config.hostname !== 'string') {
+                errors.push('hostname 是必需的字符串');
+            }
+
+            if (typeof config.port !== 'number' || config.port < 1 || config.port > 65535) {
+                errors.push('port 必须是 1-65535 范围内的数字');
+            }
+
+            if (!config.path || typeof config.path !== 'string' || !config.path.startsWith('/')) {
+                errors.push('path 必须是以 / 开头的字符串');
+            }
+
+            if (!config.audioUrl || typeof config.audioUrl !== 'string') {
+                errors.push('audioUrl 是必需的字符串');
+            } else {
+                try {
+                    new URL(config.audioUrl);
+                } catch {
+                    errors.push('audioUrl 必须是有效的URL');
+                }
+            }
+
+            if (!config.promptText || typeof config.promptText !== 'string') {
+                errors.push('promptText 是必需的字符串');
+            }
+
+            return {
+                isValid: errors.length === 0,
+                errors
+            };
+        }
+
+        // 更新状态指示器
+        function updateStatus(type, text) {
+            statusIndicator.className = `status-indicator ${type}`;
+            statusText.textContent = text;
+        }
+
+        // 更新按钮状态
+        function updateButtons(testEnabled, saveEnabled) {
+            testBtn.disabled = !testEnabled || isLoading;
+            saveBtn.disabled = !saveEnabled || isLoading;
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            configEditor.classList.add('error');
+        }
+
+        // 隐藏错误信息
+        function hideError() {
+            errorMessage.style.display = 'none';
+            configEditor.classList.remove('error');
+        }
+
+        // 显示结果消息
+        function showResult(message, isSuccess) {
+            resultMessage.textContent = message;
+            resultMessage.className = `result-message ${isSuccess ? 'success' : 'error'}`;
+            resultMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                resultMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // 加载当前配置
+        async function loadCurrentConfig() {
+            if (!window.electronAPI) {
+                configEditor.value = JSON.stringify(defaultConfig, null, 2);
+                handleEditorChange();
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const config = await window.electronAPI.getTTSConfig();
+                
+                if (config) {
+                    configEditor.value = JSON.stringify(config, null, 2);
+                    currentConfig = config;
+                } else {
+                    configEditor.value = JSON.stringify(defaultConfig, null, 2);
+                    currentConfig = null;
+                }
+                
+                handleEditorChange();
+                showResult('配置加载成功', true);
+            } catch (error) {
+                console.error('加载配置失败:', error);
+                showResult('加载配置失败: ' + error.message, false);
+                configEditor.value = JSON.stringify(defaultConfig, null, 2);
+                handleEditorChange();
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 测试连接
+        async function testConnection() {
+            if (!window.electronAPI) {
+                showResult('需要在Electron环境中运行', false);
+                return;
+            }
+
+            try {
+                const config = JSON.parse(configEditor.value);
+                
+                setLoading(true, 'test');
+                const result = await window.electronAPI.testTTSConnection(config);
+                
+                if (result.success) {
+                    showResult(`测试成功: ${result.message}${result.latency ? ` (延迟: ${result.latency}ms)` : ''}`, true);
+                } else {
+                    showResult(`测试失败: ${result.message}`, false);
+                }
+            } catch (error) {
+                console.error('测试连接失败:', error);
+                showResult('测试失败: ' + error.message, false);
+            } finally {
+                setLoading(false, 'test');
+            }
+        }
+
+        // 保存配置
+        async function saveConfig() {
+            if (!window.electronAPI) {
+                showResult('需要在Electron环境中运行', false);
+                return;
+            }
+
+            try {
+                const config = JSON.parse(configEditor.value);
+                config.lastModified = Date.now();
+                
+                setLoading(true);
+                await window.electronAPI.saveTTSConfig(config);
+                
+                currentConfig = config;
+                showResult('配置保存成功！', true);
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                showResult('保存失败: ' + error.message, false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 重置配置
+        async function resetConfig() {
+            if (!confirm('确定要重置TTS配置吗？这将删除所有已保存的配置。')) {
+                return;
+            }
+
+            if (!window.electronAPI) {
+                configEditor.value = '';
+                handleEditorChange();
+                showResult('配置已重置（本地）', true);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                await window.electronAPI.resetTTSConfig();
+                
+                configEditor.value = '';
+                currentConfig = null;
+                handleEditorChange();
+                showResult('配置已重置！现在将使用系统语音。', true);
+            } catch (error) {
+                console.error('重置配置失败:', error);
+                showResult('重置失败: ' + error.message, false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 设置加载状态
+        function setLoading(loading, type = 'general') {
+            isLoading = loading;
+            
+            if (type === 'test') {
+                if (loading) {
+                    testIcon.innerHTML = '<span class="loading"></span>';
+                    testText.textContent = '测试中...';
+                    testBtn.disabled = true;
+                } else {
+                    testIcon.textContent = '🔗';
+                    testText.textContent = '测试连接';
+                    testBtn.disabled = !configEditor.value.trim() || !validateConfig(JSON.parse(configEditor.value || '{}')).isValid;
+                }
+            } else {
+                loadBtn.disabled = loading;
+                saveBtn.disabled = loading || !configEditor.value.trim() || !validateConfig(JSON.parse(configEditor.value || '{}')).isValid;
+                resetBtn.disabled = loading;
+            }
+        }
+    </script>
+</body>
+</html>

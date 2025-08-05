@@ -4,9 +4,14 @@
  */
 
 import { app } from 'electron';
+import path from 'path';
+import fs from 'fs';
+import https from 'https';
+import http from 'http';
 import { BaseIpcHandler } from './BaseIpcHandler';
 import { ILoggerService } from '../../services/LoggerService';
 import { IConfigService, VoiceSettings } from '../../services/ConfigService';
+import { TTSConfig, TTSTestResult } from '@ig-live/types';
 
 export class ConfigIpcHandler extends BaseIpcHandler {
   private configService: IConfigService;
@@ -237,8 +242,292 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
+    // TTS配置相关处理器
+    this.initializeTTSHandlers();
+
     this.logger.info('ConfigIpcHandler 初始化完成', {
       registeredChannels: this.getRegisteredChannels().length
+    });
+  }
+
+  /**
+   * 初始化TTS配置相关IPC处理器
+   */
+  private initializeTTSHandlers(): void {
+    const ttsConfigPath = path.join(app.getPath('userData'), 'tts-config.json');
+
+    // 获取TTS配置
+    this.registerHandler('getTTSConfig', async () => {
+      try {
+        if (fs.existsSync(ttsConfigPath)) {
+          const configData = fs.readFileSync(ttsConfigPath, 'utf8');
+          const config = JSON.parse(configData) as TTSConfig;
+          this.logger.debug('获取TTS配置成功', { config });
+          return config;
+        }
+        this.logger.debug('TTS配置文件不存在');
+        return null;
+      } catch (error) {
+        this.logger.error('获取TTS配置失败', { error: error instanceof Error ? error.message : String(error) });
+        return null;
+      }
+    });
+
+    // 保存TTS配置
+    this.registerHandler('saveTTSConfig', async (_, config: TTSConfig) => {
+      this.validateArgs([config], 1, ['object']);
+
+      try {
+        // 验证配置格式
+        const validation = this.validateTTSConfig(config);
+        if (!validation.isValid) {
+          throw new Error(`TTS配置验证失败: ${validation.errors.join(', ')}`);
+        }
+
+        // 添加时间戳
+        const configWithTimestamp = {
+          ...config,
+          lastModified: Date.now()
+        };
+
+        // 保存到文件
+        fs.writeFileSync(ttsConfigPath, JSON.stringify(configWithTimestamp, null, 2), 'utf8');
+
+        this.logger.info('TTS配置保存成功', { config: configWithTimestamp });
+        return this.createSuccessResponse();
+      } catch (error) {
+        this.logger.error('TTS配置保存失败', { error: error instanceof Error ? error.message : String(error), config });
+        return this.createErrorResponse(error);
+      }
+    });
+
+    // 测试TTS连接
+    this.registerHandler('testTTSConnection', async (_, config: TTSConfig) => {
+      this.validateArgs([config], 1, ['object']);
+
+      try {
+        const startTime = Date.now();
+        const result = await this.testTTSConnection(config);
+        const latency = Date.now() - startTime;
+
+        const testResult: TTSTestResult = {
+          ...result,
+          latency
+        };
+
+        this.logger.info('TTS连接测试完成', { testResult });
+        return testResult;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('TTS连接测试失败', { error: errorMessage, config });
+
+        return {
+          success: false,
+          message: `连接测试失败: ${errorMessage}`
+        } as TTSTestResult;
+      }
+    });
+
+    // 重置TTS配置
+    this.registerHandler('resetTTSConfig', async () => {
+      try {
+        if (fs.existsSync(ttsConfigPath)) {
+          fs.unlinkSync(ttsConfigPath);
+          this.logger.info('TTS配置已重置');
+        }
+        return this.createSuccessResponse();
+      } catch (error) {
+        this.logger.error('重置TTS配置失败', { error: error instanceof Error ? error.message : String(error) });
+        return this.createErrorResponse(error);
+      }
+    });
+
+    // 测试TTS语音播放
+    this.registerHandler('test-tts-voice', async (_, testConfig: TTSConfig & { testText: string }) => {
+      this.validateArgs([testConfig], 1, ['object']);
+
+      try {
+        // 验证配置
+        const validation = this.validateTTSConfig(testConfig);
+        if (!validation.isValid) {
+          throw new Error(`TTS配置验证失败: ${validation.errors.join(', ')}`);
+        }
+
+        // 创建VoiceService实例进行测试
+        const { VoiceService } = await import('../../mcp/services/VoiceService');
+        const voiceService = new VoiceService();
+
+        // 临时配置TTS设置用于测试
+        const { MCPConfigManager } = await import('../../mcp/config/MCPConfig');
+        const configManager = MCPConfigManager.getInstance();
+
+        // 备份当前配置
+        const originalConfig = configManager.getVoiceConfig();
+
+        try {
+          // 临时设置测试配置
+          configManager.updateVoiceMode('tts');
+          if (configManager.getVoiceConfig().ttsApiConfig) {
+            configManager.updateTTSApiConfig({
+              hostname: testConfig.hostname,
+              port: testConfig.port,
+              path: testConfig.path,
+              audioUrl: testConfig.audioUrl,
+              promptText: testConfig.promptText
+            });
+          } else {
+            // 如果没有现有配置，需要设置完整配置
+            const newConfig = { ...configManager.getVoiceConfig() };
+            newConfig.ttsApiConfig = {
+              hostname: testConfig.hostname,
+              port: testConfig.port,
+              path: testConfig.path,
+              audioUrl: testConfig.audioUrl,
+              promptText: testConfig.promptText
+            };
+            configManager.updateVoiceMode('tts');
+          }
+
+          // 执行语音测试
+          await voiceService.playTextToSpeech(testConfig.testText);
+
+          this.logger.info('TTS语音测试成功', { testText: testConfig.testText });
+          return { success: true, message: '语音测试成功' };
+
+        } finally {
+          // 恢复原始配置
+          configManager.updateVoiceMode(originalConfig.voiceMode);
+          if (originalConfig.ttsApiConfig) {
+            configManager.updateTTSApiConfig(originalConfig.ttsApiConfig);
+          }
+        }
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error('TTS语音测试失败', { error: errorMessage, testConfig });
+
+        return {
+          success: false,
+          message: `语音测试失败: ${errorMessage}`
+        };
+      }
+    });
+  }
+
+  /**
+   * 验证TTS配置
+   */
+  private validateTTSConfig(config: TTSConfig): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    // 验证hostname
+    if (!config.hostname || typeof config.hostname !== 'string') {
+      errors.push('hostname是必需的且必须是字符串');
+    } else if (config.hostname.trim().length === 0) {
+      errors.push('hostname不能为空');
+    }
+
+    // 验证port
+    if (typeof config.port !== 'number') {
+      errors.push('port必须是数字');
+    } else if (config.port < 1 || config.port > 65535) {
+      errors.push('port必须在1-65535范围内');
+    }
+
+    // 验证path
+    if (!config.path || typeof config.path !== 'string') {
+      errors.push('path是必需的且必须是字符串');
+    } else if (!config.path.startsWith('/')) {
+      errors.push('path必须以/开头');
+    }
+
+    // 验证audioUrl
+    if (!config.audioUrl || typeof config.audioUrl !== 'string') {
+      errors.push('audioUrl是必需的且必须是字符串');
+    } else {
+      try {
+        const url = new URL(config.audioUrl);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          errors.push('audioUrl必须是有效的HTTP或HTTPS URL');
+        }
+      } catch {
+        errors.push('audioUrl格式无效');
+      }
+    }
+
+    // 验证promptText
+    if (!config.promptText || typeof config.promptText !== 'string') {
+      errors.push('promptText是必需的且必须是字符串');
+    } else if (config.promptText.trim().length === 0) {
+      errors.push('promptText不能为空');
+    } else if (config.promptText.length > 500) {
+      errors.push('promptText长度不能超过500字符');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * 测试TTS连接
+   */
+  private async testTTSConnection(config: TTSConfig): Promise<TTSTestResult> {
+    return new Promise((resolve) => {
+      const protocol = config.hostname.includes('localhost') || config.hostname.includes('127.0.0.1') ? http : https;
+
+      // 构建测试用的请求体
+      const testData = JSON.stringify({
+        text: "TTS连接测试",
+        ref_audio_path: config.audioUrl,
+        prompt_text: config.promptText.substring(0, 100) // 截取前100个字符作为测试
+      });
+
+      const options = {
+        hostname: config.hostname,
+        port: config.port,
+        path: config.path,
+        method: 'POST',
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(testData)
+        }
+      };
+
+      const req = protocol.request(options, (res) => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400) {
+          resolve({
+            success: true,
+            message: '连接成功，TTS服务可正常访问'
+          });
+        } else {
+          resolve({
+            success: false,
+            message: `服务器返回状态码: ${res.statusCode}`
+          });
+        }
+      });
+
+      req.on('error', (error) => {
+        resolve({
+          success: false,
+          message: `连接失败: ${error.message}`
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({
+          success: false,
+          message: '连接超时'
+        });
+      });
+
+      // 发送测试数据
+      req.write(testData);
+      req.end();
     });
   }
 }
