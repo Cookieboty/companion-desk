@@ -5,18 +5,6 @@
 
 import { TTSConfig, TTSTestResult } from '@ig-live/types';
 
-declare global {
-  interface Window {
-    electronAPI: {
-      invoke: (channel: string, ...args: any[]) => Promise<any>;
-      getTTSConfig: () => Promise<TTSConfig | null>;
-      saveTTSConfig: (config: TTSConfig) => Promise<void>;
-      testTTSConnection: (config: TTSConfig) => Promise<TTSTestResult>;
-      resetTTSConfig: () => Promise<void>;
-    };
-  }
-}
-
 export class TTSConfigService {
   private static instance: TTSConfigService;
   private currentConfig: TTSConfig | null = null;

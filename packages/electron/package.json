@@ -68,6 +68,10 @@
         "to": "renderer"
       },
       {
+        "from": "../renderer/tts-config.html",
+        "to": "renderer/tts-config.html"
+      },
+      {
         "from": "assets",
         "to": "assets"
       }

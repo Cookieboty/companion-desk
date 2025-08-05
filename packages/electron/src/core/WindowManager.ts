@@ -167,7 +167,7 @@ export class WindowManager implements IWindowManager {
       const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
       const windowWidth = 850;
-      const windowHeight = 700;
+      const windowHeight = 950;
       const x = Math.round((screenWidth - windowWidth) / 2);
       const y = Math.round((screenHeight - windowHeight) / 2);
 
@@ -459,7 +459,9 @@ export class WindowManager implements IWindowManager {
         await window.loadFile(ttsConfigPath);
       } else {
         // 生产环境加载打包后的TTS配置页面
-        const ttsConfigPath = path.join(__dirname, '..', 'renderer', 'tts-config.html');
+        // 在打包应用中，extraResources 会被放在 process.resourcesPath 下
+        const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
+        const ttsConfigPath = path.join(resourcesPath, 'renderer', 'tts-config.html');
         this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
         await window.loadFile(ttsConfigPath);
       }
