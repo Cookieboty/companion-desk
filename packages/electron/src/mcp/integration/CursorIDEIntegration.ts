@@ -170,11 +170,15 @@ export class CursorIDEIntegration {
   private getServerExecutablePath(): string {
     // 在生产环境中，这应该指向打包后的MCP服务器入口文件
     const isDev = process.env.NODE_ENV === 'development';
+    const isDebugBuild = process.env.DEBUG === 'true';
 
     if (isDev) {
       // 获取项目根目录的绝对路径，避免因工作目录不同导致路径错误
       const projectRoot = this.getProjectRoot();
       return path.join(projectRoot, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
+    } else if (isDebugBuild) {
+      // Debug构建：asar被禁用，文件在app目录下
+      return path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
     } else {
       return path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'standalone-mcp-server.js');
     }

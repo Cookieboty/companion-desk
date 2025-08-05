@@ -105,12 +105,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       return modelName;
     });
 
-    // 获取语音设置
-    this.registerHandler('get-voice-settings', async () => {
-      const voiceSettings = this.configService.get<VoiceSettings>('voiceSettings');
-      this.logger.debug('获取语音设置', { voiceSettings });
-      return voiceSettings;
-    });
+    // 获取语音设置 - 已移至VoiceIpcHandler
 
     // 保存语音设置
     this.registerListener('save-voice-settings', (_, settings: VoiceSettings) => {

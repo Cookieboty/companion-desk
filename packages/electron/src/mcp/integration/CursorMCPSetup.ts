@@ -115,12 +115,16 @@ export class CursorMCPSetup {
   private generateMCPConfig(): any {
     // 获取当前应用的路径，用于启动MCP服务器
     const isDev = process.env.NODE_ENV === 'development';
+    const isDebugBuild = process.env.DEBUG === 'true';
 
     let mcpServerPath: string;
     if (isDev) {
       // 开发环境：使用项目根目录的绝对路径
       const projectRoot = this.getProjectRoot();
       mcpServerPath = path.join(projectRoot, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
+    } else if (isDebugBuild) {
+      // Debug构建：asar被禁用，文件在app目录下
+      mcpServerPath = path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
     } else {
       // 生产环境：使用打包后的资源路径（从app.asar.unpacked）
       mcpServerPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'standalone-mcp-server.js');

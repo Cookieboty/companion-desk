@@ -420,11 +420,7 @@ export class WindowManager implements IWindowManager {
     } else {
       // 生产环境路径处理
       const rendererPath = this.getRendererPath();
-      startUrl = url.format({
-        pathname: rendererPath,
-        protocol: 'file:',
-        slashes: true
-      });
+      startUrl = `file://${rendererPath}`;
     }
 
     await window.loadURL(startUrl);
@@ -476,27 +472,25 @@ export class WindowManager implements IWindowManager {
    * 获取渲染器路径
    */
   private getRendererPath(): string {
-    // macOS特定路径
-    if (process.platform === 'darwin') {
-      const macOSResourcesPath = path.join(
-        path.dirname(path.dirname(app.getPath('exe'))),
-        'Resources',
-        'renderer',
-        'index.html'
-      );
-      if (require('fs').existsSync(macOSResourcesPath)) {
-        return macOSResourcesPath;
+    const isDev = process.env.NODE_ENV === 'development';
+    const isDebugBuild = process.env.DEBUG === 'true';
+
+    if (isDev) {
+      // 开发环境
+      return 'http://localhost:3000';
+    }
+
+    if (app.isPackaged) {
+      if (isDebugBuild) {
+        // Debug构建：asar被禁用，文件在Resources目录下
+        return path.join(process.resourcesPath, 'renderer', 'index.html');
+      } else {
+        // 生产构建：文件在asar中
+        return path.join(process.resourcesPath, 'renderer', 'index.html');
       }
     }
 
-    // 常规resources目录
-    const resourceRendererPath = path.join(
-      app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath(),
-      'resources',
-      'renderer',
-      'index.html'
-    );
-
-    return resourceRendererPath;
+    // 本地构建
+    return path.join(app.getAppPath(), 'dist', 'renderer', 'index.html');
   }
 }
