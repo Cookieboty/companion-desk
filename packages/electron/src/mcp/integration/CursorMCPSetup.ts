@@ -122,8 +122,8 @@ export class CursorMCPSetup {
       const projectRoot = this.getProjectRoot();
       mcpServerPath = path.join(projectRoot, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
     } else {
-      // 生产环境：使用打包后的资源路径
-      mcpServerPath = path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
+      // 生产环境：使用打包后的资源路径（从app.asar.unpacked）
+      mcpServerPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'standalone-mcp-server.js');
     }
 
     return {

@@ -176,7 +176,7 @@ export class CursorIDEIntegration {
       const projectRoot = this.getProjectRoot();
       return path.join(projectRoot, 'packages', 'electron', 'dist', 'standalone-mcp-server.js');
     } else {
-      return path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
+      return path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'standalone-mcp-server.js');
     }
   }
 

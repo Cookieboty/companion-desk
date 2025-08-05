@@ -62,6 +62,10 @@
       "assets/**/*",
       "package.json"
     ],
+    "asarUnpack": [
+      "**/standalone-mcp-server.js",
+      "**/mcp/**/*"
+    ],
     "extraResources": [
       {
         "from": "../renderer/dist",
