@@ -23,8 +23,9 @@ export const Live2DCanvas: React.FC = () => {
   const { state, config, dispatch } = useLive2D();
   const { cubism2Model } = useLive2DModel();
 
-  // 修改Canvas尺寸为800x800 - 与原始项目保持一致，提高渲染清晰度
-  const CANVAS_SIZE = 800;
+  // 修改Canvas尺寸以适应新的布局 - 保持合理的分辨率
+  const CANVAS_WIDTH = 572; // 286px显示尺寸 × 2倍分辨率
+  const CANVAS_HEIGHT = 728; // 364px显示尺寸 × 2倍分辨率
 
   // 启用拖拽功能
   useWindowDrag('live2d');
@@ -89,8 +90,8 @@ export const Live2DCanvas: React.FC = () => {
       <canvas
         id="live2d"
         ref={canvasRef}
-        width={CANVAS_SIZE}
-        height={CANVAS_SIZE}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
         style={{
           position: 'relative',
           display: 'block',

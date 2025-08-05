@@ -1,0 +1,283 @@
+/* 模式切换器样式 */
+.modeSwitcher {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 控制面板 */
+.controlPanel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 120px;
+}
+
+/* 模式按钮组 */
+.modeButtons {
+  display: flex;
+  gap: 4px;
+}
+
+.modeButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  text-align: center;
+}
+
+.modeButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.modeButton.active {
+  background: #007AFF;
+  border-color: #007AFF;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.modeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 性能信息 */
+.performanceInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.performanceStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.statusDot.poor {
+  background: #FF3B30;
+  box-shadow: 0 0 6px rgba(255, 59, 48, 0.6);
+}
+
+.statusDot.fair {
+  background: #FF9500;
+  box-shadow: 0 0 6px rgba(255, 149, 0, 0.6);
+}
+
+.statusDot.good {
+  background: #34C759;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
+}
+
+.statusDot.excellent {
+  background: #00D4AA;
+  box-shadow: 0 0 6px rgba(0, 212, 170, 0.6);
+}
+
+.statusText {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 10px;
+  font-weight: 500;
+  font-family: 'SF Mono', monospace;
+}
+
+.performanceButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 32px;
+  text-align: center;
+}
+
+.performanceButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.performanceButton.auto {
+  background: #34C759;
+  border-color: #34C759;
+  color: white;
+}
+
+/* 角色容器 */
+.characterContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.characterView {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.characterContainer.transitioning .characterView {
+  opacity: 0.3;
+}
+
+/* 过渡效果 */
+.transitionOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 加载动画 */
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #007AFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loadingText {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* 调试信息 */
+.debugInfo {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-family: 'SF Mono', monospace;
+  z-index: 1000;
+  line-height: 1.4;
+}
+
+.debugInfo div {
+  margin-bottom: 2px;
+}
+
+.debugInfo div:last-child {
+  margin-bottom: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .controlPanel {
+    top: 5px;
+    right: 5px;
+    min-width: 100px;
+    padding: 6px;
+  }
+  
+  .modeButton {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  
+  .statusText {
+    font-size: 9px;
+  }
+  
+  .debugInfo {
+    bottom: 5px;
+    left: 5px;
+    font-size: 10px;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .controlPanel {
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid white;
+  }
+  
+  .modeButton {
+    border-color: white;
+  }
+  
+  .modeButton.active {
+    background: white;
+    color: black;
+  }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  .characterView,
+  .modeButton,
+  .performanceButton,
+  .loadingSpinner {
+    transition: none;
+    animation: none;
+  }
+}

@@ -24,6 +24,17 @@ async function copyRenderer() {
     // 复制目录
     await copydir(srcDir, destDir);
     console.log(`✅ 已复制渲染器构建产物到 ${destDir}`);
+
+    // 复制 tts-config.html 文件
+    const ttsConfigSrc = path.join(__dirname, '../../renderer/tts-config.html');
+    const ttsConfigDest = path.join(destDir, 'tts-config.html');
+
+    if (fs.existsSync(ttsConfigSrc)) {
+      await copydir(ttsConfigSrc, ttsConfigDest);
+      console.log(`✅ 已复制 TTS 配置页面到 ${ttsConfigDest}`);
+    } else {
+      console.warn(`⚠️  TTS 配置页面不存在: ${ttsConfigSrc}`);
+    }
   } catch (err) {
     console.error('复制渲染器构建产物时出错:', err);
     process.exit(1);

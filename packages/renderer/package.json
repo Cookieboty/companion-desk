@@ -12,8 +12,15 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@pixiv/three-vrm": "^3.4.2",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@types/three": "^0.178.1",
+    "immer": "^10.1.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "three": "^0.168.0",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@ig-live/types": "workspace:*",

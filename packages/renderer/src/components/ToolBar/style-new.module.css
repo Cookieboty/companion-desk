@@ -1,0 +1,303 @@
+/* 简洁现代工具栏设计 */
+.toolbar {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  z-index: 10000;
+  display: none;
+  transform: translateY(-50%);
+  transition: all 0.3s ease;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+.visible {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  
+  /* 背景容器 */
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.8), 
+    rgba(0, 0, 0, 0.6)
+  );
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 15px 12px;
+  
+  /* 入场动画 */
+  animation: slideIn 0.4s ease-out;
+}
+
+.hidden {
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  animation: slideOut 0.3s ease-in;
+}
+
+/* 按钮样式 */
+.button {
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 15px;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.1), 
+    rgba(255, 255, 255, 0.05)
+  );
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  
+  /* 毛玻璃效果 */
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  /* 阴影 */
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.button:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.2), 
+    rgba(255, 255, 255, 0.1)
+  );
+  color: rgba(255, 255, 255, 1);
+  transform: translateX(-5px) scale(1.1);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.button:active {
+  transform: translateX(-5px) scale(1.05);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 特殊按钮样式 */
+.quitButton {
+  background: linear-gradient(135deg, 
+    rgba(255, 69, 58, 0.8), 
+    rgba(255, 69, 58, 0.6)
+  );
+}
+
+.quitButton:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 69, 58, 1), 
+    rgba(255, 69, 58, 0.8)
+  );
+}
+
+.topButton {
+  background: linear-gradient(135deg, 
+    rgba(52, 199, 89, 0.6), 
+    rgba(52, 199, 89, 0.4)
+  );
+}
+
+.topButtonActive {
+  background: linear-gradient(135deg, 
+    rgba(52, 199, 89, 1), 
+    rgba(52, 199, 89, 0.8)
+  );
+  color: white;
+}
+
+.aiChatButton {
+  background: linear-gradient(135deg, 
+    rgba(0, 122, 255, 0.6), 
+    rgba(0, 122, 255, 0.4)
+  );
+}
+
+.aiChatButton:hover {
+  background: linear-gradient(135deg, 
+    rgba(0, 122, 255, 1), 
+    rgba(0, 122, 255, 0.8)
+  );
+}
+
+.mcpButton {
+  background: linear-gradient(135deg, 
+    rgba(255, 149, 0, 0.6), 
+    rgba(255, 149, 0, 0.4)
+  );
+}
+
+.mcpButton:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 149, 0, 1), 
+    rgba(255, 149, 0, 0.8)
+  );
+}
+
+.threeDModeButton {
+  background: linear-gradient(135deg, 
+    rgba(175, 82, 222, 0.6), 
+    rgba(175, 82, 222, 0.4)
+  );
+}
+
+.threeDModeButton:hover {
+  background: linear-gradient(135deg, 
+    rgba(175, 82, 222, 1), 
+    rgba(175, 82, 222, 0.8)
+  );
+}
+
+/* 工具提示 */
+.tooltip {
+  position: absolute;
+  right: calc(100% + 15px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  z-index: 10001;
+}
+
+.button:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(-5px);
+}
+
+/* 动画 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-50%) translateX(20px);
+  }
+}
+
+/* 语音设置弹窗 */
+.voiceSettings {
+  position: fixed;
+  top: 50%;
+  right: 130px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  z-index: 10002;
+  min-width: 250px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.voiceSettings h3 {
+  color: white;
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.voiceSettings label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.voiceSettings select,
+.voiceSettings input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.voiceSettings select:focus,
+.voiceSettings input:focus {
+  outline: none;
+  border-color: rgba(0, 122, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+.voiceSettings button {
+  background: linear-gradient(135deg, 
+    rgba(0, 122, 255, 0.8), 
+    rgba(0, 122, 255, 0.6)
+  );
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  margin-right: 10px;
+}
+
+.voiceSettings button:hover {
+  background: linear-gradient(135deg, 
+    rgba(0, 122, 255, 1), 
+    rgba(0, 122, 255, 0.8)
+  );
+  transform: translateY(-1px);
+}
+
+.voiceSettings button:last-child {
+  background: linear-gradient(135deg, 
+    rgba(255, 69, 58, 0.8), 
+    rgba(255, 69, 58, 0.6)
+  );
+  margin-right: 0;
+}
+
+.voiceSettings button:last-child:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 69, 58, 1), 
+    rgba(255, 69, 58, 0.8)
+  );
+}

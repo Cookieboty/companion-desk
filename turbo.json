@@ -6,9 +6,13 @@
       "cache": false,
       "persistent": true
     },
+    "clean": {
+      "cache": false,
+      "dependsOn": ["^clean"]
+    },
     "build": {
       "cache": false,
-      "dependsOn": ["^build"],
+      "dependsOn": ["^clean", "^build"],
       "outputs": ["dist/**"]
     },
     "@ig-live/electron#package": {

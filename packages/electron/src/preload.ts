@@ -96,5 +96,72 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('keyboard-event');
     ipcRenderer.removeAllListeners('keyboard-listener-started');
     ipcRenderer.removeAllListeners('keyboard-listener-error');
+  },
+
+  // 通用invoke方法，用于调用主进程的IPC处理器
+  invoke: async (channel: string, ...args: any[]) => {
+    return await ipcRenderer.invoke(channel, ...args);
+  },
+
+  // AI对话相关API
+  openAiChat: async () => {
+    return await ipcRenderer.invoke('open-ai-chat');
+  },
+
+  // TTS配置相关API
+  openTTSConfig: async () => {
+    return await ipcRenderer.invoke('open-tts-config');
+  },
+  getTTSConfig: async () => {
+    return await ipcRenderer.invoke('getTTSConfig');
+  },
+  saveTTSConfig: async (config: any) => {
+    return await ipcRenderer.invoke('saveTTSConfig', config);
+  },
+  testTTSConnection: async (config: any) => {
+    return await ipcRenderer.invoke('testTTSConnection', config);
+  },
+  resetTTSConfig: async () => {
+    return await ipcRenderer.invoke('resetTTSConfig');
+  },
+
+  // MCP集成相关API
+  mcp: {
+    // 获取MCP服务状态
+    getStatus: async () => {
+      return await ipcRenderer.invoke('mcp:getStatus');
+    },
+    // 获取MCP诊断信息
+    getDiagnostics: async () => {
+      return await ipcRenderer.invoke('mcp:getDiagnostics');
+    },
+    // 调用MCP工具
+    callTool: async (toolName: string, args: any) => {
+      return await ipcRenderer.invoke('mcp:callTool', toolName, args);
+    },
+    // 读取MCP资源
+    readResource: async (uri: string) => {
+      return await ipcRenderer.invoke('mcp:readResource', uri);
+    },
+    // 获取可用MCP工具列表
+    getAvailableTools: async () => {
+      return await ipcRenderer.invoke('mcp:getAvailableTools');
+    },
+    // 获取可用MCP资源列表
+    getAvailableResources: async () => {
+      return await ipcRenderer.invoke('mcp:getAvailableResources');
+    },
+    // 重启MCP服务
+    restart: async () => {
+      return await ipcRenderer.invoke('mcp:restart');
+    },
+    // 验证MCP配置
+    validateConfiguration: async () => {
+      return await ipcRenderer.invoke('mcp:validateConfiguration');
+    },
+    // 设置Cursor MCP集成
+    setupCursorIntegration: async () => {
+      return await ipcRenderer.invoke('mcp:setupCursorIntegration');
+    }
   }
 } as IpcApi); 

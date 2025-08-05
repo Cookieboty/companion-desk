@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "conversation-notification": {
+      "command": "node",
+      "args": [
+        "/Users/botycookie/self/pay-client/packages/electron/dist/standalone-mcp-server.js"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

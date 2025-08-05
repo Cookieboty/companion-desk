@@ -11,6 +11,16 @@ import {
   fa_volume_up,
   fa_volume_off
 } from '@/utils/icons';
+
+// 添加AI对话图标
+const fa_robot = '<svg viewBox="0 0 640 512"><path d="M320 0c17.7 0 32 14.3 32 32V96H472c39.8 0 72 32.2 72 72V440c0 39.8-32.2 72-72 72H168c-39.8 0-72-32.2-72-72V168c0-39.8 32.2-72 72-72H288V32c0-17.7 14.3-32 32-32zM208 384c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H208zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H304zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16h32c8.8 0 16-7.2 16-16s-7.2-16-16-16H400zM264 256a40 40 0 1 0 -80 0 40 40 0 1 0 80 0zm152 40a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"/></svg>';
+
+// 语音模式切换图标
+const fa_voice_fixed = '<svg viewBox="0 0 24 24"><path d="M12 2C13.1 2 14 2.9 14 4V12C14 13.1 13.1 14 12 14C10.9 14 10 13.1 10 12V4C10 2.9 10.9 2 12 2M19 10V12C19 15.3 16.3 18 13 18V20H16C16.6 20 17 20.4 17 21S16.6 22 16 22H8C7.4 22 7 21.6 7 21S7.4 20 8 20H11V18C7.7 18 5 15.3 5 12V10C5 9.4 5.4 9 6 9S7 9.4 7 10V12C7 14.2 8.8 16 11 16H13C15.2 16 17 14.2 17 12V10C17 9.4 17.4 9 18 9S19 9.4 19 10Z"/></svg>';
+const fa_voice_tts = '<svg viewBox="0 0 24 24"><path d="M9 5H7V7H9V5M9 11H7V15H9V11M17 9H15V7H17V9M17 15H15V13H17V15M12 1L21 5V19L12 23L3 19V5L12 1M12 4.33L5.5 6.8V17.2L12 19.67L18.5 17.2V6.8L12 4.33Z"/></svg>';
+
+// TTS配置图标
+const fa_tts_config = '<svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>';
 import { getCache, setCache } from '@/utils/cache';
 import { useLive2DModel } from '@/hooks/useLive2DModel';
 import styles from './style.module.css';
@@ -22,13 +32,17 @@ import { VoiceService } from '../../services/VoiceService';
 let globalVoiceService: VoiceService | null = null;
 
 export const ToolBar: React.FC = () => {
-  const [isVisible, setIsVisible] = useState(false); // 默认隐藏
+  const [isVisible, setIsVisible] = useState(process.env.NODE_ENV === 'development'); // 开发环境默认显示
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const { loadNextModel, loadRandomTexture, } = useLive2DModel();
   const { config: { tools: availableTools = [] } } = useLive2D();
+
+  // 3D模式切换状态
+  const [current3DMode, setCurrent3DMode] = useState<'live2d' | '3d'>('live2d');
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voiceService, setVoiceService] = useState<VoiceService | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false); // 语音功能状态，默认禁用
+  const [voiceMode, setVoiceMode] = useState<'fixed' | 'tts'>('fixed'); // 语音模式状态
 
   // 初始化语音服务
   useEffect(() => {
@@ -76,10 +90,12 @@ export const ToolBar: React.FC = () => {
         // 获取VoiceService中的实际设置状态
         const actualSettings = globalVoiceService.getSettings();
         const actualEnabled = actualSettings?.enabled ?? false;
+        const actualVoiceMode = actualSettings?.voiceMode ?? 'fixed';
 
         // 同步UI状态和实际状态
         setVoiceEnabled(actualEnabled);
-        console.log('ToolBar: 语音状态同步完成，实际状态:', actualEnabled);
+        setVoiceMode(actualVoiceMode as 'fixed' | 'tts');
+        console.log('ToolBar: 语音状态同步完成，实际状态:', actualEnabled, '语音模式:', actualVoiceMode);
 
       } catch (error) {
         console.error('ToolBar: 初始化语音服务失败:', error);
@@ -346,6 +362,54 @@ export const ToolBar: React.FC = () => {
     }
   }, [loadNextModel, showMessage]);
 
+  // 3D模式切换
+  const toggle3DMode = useCallback(() => {
+    const newMode = current3DMode === 'live2d' ? '3d' : 'live2d';
+    setCurrent3DMode(newMode);
+
+    // 通知App组件切换模式
+    const customEvent = new CustomEvent('mode-switch', {
+      detail: { mode: newMode }
+    });
+    window.dispatchEvent(customEvent);
+
+    showMessage(`已切换到${newMode === '3d' ? '3D' : 'Live2D'}模式`);
+  }, [current3DMode, showMessage]);
+
+  // Cursor MCP注入
+  const injectCursorMCP = useCallback(async () => {
+    try {
+      showMessage('正在为Cursor注入MCP配置...');
+
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.mcp) {
+        // 生成MCP配置并写入Cursor配置文件
+        const result = await electronAPI.mcp.setupCursorIntegration();
+
+        if (result.success) {
+          showMessage('✅ Cursor MCP配置已成功注入！请重启Cursor IDE以使配置生效');
+
+          // 播放成功提示音
+          if (voiceService && voiceEnabled) {
+            try {
+              // 使用showMessage来播放语音提示
+              showMessage('MCP配置注入成功，请重启Cursor IDE');
+            } catch (voiceError) {
+              console.warn('ToolBar: 语音提示失败:', voiceError);
+            }
+          }
+        } else {
+          showMessage(`❌ MCP注入失败: ${result.error || '未知错误'}`);
+        }
+      } else {
+        showMessage('❌ MCP功能不可用，请检查Electron环境');
+      }
+    } catch (error: any) {
+      console.error('Cursor MCP注入失败:', error);
+      showMessage(`❌ MCP注入异常: ${error?.message || '请查看控制台'}`);
+    }
+  }, [showMessage, voiceService, voiceEnabled]);
+
   // 切换纹理 - 恢复完整功能
   const switchTexture = useCallback(async () => {
     try {
@@ -356,6 +420,35 @@ export const ToolBar: React.FC = () => {
       showMessage('切换服装失败');
     }
   }, [loadRandomTexture, showMessage]);
+
+  // 切换语音模式（保存到应用配置）
+  const toggleVoiceMode = useCallback(async () => {
+    if (!voiceService) {
+      showMessage('语音服务尚未初始化，请稍后再试...');
+      return;
+    }
+
+    const newMode = voiceMode === 'fixed' ? 'tts' : 'fixed';
+
+    try {
+      // 更新本地状态
+      setVoiceMode(newMode);
+
+      // 通过VoiceService保存到Electron配置
+      await voiceService.updateSettings({ voiceMode: newMode });
+
+      // 显示切换成功消息
+      const modeText = newMode === 'fixed' ? '固定语音' : 'TTS语音';
+      showMessage(`已切换到${modeText}模式`);
+
+      console.log('ToolBar: 语音模式切换到:', newMode, '并已保存到配置');
+    } catch (error) {
+      console.error('ToolBar: 语音模式切换失败:', error);
+      showMessage('语音模式切换失败，请重试');
+      // 回滚状态
+      setVoiceMode(voiceMode);
+    }
+  }, [voiceMode, voiceService, showMessage]);
 
   // 获取工具图标
   const getToolIcon = (toolId: string): string => {
@@ -378,6 +471,16 @@ export const ToolBar: React.FC = () => {
         return fa_thumbtack;
       case 'voice-settings':
         return voiceEnabled ? fa_volume_up : fa_volume_off;
+      case 'voice-mode-toggle':
+        return voiceMode === 'fixed' ? fa_voice_fixed : fa_voice_tts;
+      case 'tts-config':
+        return fa_tts_config;
+      case 'ai-chat':
+        return fa_robot;
+      case '3d-mode':
+        return fa_street_view;
+      case 'cursor-mcp':
+        return '<svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>';
       default:
         return '';
     }
@@ -429,6 +532,50 @@ export const ToolBar: React.FC = () => {
 
           console.log('ToolBar: 语音状态切换完成:', newEnabled);
         };
+      case 'voice-mode-toggle':
+        return toggleVoiceMode;
+      case 'tts-config':
+        return () => {
+          console.log('ToolBar: TTS配置按钮被点击');
+          const electronAPI = (window as any).electronAPI;
+          if (electronAPI && electronAPI.invoke) {
+            electronAPI.invoke('open-tts-config').then((result: any) => {
+              console.log('ToolBar: TTS配置窗口打开结果:', result);
+              if (result?.success) {
+                showMessage('TTS配置窗口已打开');
+              } else {
+                showMessage(`打开失败: ${result?.error || '未知错误'}`);
+              }
+            }).catch((error: any) => {
+              console.error('打开TTS配置窗口失败:', error);
+              showMessage('打开TTS配置窗口失败，请稍后再试');
+            });
+          } else {
+            console.warn('Electron API不可用，无法打开TTS配置窗口');
+            showMessage('TTS配置功能需要在Electron环境中运行');
+          }
+        };
+      case 'ai-chat':
+        return () => {
+          console.log('ToolBar: AI对话按钮被点击');
+          const electronAPI = (window as any).electronAPI;
+          if (electronAPI && electronAPI.invoke) {
+            electronAPI.invoke('open-ai-chat').then((result: any) => {
+              console.log('ToolBar: AI对话窗口打开结果:', result);
+              if (result?.success) {
+                showMessage('AI对话窗口已打开');
+              } else {
+                showMessage(`打开失败: ${result?.error || '未知错误'}`);
+              }
+            }).catch((error: any) => {
+              console.error('打开AI对话窗口失败:', error);
+              showMessage('打开AI对话窗口失败，请稍后再试');
+            });
+          } else {
+            console.warn('Electron API不可用，无法打开AI对话窗口');
+            showMessage('AI对话功能需要在Electron环境中运行');
+          }
+        };
       case 'asteroids':
         return () => {
           if ((window as any).Asteroids) {
@@ -440,6 +587,10 @@ export const ToolBar: React.FC = () => {
             document.head.appendChild(script);
           }
         };
+      case '3d-mode':
+        return toggle3DMode;
+      case 'cursor-mcp':
+        return injectCursorMCP;
       default:
         return () => { };
     }
@@ -449,23 +600,33 @@ export const ToolBar: React.FC = () => {
   const getToolTip = (toolId: string) => {
     switch (toolId) {
       case 'hitokoto':
-        return '一言';
+        return '获取一言名句';
       case 'asteroids':
-        return '小游戏';
+        return '启动小行星游戏';
       case 'switch-model':
-        return '切换模型';
+        return '切换Live2D模型';
       case 'switch-texture':
-        return '切换衣服';
+        return '更换角色服装';
       case 'photo':
-        return '拍照';
+        return '截图保存';
       case 'info':
-        return '关于';
+        return '查看应用信息';
       case 'quit':
-        return '关闭';
+        return '关闭应用';
       case 'toggle-top':
-        return alwaysOnTop ? '取消置顶' : '置顶';
+        return alwaysOnTop ? '取消窗口置顶' : '设置窗口置顶';
       case 'voice-settings':
-        return voiceEnabled ? '语音功能 (已启用) - 左键切换，右键设置' : '语音功能 (已禁用) - 左键切换，右键设置';
+        return voiceEnabled ? '语音功能已启用' : '语音功能已禁用';
+      case 'voice-mode-toggle':
+        return voiceMode === 'fixed' ? '当前：固定语音模式，点击切换到TTS' : '当前：TTS语音模式，点击切换到固定语音';
+      case 'tts-config':
+        return 'TTS语音配置管理';
+      case 'ai-chat':
+        return '打开AI智能助手';
+      case '3d-mode':
+        return current3DMode === 'live2d' ? '切换到3D模式' : '切换到Live2D模式';
+      case 'cursor-mcp':
+        return '为Cursor IDE注入MCP配置';
       default:
         return '';
     }
@@ -490,6 +651,13 @@ export const ToolBar: React.FC = () => {
       case 'voice-settings':
         // 根据语音启用状态显示不同样式
         return `${baseClass} ${voiceEnabled ? styles.voiceButton : styles.voiceButtonDisabled}`;
+      case 'voice-mode-toggle':
+        // 根据语音模式显示不同样式
+        return `${baseClass} ${voiceMode === 'fixed' ? styles.voiceModeFixed : styles.voiceModeTts}`;
+      case 'tts-config':
+        return `${baseClass} ${styles.ttsConfigButton}`;
+      case 'ai-chat':
+        return `${baseClass} ${styles.aiChatButton}`;
       default:
         return baseClass;
     }
@@ -534,26 +702,33 @@ export const ToolBar: React.FC = () => {
       {
         isVisible && (
           <div className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}>
-            {availableTools.map((tool) => (
-              <button
-                key={tool}
-                className={getButtonClassName(tool)}
-                onClick={createButtonHandler(getToolHandler(tool))}
-                onContextMenu={tool === 'voice-settings' ? (e) => {
-                  e.preventDefault();
-                  console.log('ToolBar: 语音按钮右键点击，打开设置');
-                  setShowVoiceSettings(true);
-                } : undefined}
-                onMouseDown={clearButtonFocus}
-                onMouseUp={clearButtonFocus}
-                onFocus={handleButtonFocus}
-                title={getToolTip(tool)}
-              >
-                <div
-                  className={styles.icon}
-                  dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
-                />
-              </button>
+            {availableTools.map((tool, index) => (
+              <div key={tool} className={styles.buttonContainer}>
+                <button
+                  className={getButtonClassName(tool)}
+                  onClick={createButtonHandler(getToolHandler(tool))}
+                  onContextMenu={tool === 'voice-settings' ? (e) => {
+                    e.preventDefault();
+                    console.log('ToolBar: 语音按钮右键点击，打开设置');
+                    setShowVoiceSettings(true);
+                  } : undefined}
+                  onMouseDown={clearButtonFocus}
+                  onMouseUp={clearButtonFocus}
+                  onFocus={handleButtonFocus}
+                  title={getToolTip(tool)}
+                >
+                  <div
+                    className={styles.icon}
+                    dangerouslySetInnerHTML={{ __html: getToolIcon(tool) }}
+                  />
+                </button>
+                <div className={styles.tooltip}>
+                  {getToolTip(tool)}
+                </div>
+                {index === Math.floor(availableTools.length / 2) && (
+                  <div className={styles.groupIndicator}></div>
+                )}
+              </div>
             ))}
           </div>
         )
@@ -568,6 +743,7 @@ export const ToolBar: React.FC = () => {
           onSettingsChange={handleVoiceSettingsChange}
         />
       )}
+
     </>
   );
 }; 
