@@ -11,7 +11,7 @@ import http from 'http';
 import { BaseIpcHandler } from './BaseIpcHandler';
 import { ILoggerService } from '../../services/LoggerService';
 import { IConfigService, VoiceSettings } from '../../services/ConfigService';
-import { TTSConfig, TTSTestResult } from '@ig-live/types';
+import { TTSConfig, TTSTestResult, DisplayModeConfig, RenderMode } from '@ig-live/types';
 
 export class ConfigIpcHandler extends BaseIpcHandler {
   private configService: IConfigService;
@@ -123,6 +123,87 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('语音设置已保存', { settings: updatedSettings });
       } catch (error) {
         this.logger.error('保存语音设置失败', { error: error instanceof Error ? error.message : String(error), settings });
+      }
+    });
+
+    // ==================== 显示模式相关配置处理器 ====================
+
+    // 获取显示模式配置
+    this.registerHandler('get-display-mode-config', async () => {
+      try {
+        const config = this.configService.get<DisplayModeConfig>('displayMode', {
+          currentMode: 'live2d' as RenderMode
+        });
+
+        this.logger.debug('获取显示模式配置', { config });
+        return config;
+      } catch (error) {
+        this.logger.error('获取显示模式配置失败', { error: error instanceof Error ? error.message : String(error) });
+        return { currentMode: 'live2d' as RenderMode };
+      }
+    });
+
+    // 保存显示模式配置
+    this.registerHandler('save-display-mode-config', async (_, config: DisplayModeConfig) => {
+      this.validateArgs([config], 1, ['object']);
+
+      try {
+        const currentConfig = this.configService.get<DisplayModeConfig>('displayMode', {
+          currentMode: 'live2d' as RenderMode
+        });
+
+        const updatedConfig = { ...currentConfig, ...config };
+
+        this.configService.set('displayMode', updatedConfig);
+        await this.configService.save();
+
+        this.logger.info('显示模式配置已保存', { config: updatedConfig });
+        return this.createSuccessResponse();
+      } catch (error) {
+        this.logger.error('保存显示模式配置失败', { error: error instanceof Error ? error.message : String(error), config });
+        return this.createErrorResponse(error);
+      }
+    });
+
+    // 设置当前显示模式
+    this.registerHandler('set-current-mode', async (_, mode: RenderMode) => {
+      this.validateArgs([mode], 1, ['string']);
+
+      try {
+        const validModes: RenderMode[] = ['live2d', '3d', 'custom-image'];
+        if (!validModes.includes(mode)) {
+          throw new Error(`无效的显示模式: ${mode}，支持的模式: ${validModes.join(', ')}`);
+        }
+
+        const currentConfig = this.configService.get<DisplayModeConfig>('displayMode', {
+          currentMode: 'live2d' as RenderMode
+        });
+
+        const updatedConfig = { ...currentConfig, currentMode: mode };
+
+        this.configService.set('displayMode', updatedConfig);
+        await this.configService.save();
+
+        this.logger.info('当前显示模式已设置', { mode });
+        return this.createSuccessResponse();
+      } catch (error) {
+        this.logger.error('设置显示模式失败', { error: error instanceof Error ? error.message : String(error), mode });
+        return this.createErrorResponse(error);
+      }
+    });
+
+    // 获取当前显示模式
+    this.registerHandler('get-current-mode', async () => {
+      try {
+        const config = this.configService.get<DisplayModeConfig>('displayMode', {
+          currentMode: 'live2d' as RenderMode
+        });
+
+        this.logger.debug('获取当前显示模式', { mode: config.currentMode });
+        return config.currentMode;
+      } catch (error) {
+        this.logger.error('获取当前显示模式失败', { error: error instanceof Error ? error.message : String(error) });
+        return 'live2d' as RenderMode;
       }
     });
 

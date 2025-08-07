@@ -95,7 +95,7 @@ export class EnvironmentConfig {
       }
     }
 
-    return value !== undefined ? value : defaultValue;
+    return value !== undefined ? value : (defaultValue as T);
   }
 
   /**

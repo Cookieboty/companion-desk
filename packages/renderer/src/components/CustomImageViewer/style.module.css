@@ -1,0 +1,250 @@
+.viewer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.viewer.transparent {
+  background: transparent;
+}
+
+/* 图片容器 */
+.imageContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 主图片样式 */
+.image {
+  max-width: 50%;
+  max-height: 50%;
+  object-fit: contain;
+  user-select: none;
+  transition: transform 0.1s ease;
+  will-change: transform;
+}
+
+.image.draggable {
+  cursor: grab;
+}
+
+.image.draggable:active {
+  cursor: grabbing;
+}
+
+/* 加载状态 */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.loading span {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+/* 错误状态 */
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ff6b6b;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.errorIcon,
+.placeholderIcon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.errorIcon svg,
+.placeholderIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.errorText h3,
+.placeholderText h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.errorText p,
+.placeholderText p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* 占位符状态 */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  max-width: 300px;
+}
+
+/* 加载动画 */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007AFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 图片信息覆盖层（开发模式） */
+.imageInfo {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 200px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+.viewer:hover .imageInfo {
+  opacity: 1;
+}
+
+.infoItem {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.infoItem:last-child {
+  margin-bottom: 0;
+}
+
+.infoItem span:first-child {
+  font-weight: 500;
+  margin-right: 8px;
+  color: #ccc;
+}
+
+.infoItem span:last-child {
+  text-align: right;
+  flex: 1;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .placeholder {
+    padding: 24px;
+    max-width: 280px;
+  }
+  
+  .loading,
+  .error {
+    padding: 20px;
+  }
+  
+  .imageInfo {
+    top: 8px;
+    right: 8px;
+    font-size: 11px;
+    padding: 8px;
+    max-width: 150px;
+  }
+}
+
+/* 禁用文本选择和拖拽 */
+.viewer * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 窗口置顶时的特殊样式 */
+.viewer[data-always-on-top="true"] {
+  pointer-events: auto;
+}
+
+.viewer[data-always-on-top="true"] .image {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+/* 高DPI屏幕优化 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* 动画效果 */
+.imageContainer {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 鼠标悬停效果 */
+.image:hover {
+  filter: brightness(1.05) contrast(1.02);
+  transition: filter 0.2s ease;
+}

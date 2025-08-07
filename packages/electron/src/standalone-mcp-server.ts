@@ -5,21 +5,21 @@
  * 供Cursor IDE通过stdio连接使用
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
+const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
+const {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+} = require('@modelcontextprotocol/sdk/types.js');
 
-import { MCPConfigManager } from './mcp/config/MCPConfig.js';
-import { VoiceService } from './mcp/services/VoiceService.js';
-import { ProjectAnalyzer } from './mcp/services/ProjectAnalyzer.js';
-import { NotificationService } from './mcp/services/NotificationService.js';
+const { MCPConfigManager } = require('./mcp/config/MCPConfig.js');
+const { VoiceService } = require('./mcp/services/VoiceService.js');
+const { ProjectAnalyzer } = require('./mcp/services/ProjectAnalyzer.js');
+const { NotificationService } = require('./mcp/services/NotificationService.js');
 
 // 服务实例
 const configManager = MCPConfigManager.getInstance();
@@ -58,9 +58,9 @@ function incrementCallCounter(): boolean {
  * 执行对话完成通知
  */
 async function executeConversationComplete(
-  message: string, 
-  type: string, 
-  urgency: string, 
+  message: string,
+  type: string,
+  urgency: string,
   includeProjectSummary?: boolean
 ): Promise<void> {
   try {
@@ -83,7 +83,7 @@ async function executeConversationComplete(
       finalMessage,
       type as any,
       urgency as any,
-      async (msg, urg) => await voiceService.executeVoicePlayback(msg, urg)
+      async (msg: string, urg: string) => await voiceService.executeVoicePlayback(msg, urg)
     );
 
   } catch (error) {
@@ -253,7 +253,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 // 工具调用处理器
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
   const { name, arguments: args } = request.params;
   console.log(`MCP: 调用工具 ${name}`, args);
 
@@ -367,7 +367,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
 });
 
 // 获取prompt处理器
-server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+server.setRequestHandler(GetPromptRequestSchema, async (request: any) => {
   const { name, arguments: args } = request.params;
   console.log(`MCP: 获取prompt ${name}`, args);
 
@@ -430,7 +430,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 });
 
 // 读取资源处理器
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+server.setRequestHandler(ReadResourceRequestSchema, async (request: any) => {
   const { uri } = request.params;
   console.log(`MCP: 读取资源 ${uri}`);
 

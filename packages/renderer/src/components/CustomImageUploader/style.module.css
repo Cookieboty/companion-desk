@@ -1,0 +1,374 @@
+.uploader {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 上传区域 */
+.uploadArea {
+  width: 100%;
+  max-width: 400px;
+  height: 320px;
+  border: 3px dashed rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98), 
+    rgba(248, 250, 252, 0.95),
+    rgba(243, 244, 246, 0.90)
+  );
+  backdrop-filter: blur(20px);
+  position: relative;
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.08), 
+    0 4px 6px -2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  margin: 0 auto;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.uploadArea::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 70% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.uploadArea:hover {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -2px rgba(59, 130, 246, 0.1);
+}
+
+.uploadArea:hover .uploadText h3 {
+  color: #1e40af;
+}
+
+.uploadArea:hover .uploadText p {
+  color: #3b82f6;
+}
+
+.uploadArea:hover .uploadIcon {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 197, 253, 0.2));
+  color: #1e40af;
+  transform: translateY(-1px);
+}
+
+.uploadArea.dragActive {
+  border-color: #10b981;
+  border-style: solid;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98), 
+    rgba(236, 253, 245, 0.95),
+    rgba(209, 250, 229, 0.9)
+  );
+  transform: scale(1.02) translateY(-3px);
+  box-shadow: 
+    0 20px 25px -5px rgba(16, 185, 129, 0.15), 
+    0 10px 10px -5px rgba(16, 185, 129, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.uploadArea.dragActive .uploadText h3 {
+  color: #065f46;
+}
+
+.uploadArea.dragActive .uploadText p {
+  color: #059669;
+}
+
+.uploadArea.dragActive .uploadIcon {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.2));
+  color: #065f46;
+  transform: translateY(-2px) scale(1.05);
+}
+
+.uploadArea.uploading {
+  pointer-events: none;
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.15));
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.uploadArea.uploading .uploadIcon {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+  animation: bounce 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.uploadContent {
+  text-align: center;
+  color: #333;
+  position: relative;
+  z-index: 1;
+}
+
+.uploadIcon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  color: #6366f1;
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.12), 
+    rgba(139, 92, 246, 0.08),
+    rgba(59, 130, 246, 0.1)
+  );
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 6px -1px rgba(99, 102, 241, 0.1),
+    0 2px 4px -1px rgba(99, 102, 241, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.uploadIcon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.uploadText h3 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, #1e293b, #475569);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.uploadText p {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: #64748b;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.supportedFormats {
+  font-size: 13px !important;
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+  opacity: 0.9;
+  padding: 6px 12px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  display: inline-block;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* 预览区域 */
+.previewArea {
+  width: 400px;
+  max-height: 500px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.previewImage {
+  width: 100%;
+  max-height: 300px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+.previewImage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.previewActions {
+  text-align: center;
+  width: 100%;
+}
+
+.previewActions h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.previewActions p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.actionButtons button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.cancelButton {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.cancelButton:hover {
+  background: #e5e5e5;
+}
+
+.confirmButton {
+  background: #007AFF;
+  color: white;
+}
+
+.confirmButton:hover {
+  background: #0056b3;
+}
+
+.confirmButton:disabled,
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelUpload {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s ease;
+}
+
+.cancelUpload:hover {
+  color: #666;
+}
+
+.cancelUpload:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 加载状态 */
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  z-index: 10;
+}
+
+.loadingOverlay span {
+  margin-top: 16px;
+  font-size: 16px;
+  color: #374151;
+  font-weight: 600;
+}
+
+/* 加载动画 */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(59, 130, 246, 0.2);
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .uploadArea {
+    width: 280px;
+    height: 180px;
+  }
+  
+  .previewArea {
+    width: 320px;
+    padding: 16px;
+  }
+  
+  .actionButtons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .actionButtons button {
+    width: 100%;
+    max-width: 200px;
+  }
+}

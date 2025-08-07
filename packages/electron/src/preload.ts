@@ -67,6 +67,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('save-voice-settings', settings);
   },
 
+  // 自定义图片相关API
+  selectImageFile: async () => {
+    return await ipcRenderer.invoke('select-image-file');
+  },
+  saveCustomImage: async (sourcePath: string) => {
+    return await ipcRenderer.invoke('save-custom-image', sourcePath);
+  },
+  getCustomImage: async () => {
+    return await ipcRenderer.invoke('get-custom-image');
+  },
+  deleteCustomImage: async () => {
+    return await ipcRenderer.invoke('delete-custom-image');
+  },
+
+  // 显示模式配置相关API
+  getDisplayModeConfig: async () => {
+    return await ipcRenderer.invoke('get-display-mode-config');
+  },
+  saveDisplayModeConfig: async (config: any) => {
+    return await ipcRenderer.invoke('save-display-mode-config', config);
+  },
+  getCurrentMode: async () => {
+    return await ipcRenderer.invoke('get-current-mode');
+  },
+  setCurrentMode: async (mode: string) => {
+    return await ipcRenderer.invoke('set-current-mode', mode);
+  },
+
   // 键盘监听API
   startKeyboardListener: () => {
     ipcRenderer.send('start-keyboard-listener');

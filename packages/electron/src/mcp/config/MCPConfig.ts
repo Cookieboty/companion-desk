@@ -66,7 +66,16 @@ export class MCPConfigManager {
    */
   private loadTTSConfig(): TTSConfig | null {
     try {
-      const ttsConfigPath = path.join(app.getPath('userData'), 'tts-config.json');
+      // 在standalone-mcp-server环境中，app可能不可用，使用fallback路径
+      let userDataPath: string;
+      try {
+        userDataPath = app.getPath('userData');
+      } catch (error) {
+        // Fallback到用户配置目录
+        userDataPath = path.join(os.homedir(), 'Library', 'Application Support', '@ig-live', 'electron');
+      }
+
+      const ttsConfigPath = path.join(userDataPath, 'tts-config.json');
       console.log(`MCP: 尝试读取TTS配置文件: ${ttsConfigPath}`);
 
       if (fs.existsSync(ttsConfigPath)) {

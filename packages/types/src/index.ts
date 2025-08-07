@@ -40,6 +40,18 @@ export interface IpcApi {
   // TTS配置窗口API
   openTTSConfig: () => Promise<{ success: boolean; error?: string }>;
 
+  // 自定义图片相关API
+  selectImageFile: () => Promise<{ success: boolean; data?: { filePath: string }; error?: string }>;
+  saveCustomImage: (sourcePath: string) => Promise<{ success: boolean; data?: { savedPath: string; imageInfo: CustomImageInfo }; error?: string }>;
+  getCustomImage: () => Promise<{ success: boolean; data?: { imagePath: string; imageInfo: CustomImageInfo }; error?: string }>;
+  deleteCustomImage: () => Promise<{ success: boolean; error?: string }>;
+
+  // 显示模式配置相关API
+  getDisplayModeConfig: () => Promise<DisplayModeConfig>;
+  saveDisplayModeConfig: (config: DisplayModeConfig) => Promise<{ success: boolean; error?: string }>;
+  getCurrentMode: () => Promise<RenderMode>;
+  setCurrentMode: (mode: RenderMode) => Promise<{ success: boolean; error?: string }>;
+
   // MCP集成相关API
   mcp: MCPApi;
 }
@@ -212,4 +224,42 @@ export interface MCPToolExecutionResult {
     [key: string]: any;
   };
   error?: string;
-} 
+}
+
+// ==================== 自定义图片模式相关类型定义 ====================
+
+/**
+ * 渲染模式类型
+ */
+export type RenderMode = 'live2d' | '3d' | 'custom-image';
+
+/**
+ * 自定义图片信息
+ */
+export interface CustomImageInfo {
+  imagePath: string;
+  fileName: string;
+  uploadTime: number;
+  fileSize: number;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+}
+
+/**
+ * 显示模式配置
+ */
+export interface DisplayModeConfig {
+  currentMode: RenderMode;
+  customImage?: CustomImageInfo;
+}
+
+/**
+ * 图片上传配置
+ */
+export interface ImageUploadConfig {
+  maxFileSize: number; // 最大文件大小 (bytes)
+  allowedTypes: string[]; // 允许的文件类型
+  allowedExtensions: string[]; // 允许的文件扩展名
+}

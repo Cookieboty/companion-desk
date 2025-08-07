@@ -1,0 +1,390 @@
+.manager {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+/* 加载状态 */
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #666;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.loading span {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+/* 错误横幅 */
+.errorBanner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff4757;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 300px;
+  max-width: 80%;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+  animation: slideDown 0.3s ease;
+}
+
+.errorBanner button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 0 0 12px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.errorBanner button:hover {
+  opacity: 1;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 模态框样式 */
+.uploaderModal,
+.confirmModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 确认对话框 */
+.confirmDialog {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.confirmDialog h3 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.confirmDialog p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.warning {
+  color: #ff6b6b !important;
+  font-weight: 500;
+  margin-bottom: 24px !important;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* 图片显示区域 */
+.imageDisplay {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* 工具栏 */
+.toolbar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: white;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.manager:hover .toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.imageInfoDisplay {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fileName {
+  font-weight: 500;
+  color: #fff;
+}
+
+.fileSize {
+  color: #ccc;
+  font-size: 11px;
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbarActions button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.toolbarActions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.toolbarActions button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.replaceButton:hover {
+  background: rgba(0, 122, 255, 0.3) !important;
+  border-color: rgba(0, 122, 255, 0.5) !important;
+}
+
+.deleteButton:hover {
+  background: rgba(255, 59, 48, 0.3) !important;
+  border-color: rgba(255, 59, 48, 0.5) !important;
+}
+
+/* 空状态 */
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px;
+}
+
+.emptyIcon {
+  width: 64px;
+  height: 64px;
+  color: #666;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #999;
+}
+
+.emptyIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.emptyText h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.emptyText p {
+  margin: 0 0 24px;
+  font-size: 16px;
+  color: #666;
+}
+
+.uploadButton {
+  background: #007AFF;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.uploadButton:hover {
+  background: #0056b3;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+.uploadButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 通用按钮样式 */
+.cancelButton,
+.deleteButton {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.cancelButton {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.cancelButton:hover {
+  background: #e5e5e5;
+}
+
+.deleteButton {
+  background: #ff4757;
+  color: white;
+}
+
+.deleteButton:hover {
+  background: #ff3838;
+}
+
+/* 加载动画 */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007AFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .toolbar {
+    bottom: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .toolbarActions button {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  .emptyText h3 {
+    font-size: 20px;
+  }
+  
+  .emptyText p {
+    font-size: 14px;
+  }
+  
+  .uploadButton {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  
+  .confirmDialog {
+    padding: 20px;
+    margin: 16px;
+  }
+  
+  .errorBanner {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    min-width: auto;
+    max-width: none;
+  }
+}
