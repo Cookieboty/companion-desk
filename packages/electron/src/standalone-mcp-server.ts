@@ -16,14 +16,14 @@ const {
   ReadResourceRequestSchema,
 } = require('@modelcontextprotocol/sdk/types.js');
 
-const { MCPConfigManager } = require('./mcp/config/MCPConfig.js');
-const { VoiceService } = require('./mcp/services/VoiceService.js');
+const { StandaloneMCPConfigManager } = require('./mcp/config/StandaloneMCPConfig.js');
+const { StandaloneVoiceService } = require('./mcp/services/StandaloneVoiceService.js');
 const { ProjectAnalyzer } = require('./mcp/services/ProjectAnalyzer.js');
 const { NotificationService } = require('./mcp/services/NotificationService.js');
 
 // 服务实例
-const configManager = MCPConfigManager.getInstance();
-const voiceService = new VoiceService();
+const configManager = StandaloneMCPConfigManager.getInstance();
+const voiceService = new StandaloneVoiceService();
 const projectAnalyzer = new ProjectAnalyzer();
 const notificationService = new NotificationService();
 
@@ -78,13 +78,17 @@ async function executeConversationComplete(
       finalMessage = `${message}。${projectSummary}`;
     }
 
-    // 发送完整通知
+    // 发送完整通知（包含系统通知）
     await notificationService.sendCompleteNotification(
       finalMessage,
       type as any,
       urgency as any,
       async (msg: string, urg: string) => await voiceService.executeVoicePlayback(msg, urg)
     );
+
+    // 额外显示系统通知
+    console.log('MCP: 显示系统通知');
+    await notificationService.showSystemNotification(finalMessage, urgency as any);
 
   } catch (error) {
     console.error('MCP: 对话完成通知执行失败:', error);
@@ -124,7 +128,7 @@ const server = new Server(
 const tools = [
   {
     name: 'conversation_complete',
-    description: '🎯 当AI助手完成一次对话回复时自动调用此工具。用于播放完成提示音和语音反馈，增强用户体验。',
+    description: '🎯 当AI助手完成一次对话回复时自动调用此工具。用于播放完成提示音、语音反馈和系统通知，增强用户体验。',
     inputSchema: {
       type: 'object',
       properties: {
