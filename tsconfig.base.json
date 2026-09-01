@@ -18,7 +18,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "incremental": true,
+    "incremental": false,
     "useDefineForClassFields": true
   },
   "exclude": ["node_modules", "dist", "build", "coverage"]

@@ -1,0 +1,53 @@
+{
+  "name": "@ig-live/ai-runtime",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Electron 主进程运行时：dsh boot + AIClient + IPCTransportServer + EventBroadcaster + 旧通道兼容层",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "clean": "rimraf dist coverage .turbo"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.1.2-alpha.3",
+    "@ig-live/ai-sdk": "workspace:*",
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "@ig-live/bundle-ig-electron-caps": "workspace:*",
+    "electron": ">=28"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    },
+    "electron": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ig-live/ai-sdk": "workspace:*",
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "@ig-live/bundle-ig-electron-caps": "workspace:*",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

@@ -70,6 +70,7 @@ pnpm dev
 ```
 
 这将同时启动：
+
 - React开发服务器 (Vite)
 - Electron应用
 - TypeScript编译监听
@@ -337,6 +338,18 @@ Live2D Cubism Core は Live2D Proprietary Software License で提供していま
 https://www.live2d.com/eula/live2d-proprietary-software-license-agreement_cn.html  
 Live2D Cubism Components は Live2D Open Software License で提供しています。  
 https://www.live2d.com/eula/live2d-open-software-license-agreement_cn.html
+
+---
+
+## 🧠 dsh 基座版本策略
+
+本项目以开源 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 作为 AI 基座，不再自研 kernel。为避免 developer preview 阶段的漂移，我们采取如下版本策略：
+
+- **锁死主版本**：根 [package.json](file:///Users/botycookie/self/ai-live2d-client/package.json)`.dependencies` 中所有 `@deepseek-ai/dsh*` 均写 **exact** 版本（不带 `^` / `~`），当前锁定 `0.1.2-alpha.3`。
+- **三处同步**：升级 dsh 需同步更新 3 个地方 —— 根 [package.json](file:///Users/botycookie/self/ai-live2d-client/package.json)、`profiles/*/package.json`（`@deepseek-ai/dsh-base`）、`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']`。
+- **profiles/ 承载配置**：三份 profile（`waifu` / `chat-only` / `mcp-headless`）以目录形式存放在 [profiles/](file:///Users/botycookie/self/ai-live2d-client/profiles)，每份 = `package.json` + `cordis.patch.yml`，详细结构与 override 顺序见 [profiles/README.md](file:///Users/botycookie/self/ai-live2d-client/profiles/README.md)。
+- **升级 SOP**：完整 9 步升级流程记录在 [profiles/README.md](file:///Users/botycookie/self/ai-live2d-client/profiles/README.md#dsh-升级-sop)。
+- **本地自检**：`pnpm run doctor <profile>` 装配诊断；`pnpm run test:root` 冒烟三份 profile 的 `loadProfile + composeEntries` 契约。
 
 ---
 

@@ -1,0 +1,63 @@
+# bundle-ig-electron-caps 默认 patch
+# 由 dsh 加载时合入 Cordis 配置图；每一段的 id 供 profile 通过 `id: <patch-id>` 引用。
+#
+# 说明：Electron 主进程独占能力。仅在 waifu / chat-only 之类"必须跑在 Electron 主进程"
+# 的 profile 中启用。渲染进程 / node 纯脚本 profile 请**不要**引用本 bundle。
+
+apiVersion: dsh/v1
+kind: Bundle
+metadata:
+  name: bundle-ig-electron-caps
+  version: 0.0.1
+  description: Electron 主进程独占能力（safeStorage / 文件存储 / Screen / Clipboard / ASR / TTS / WakeWord / Shortcut）
+
+patches:
+  - id: electron.keyStore.default
+    plugin: SafeKeyStorePlugin
+    config:
+      subDir: ai-chat
+      fileName: keys.enc
+
+  - id: electron.sessionStore.default
+    plugin: FileSessionStorePlugin
+    config:
+      subDir: ai-chat
+      rotateBytes: 104857600 # 100 MiB
+
+  - id: electron.screen.default
+    plugin: ScreenPlugin
+    config: {}
+
+  - id: electron.clipboard.default
+    plugin: ClipboardPlugin
+    config:
+      watch: true
+      pollIntervalMs: 200
+
+  - id: electron.asr.default
+    plugin: AsrPlugin
+    config:
+      registerDefaults: true
+      # defaultProviderId 由 profile 覆盖，如 openai-whisper / volc-asr / whisper-local
+
+  - id: electron.tts.default
+    plugin: TtsPlugin
+    config:
+      registerDefaults: true
+      # defaultProviderId 由 profile 覆盖，如 system / edge-tts / openai-tts / azure-tts
+
+  - id: electron.wakeword.default
+    plugin: WakeWordPlugin
+    config:
+      enabled: false # 默认关，UI 里按需开
+      sensitivity: 0.5
+      keywords: []
+
+  - id: electron.shortcut.default
+    plugin: ShortcutPlugin
+    config:
+      bindings:
+        - accelerator: CommandOrControl+Shift+Space
+          command: wake.toggle
+        - accelerator: CommandOrControl+Shift+X
+          command: screen.captureToAgent

@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate:models": "node scripts/generate-model-list.js",
+    "generate:models": "node scripts/generate-model-list.cjs",
     "prebuild": "npm run generate:models",
     "predev": "npm run generate:models",
     "dev": "turbo run dev",
@@ -20,17 +20,24 @@
     "package:debug": "turbo run package:debug",
     "package:debug:mac": "turbo run package:debug:mac",
     "package:debug:win": "turbo run package:debug:win",
-    "test": "turbo run test",
+    "test": "turbo run test && pnpm run test:root",
+    "test:root": "vitest run --config vitest.root.config.ts scripts/__tests__",
     "test:e2e": "turbo run test:e2e",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "turbo run clean",
+    "doctor": "tsx scripts/dsh-doctor.ts",
     "prepare": "husky"
   },
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.2-alpha.3",
+    "@deepseek-ai/dsh-app-boot": "0.1.2-alpha.3",
+    "@deepseek-ai/dsh-home-paths": "0.1.2-alpha.3"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
@@ -49,6 +56,7 @@
     "lint-staged": "^15.2.10",
     "prettier": "^3.3.3",
     "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
     "turbo": "^2.2.3",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.13.0",

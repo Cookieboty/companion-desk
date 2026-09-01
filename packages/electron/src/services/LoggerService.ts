@@ -5,13 +5,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { app } from 'electron';
 
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
   INFO = 2,
-  DEBUG = 3
+  DEBUG = 3,
 }
 
 export interface LogEntry {
@@ -99,7 +100,7 @@ export class LoggerService implements ILoggerService {
       level,
       message,
       meta,
-      context
+      context,
     };
 
     // 控制台输出
@@ -139,6 +140,7 @@ export class LoggerService implements ILoggerService {
    * 输出到文件
    */
   private logToFile(entry: LogEntry): void {
+    this.ensureLogDirectory();
     try {
       const logLine = JSON.stringify(entry) + '\n';
 
@@ -207,9 +209,9 @@ export class LoggerService implements ILoggerService {
   cleanOldLogs(daysToKeep: number = 7): void {
     try {
       const files = fs.readdirSync(this.logDir);
-      const cutoffTime = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
+      const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
 
-      files.forEach(file => {
+      files.forEach((file) => {
         const filePath = path.join(this.logDir, file);
         const stats = fs.statSync(filePath);
 

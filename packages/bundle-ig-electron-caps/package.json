@@ -1,0 +1,60 @@
+{
+  "name": "@ig-live/bundle-ig-electron-caps",
+  "version": "0.0.1",
+  "private": true,
+  "description": "dsh Bundle：Electron 主进程独占能力（safeStorage 密钥 / 文件会话 & UserProfile 存储 / Screen / Clipboard / ASR / TTS / WakeWord / Shortcut）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./patch": "./dist/patch.yml",
+    "./seams": {
+      "types": "./dist/seams/index.d.ts",
+      "import": "./dist/seams/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": "./dist/patch.yml"
+  },
+  "scripts": {
+    "build": "tsup && node scripts/copy-patch.mjs",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "clean": "rimraf dist coverage .turbo"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.1.2-alpha.3",
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "electron": ">=28"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    },
+    "electron": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

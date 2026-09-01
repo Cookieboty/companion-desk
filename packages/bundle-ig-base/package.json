@@ -1,0 +1,55 @@
+{
+  "name": "@ig-live/bundle-ig-base",
+  "version": "0.0.1",
+  "private": true,
+  "description": "dsh Bundle：跨环境通用 AI 能力（LLM Providers / 内置工具 / 护栏 / MCP 桥接 / 4 层记忆含用户偏好薄层）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./patch": "./dist/patch.yml",
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": "./dist/patch.yml"
+  },
+  "scripts": {
+    "build": "tsup && node scripts/copy-patch.mjs",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "clean": "rimraf dist coverage .turbo"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.1.2-alpha.3"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "yaml": "^2.6.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

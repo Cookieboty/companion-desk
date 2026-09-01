@@ -18,20 +18,86 @@ const MODEL_CATEGORIES = {
 
   // 特殊命名的角色
   SPECIAL_CHARACTERS: [
-    'z16', 'YuzukiYukari', 'yuri', 'yukari_model', 'wed_16', 'wanko',
-    'unitychan', 'umaru', 'uiharu', 'tsumiki', 'touma', 'tororo', 'tia',
-    'stl', 'snow_miku', 'shizuku-pajama', 'shizuku-48', 'shizuku',
-    'shifuku2', 'shifuku', 'seifuku', 'saten', 'sagiri', 'ryoufuku',
-    'rem', 'poi', 'PLT', 'platelet', 'Pio', 'penchan', 'nito', 'nipsilon',
-    'nietzsche', 'nico', 'ni-j', 'neptune', 'nepmaid', 'nep', 'murakumo',
-    'miku', 'mikoto', 'makoto0', 'madoka', 'len_swim', 'len_space',
-    'len_impact', 'len', 'kurumi', 'kuroko', 'koharu', 'Kobayaxi',
-    'kesyoban', 'kesshouban', 'kanzaki', 'kanna', 'jin', 'izumi', 'index',
-    'iio', 'histoire', 'hijiki', 'hibiki', 'haruto', 'haru02', 'haru01',
-    'hallo_16', 'girls-frontline', 'gf', 'Gantzert_Felixander', 'Epsilon2.1',
-    'Epsilon', 'date_16', 'chitose', 'chino', 'chiaki_kitty', 'Bronya',
-    'bilibili-33', 'bilibili-22', 'aoba'
-  ]
+    'z16',
+    'YuzukiYukari',
+    'yuri',
+    'yukari_model',
+    'wed_16',
+    'wanko',
+    'unitychan',
+    'umaru',
+    'uiharu',
+    'tsumiki',
+    'touma',
+    'tororo',
+    'tia',
+    'stl',
+    'snow_miku',
+    'shizuku-pajama',
+    'shizuku-48',
+    'shizuku',
+    'shifuku2',
+    'shifuku',
+    'seifuku',
+    'saten',
+    'sagiri',
+    'ryoufuku',
+    'rem',
+    'poi',
+    'PLT',
+    'platelet',
+    'Pio',
+    'penchan',
+    'nito',
+    'nipsilon',
+    'nietzsche',
+    'nico',
+    'ni-j',
+    'neptune',
+    'nepmaid',
+    'nep',
+    'murakumo',
+    'miku',
+    'mikoto',
+    'makoto0',
+    'madoka',
+    'len_swim',
+    'len_space',
+    'len_impact',
+    'len',
+    'kurumi',
+    'kuroko',
+    'koharu',
+    'Kobayaxi',
+    'kesyoban',
+    'kesshouban',
+    'kanzaki',
+    'kanna',
+    'jin',
+    'izumi',
+    'index',
+    'iio',
+    'histoire',
+    'hijiki',
+    'hibiki',
+    'haruto',
+    'haru02',
+    'haru01',
+    'hallo_16',
+    'girls-frontline',
+    'gf',
+    'Gantzert_Felixander',
+    'Epsilon2.1',
+    'Epsilon',
+    'date_16',
+    'chitose',
+    'chino',
+    'chiaki_kitty',
+    'Bronya',
+    'bilibili-33',
+    'bilibili-22',
+    'aoba',
+  ],
 };
 
 // 模型名称到显示名称的映射
@@ -45,24 +111,24 @@ const MODEL_DISPLAY_NAMES = {
   'bilibili-33': '来自 Bilibili 的 33 号',
 
   // 常见角色
-  'miku': '初音未来',
-  'unitychan': 'Unity酱',
-  'rem': '蕾姆',
-  'z16': 'Z16 驱逐舰',
-  'yukari_model': '紫妈',
-  'umaru': '小埋',
-  'sagiri': '纱雾',
-  'kurumi': '狂三',
-  'madoka': '小圆',
-  'neptune': '海王星',
-  'nep': 'Nep',
-  'nepmaid': '海王星女仆',
-  'snow_miku': '雪初音',
-  'platelet': '血小板',
-  'kesshouban': '血小板',
-  'Bronya': '布洛妮娅',
-  'chino': '智乃',
-  'kanna': '康娜',
+  miku: '初音未来',
+  unitychan: 'Unity酱',
+  rem: '蕾姆',
+  z16: 'Z16 驱逐舰',
+  yukari_model: '紫妈',
+  umaru: '小埋',
+  sagiri: '纱雾',
+  kurumi: '狂三',
+  madoka: '小圆',
+  neptune: '海王星',
+  nep: 'Nep',
+  nepmaid: '海王星女仆',
+  snow_miku: '雪初音',
+  platelet: '血小板',
+  kesshouban: '血小板',
+  Bronya: '布洛妮娅',
+  chino: '智乃',
+  kanna: '康娜',
 
   // 默认显示名称生成
   default: (name) => {
@@ -82,7 +148,7 @@ const MODEL_DISPLAY_NAMES = {
 
     // 其他情况直接使用名称
     return name;
-  }
+  },
 };
 
 /**
@@ -106,8 +172,8 @@ function hasValidModelFile(modelDir) {
  */
 function scanModels() {
   if (!fs.existsSync(MOC_DIR)) {
-    console.error('MOC 目录不存在:', MOC_DIR);
-    process.exit(1);
+    console.warn('MOC 目录不存在，跳过模型列表生成:', MOC_DIR);
+    return null;
   }
 
   const items = fs.readdirSync(MOC_DIR);
@@ -117,10 +183,10 @@ function scanModels() {
   // 按类别分组模型
   const categories = {
     girlsFrontline: [],
-    bilibilliSeries: {},  // 按系列号分组
+    bilibilliSeries: {}, // 按系列号分组
     potionMaker: [],
     specialCharacters: [],
-    others: []
+    others: [],
   };
 
   console.log('扫描模型目录...');
@@ -161,27 +227,31 @@ function scanModels() {
   console.log('生成模型配置...');
 
   // 添加 potion-Maker 系列
-  categories.potionMaker.sort().forEach(model => {
+  categories.potionMaker.sort().forEach((model) => {
     models.push(model);
     messages.push(MODEL_DISPLAY_NAMES[model] || MODEL_DISPLAY_NAMES.default(model));
   });
 
   // 添加 bilibili 系列（按系列号分组）
-  Object.keys(categories.bilibilliSeries).sort().forEach(seriesNumber => {
-    const seriesModels = categories.bilibilliSeries[seriesNumber].sort();
-    if (seriesModels.length > 1) {
-      // 多个变体作为数组
-      models.push(seriesModels);
-      messages.push(`${seriesNumber}号舰娘系列`);
-    } else {
-      // 单个模型
-      models.push(seriesModels[0]);
-      messages.push(MODEL_DISPLAY_NAMES[seriesModels[0]] || MODEL_DISPLAY_NAMES.default(seriesModels[0]));
-    }
-  });
+  Object.keys(categories.bilibilliSeries)
+    .sort()
+    .forEach((seriesNumber) => {
+      const seriesModels = categories.bilibilliSeries[seriesNumber].sort();
+      if (seriesModels.length > 1) {
+        // 多个变体作为数组
+        models.push(seriesModels);
+        messages.push(`${seriesNumber}号舰娘系列`);
+      } else {
+        // 单个模型
+        models.push(seriesModels[0]);
+        messages.push(
+          MODEL_DISPLAY_NAMES[seriesModels[0]] || MODEL_DISPLAY_NAMES.default(seriesModels[0]),
+        );
+      }
+    });
 
   // 添加特殊角色（按字母排序）
-  categories.specialCharacters.sort().forEach(model => {
+  categories.specialCharacters.sort().forEach((model) => {
     models.push(model);
     messages.push(MODEL_DISPLAY_NAMES[model] || MODEL_DISPLAY_NAMES.default(model));
   });
@@ -194,14 +264,14 @@ function scanModels() {
   }
 
   // 添加其他模型
-  categories.others.sort().forEach(model => {
+  categories.others.sort().forEach((model) => {
     models.push(model);
     messages.push(MODEL_DISPLAY_NAMES[model] || MODEL_DISPLAY_NAMES.default(model));
   });
 
   return {
     models,
-    messages
+    messages,
   };
 }
 
@@ -212,6 +282,11 @@ function generateConfig() {
   try {
     console.log('开始扫描模型...');
     const config = scanModels();
+
+    if (!config) {
+      console.warn('未生成模型列表：MOC 资源缺失，跳过。');
+      return;
+    }
 
     console.log(`找到 ${config.models.length} 个模型/系列`);
 
@@ -225,7 +300,6 @@ function generateConfig() {
       const modelName = Array.isArray(model) ? `[${model.length}个变体] ${model[0]}等` : model;
       console.log(`  ${index + 1}. ${modelName} - ${config.messages[index]}`);
     });
-
   } catch (error) {
     console.error('生成配置文件失败:', error);
     process.exit(1);

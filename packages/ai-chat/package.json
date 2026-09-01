@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "clean": "rimraf dist",
-    "test": "jest",
+    "test": "jest --passWithNoTests --watchman=false",
     "package": "echo 'AI Chat client build completed'"
   },
   "author": "",

@@ -7,6 +7,7 @@ node_modules
 
 # testing
 /coverage
+**/coverage/
 
 # production
 **/dist/
@@ -49,7 +50,13 @@ Thumbs.db
 # Turborepo
 .turbo
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 PPet
 live2d-widget
 vscode-rainbow-fart
 task
+.pnpm-store/
+.pnpm-cache/
+.pnpm-state/

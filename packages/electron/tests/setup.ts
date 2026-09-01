@@ -24,12 +24,12 @@ jest.mock('electron', () => ({
     whenReady: jest.fn(() => Promise.resolve()),
     quit: jest.fn(),
     on: jest.fn(),
-    removeAllListeners: jest.fn()
+    removeAllListeners: jest.fn(),
   },
   ipcMain: {
     handle: jest.fn(),
     on: jest.fn(),
-    removeAllListeners: jest.fn()
+    removeAllListeners: jest.fn(),
   },
   BrowserWindow: jest.fn().mockImplementation(() => ({
     loadURL: jest.fn(),
@@ -50,23 +50,23 @@ jest.mock('electron', () => ({
     webContents: {
       send: jest.fn(),
       openDevTools: jest.fn(),
-      on: jest.fn()
+      on: jest.fn(),
     },
     on: jest.fn(),
-    once: jest.fn()
+    once: jest.fn(),
   })),
   screen: {
     getPrimaryDisplay: jest.fn(() => ({
       bounds: { x: 0, y: 0, width: 1920, height: 1080 },
       workAreaSize: { width: 1920, height: 1040 },
       scaleFactor: 1,
-      rotation: 0
+      rotation: 0,
     })),
-    getCursorScreenPoint: jest.fn(() => ({ x: 100, y: 100 }))
+    getCursorScreenPoint: jest.fn(() => ({ x: 100, y: 100 })),
   },
   dialog: {
-    showErrorBox: jest.fn()
-  }
+    showErrorBox: jest.fn(),
+  },
 }));
 
 // 模拟文件系统
@@ -82,34 +82,38 @@ jest.mock('fs', () => ({
     size: 1024,
     mtime: new Date(),
     ctime: new Date(),
-    atime: new Date()
+    atime: new Date(),
   })),
   unlinkSync: jest.fn(),
   renameSync: jest.fn(),
   copyFileSync: jest.fn(),
-  appendFileSync: jest.fn()
+  appendFileSync: jest.fn(),
 }));
 
 // 模拟path模块
 jest.mock('path', () => ({
-  join: jest.fn((...args) => args.join('/')),
-  dirname: jest.fn((p) => p.split('/').slice(0, -1).join('/')),
-  basename: jest.fn((p) => p.split('/').pop()),
-  extname: jest.fn((p) => {
+  join: jest.fn((...args: string[]) => args.join('/')),
+  dirname: jest.fn((p: string) => p.split('/').slice(0, -1).join('/')),
+  basename: jest.fn((p: string) => p.split('/').pop()),
+  extname: jest.fn((p: string) => {
     const parts = p.split('.');
     return parts.length > 1 ? '.' + parts.pop() : '';
   }),
-  isAbsolute: jest.fn((p) => p.startsWith('/')),
-  resolve: jest.fn((...args) => '/' + args.join('/'))
+  isAbsolute: jest.fn((p: string) => p.startsWith('/')),
+  resolve: jest.fn((...args: string[]) => '/' + args.join('/')),
 }));
 
 // 模拟node-global-key-listener（可选依赖）
-jest.mock('node-global-key-listener', () => ({
-  GlobalKeyboardListener: jest.fn().mockImplementation(() => ({
-    addListener: jest.fn(),
-    kill: jest.fn()
-  }))
-}), { virtual: true });
+jest.mock(
+  'node-global-key-listener',
+  () => ({
+    GlobalKeyboardListener: jest.fn().mockImplementation(() => ({
+      addListener: jest.fn(),
+      kill: jest.fn(),
+    })),
+  }),
+  { virtual: true },
+);
 
 // 全局测试工具
 declare global {
@@ -139,9 +143,8 @@ expect.extend({
   },
 
   toMatchLogEntry(received: any, expected: any) {
-    const pass = received.timestamp &&
-      received.level !== undefined &&
-      received.message === expected.message;
+    const pass =
+      received.timestamp && received.level !== undefined && received.message === expected.message;
 
     if (pass) {
       return {
@@ -154,7 +157,7 @@ expect.extend({
         pass: false,
       };
     }
-  }
+  },
 });
 
 // 测试环境配置
@@ -166,7 +169,7 @@ const originalConsole = {
   log: console.log,
   warn: console.warn,
   error: console.error,
-  info: console.info
+  info: console.info,
 };
 
 beforeEach(() => {
@@ -188,7 +191,7 @@ export const testUtils = {
     debug: jest.fn(),
     setLevel: jest.fn(),
     getLevel: jest.fn(),
-    cleanOldLogs: jest.fn()
+    cleanOldLogs: jest.fn(),
   }),
 
   createMockConfig: () => ({
@@ -200,21 +203,21 @@ export const testUtils = {
       keyboardListening: false,
       timeAnnouncement: true,
       voicePackPath: '/test/voice',
-      voiceMode: 'fixed' as const
+      voiceMode: 'fixed' as const,
     },
     window: {
       position: { x: 100, y: 100 },
       alwaysOnTop: true,
-      transparent: true
+      transparent: true,
     },
     debug: false,
-    environment: 'test' as const
+    environment: 'test' as const,
   }),
 
   waitFor: async (condition: () => boolean, timeout = 1000, interval = 10) => {
     const startTime = Date.now();
     while (!condition() && Date.now() - startTime < timeout) {
-      await new Promise(resolve => setTimeout(resolve, interval));
+      await new Promise((resolve) => setTimeout(resolve, interval));
     }
     if (!condition()) {
       throw new Error('Wait condition timeout');
@@ -223,8 +226,8 @@ export const testUtils = {
 
   createMockEvent: () => ({
     sender: {
-      send: jest.fn()
-    }
+      send: jest.fn(),
+    },
   }),
 
   restoreConsole: () => {
@@ -236,7 +239,7 @@ export const testUtils = {
       log: jest.fn(),
       warn: jest.fn(),
       error: jest.fn(),
-      info: jest.fn()
+      info: jest.fn(),
     });
-  }
+  },
 };
