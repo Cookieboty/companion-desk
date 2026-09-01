@@ -34,9 +34,34 @@
 - 新 UI 视觉（保留原样式；仅底层切换）
 - 观测与打磨（→ [P9](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md)）
 
+## 进度总览
+
+| # | 任务 | 状态 | 备注 |
+|---|---|---|---|
+| P8-1 | 主进程接入 ai-runtime | ✅ 已完成 | [AIRuntimeBoot.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/AIRuntimeBoot.ts) + [Application.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/core/Application.ts#L119-L164) 挂钩生命周期 |
+| P8-2 | preload 迁移 | ✅ 已完成 | 两处均通过 `mkAiPreload` 注入 `window.aiIPC` |
+| P8-3 | 看板娘接入（renderer） | 🟡 部分完成 | 已完成入口 + 嘴型桥接；WaifuTools / SceneProvider 迁移与 `waifuTipsTool` 挂钩留待后续子任务 |
+| P8-4 | ai-chat 接入（chat-only） | ✅ 已完成 | 见下节 P8-4 |
+| P8-5 | 旧 IPC 与 Mock 下线 | 🟡 部分完成 | `AiChatIpcHandler` 已删除；`AdvancedTTSEngine` 尚未接入 dsh |
+| P8-6 | 配置迁移脚本 | ⏳ 待做 | 待 P8-3 稳定后启动 |
+| P8-7 | 数据迁移脚本 | ⏳ 待做 | 同上 |
+| P8-8 | 三端 E2E 冒烟 | ⏳ 待做 | Playwright electron |
+| P8-9 | 文档更新 | ⏳ 待做 | 需在 P8-3~P8-7 稳定后 |
+
 ## 任务清单
 
 ### P8-1 · 主进程接入 ai-runtime
+
+> **状态：✅ 已完成**（P8 Sprint 前半段）
+>
+> **产出证据**：
+> - AI Runtime 引导：[AIRuntimeBoot.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/AIRuntimeBoot.ts)
+> - Seams 实现：[SafeKeyProvider.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/SafeKeyProvider.ts) / [ClipboardGateway.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/ClipboardGateway.ts) / [ScreenCapture.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/ScreenCapture.ts)
+> - 生命周期挂钩：[Application.ts#startAIRuntime/stopAIRuntime](file:///d:/self_git/ai-live2d-client/packages/electron/src/core/Application.ts#L119-L164)
+> - 依赖登记：[packages/electron/package.json](file:///d:/self_git/ai-live2d-client/packages/electron/package.json) 增补 `@ig-live/ai-runtime` 等 workspace 依赖
+>
+> **仍未落地项**：`FileGateway` / `HotkeyGateway` / `WindowGateway` 三个 seam（当前 profile 尚不需要，待 P9 打磨阶段按需补齐）
+
 
 - 修改 [packages/electron/src/main.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/main.ts)（或等价入口）：
   - `app.whenReady()` 后 `await createAIRuntime({ profile: 'waifu', userDataDir })`
@@ -56,6 +81,13 @@
 
 ### P8-2 · preload 迁移
 
+> **状态：✅ 已完成**
+>
+> **产出证据**：
+> - Renderer preload：[packages/electron/src/preload.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/preload.ts) 通过 `mkAiPreload({ contextBridge, ipcRenderer })` 挂载 `window.aiIPC`，与旧 `window.electronAPI` 并存
+> - AI Chat preload：[packages/electron/src/ai-chat-preload.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai-chat-preload.ts) 同样注入 `window.aiIPC`
+> - 白名单校验由 [`mkAiPreload`](file:///d:/self_git/ai-live2d-client/packages/ai-sdk-client/src/preload/mkAiPreload.ts) 内部完成，仅暴露 `ai:` 前缀通道
+
 - **renderer preload**：[packages/renderer/electron/preload.ts](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/electron/preload.ts)
   - 引入 `mkAiPreload('aiIPC')`
   - 保留原有 `window.electronAPI`（看板娘控制），另开 `window.aiIPC`
@@ -65,6 +97,25 @@
 - 验收：`window.aiIPC.invoke('ai:chat:sendMessage', ...)` 从 devtools 可用
 
 ### P8-3 · 看板娘接入（renderer）
+
+> **状态：🟡 部分完成**（本轮已交付入口装配 + 嘴型桥接）
+>
+> **主要变更**：
+> - **入口装配**：[packages/renderer/src/index.tsx](file:///d:/self_git/ai-live2d-client/packages/renderer/src/index.tsx) 使用 [`<WaifuAIRoot>`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/ai/WaifuAIRoot.tsx) 包裹 `<App />`；仅当 `window.aiIPC` 就绪时启用 `<AIProvider>`，否则透明放行，保持浏览器/单测场景可运行。
+> - **嘴型桥接**：新增 [`packages/renderer/src/ai/`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/ai)：
+>   - [`WaifuLipSyncBridge`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/ai/WaifuLipSyncBridge.tsx)：`useTTSLipSync()` → 写入模块级 [`lipSyncStore`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/ai/lipSyncStore.ts)；
+>   - [`lipSyncStore`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/ai/lipSyncStore.ts)：`0..1` clamp + 订阅广播，作为 React 层与 WebGL 层之间的桥。
+> - **Live2D 侧对接**：
+>   - [`Cubism2Model.setLipSyncValue`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/cubism2/index.ts) 新增，转发到 `L2DBaseModel.setLipSyncValue`（`LAppModel.update` 每帧读取 `PARAM_MOUTH_OPEN_Y`）；
+>   - [`useLive2DModel`](file:///d:/self_git/ai-live2d-client/packages/renderer/src/hooks/useLive2DModel.ts) 订阅 `lipSyncStore`，rms 变化时立即写入当前模型；卸载/切换模型时重置为 0。
+> - **依赖同步**：[packages/renderer/package.json](file:///d:/self_git/ai-live2d-client/packages/renderer/package.json) 升级 `@types/react ^18.3.12`、`@types/react-dom ^18.3.0` 以匹配 `@ig-live/ai-sdk-client` 的 React 类型基线。
+> - **验证**：`pnpm --filter @ig-live/renderer` 下 `tsc --noEmit` / `build` / `test`（无用例，`--passWithNoTests`）全绿；新增文件 lint 零 error（既有历史 `no-explicit-any` 未新增/未回归）。
+>
+> **仍未落地的子项（保留待做）**：
+> - Live2D 场景注册器（`ctx.live2d.registerSceneProvider`）与 `waifuTipsTool` 挂钩尚未打通；
+> - `useAgent()` 输出气泡（`useWaifuMessage.showMessage` 映射）；
+> - `useChat()` 消费与看板娘 UI 交互路径；
+> - 旧 `waifu.tips.json` 直读逻辑替换为 `session:before-response` 生成。
 
 - 修改 [packages/renderer/src/App.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/App.tsx)：外层包 `<AIProvider profile="waifu">`
 - 新组件 [WaifuAI/WaifuChat.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/components/WaifuAI/WaifuChat.tsx)：
@@ -78,6 +129,20 @@
 
 ### P8-4 · ai-chat 接入（chat-only 窗口）
 
+> **状态：✅ 已完成**
+>
+> **主要变更**：
+> - **IPC 层替换**：新的 [`SdkIPCClient`](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/services/IPCClient.ts#L81-L223) 通过 `ClientAIClient` 转发消息 / 流式 / UserProfile，移除旧的 `ai-chat:*` 通道调用；`createIPCClient` 在 `window.aiIPC` 就绪时自动切换到 SDK 客户端，否则回退到 [`MockIPCClient`](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/services/IPCClient.ts#L225-L291)（仅本地/测试用）。
+> - **Context 迁移**：[AiChatContext.tsx](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/contexts/AiChatContext.tsx) 直接持有 `ClientAIClient`，`currentModelId` 持久化到 `localStorage`（key `ai-chat:currentModel`）。
+> - **入口装配**：[main.tsx](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/main.tsx) 在 `window.aiIPC` 就绪时使用 `<AIProvider>` 包裹 `<App />`。
+> - **旧代码清理**（P8-4 → P8-5 交界）：删除 [AIService.ts](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/services/AIService.ts)、`services/adapters/` 目录（`AdapterFactory` + `BaseAdapter` + `DeepSeekAdapter` + `OpenAIAdapter`），并从 [packages/ai-chat/package.json](file:///d:/self_git/ai-live2d-client/packages/ai-chat/package.json) 移除 `crypto-js` / `axios` / `@types/crypto-js`。
+> - **验证**：`pnpm --filter @ig-live/ai-chat typecheck / build / test` 全绿。
+>
+> **尚未落地的子项（保留待做）**：
+> - `SessionList.tsx`（`client.session.list()`）
+> - Tools 面板（`client.tools.list()`）
+> - `types/config.ts` 中的 `AIModelConfig` → `ClientOptions` 完全替换（目前仍保留 `AIModelConfig` 作为 UI 层数据结构）
+
 - 修改 [packages/ai-chat/src/App.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/App.tsx)：`<AIProvider profile="chat-only">`
 - 消息列表改由 `useChat({ sessionId })` 提供
 - 会话侧栏：新组件 [SessionList.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/components/SessionList.tsx) 调 `client.session.list()`
@@ -89,6 +154,17 @@
 - 保留 UI 组件不动，只切数据源
 
 ### P8-5 · 旧 IPC 与 Mock 下线
+
+> **状态：🟡 部分完成**
+>
+> **已完成**：
+> - 删除 [`AiChatIpcHandler`](file:///d:/self_git/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts)（含全部 Mock 分支），并在 [IpcRegistry.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/handlers/ipc/IpcRegistry.ts) 取消注册；
+> - 旧 `ai-chat:*` 调用路径已由 [`AiChatCompat`](file:///d:/self_git/ai-live2d-client/packages/ai-runtime/src/legacy/AiChatCompat.ts)（由 ai-runtime 提供）向新的 AIClient 反射，附带弃用日志；
+> - ai-chat 侧移除 `crypto-js`/`axios` 与旧 adapter，`AIModelConfig` 仍保留作 UI 层数据，等 tools/session 面板落地后再最终切换。
+>
+> **仍未完成**：
+> - [AdvancedTTSEngine.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/services/AdvancedTTSEngine.ts) 尚未作为 `ttsProvider('electron-native')` 注册到 dsh；
+> - CHANGELOG 中 `ai:legacy:*` 的下线时间点需要在 P8-4 收尾（session/tools 面板迁移完毕）后确定并写入。
 
 - [packages/electron/src/handlers/ipc/AiChatIpcHandler.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts)：
   - 删除所有 Mock 分支

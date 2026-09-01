@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo, ReactNode } from 'react';
+import type { ClientAIClient } from '@ig-live/ai-sdk-client';
 import { ChatMessage, ChatConfig } from '../types/chat';
 import { AIModelConfig } from '../types/config';
 import { createIPCClient } from '../services/IPCClient';
@@ -23,9 +24,31 @@ type AiChatAction =
   | { type: 'SET_CURRENT_MODEL'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | undefined }
+  | { type: 'SET_IPC_CLIENT'; payload: IPCClient }
   | { type: 'CLEAR_MESSAGES' };
 
-const initialState: AiChatState = {
+const LOCAL_CURRENT_MODEL_KEY = 'ai-chat:currentModel';
+
+const readCurrentModelId = (): string | undefined => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return undefined;
+    const raw = window.localStorage.getItem(LOCAL_CURRENT_MODEL_KEY);
+    return raw ? (JSON.parse(raw) as string) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const persistCurrentModelId = (id: string): void => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    window.localStorage.setItem(LOCAL_CURRENT_MODEL_KEY, JSON.stringify(id));
+  } catch {
+    /* ignore */
+  }
+};
+
+const buildInitialState = (): AiChatState => ({
   messages: [],
   config: {
     theme: 'light',
@@ -35,9 +58,10 @@ const initialState: AiChatState = {
     maxHistoryLength: 1000,
   },
   models: [],
+  currentModelId: readCurrentModelId(),
   isLoading: false,
   ipcClient: createIPCClient(),
-};
+});
 
 function aiChatReducer(state: AiChatState, action: AiChatAction): AiChatState {
   switch (action.type) {
@@ -59,11 +83,14 @@ function aiChatReducer(state: AiChatState, action: AiChatAction): AiChatState {
     case 'SET_MODELS':
       return { ...state, models: action.payload };
     case 'SET_CURRENT_MODEL':
+      persistCurrentModelId(action.payload);
       return { ...state, currentModelId: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'SET_IPC_CLIENT':
+      return { ...state, ipcClient: action.payload };
     case 'CLEAR_MESSAGES':
       return { ...state, messages: [] };
     default:
@@ -89,8 +116,30 @@ interface AiChatContextType {
 
 const AiChatContext = createContext<AiChatContextType | undefined>(undefined);
 
-export function AiChatContextProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(aiChatReducer, initialState);
+export interface AiChatContextProviderProps {
+  children: ReactNode;
+  /** 由外层 <AIProvider> 提供的 ClientAIClient；若未提供则内部退化为 Mock。 */
+  client?: ClientAIClient;
+}
+
+export function AiChatContextProvider({ children, client }: AiChatContextProviderProps) {
+  const [state, dispatch] = useReducer(aiChatReducer, undefined, buildInitialState);
+
+  // 当外部提供 ClientAIClient 时，构造一个绑定该 client 的 IPCClient；
+  // 否则沿用初始化时通过工厂函数产出的实例（可能是 Mock）。
+  const ipcClient = useMemo(() => {
+    if (!client) return state.ipcClient;
+    return createIPCClient(client);
+    // 只在 client 引用变化时重新绑定；state.ipcClient 用作首屏兜底。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client]);
+
+  useEffect(() => {
+    if (ipcClient !== state.ipcClient) {
+      dispatch({ type: 'SET_IPC_CLIENT', payload: ipcClient });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ipcClient]);
 
   // 发送普通消息
   const sendMessage = async (content: string) => {
@@ -98,7 +147,6 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: undefined });
 
-      // 添加用户消息
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'user',
@@ -108,10 +156,8 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       };
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
 
-      // 发送到AI模型
       const response = await state.ipcClient.sendMessage(content, state.currentModelId);
 
-      // 添加AI回复
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -121,7 +167,6 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
-      // 保存消息到历史
       await state.ipcClient.saveMessage(userMessage);
       await state.ipcClient.saveMessage(aiMessage);
     } catch (error: any) {
@@ -137,7 +182,6 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: undefined });
 
-      // 添加用户消息
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'user',
@@ -147,7 +191,6 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       };
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
 
-      // 创建AI消息占位符
       const aiMessageId = (Date.now() + 1).toString();
       const aiMessage: ChatMessage = {
         id: aiMessageId,
@@ -158,18 +201,22 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
-      // 发送流式消息
+      let accumulated = '';
       await state.ipcClient.sendStreamMessage(
         content,
         state.currentModelId,
         (chunk: string) => {
+          accumulated += chunk;
           dispatch({
             type: 'UPDATE_MESSAGE',
-            payload: { id: aiMessageId, content: aiMessage.content + chunk },
+            payload: { id: aiMessageId, content: accumulated },
           });
-          aiMessage.content += chunk;
         }
       );
+
+      const finalAiMessage: ChatMessage = { ...aiMessage, content: accumulated };
+      await state.ipcClient.saveMessage(userMessage);
+      await state.ipcClient.saveMessage(finalAiMessage);
     } catch (error: any) {
       dispatch({ type: 'SET_ERROR', payload: error.message });
     } finally {
@@ -223,7 +270,6 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
       const models = await state.ipcClient.getAvailableModels();
       dispatch({ type: 'SET_MODELS', payload: models });
 
-      // 如果没有当前模型，设置第一个可用模型
       if (!state.currentModelId && models.length > 0) {
         const enabledModel = models.find((m: AIModelConfig) => m.enabled) || models[0];
         dispatch({ type: 'SET_CURRENT_MODEL', payload: enabledModel.id });
@@ -237,7 +283,6 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
   const updateModel = async (modelId: string, updates: Partial<AIModelConfig>) => {
     try {
       await state.ipcClient.updateModel(modelId, updates);
-      // 重新加载模型列表
       await loadModels();
     } catch (error: any) {
       dispatch({ type: 'SET_ERROR', payload: error.message });
@@ -250,12 +295,13 @@ export function AiChatContextProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_CURRENT_MODEL', payload: modelId });
   };
 
-  // 初始化数据
+  // 初始化数据（ipcClient 变化时重新加载，保证 SDK client 就绪后拉到最新数据）
   useEffect(() => {
     loadConfig();
     loadModels();
     loadChatHistory();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.ipcClient]);
 
   const contextValue: AiChatContextType = {
     state,
@@ -286,4 +332,4 @@ export function useAiChat() {
     throw new Error('useAiChat must be used within an AiChatContextProvider');
   }
   return context;
-} 
+}

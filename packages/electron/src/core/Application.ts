@@ -13,6 +13,10 @@ import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
+import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
+import { SafeKeyProvider } from '../ai/SafeKeyProvider';
+import { ClipboardGateway } from '../ai/ClipboardGateway';
+import { ScreenCapture } from '../ai/ScreenCapture';
 
 export interface IApplication {
   initialize(): Promise<void>;
@@ -30,6 +34,8 @@ export class Application implements IApplication {
   private errorHandler!: GlobalErrorHandler;
   private ipcRegistry!: IpcRegistry;
   private bootstrapManager!: BootstrapManager;
+  private aiRuntime?: AIRuntimeBootHandle;
+  private clipboardGateway?: ClipboardGateway;
   private isInitialized = false;
 
   constructor() {
@@ -89,6 +95,9 @@ export class Application implements IApplication {
       await app.whenReady();
       this.logger.info('Electron应用准备就绪');
 
+      // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
+      await this.startAIRuntime();
+
       // 创建主窗口
       await this.windowManager.createMainWindow();
 
@@ -102,11 +111,67 @@ export class Application implements IApplication {
   }
 
   /**
+   * 启动 AI runtime（dsh + IPC 通道 + seams）
+   *
+   * 幂等：重复调用会直接返回。失败时记录日志但不抛出——AI 功能对应用启动
+   * 不是强依赖；后续可以通过 `getAIRuntime()` 判断可用性。
+   */
+  async startAIRuntime(): Promise<void> {
+    if (this.aiRuntime) {
+      this.logger.debug('AI runtime already started');
+      return;
+    }
+    try {
+      const keyStore = new SafeKeyProvider();
+      this.clipboardGateway = new ClipboardGateway();
+      const screen = new ScreenCapture();
+      this.aiRuntime = await startAIRuntime(this.logger, {
+        seams: {
+          keyStore,
+          clipboard: this.clipboardGateway,
+          screen,
+        },
+      });
+      this.logger.info('AI runtime 启动完成', {
+        profile: this.aiRuntime.profile,
+        channelCount: this.aiRuntime.channels.business.length,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('AI runtime 启动失败', { error: errorMessage });
+    }
+  }
+
+  /**
+   * 停止 AI runtime；幂等。
+   */
+  async stopAIRuntime(): Promise<void> {
+    if (!this.aiRuntime) return;
+    const handle = this.aiRuntime;
+    this.aiRuntime = undefined;
+    try {
+      await handle.dispose();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn('AI runtime 停止时出现异常', { error: errorMessage });
+    }
+    try {
+      this.clipboardGateway?.dispose();
+    } catch {
+      /* ignore */
+    }
+    this.clipboardGateway = undefined;
+  }
+
+  /**
    * 停止应用
    */
   async stop(): Promise<void> {
     try {
       this.logger.info('停止应用...');
+
+      // 停止 AI runtime（务必先于 IPC 清理，避免通道注册器空指针）
+      await this.stopAIRuntime();
 
       // 保存配置
       await this.configService.save();

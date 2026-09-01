@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IpcApi } from '@ig-live/types';
+import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+
+// 挂载 ai IPC 桥：`window.aiIPC.invoke/on/off` 走白名单校验的 `ai:` 通道。
+// 与旧 `electronAPI` 并存；ai-sdk-client 的 ClientAIClient 会自动查找 `window.aiIPC`。
+mkAiPreload({ contextBridge, ipcRenderer });
 
 // 向渲染进程暴露安全的 API
 contextBridge.exposeInMainWorld('electronAPI', {

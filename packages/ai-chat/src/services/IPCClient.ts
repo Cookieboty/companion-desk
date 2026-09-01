@@ -1,184 +1,287 @@
+import { ClientAIClient } from '@ig-live/ai-sdk-client';
 import { IPCClient, ElectronAPI } from '../types/ipc';
 import { ChatMessage, ChatConfig } from '../types/chat';
 import { AIModelConfig } from '../types/config';
 
-// 声明全局window对象的electronAPI
 declare global {
   interface Window {
     electronAPI?: ElectronAPI;
+    aiIPC?: unknown;
   }
 }
 
-// Electron IPC实现
-export class ElectronIPC implements IPCClient {
-  private ipcRenderer: ElectronAPI;
+const LOCAL_CONFIG_KEY = 'ai-chat:config';
+const LOCAL_HISTORY_KEY = 'ai-chat:history';
+const LOCAL_MODELS_KEY = 'ai-chat:models';
+const LOCAL_CURRENT_MODEL_KEY = 'ai-chat:currentModel';
 
-  constructor() {
-    this.ipcRenderer = window.electronAPI!;
-    if (!this.ipcRenderer) {
-      throw new Error('Electron IPC not available');
+type SdkChatFacade = {
+  sendMessage: (opts: SdkChatOptions) => Promise<{ content?: string } & Record<string, unknown>>;
+  stream: (opts: SdkChatOptions) => AsyncIterable<SdkChatChunk>;
+  abort: (reqId: string) => void;
+};
+
+interface SdkChatOptions {
+  reqId?: string;
+  provider?: string;
+  model?: string;
+  messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string }>;
+}
+
+type SdkChatChunk =
+  | { type: 'delta'; content: string }
+  | { type: 'done'; finishReason?: string }
+  | { type: 'error'; error: string }
+  | { type: string; [k: string]: unknown };
+
+type SdkUserProfileFacade = {
+  get: () => Record<string, unknown> | undefined;
+  set: (input: { patch: Record<string, unknown>; source?: string }) => Promise<unknown>;
+};
+
+const readStorage = <T,>(key: string): T | undefined => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return undefined;
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return undefined;
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined;
+  }
+};
+
+const writeStorage = (key: string, value: unknown): void => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+};
+
+const DEFAULT_CONFIG: ChatConfig = {
+  theme: 'light',
+  language: 'zh-CN',
+  fontSize: 14,
+  autoSave: true,
+  maxHistoryLength: 1000,
+};
+
+const DEFAULT_MODELS: AIModelConfig[] = [
+  {
+    id: 'deepseek',
+    name: 'DeepSeek Chat',
+    provider: 'deepseek',
+    apiUrl: 'https://api.deepseek.com',
+    model: 'deepseek-chat',
+    enabled: true,
+  },
+];
+
+export class SdkIPCClient implements IPCClient {
+  private readonly client: ClientAIClient;
+  private readonly owned: boolean;
+
+  constructor(client?: ClientAIClient) {
+    if (client) {
+      this.client = client;
+      this.owned = false;
+    } else {
+      this.client = new ClientAIClient();
+      this.owned = true;
     }
   }
 
-  // 消息相关方法 - 使用命名空间规范
+  async dispose(): Promise<void> {
+    if (this.owned) await this.client.dispose();
+  }
+
+  private get chat(): SdkChatFacade {
+    return this.client.chat as unknown as SdkChatFacade;
+  }
+
+  private get userProfile(): SdkUserProfileFacade {
+    return this.client.memory.userProfile as unknown as SdkUserProfileFacade;
+  }
+
+  private currentModelId(fallback?: string): string | undefined {
+    return fallback ?? readStorage<string>(LOCAL_CURRENT_MODEL_KEY);
+  }
+
   async sendMessage(message: string, modelId?: string): Promise<string> {
     try {
-      return await this.ipcRenderer.invoke('ai-chat:message:send', { message, modelId });
-    } catch (error: any) {
-      throw new Error(`发送消息失败: ${error.message}`);
+      const resp = await this.chat.sendMessage({
+        provider: this.currentModelId(modelId),
+        messages: [{ role: 'user', content: message }],
+      });
+      return typeof resp?.content === 'string' ? resp.content : '';
+    } catch (error) {
+      throw new Error(`发送消息失败: ${(error as Error).message ?? String(error)}`);
     }
   }
 
   async sendStreamMessage(
     message: string,
     modelId?: string,
-    onChunk?: (chunk: string) => void
+    onChunk?: (chunk: string) => void,
   ): Promise<void> {
     try {
-      // 注册流式消息监听
-      const cleanup = this.ipcRenderer.on('ai-chat:message:chunk', (_event: any, chunk: string) => {
-        onChunk?.(chunk);
+      const iterable = this.chat.stream({
+        provider: this.currentModelId(modelId),
+        messages: [{ role: 'user', content: message }],
       });
-
-      await this.ipcRenderer.invoke('ai-chat:message:stream', { message, modelId });
-
-      // 清理监听器
-      setTimeout(() => cleanup(), 100);
-    } catch (error: any) {
-      throw new Error(`发送流式消息失败: ${error.message}`);
+      for await (const chunk of iterable) {
+        if (!chunk || typeof chunk !== 'object') continue;
+        const c = chunk as SdkChatChunk;
+        if (c.type === 'delta' && typeof (c as { content?: string }).content === 'string') {
+          onChunk?.((c as { content: string }).content);
+        } else if (c.type === 'error') {
+          throw new Error((c as { error: string }).error);
+        }
+      }
+    } catch (error) {
+      throw new Error(`发送流式消息失败: ${(error as Error).message ?? String(error)}`);
     }
   }
 
   async getChatHistory(): Promise<ChatMessage[]> {
-    return this.ipcRenderer.invoke('ai-chat:message:getHistory');
+    return readStorage<ChatMessage[]>(LOCAL_HISTORY_KEY) ?? [];
   }
 
   async clearChatHistory(): Promise<void> {
-    return this.ipcRenderer.invoke('ai-chat:message:clearHistory');
+    writeStorage(LOCAL_HISTORY_KEY, []);
   }
 
   async saveMessage(message: ChatMessage): Promise<void> {
-    return this.ipcRenderer.invoke('ai-chat:message:save', message);
+    const list = (await this.getChatHistory()) ?? [];
+    list.push(message);
+    writeStorage(LOCAL_HISTORY_KEY, list);
   }
 
-  // 配置相关方法
   async getConfig(): Promise<ChatConfig> {
-    return this.ipcRenderer.invoke('ai-chat:config:get');
+    const local = readStorage<ChatConfig>(LOCAL_CONFIG_KEY);
+    if (local) return { ...DEFAULT_CONFIG, ...local };
+    try {
+      const profile = this.userProfile.get();
+      const chatCfg = (profile as { chat?: Partial<ChatConfig> } | undefined)?.chat;
+      if (chatCfg) return { ...DEFAULT_CONFIG, ...chatCfg };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_CONFIG };
   }
 
   async updateConfig(config: Partial<ChatConfig>): Promise<void> {
-    return this.ipcRenderer.invoke('ai-chat:config:update', config);
+    const current = await this.getConfig();
+    const merged = { ...current, ...config };
+    writeStorage(LOCAL_CONFIG_KEY, merged);
+    try {
+      await this.userProfile.set({
+        patch: { chat: merged } as unknown as Record<string, unknown>,
+        source: 'user',
+      });
+    } catch {
+      /* profile may not accept `chat` field yet — 本地缓存已保存，允许失败 */
+    }
   }
 
-  // 模型相关方法
   async getAvailableModels(): Promise<AIModelConfig[]> {
-    return this.ipcRenderer.invoke('ai-chat:model:getAvailable');
+    const list = readStorage<AIModelConfig[]>(LOCAL_MODELS_KEY);
+    if (list && list.length > 0) return list;
+    writeStorage(LOCAL_MODELS_KEY, DEFAULT_MODELS);
+    return [...DEFAULT_MODELS];
   }
 
   async addModel(model: AIModelConfig): Promise<void> {
-    return this.ipcRenderer.invoke('ai-chat:model:add', model);
+    const list = await this.getAvailableModels();
+    const next = list.filter((m) => m.id !== model.id).concat(model);
+    writeStorage(LOCAL_MODELS_KEY, next);
   }
 
   async removeModel(modelId: string): Promise<void> {
-    return this.ipcRenderer.invoke('ai-chat:model:remove', modelId);
+    const list = await this.getAvailableModels();
+    writeStorage(LOCAL_MODELS_KEY, list.filter((m) => m.id !== modelId));
   }
 
   async updateModel(modelId: string, updates: Partial<AIModelConfig>): Promise<void> {
-    return this.ipcRenderer.invoke('ai-chat:model:update', modelId, updates);
+    const list = await this.getAvailableModels();
+    const next = list.map((m) => (m.id === modelId ? { ...m, ...updates } : m));
+    writeStorage(LOCAL_MODELS_KEY, next);
   }
 
   async testModelConnection(modelId: string): Promise<boolean> {
-    return this.ipcRenderer.invoke('ai-chat:model:testConnection', modelId);
+    try {
+      await this.chat.sendMessage({
+        provider: modelId,
+        messages: [{ role: 'user', content: 'ping' }],
+      });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
-// 开发环境模拟实现
 export class MockIPCClient implements IPCClient {
+  private history: ChatMessage[] = [
+    { id: '1', role: 'user', content: '你好', timestamp: Date.now() - 60000 },
+    { id: '2', role: 'assistant', content: '你好！有什么可以帮助你的吗？', timestamp: Date.now() - 50000 },
+  ];
+  private config: ChatConfig = { ...DEFAULT_CONFIG };
+  private models: AIModelConfig[] = [...DEFAULT_MODELS];
+
   async sendMessage(message: string, modelId?: string): Promise<string> {
     console.log('[Mock] Send message:', message, 'to model:', modelId);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 模拟延迟
+    await new Promise((r) => setTimeout(r, 500));
     return `模拟回复: ${message}`;
   }
 
-  async sendStreamMessage(message: string, modelId?: string, onChunk?: (chunk: string) => void): Promise<void> {
-    console.log('[Mock] Send stream message:', message);
-    // 模拟流式响应
+  async sendStreamMessage(
+    message: string,
+    _modelId?: string,
+    onChunk?: (chunk: string) => void,
+  ): Promise<void> {
     const chunks = ['模拟', '流式', '回复', '内容'];
-    for (const chunk of chunks) {
-      setTimeout(() => onChunk?.(chunk + ' '), chunks.indexOf(chunk) * 500);
+    for (const c of chunks) {
+      await new Promise((r) => setTimeout(r, 200));
+      onChunk?.(c + ' ');
     }
   }
 
   async getChatHistory(): Promise<ChatMessage[]> {
-    return [
-      {
-        id: '1',
-        role: 'user',
-        content: '你好',
-        timestamp: Date.now() - 60000
-      },
-      {
-        id: '2',
-        role: 'assistant',
-        content: '你好！有什么可以帮助你的吗？',
-        timestamp: Date.now() - 50000
-      }
-    ];
+    return [...this.history];
   }
 
   async clearChatHistory(): Promise<void> {
-    console.log('[Mock] Clear chat history');
+    this.history = [];
   }
 
   async saveMessage(message: ChatMessage): Promise<void> {
-    console.log('[Mock] Save message:', message);
+    this.history.push(message);
   }
 
   async getConfig(): Promise<ChatConfig> {
-    return {
-      theme: 'light',
-      language: 'zh-CN',
-      fontSize: 14,
-      autoSave: true,
-      maxHistoryLength: 1000
-    };
+    return { ...this.config };
   }
 
   async updateConfig(config: Partial<ChatConfig>): Promise<void> {
-    console.log('[Mock] Update config:', config);
+    this.config = { ...this.config, ...config };
   }
 
   async getAvailableModels(): Promise<AIModelConfig[]> {
-    return [
-      {
-        id: 'deepseek',
-        name: 'DeepSeek Chat',
-        provider: 'deepseek',
-        apiUrl: 'https://api.deepseek.com',
-        model: 'deepseek-chat',
-        enabled: true
-      },
-      {
-        id: 'gpt-4',
-        name: 'GPT-4',
-        provider: 'openai',
-        apiUrl: 'https://api.openai.com',
-        model: 'gpt-4',
-        enabled: true
-      }
-    ];
+    return [...this.models];
   }
 
   async addModel(model: AIModelConfig): Promise<void> {
-    console.log('[Mock] Add model:', model);
+    this.models = this.models.filter((m) => m.id !== model.id).concat(model);
   }
 
   async removeModel(modelId: string): Promise<void> {
-    console.log('[Mock] Remove model:', modelId);
+    this.models = this.models.filter((m) => m.id !== modelId);
   }
 
   async updateModel(modelId: string, updates: Partial<AIModelConfig>): Promise<void> {
-    console.log('[Mock] Update model:', modelId, updates);
+    this.models = this.models.map((m) => (m.id === modelId ? { ...m, ...updates } : m));
   }
 
   async testModelConnection(modelId: string): Promise<boolean> {
@@ -187,12 +290,11 @@ export class MockIPCClient implements IPCClient {
   }
 }
 
-// 工厂函数 - 根据环境创建合适的客户端
-export const createIPCClient = (): IPCClient => {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    return new ElectronIPC();
-  } else {
-    console.warn('Electron环境不可用，使用Mock客户端');
-    return new MockIPCClient();
+export const createIPCClient = (client?: ClientAIClient): IPCClient => {
+  if (client) return new SdkIPCClient(client);
+  if (typeof window !== 'undefined' && (window as { aiIPC?: unknown }).aiIPC) {
+    return new SdkIPCClient();
   }
-}; 
+  console.warn('window.aiIPC 未就绪，使用 Mock 客户端（开发/测试模式）');
+  return new MockIPCClient();
+};

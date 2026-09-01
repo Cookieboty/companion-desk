@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useLive2D, ModelItem } from '@/contexts/Live2DContext';
+
+import { lipSyncStore } from '@/ai/lipSyncStore';
+import { DEFAULT_ADAPTIVE_CONFIG } from '@/config/adaptive-defaults';
+import { useLive2D, type ModelItem } from '@/contexts/Live2DContext';
 import { getCache, setCache } from '@/utils/cache';
 import { customFetch } from '@/utils/live2d-utils';
 import logger from '@/utils/logger';
-import { DEFAULT_ADAPTIVE_CONFIG } from '@/config/adaptive-defaults';
 
 // 使用新的模型结构定义，与costume_model_list.json保持一致
 interface CostumeModelItem {
@@ -347,6 +349,25 @@ export function useLive2DModel() {
       loadModelRef.current(state.modelId);
     }
   }, [state.modelId, state.isInitialized, state.modelList.length]);
+
+  // AI TTS 嘴型驱动：订阅 lipSyncStore，把 rms 写入当前 Cubism2 模型
+  useEffect(() => {
+    if (!cubism2Model || typeof cubism2Model.setLipSyncValue !== 'function') {
+      return;
+    }
+    cubism2Model.setLipSyncValue(lipSyncStore.get());
+    const unsubscribe = lipSyncStore.subscribe((rms) => {
+      cubism2Model.setLipSyncValue(rms);
+    });
+    return () => {
+      unsubscribe();
+      try {
+        cubism2Model.setLipSyncValue(0);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [cubism2Model]);
 
   return {
     cubism2Model,

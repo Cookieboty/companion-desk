@@ -12,6 +12,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ig-live/ai-sdk-client": "workspace:*",
     "@pixiv/three-vrm": "^3.4.2",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
@@ -25,8 +26,8 @@
   "devDependencies": {
     "@ig-live/types": "workspace:*",
     "@types/node": "^16.18.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.0.0",
     "copyfiles": "^2.4.1",
     "rimraf": "^5.0.0",

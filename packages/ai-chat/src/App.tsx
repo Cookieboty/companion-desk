@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { MessageList } from './components/MessageList';
 import { MessageInput } from './components/MessageInput';
-import { ModelSelector } from './components/ModelSelector';
 import { ConfigPanel } from './components/ConfigPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar } from './components/Sidebar';
 import { useAiChat } from './contexts/AiChatContext';
+import type { ClientAIClient } from '@ig-live/ai-sdk-client';
+import * as AISdkReact from '@ig-live/ai-sdk-client/react';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
@@ -89,14 +90,27 @@ const AiChatContent: React.FC = () => {
   );
 };
 
+// 在 <AIProvider> 缺失时也不抛错：直接读 AISdkReact 未导出的内部 Context 是不推荐的，
+// 因此改用 try/catch 包装 useAIClient，返回 undefined 让 AiChatContextProvider 走本地 Mock 分支。
+function useOptionalAIClient(): ClientAIClient | undefined {
+  const hook = (AISdkReact as { useAIClient?: () => ClientAIClient }).useAIClient;
+  if (!hook) return undefined;
+  try {
+    return hook();
+  } catch {
+    return undefined;
+  }
+}
+
 function App() {
+  const client = useOptionalAIClient();
   return (
     <ErrorBoundary>
-      <AiChatContextProvider>
+      <AiChatContextProvider client={client}>
         <AiChatContent />
       </AiChatContextProvider>
     </ErrorBoundary>
   );
 }
 
-export default App; 
+export default App;

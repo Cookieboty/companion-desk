@@ -8,7 +8,6 @@ import { WindowIpcHandler } from './WindowIpcHandler';
 import { ConfigIpcHandler } from './ConfigIpcHandler';
 import { FileIpcHandler } from './FileIpcHandler';
 import { VoiceIpcHandler } from './VoiceIpcHandler';
-import { AiChatIpcHandler } from './AiChatIpcHandler';
 import { McpIpcHandler } from './McpIpcHandler';
 
 import { ILoggerService } from '../../services/LoggerService';
@@ -81,12 +80,6 @@ export class IpcRegistry implements IIpcRegistry {
         this.options.configService
       );
       this.registerHandler('voice', voiceHandler);
-
-      // 注册AI对话处理器
-      const aiChatHandler = new AiChatIpcHandler(
-        this.options.logger
-      );
-      this.registerHandler('aiChat', aiChatHandler);
 
       // 注册MCP处理器
       const mcpHandler = new McpIpcHandler(

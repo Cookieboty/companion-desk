@@ -10,7 +10,6 @@ export { WindowIpcHandler } from './WindowIpcHandler';
 export { ConfigIpcHandler } from './ConfigIpcHandler';
 export { FileIpcHandler } from './FileIpcHandler';
 export { VoiceIpcHandler } from './VoiceIpcHandler';
-export { AiChatIpcHandler } from './AiChatIpcHandler';
 export { McpIpcHandler } from './McpIpcHandler';
 
 // 注册器

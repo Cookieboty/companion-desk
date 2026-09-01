@@ -33,6 +33,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ig-live/ai-runtime": "workspace:*",
+    "@ig-live/ai-sdk": "workspace:*",
+    "@ig-live/ai-sdk-client": "workspace:*",
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "@ig-live/bundle-ig-electron-caps": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.17.1",
     "node-global-key-listener": "^0.3.0"
   },

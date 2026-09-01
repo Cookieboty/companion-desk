@@ -1,0 +1,71 @@
+{
+  "name": "@ig-live/ai-sdk-client",
+  "version": "0.0.1",
+  "private": true,
+  "description": "渲染进程薄客户端：ClientAIClient（IPC Proxy）+ React Hooks + preload 模板，签名与 @ig-live/ai-sdk 完全一致",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "require": "./dist/react/index.cjs"
+    },
+    "./preload": {
+      "types": "./dist/preload/index.d.ts",
+      "import": "./dist/preload/index.js",
+      "require": "./dist/preload/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/react/index.d.ts"
+      ],
+      "preload": [
+        "./dist/preload/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "clean": "rimraf dist coverage .turbo"
+  },
+  "peerDependencies": {
+    "@ig-live/ai-sdk": "workspace:*",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ig-live/ai-sdk": "workspace:*",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^18.3.12",
+    "happy-dom": "^15.11.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
