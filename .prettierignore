@@ -1,0 +1,10 @@
+**/node_modules/**
+**/dist/**
+**/build/**
+**/coverage/**
+**/.turbo/**
+**/*.min.js
+packages/renderer/public/**
+docs/AI_HARNESS_DESIGN.md
+docs/plans/**
+pnpm-lock.yaml

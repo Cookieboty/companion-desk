@@ -264,6 +264,31 @@ assets/voice/
 - 保持代码模块化和可维护性
 - 重要的错误信息使用console.error输出
 
+### 新建一个 workspace 包（模板法）
+
+本仓库已内置一个"3 行 extends 即可起手"的包模板：[templates/pkg-template](file:///Users/botycookie/self/ai-live2d-client/templates/pkg-template)。
+
+```bash
+# 1. 复制模板到 packages/
+cp -r templates/pkg-template packages/<your-pkg>
+
+# 2. 改包名（macOS 用 sed -i ''，Linux 用 sed -i）
+sed -i '' 's|@ig-live/pkg-template|@ig-live/<your-pkg>|g' \
+  packages/<your-pkg>/package.json packages/<your-pkg>/src/*.ts
+
+# 3. 安装并冒烟：build / test / lint / typecheck 应全绿
+pnpm install
+pnpm --filter @ig-live/<your-pkg> build test lint typecheck
+```
+
+模板复用的根级配置：
+
+- 类型：[tsconfig.base.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.base.json) + [tsconfig.node.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.node.json) / [tsconfig.dom.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.dom.json)
+- 打包：[tsup.base.ts](file:///Users/botycookie/self/ai-live2d-client/tsup.base.ts)（预设 `node-lib` / `react-lib` / `node-cli`）
+- 测试：[vitest.base.ts](file:///Users/botycookie/self/ai-live2d-client/vitest.base.ts)
+- Lint：[eslint.config.mjs](file:///Users/botycookie/self/ai-live2d-client/eslint.config.mjs)（ESLint 9 flat config，渲染进程禁引 `electron`）
+- Turbo pipeline：[turbo.json](file:///Users/botycookie/self/ai-live2d-client/turbo.json)（`build` / `test` / `lint` / `typecheck` / `test:e2e`）
+
 ## 🙏 致谢
 
 本项目基于多个开源项目和技术构建，特别感谢：
