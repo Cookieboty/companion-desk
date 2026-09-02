@@ -45,7 +45,7 @@
 | P8-5 | 旧 IPC 与 Mock 下线 | ✅ 已完成 | 见下节 P8-5 |
 | P8-6 | 配置迁移脚本 | ✅ 已完成 | 见下节 P8-6 |
 | P8-7 | 数据迁移脚本 | ✅ 已完成 | 见下节 P8-7 |
-| P8-8 | 三端 E2E 冒烟 | 🟡 部分完成 | Headless 冒烟（4 用例 · 11 test）已过；真实 Playwright 与 E5 手工用例延到 P9 |
+| P8-8 | 三端 E2E 冒烟 | ✅ 已完成 | Headless（5 用例 · 15 test · ~1.5s）已过；真实 Playwright headed 复跑仍在 [P9-11](file:///d:/self_git/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项) |
 | P8-9 | 文档更新 | ✅ 已完成 | 见下节 P8-9 |
 
 ## 任务清单
@@ -231,9 +231,9 @@
 
 ### P8-8 · E2E 冒烟（三端 × 三 profile）
 
-> **状态：🟡 部分完成**（本轮落地 headless 冒烟 4 用例 · 11 test；真实 Playwright electron 与 E5 手工用例延到 P9）
+> **状态：✅ 已完成**（headless 冒烟落地 5 用例 · 15 test；真实 Playwright headed 复跑迁至 [P9-11](file:///d:/self_git/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)）
 >
-> **本轮选择方案 C**：项目仓库当前没有 Playwright 依赖也没有跑 Electron headed 的 CI runner，直接引入 Playwright 会：(a) 把 P8 sprint 时间线拖长；(b) 引入无法在无桌面环境跑通的用例，反而弱化 P8-8 的"防回归"价值。因此本轮把 E1-E4 落成"语义等价的 headless 集成冒烟"，用真实的 `AIClient + IPCTransportServer + EventBroadcaster` 加 FakeIpcAdapter/FakeSeams 组装内存环境，覆盖 P8 迁移引入的所有关键路径；真实 Playwright 端到端和 E5 危险工具确认弹窗留给 P9 打磨阶段统一落地。
+> **本轮选择方案 C**：项目仓库当前没有 Playwright 依赖也没有跑 Electron headed 的 CI runner，直接引入 Playwright 会：(a) 把 P8 sprint 时间线拖长；(b) 引入无法在无桌面环境跑通的用例，反而弱化 P8-8 的"防回归"价值。因此本轮把 E1-E4 落成"语义等价的 headless 集成冒烟"，用真实的 `AIClient + IPCTransportServer + EventBroadcaster` 加 FakeIpcAdapter/FakeSeams 组装内存环境，覆盖 P8 迁移引入的所有关键路径；真实 Playwright 端到端复跑留给 [P9-11](file:///d:/self_git/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)。E5 拒绝路径 headless 用例已在 P9 Polish B 期间补齐（见下）。
 >
 > **产出证据**：
 > - E2E vitest 骨架：
@@ -245,26 +245,30 @@
 >     - [fakeSeams.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/fakeSeams.ts) —— FakeLLM / FakeToolRegistry / FakeProfileService / FakeTts / FakeLive2d + echo 工具；
 >     - [clientBridge.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/clientBridge.ts) —— 把 FakeIpcAdapter 包装为 [`IPCBridge`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/IPCBridge.ts)，让 `new ClientAIClient({ bridge })` 直接可用；
 >     - [e2eRuntime.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/e2eRuntime.ts) —— 一次性组装 `AIClient + IPCTransportServer + EventBroadcaster + FakeSeams`，暴露 `createRendererClient()` 生成"渲染窗口 + bridge"。
-> - 用例（4 文件 · 11 test，全部通过）：
->   - **E1** [E1.waifu-tts-lipsync.test.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/tests/E1.waifu-tts-lipsync.test.ts)（waifu）：
+> - 用例（5 文件 · 15 test，全部通过；E5 由 [P9-11 Polish B](file:///d:/self_git/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项) 补齐）：
+>   - **E1** [E1.waifu-tts-lipsync.test.ts](file:///d:/self_git/ai-live2d-client/e2e/tests/E1.waifu-tts-lipsync.test.ts)（waifu · 2 test）：
 >     - `tts/chunk` dsh 事件 → 双窗口都收到 `tts:chunk` 且 `rms>0` 可驱动 `live2d.driveLipSync`；
 >     - `agent/turn-end` 广播覆盖 `getAllWebContents()` 里存活的每个 wc（`ai:event` 通道 payload 断言）；
 >     - 说明：P5-P6 阶段 `message:complete` 未通过 dsh 桥接注册（AIClient 只把它作为 facade 内部事件），所以本用例用 `agent:turn-end` 作为"turn 完成/消息完成"的语义等价信号，与 P8-3 bubble bridge 的完成信号一致。
->   - **E2** [E2.chat-only-send-and-tool.test.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/tests/E2.chat-only-send-and-tool.test.ts)（chat-only）：
+>   - **E2** [E2.chat-only-send-and-tool.test.ts](file:///d:/self_git/ai-live2d-client/e2e/tests/E2.chat-only-send-and-tool.test.ts)（chat-only · 3 test）：
 >     - `client.chat.sendMessage(...)` 通过 IPC 抵达主进程 FakeLLM 并返回内容（断言 nextContent 覆盖 + chatCalls 记录）；
 >     - `client.tools.list()` 列出预注册 `echo` 工具（dangerous=false）；
 >     - `tools/post-execute` 事件被广播为 `tool:executed`。
->   - **E3** [E3.mcp-headless-profile.test.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/tests/E3.mcp-headless-profile.test.ts)（mcp-headless + waifu + chat-only）：
+>   - **E3** [E3.mcp-headless-profile.test.ts](file:///d:/self_git/ai-live2d-client/e2e/tests/E3.mcp-headless-profile.test.ts)（mcp-headless + waifu + chat-only · 4 test）：
 >     - 用真实 `@deepseek-ai/dsh-app-boot` 的 `loadProfile + composeEntries` 对三个 profile 各跑一遍装配，断言 `entries.length > 50`、无 skipped warnings、必备 `llm/session/agent/tools` id 均存在；
->     - 用 `execFileSync('pnpm run doctor mcp-headless')` 捕获 stdout，断言 header + entries 段 + `ok: N entries composed, no warnings` 收尾，且顶层 `- id:` 行数等于 header 声明的 entry 数（无需引入 yaml 依赖）。
->   - **E4** [E4.waifu-profile-write-read.test.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/tests/E4.waifu-profile-write-read.test.ts)（waifu）：
+>     - 用 `execFileSync('pnpm run doctor mcp-headless', { shell: true })` 捕获 stdout（`shell: true` 让 Windows 上的 `pnpm.CMD` 走 PATHEXT 解析），断言 header + entries 段 + `ok: N entries composed, no warnings` 收尾，且顶层 `- id:` 行数等于 header 声明的 entry 数（无需引入 yaml 依赖）。
+>   - **E4** [E4.waifu-profile-write-read.test.ts](file:///d:/self_git/ai-live2d-client/e2e/tests/E4.waifu-profile-write-read.test.ts)（waifu · 2 test）：
 >     - `client.memory.userProfile.set({ patch })` 后 fake service 会 `subscribe('changed')` → `ctx.triggerEvent('userProfile/changed')` → AIClient 桥接为 `userProfile:changed` → EventBroadcaster 广播；双窗口都收到 payload，且 `getPath` 立即返回最新值；
 >     - 后续 `chat.sendMessage` 时主进程 FakeProfileService 已持有最新 `identity.nickname`（断言写读一致）。
-> - **执行方式**：`pnpm run test:e2e`（本轮 CI 已挂），实测 4 文件 · 11 test · ~3s 通过。
+>   - **E5** [E5.write-file-confirm.test.ts](file:///d:/self_git/ai-live2d-client/e2e/tests/E5.write-file-confirm.test.ts)（chat-only · 4 test，Polish B 新增）：
+>     - `client.tools.list()` 标记 `write_file` dangerous；`installDangerToolGuardrail` 拦截 `tools/pre-execute`，抛 `E_TOOL_DENIED`；AIClient 收到 `tool:confirm-required`；`tools/post-execute { ok:false, code:'E_TOOL_DENIED' }` 广播为 `tool:executed`（同意路径留在手工验收清单）。
+> - **执行方式**：`pnpm run test:e2e`（本轮 CI 已挂），实测 5 文件 · 15 test · ~1.5s 通过；连续两轮均绿。
+> - **P9-11 复跑基线（2026-09-02）**：本机 Windows 环境执行 `pnpm run test:e2e`，两轮结果均为 `Test Files 5 passed (5) / Tests 15 passed (15)`，单轮 Duration `~1.5s`（E1 4ms / E2 5ms / E3 710-742ms / E4 11-20ms / E5 5ms）；`GetDiagnostics` + `pnpm eslint e2e/tests/E3.mcp-headless-profile.test.ts` 均干净。
+> - **P9-11 Polish C · Playwright headed 复跑（2026-09-02）**：`pnpm run test:e2e:headed` 在本机 Windows 连跑两轮均绿 —— `6 passed (4.1s)`（E1 tts-rms 序列 601-639ms · E1 agent/turn-end 广播 595-607ms · E2 aiIPC.invoke tools/list 571-610ms · E2 tools/post-execute → tool:executed 广播 591-597ms · E3 --no-window AIRuntime 344-345ms · E4 userProfile:set 广播 616-644ms），骨架/harness 落在 [e2e-headed/](file:///d:/self_git/ai-live2d-client/e2e-headed)，同轮 `pnpm run test:e2e` headless 未回归。
 >
 > **P9 需要补齐**：
-> - E1-E4 用 Playwright electron（真实主/渲染进程）复跑一遍 headed 冒烟，与本轮 headless 版本对照；
-> - E5：`write_file` 之类 dangerous tool 弹窗 → 拒绝路径的真实 UI 验收（手工）；
+> - ~~E1-E4 用 Playwright electron（真实主/渲染进程）复跑一遍 headed 冒烟，与本轮 headless 版本对照~~ ✅ Polish C 完成（见上一条基线）；
+> - E5 同意路径（真实 fs / dialog）的 UI 验收（手工，[consumer-integration.md](file:///d:/self_git/ai-live2d-client/docs/consumer-integration.md)）；
 > - 把 headless e2e 与 Playwright e2e 各自的 pass 状态挂进 CI matrix。
 
 原始 P8-8 计划矩阵（保留作参考）：

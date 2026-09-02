@@ -140,4 +140,29 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+
+  // e2e-headed · Playwright electron harness（主进程 + preload 走 CJS，需要 require + console 调试）
+  {
+    files: ['e2e-headed/harness/**/*.{cjs,mjs,js}'],
+    languageOptions: {
+      globals: { ...globals.node },
+      sourceType: 'commonjs',
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-console': 'off',
+      'import/order': 'off',
+    },
+  },
+
+  // e2e-headed · Playwright fixture / spec（官方 `async ({}, use)` 空解构签名 + trace 调试 console）
+  {
+    files: ['e2e-headed/**/*.{ts,tsx}'],
+    rules: {
+      'no-empty-pattern': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-console': 'off',
+    },
+  },
 );

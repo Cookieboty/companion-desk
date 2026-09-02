@@ -50,6 +50,14 @@ Thumbs.db
 # Turborepo
 .turbo
 
+# Playwright (e2e-headed · P9-11 Polish C)
+/playwright-report/
+/test-results/
+/playwright-run-*.log
+/e2e-headed/harness/screenshots/
+/e2e-headed/.userdata/
+.tmp/
+
 # TypeScript incremental build info
 *.tsbuildinfo
 

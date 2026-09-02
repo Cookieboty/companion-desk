@@ -16,7 +16,8 @@
     "./patch": "./dist/patch.yml",
     "./seams": {
       "types": "./dist/seams/index.d.ts",
-      "import": "./dist/seams/index.js"
+      "import": "./dist/seams/index.js",
+      "require": "./dist/seams/index.cjs"
     }
   },
   "files": [

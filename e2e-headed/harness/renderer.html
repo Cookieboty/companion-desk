@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>e2e-headed harness</title>
+    <style>
+      body {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        background: #0b1020;
+        color: #dbe4ff;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 14px;
+        margin: 0 0 8px;
+      }
+      pre {
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ai-live2d-client · P9-11 headed harness</h1>
+    <p id="status">initializing…</p>
+    <pre id="log"></pre>
+    <script>
+      (function () {
+        const status = document.getElementById('status');
+        const log = document.getElementById('log');
+        const write = (msg) => {
+          log.textContent += msg + '\n';
+        };
+        if (!window.aiIPC) {
+          status.textContent = 'aiIPC missing (preload failed)';
+          write('[fatal] window.aiIPC missing');
+          return;
+        }
+        status.textContent = 'aiIPC ready';
+        write('[boot] preload done');
+        // 探针订阅：把关键事件顺带 dump 到 UI，便于失败时截图观察
+        window.aiIPC.on('ai:event', (payload) => {
+          try {
+            write('[evt] ' + JSON.stringify(payload).slice(0, 200));
+          } catch (err) {
+            write('[evt] <unserializable>');
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -55,6 +55,7 @@ describe('E3 · 三 profile headless 装配 + mcp-headless doctor 输出', () =>
       encoding: 'utf8',
       env: { ...process.env, FORCE_COLOR: '0' },
       stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true,
     });
 
     expect(stdout).toMatch(/\[dsh-doctor\] profile=mcp-headless/);
