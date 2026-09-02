@@ -1,0 +1,75 @@
+.errorHint {
+  background: rgba(127, 29, 29, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fecaca;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow:
+    0 8px 32px rgba(127, 29, 29, 0.4),
+    0 4px 16px rgba(239, 68, 68, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.errorHintHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorHintIcon {
+  font-size: 16px;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.5));
+}
+
+.errorHintTitle {
+  flex: 1;
+  font-weight: 600;
+  color: #fee2e2;
+}
+
+.errorHintDismiss {
+  background: transparent;
+  border: none;
+  color: #fecaca;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.errorHintDismiss:hover {
+  color: #fff;
+}
+
+.errorHintDesc {
+  margin: 0;
+  color: #fecaca;
+  line-height: 1.5;
+}
+
+.errorHintActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.errorHintCta {
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.errorHintCta:hover {
+  background: rgba(220, 38, 38, 0.95);
+}

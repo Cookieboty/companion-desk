@@ -15,3 +15,4 @@ export * from './ClientAIClient';
 export * from './IPCBridge';
 export * from './channels';
 export * from './errors';
+export * from './errorHint';

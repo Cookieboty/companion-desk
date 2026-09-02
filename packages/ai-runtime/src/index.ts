@@ -15,6 +15,8 @@ if (!process.env.VITEST) {
 
 export * from './env';
 export * from './logger';
+export * from './observability';
+export * from './ObservabilityBridge';
 export * from './AIRuntimeService';
 export * from './DshBooter';
 export * from './ElectronLifecycle';

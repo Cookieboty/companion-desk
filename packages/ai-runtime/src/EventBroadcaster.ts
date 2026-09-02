@@ -7,6 +7,10 @@
  * - 支持"按窗口订阅子集"：渲染层通过 `ai:event:subscribe` 通道传入过滤器
  *   （`{ include?: Evt[]; exclude?: Evt[] }`），本类维护 subscribers map。
  *
+ * P9-2/P9-3 联动（Polish C）：
+ * - 可选注入 [ObservabilityBridge](file:///./ObservabilityBridge.ts)，把广播事件同步
+ *   翻译成 metrics / span 埋点；默认不启用，业务方按需通过 `observability` 开关打开。
+ *
  * 事件形态：`ai:event` 的 payload 是 `{ evt: AIClientEvent, data: unknown }`。
  */
 
@@ -16,6 +20,8 @@ import type { AIClientEvent, AIClientEventMap } from '@ig-live/ai-sdk';
 import type { IpcAdapter, IpcInvokeEvent } from './IpcAdapter';
 import type { RuntimeLogger } from './logger';
 import { ConsoleRuntimeLogger } from './logger';
+import type { ObservabilityBridge, ObservabilityBridgeOptions } from './ObservabilityBridge';
+import { createObservabilityBridge } from './ObservabilityBridge';
 
 const ALL_EVENTS: AIClientEvent[] = [
   'message:delta',
@@ -44,6 +50,14 @@ export interface EventFilter {
 export interface EventBroadcasterOptions {
   adapter: IpcAdapter;
   logger?: RuntimeLogger;
+  /**
+   * P9-2/P9-3 observability bridge.
+   * - `true` → 使用默认 [createObservabilityBridge()](file:///./ObservabilityBridge.ts)
+   *   （默认 tracer / defaultRegistry）；
+   * - 传入对象 → 走 [ObservabilityBridgeOptions](file:///./ObservabilityBridge.ts)；
+   * - 未传 / `false` → 完全跳过埋点（默认关闭，防止意外出网 / 隐私泄漏）。
+   */
+  observability?: boolean | ObservabilityBridge | ObservabilityBridgeOptions;
 }
 
 export class EventBroadcaster {
@@ -51,6 +65,7 @@ export class EventBroadcaster {
   private started = false;
   private readonly logger: RuntimeLogger;
   private readonly filters = new Map<number, EventFilter>();
+  private readonly bridge?: ObservabilityBridge;
   private readonly subscribeListener = (event: IpcInvokeEvent, ...args: unknown[]) =>
     this.onSubscribe(event, args[0] as EventFilter | undefined);
   private readonly unsubscribeListener = (event: IpcInvokeEvent) =>
@@ -58,6 +73,7 @@ export class EventBroadcaster {
 
   constructor(private readonly opts: EventBroadcasterOptions) {
     this.logger = opts.logger ?? ConsoleRuntimeLogger;
+    this.bridge = resolveObservabilityBridge(opts.observability);
   }
 
   start(client: AIClient): void {
@@ -86,6 +102,7 @@ export class EventBroadcaster {
     this.opts.adapter.off(EVENT_SUBSCRIBE_CHANNEL, this.subscribeListener);
     this.opts.adapter.off(EVENT_UNSUBSCRIBE_CHANNEL, this.unsubscribeListener);
     this.filters.clear();
+    this.bridge?.dispose();
     this.started = false;
   }
 
@@ -101,6 +118,10 @@ export class EventBroadcaster {
       } catch (err) {
         this.logger.warn(`send to wc#${wc.id} threw`, err);
       }
+    }
+    // observability 桥接：broadcast 之后再喂 bridge，避免副作用阻塞 IPC。
+    if (this.bridge) {
+      this.bridge.notify(evt, data);
     }
   }
 
@@ -120,4 +141,22 @@ function passesFilter(evt: AIClientEvent, f: EventFilter): boolean {
   if (f.exclude?.includes(evt)) return false;
   if (f.include && !f.include.includes(evt)) return false;
   return true;
+}
+
+function isObservabilityBridge(value: unknown): value is ObservabilityBridge {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { notify?: unknown }).notify === 'function' &&
+    typeof (value as { dispose?: unknown }).dispose === 'function'
+  );
+}
+
+function resolveObservabilityBridge(
+  input: EventBroadcasterOptions['observability'],
+): ObservabilityBridge | undefined {
+  if (input === undefined || input === false) return undefined;
+  if (input === true) return createObservabilityBridge();
+  if (isObservabilityBridge(input)) return input;
+  return createObservabilityBridge(input);
 }

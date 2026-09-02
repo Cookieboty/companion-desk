@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [["@ig-live/ai-sdk", "@ig-live/ai-runtime", "@ig-live/ai-sdk-client"]],
+  "linked": [],
+  "access": "restricted",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@ig-live/electron",
+    "@ig-live/renderer",
+    "@ig-live/ai-chat",
+    "@ig-live/types",
+    "@ig-live/bundle-ig-base",
+    "@ig-live/bundle-ig-electron-caps",
+    "@ig-live/bundle-ig-live2d"
+  ],
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  }
+}

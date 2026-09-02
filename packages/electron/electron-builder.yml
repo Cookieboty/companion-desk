@@ -1,0 +1,78 @@
+# electron-builder 配置 · P9-9 Polish B
+#
+# 本文件由 [packages/electron/package.json](file:///Users/botycookie/self/ai-live2d-client/packages/electron/package.json)
+# 的 `package:*` 脚本消费。相较此前内嵌在 package.json 的 `build` 字段，独立成
+# YAML 后：
+# - 便于按 target/env 变量差分（AppImage / DMG / NSIS / notarize / sign）；
+# - 便于 [P9-9 CI 三平台 build](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
+# - Notarize / Windows Sign 通过环境变量启用（默认关闭以便本地开发 & PR CI 免凭证）。
+
+appId: com.ig-live.electron
+productName: 智能小助手
+
+files:
+  - dist/**/*
+  - assets/**/*
+  - package.json
+
+asarUnpack:
+  - '**/standalone-mcp-server.js'
+  - '**/mcp/**/*'
+
+extraResources:
+  - from: ../renderer/dist
+    to: renderer
+  - from: ../renderer/tts-config.html
+    to: renderer/tts-config.html
+  - from: assets
+    to: assets
+
+directories:
+  buildResources: assets
+  output: ../../dist
+
+extraMetadata:
+  main: dist/main.js
+
+protocols:
+  - name: 智能小助手
+    schemes:
+      - ai-live
+
+# ---------------------------------------------------------------
+# macOS · DMG（默认）；notarize 需要 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
+# APPLE_TEAM_ID 三件套齐全时才启用（缺失时静默降级，便于 CI 免凭证跑 build 冒烟）。
+# ---------------------------------------------------------------
+mac:
+  category: public.app-category.entertainment
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: assets/logo.jpg
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: false # 由 afterSign 钩子按需触发；见 scripts/notarize.mjs（后续增量）
+
+# ---------------------------------------------------------------
+# Windows · NSIS；code sign 通过 CSC_LINK / CSC_KEY_PASSWORD 环境变量启用
+# （electron-builder 内建约定，CI 里未注入则自动跳过 sign）。
+# ---------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/logo.jpg
+
+# ---------------------------------------------------------------
+# Linux · AppImage（P9-9 alpha 首发目标）
+# ---------------------------------------------------------------
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Utility
+  icon: assets/logo.jpg

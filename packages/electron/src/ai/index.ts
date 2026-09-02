@@ -12,3 +12,4 @@ export * from './AIRuntimeBoot';
 export * from './SafeKeyProvider';
 export * from './ClipboardGateway';
 export * from './ScreenCapture';
+export * from './TtsElectronNativeProvider';

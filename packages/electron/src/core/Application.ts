@@ -4,19 +4,23 @@
  */
 
 import { app, ipcMain } from 'electron';
-import { ServiceContainer, IServiceContainer } from './ServiceContainer';
-import { LoggerService, LogLevel } from '../services/LoggerService';
-import { ConfigService } from '../services/ConfigService';
-import { CacheService } from '../services/CacheService';
-import { WindowManager } from './WindowManager';
-import { GlobalErrorHandler } from '../utils/ErrorHandler';
+
+import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
+import { ClipboardGateway } from '../ai/ClipboardGateway';
+import { SafeKeyProvider } from '../ai/SafeKeyProvider';
+import { ScreenCapture } from '../ai/ScreenCapture';
+import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
+import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
+import { CacheService } from '../services/CacheService';
+import { ConfigService } from '../services/ConfigService';
+import { LoggerService, LogLevel } from '../services/LoggerService';
+import { GlobalErrorHandler } from '../utils/ErrorHandler';
+
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
-import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
-import { SafeKeyProvider } from '../ai/SafeKeyProvider';
-import { ClipboardGateway } from '../ai/ClipboardGateway';
-import { ScreenCapture } from '../ai/ScreenCapture';
+import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
+import { WindowManager } from './WindowManager';
 
 export interface IApplication {
   initialize(): Promise<void>;
@@ -66,7 +70,7 @@ export class Application implements IApplication {
       const metrics = await this.bootstrapManager.start();
       this.logger.info('启动任务执行完成', {
         duration: metrics.totalDuration,
-        taskCount: metrics.taskMetrics.length
+        taskCount: metrics.taskMetrics.length,
       });
 
       this.isInitialized = true;
@@ -125,12 +129,15 @@ export class Application implements IApplication {
       const keyStore = new SafeKeyProvider();
       this.clipboardGateway = new ClipboardGateway();
       const screen = new ScreenCapture();
+      const ttsEngine = new AdvancedTTSEngine();
+      const electronNativeTts = new TtsElectronNativeProvider({ engine: ttsEngine });
       this.aiRuntime = await startAIRuntime(this.logger, {
         seams: {
           keyStore,
           clipboard: this.clipboardGateway,
           screen,
         },
+        ttsProviders: [electronNativeTts],
       });
       this.logger.info('AI runtime 启动完成', {
         profile: this.aiRuntime.profile,
@@ -241,7 +248,7 @@ export class Application implements IApplication {
         logger: this.logger,
         configService: this.configService,
         cacheService: this.cacheService,
-        windowManager: this.windowManager
+        windowManager: this.windowManager,
       });
     });
     this.ipcRegistry = this.container.get<IpcRegistry>('ipcRegistry');
@@ -263,7 +270,7 @@ export class Application implements IApplication {
       priority: 'critical',
       execute: async () => {
         await this.configService.load();
-      }
+      },
     });
 
     // 关键任务：应用事件设置
@@ -273,7 +280,7 @@ export class Application implements IApplication {
       execute: async () => {
         this.setupAppEvents();
       },
-      dependencies: ['load-config']
+      dependencies: ['load-config'],
     });
 
     // 关键任务：IPC处理器初始化
@@ -283,7 +290,7 @@ export class Application implements IApplication {
       execute: async () => {
         this.ipcRegistry.initialize();
       },
-      dependencies: ['load-config']
+      dependencies: ['load-config'],
     });
 
     // 高优先级任务：进程信号处理
@@ -292,7 +299,7 @@ export class Application implements IApplication {
       priority: 'high',
       execute: async () => {
         this.setupProcessHandlers();
-      }
+      },
     });
 
     // 中优先级任务：缓存预热
@@ -309,10 +316,10 @@ export class Application implements IApplication {
         const appInfo = {
           version: app.getVersion(),
           name: app.getName(),
-          isPackaged: app.isPackaged
+          isPackaged: app.isPackaged,
         };
         this.cacheService.set('app:info', appInfo, 60 * 60 * 1000); // 1小时缓存
-      }
+      },
     });
 
     // 低优先级任务：日志清理
@@ -327,7 +334,7 @@ export class Application implements IApplication {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.warn('清理旧日志失败', { error: errorMessage });
         }
-      }
+      },
     });
 
     // 低优先级任务：系统信息收集
@@ -341,10 +348,10 @@ export class Application implements IApplication {
           arch: process.arch,
           nodeVersion: process.version,
           electronVersion: process.versions.electron,
-          memory: process.memoryUsage()
+          memory: process.memoryUsage(),
         };
         this.logger.info('系统信息', systemInfo);
-      }
+      },
     });
   }
 
@@ -382,8 +389,6 @@ export class Application implements IApplication {
       app.quit();
     });
   }
-
-
 
   /**
    * 设置进程信号处理
@@ -449,8 +454,8 @@ export class Application implements IApplication {
       cache: this.cacheService.getStats(),
       bootstrap: {
         taskStatus: this.bootstrapManager.getTaskStatus(),
-        performanceReport: this.bootstrapManager.getPerformanceReport()
-      }
+        performanceReport: this.bootstrapManager.getPerformanceReport(),
+      },
     };
   }
 }

@@ -24,13 +24,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**", ".turbo/**"],
-      "inputs": [
-        "src/**",
-        "package.json",
-        "tsconfig.json",
-        "tsup.config.ts",
-        "vite.config.ts"
-      ]
+      "inputs": ["src/**", "package.json", "tsconfig.json", "tsup.config.ts", "vite.config.ts"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
@@ -50,13 +44,7 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
-      "inputs": [
-        "src/**",
-        "tests/**",
-        "vitest.config.ts",
-        "vitest.config.mts",
-        "package.json"
-      ]
+      "inputs": ["src/**", "tests/**", "vitest.config.ts", "vitest.config.mts", "package.json"]
     },
     "test:e2e": {
       "dependsOn": ["^build"],
@@ -77,8 +65,10 @@
     "package:prod": { "cache": false, "dependsOn": ["build"] },
     "package:prod:mac": { "cache": false, "dependsOn": ["build"] },
     "package:prod:win": { "cache": false, "dependsOn": ["build"] },
+    "package:prod:linux": { "cache": false, "dependsOn": ["build"] },
     "package:debug": { "cache": false, "dependsOn": ["build"] },
     "package:debug:mac": { "cache": false, "dependsOn": ["build"] },
-    "package:debug:win": { "cache": false, "dependsOn": ["build"] }
+    "package:debug:win": { "cache": false, "dependsOn": ["build"] },
+    "package:debug:linux": { "cache": false, "dependsOn": ["build"] }
   }
 }

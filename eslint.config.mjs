@@ -127,4 +127,17 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+
+  // examples 里的 electron 主进程 / preload 需要 CJS require
+  {
+    files: ['examples/**/electron/**/*.{cjs,mjs,js}'],
+    languageOptions: {
+      globals: { ...globals.node },
+      sourceType: 'commonjs',
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-console': 'off',
+    },
+  },
 );

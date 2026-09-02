@@ -6,13 +6,12 @@
  * 2. 启动 dsh，得到 `AIClient`；
  * 3. 挂上 `IPCTransportServer`（业务方法反射）、`EventBroadcaster`（事件广播）、
  *    `CapabilityIpcServer`（seams 通道）、`AiChatCompat`（旧通道兼容）；
- * 4. 在 `dispose()` 时逆序清理。
+ * 4. 可选：把遗留 `AdvancedTTSEngine` 注册为 `electron-native` TtsProvider（P8-5 尾巴）；
+ * 5. 在 `dispose()` 时逆序清理。
  *
  * 依赖注入通过 `AIRuntimeBootOptions.seams` 提供；未提供的 seam 只是 IPC 通道会返回
  * `SEAM_NOT_INJECTED`，不影响业务门面。
  */
-
-import { app } from 'electron';
 
 import {
   AiChatCompat,
@@ -27,8 +26,11 @@ import {
   type RuntimeLogger,
 } from '@ig-live/ai-runtime';
 import type { AIClient } from '@ig-live/ai-sdk';
+import { app } from 'electron';
 
 import type { ILoggerService } from '../services/LoggerService';
+
+import type { TtsProvider } from './TtsElectronNativeProvider';
 
 export interface AIRuntimeBootSeams {
   keyStore?: unknown;
@@ -47,6 +49,17 @@ export interface AIRuntimeBootOptions {
   enableCapabilityIpc?: boolean;
   /** 是否挂事件广播，默认 true */
   enableEventBroadcast?: boolean;
+  /**
+   * 额外要注入到 `client.tts` 的本地 TtsProvider 列表（例如
+   * [TtsElectronNativeProvider](file:///./TtsElectronNativeProvider.ts)）。
+   *
+   * 语义：
+   *   - 注入时机在 `client` 就绪之后、CapabilityIpc / EventBroadcaster 挂载之前；
+   *   - 若当前 profile 未装载 `bundle-ig-electron-caps` 的 `TtsPlugin`，
+   *     `client.tts.register` 会抛 `SEAM_NOT_INJECTED`，本函数**吞掉**该错误
+   *     并 `logger.warn` 提示（避免阻塞主流程）；其它异常照常向外抛。
+   */
+  ttsProviders?: TtsProvider[];
 }
 
 export interface AIRuntimeBootHandle {
@@ -64,11 +77,38 @@ export interface AIRuntimeBootHandle {
 function toRuntimeLogger(l: ILoggerService): RuntimeLogger {
   return {
     info: (msg, meta) => l.info(String(msg), meta as Record<string, unknown> | undefined),
-    warn: (msg, meta) =>
-      l.warn(String(msg), meta as Record<string, unknown> | undefined),
-    error: (msg, meta) =>
-      l.error(String(msg), meta as Record<string, unknown> | undefined),
+    warn: (msg, meta) => l.warn(String(msg), meta as Record<string, unknown> | undefined),
+    error: (msg, meta) => l.error(String(msg), meta as Record<string, unknown> | undefined),
   };
+}
+
+function tryRegisterTtsProviders(
+  client: AIClient,
+  providers: TtsProvider[],
+  logger: ILoggerService,
+): void {
+  if (providers.length === 0) return;
+  for (const provider of providers) {
+    try {
+      // client.tts.register 内部会 `require()` TtsService；未注入时抛 SEAM_NOT_INJECTED。
+      // 这里对 register 参数做一次协变转型：electron 侧本地契约与 seams 结构等价，
+      // 但 electron tsconfig `moduleResolution: node` 无法直接解析 `@ig-live/bundle-ig-electron-caps/seams`
+      // 子入口，故用 unknown 中转，等价性靠单测保证。
+      (client.tts.register as (p: TtsProvider) => void)(provider);
+      logger.info(`TtsProvider registered: id=${provider.info.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const code = (err as { code?: string } | null)?.code;
+      if (code === 'SEAM_NOT_INJECTED') {
+        logger.warn(
+          `TtsProvider skipped: ctx.tts not injected (profile 未加载 bundle-ig-electron-caps?); provider=${provider.info.id}`,
+        );
+        continue;
+      }
+      logger.error(`TtsProvider register failed: id=${provider.info.id}`, { error: message });
+      throw err;
+    }
+  }
 }
 
 /**
@@ -86,6 +126,10 @@ export async function startAIRuntime(
   const lifecycle = createElectronLifecycle();
   const service = runtime.configure({ booter, lifecycle, logger: runtimeLogger });
   const client = await service.start(profile, { home });
+
+  if (opts.ttsProviders && opts.ttsProviders.length > 0) {
+    tryRegisterTtsProviders(client, opts.ttsProviders, logger);
+  }
 
   const adapter = createElectronIpcAdapter();
 

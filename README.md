@@ -290,6 +290,65 @@ pnpm --filter @ig-live/<your-pkg> build test lint typecheck
 - Lint：[eslint.config.mjs](file:///Users/botycookie/self/ai-live2d-client/eslint.config.mjs)（ESLint 9 flat config，渲染进程禁引 `electron`）
 - Turbo pipeline：[turbo.json](file:///Users/botycookie/self/ai-live2d-client/turbo.json)（`build` / `test` / `lint` / `typecheck` / `test:e2e`）
 
+## 🤖 AI SDK 最小示例
+
+自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@ig-live/ai-sdk-client`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client)（渲染进程）与 [`@ig-live/ai-sdk`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/consumer-integration.md](file:///Users/botycookie/self/ai-live2d-client/docs/consumer-integration.md)。
+
+**渲染进程（React）**：
+
+```tsx
+import { AIProvider, useChat, useTTSLipSync } from '@ig-live/ai-sdk-client';
+
+function ChatBox() {
+  const { messages, send, streaming } = useChat();
+  const rms = useTTSLipSync(); // 0..1，可直接喂给 Live2D setMouthOpenY
+  return (
+    <div>
+      {messages.map((m) => (
+        <p key={m.id}>
+          {m.role}: {m.content}
+        </p>
+      ))}
+      <button disabled={streaming} onClick={() => send('你好')}>
+        send
+      </button>
+      <meter min={0} max={1} value={rms} />
+    </div>
+  );
+}
+
+export function App() {
+  // Provider 会从 window.aiIPC 读取 bridge；`profile` 由主进程 `startAIRuntime({ profile })` 决定
+  return (
+    <AIProvider>
+      <ChatBox />
+    </AIProvider>
+  );
+}
+```
+
+**主进程（Electron）**：由 [Application.startAIRuntime](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/core/Application.ts#L121-L148) 自动装配；如需自定义可直接调用 [startAIRuntime](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/AIRuntimeBoot.ts#L120-L217)：
+
+```ts
+import { startAIRuntime, TtsElectronNativeProvider } from '@ig-live/electron/ai';
+import { AdvancedTTSEngine } from '@ig-live/electron/services/AdvancedTTSEngine';
+
+const runtime = await startAIRuntime(logger, {
+  profile: 'waifu',
+  ttsProviders: [new TtsElectronNativeProvider({ engine: new AdvancedTTSEngine() })],
+});
+
+for await (const chunk of runtime.client.chat.stream({
+  messages: [{ role: 'user', content: '你好' }],
+})) {
+  process.stdout.write(chunk.deltaText ?? '');
+}
+```
+
+**preload**：使用 [`mkAiPreload`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/preload/mkAiPreload.ts) 注入白名单 IPC 通道（`ai:*` 前缀）；详见 [docs/preload-usage.md](file:///Users/botycookie/self/ai-live2d-client/docs/preload-usage.md)。
+
+**升级说明与旧 API 弃用时间线**：[docs/plans/CHANGELOG.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md)。
+
 ## 🙏 致谢
 
 本项目基于多个开源项目和技术构建，特别感谢：

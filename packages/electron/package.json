@@ -13,9 +13,11 @@
     "package:prod": "electron-builder build",
     "package:prod:mac": "electron-builder build --mac",
     "package:prod:win": "electron-builder build --win",
+    "package:prod:linux": "electron-builder build --linux",
     "package:debug": "npm run copy-renderer && cross-env DEBUG=true electron-builder build --config.asar=false -c.extraMetadata.debug=true",
     "package:debug:mac": "npm run copy-renderer && cross-env DEBUG=true electron-builder build --mac --config.asar=false -c.extraMetadata.debug=true",
     "package:debug:win": "npm run copy-renderer && cross-env DEBUG=true electron-builder build --win --config.asar=false -c.extraMetadata.debug=true",
+    "package:debug:linux": "npm run copy-renderer && cross-env DEBUG=true electron-builder build --linux --config.asar=false -c.extraMetadata.debug=true",
     "launch:debug": "electron . --debug-mode",
     "mcp:start": "node dist/mcp-server.js",
     "mcp:debug": "node --inspect dist/mcp-server.js --debug",
@@ -55,56 +57,5 @@
     "@types/jest": "^29.5.0",
     "jest": "^29.5.0",
     "ts-jest": "^29.1.0"
-  },
-  "build": {
-    "appId": "com.ig-live.electron",
-    "productName": "智能小助手",
-    "files": [
-      "dist/**/*",
-      "assets/**/*",
-      "package.json"
-    ],
-    "asarUnpack": [
-      "**/standalone-mcp-server.js",
-      "**/mcp/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../renderer/dist",
-        "to": "renderer"
-      },
-      {
-        "from": "../renderer/tts-config.html",
-        "to": "renderer/tts-config.html"
-      },
-      {
-        "from": "assets",
-        "to": "assets"
-      }
-    ],
-    "directories": {
-      "buildResources": "assets",
-      "output": "../../dist"
-    },
-    "mac": {
-      "category": "public.app-category.entertainment",
-      "target": "dmg",
-      "icon": "assets/logo.jpg"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "assets/logo.jpg"
-    },
-    "extraMetadata": {
-      "main": "dist/main.js"
-    },
-    "protocols": [
-      {
-        "name": "智能小助手",
-        "schemes": [
-          "ai-live"
-        ]
-      }
-    ]
   }
 }
