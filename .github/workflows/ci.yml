@@ -80,8 +80,12 @@ jobs:
   # E2E · headless（vitest E1..E5）+ 各包 test:e2e
   # ---------------------------------------------------------------
   e2e-headless:
-    name: e2e-headless (ubuntu-latest)
-    runs-on: ubuntu-latest
+    name: e2e-headless (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -111,9 +115,14 @@ jobs:
   # ---------------------------------------------------------------
   # E2E · headed（Playwright + 真实 Electron，xvfb 虚拟显示）
   # ---------------------------------------------------------------
+  # Linux 用 xvfb 虚拟显示；Windows runner 自带交互桌面，可直接跑 headed Electron。
   e2e-headed:
-    name: e2e-headed (ubuntu-latest / xvfb)
-    runs-on: ubuntu-latest
+    name: e2e-headed (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -131,11 +140,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Electron >= 44 不再在 postinstall 下载二进制，需显式安装
+      - name: Download Electron binary
+        run: pnpm --filter @ig-live/electron exec install-electron
+
       - name: Install xvfb
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb
 
       # Ubuntu 24.04 默认禁止非特权 user namespace，Chromium 沙箱会启动失败
       - name: Allow Chromium sandbox (unprivileged userns)
+        if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Build workspaces + copy renderer bundles
@@ -143,14 +158,19 @@ jobs:
           pnpm turbo run build
           pnpm --filter @ig-live/electron run copy-renderer
 
-      - name: Run headed E2E (E1..E5)
+      - name: Run headed E2E (Linux / xvfb)
+        if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run test:e2e:headed
+
+      - name: Run headed E2E (Windows)
+        if: runner.os == 'Windows'
+        run: pnpm run test:e2e:headed
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report-${{ github.sha }}
+          name: playwright-report-${{ matrix.os }}-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
@@ -187,11 +207,8 @@ jobs:
         run: pnpm run changeset:status
 
   # ---------------------------------------------------------------
-  # Electron 打包冒烟：
-  # - PR / push：仅 ubuntu-latest 打 AppImage（快而免凭证）；
-  # - tag `v*`：三平台矩阵，上传 artifact 供 Release 消费。
-  # 签名/公证：仅 tag 构建注入 secret；缺失时 electron-builder 跳过签名。
-  # （matrix 上下文不能用于 job 级 if，因此用表达式在 matrix 里按事件选平台）
+  # Electron 打包：三平台（AppImage / dmg / NSIS）每次都打，保证安装包可用；
+  # 签名/公证：仅 tag 构建注入 secret；其它事件不签名。
   # ---------------------------------------------------------------
   build-electron:
     name: build-electron (${{ matrix.os }})
@@ -199,7 +216,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(startsWith(github.ref, 'refs/tags/v') && '[{"os":"ubuntu-latest","script":"package:prod:linux","artifact":"linux"},{"os":"macos-latest","script":"package:prod:mac","artifact":"mac"},{"os":"windows-latest","script":"package:prod:win","artifact":"win"}]' || '[{"os":"ubuntu-latest","script":"package:prod:linux","artifact":"linux"}]') }}
+        include:
+          - { os: ubuntu-latest, script: 'package:prod:linux', artifact: linux }
+          - { os: macos-latest, script: 'package:prod:mac', artifact: mac }
+          - { os: windows-latest, script: 'package:prod:win', artifact: win }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
