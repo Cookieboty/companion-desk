@@ -55,7 +55,7 @@
     }
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@ig-live/bundle-ig-base": "workspace:*",
@@ -63,7 +63,7 @@
     "@ig-live/bundle-ig-live2d": "workspace:*",
     "rimraf": "^6.1.3",
     "tsup": "^8.3.5",
-    "typescript": "^5.6.3",
+    "typescript": "^6.0.3",
     "vitest": "^2.1.4"
   }
 }

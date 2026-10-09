@@ -12,7 +12,9 @@ export function createTsup(overrides: CreateTsupOptions = {}) {
   const base: Options = {
     entry: ['src/index.ts'],
     format: ['esm', 'cjs'],
-    dts: true,
+    // tsup 的 DTS 构建会注入 baseUrl，TypeScript 6 起该选项已弃用（TS 7 移除）；
+    // 仅对 DTS 子编译静默该弃用，源码 tsconfig 本身不使用 baseUrl。
+    dts: { compilerOptions: { ignoreDeprecations: '6.0' } },
     splitting: false,
     clean: true,
     sourcemap: true,

@@ -18,12 +18,15 @@ const externals = [
   '@ig-live/bundle-ig-electron-caps',
 ];
 
+// tsup DTS 子编译会注入已弃用的 baseUrl（TypeScript 6），见 tsup.base.ts
+const dts = { compilerOptions: { ignoreDeprecations: '6.0' } };
+
 export default defineConfig([
   {
     entry: ['src/index.ts'],
     format: ['esm'],
     platform: 'browser',
-    dts: true,
+    dts,
     splitting: false,
     clean: false,
     sourcemap: true,
@@ -35,7 +38,7 @@ export default defineConfig([
     entry: { 'seams/index': 'src/seams/index.ts' },
     format: ['esm', 'cjs'],
     platform: 'node',
-    dts: true,
+    dts,
     splitting: false,
     clean: false,
     sourcemap: true,

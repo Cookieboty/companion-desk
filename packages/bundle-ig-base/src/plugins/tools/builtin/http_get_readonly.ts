@@ -13,7 +13,7 @@ export interface HttpGetReadonlyConfig {
 export const httpGetReadonlyInputSchema = z
   .object({
     url: z.string().url(),
-    headers: z.record(z.string().max(1024)).optional(),
+    headers: z.record(z.string(), z.string().max(1024)).optional(),
     timeoutMs: z.number().int().positive().max(30_000).optional(),
   })
   .strict();
