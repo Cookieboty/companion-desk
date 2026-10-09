@@ -424,7 +424,8 @@ export class WindowManager implements IWindowManager {
     } else {
       // 生产环境路径处理
       const rendererPath = this.getRendererPath();
-      startUrl = `file://${rendererPath}`;
+      // pathToFileURL：Windows 下 `file://C:\...` 会被当成主机名，必须生成 file:///C:/...
+      startUrl = url.pathToFileURL(rendererPath).href;
     }
 
     await window.loadURL(startUrl);

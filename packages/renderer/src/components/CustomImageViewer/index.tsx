@@ -1,6 +1,8 @@
 import { type CustomImageInfo } from '@ig-live/types';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
+import { toFileUrl } from '../../utils/fileUrl';
+
 import styles from './style.module.css';
 
 interface CustomImageViewerProps {
@@ -44,7 +46,7 @@ export const CustomImageViewer: React.FC<CustomImageViewerProps> = ({
     setHasError(false);
 
     // 将本地文件路径转换为可用的URL
-    const fileUrl = `file://${imagePath}`;
+    const fileUrl = toFileUrl(imagePath);
     setImageUrl(fileUrl);
   }, [imagePath]);
 

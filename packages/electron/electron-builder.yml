@@ -18,6 +18,8 @@ files:
 asarUnpack:
   - '**/standalone-mcp-server.js'
   - '**/mcp/**/*'
+  # 全局按键监听的原生 key server（WinKeyServer.exe 等）不能从 asar 内启动
+  - '**/node_modules/node-global-key-listener/bin/**'
 
 extraResources:
   - from: ../renderer/dist
