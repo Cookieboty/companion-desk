@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { FixedSizeList as List } from 'react-window';
-import { ChatMessage } from '../../types/chat';
-import { MessageBubble } from './MessageBubble';
+import { List, useListRef, type RowComponentProps } from 'react-window';
+
+import { type ChatMessage } from '../../types/chat';
+
 import styles from './index.module.css';
+import { MessageBubble } from './MessageBubble';
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -10,27 +12,30 @@ interface MessageListProps {
 }
 
 interface MessageItemProps {
-  index: number;
-  style: React.CSSProperties;
-  data: ChatMessage[];
+  messages: ChatMessage[];
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ index, style, data }) => (
-  <div style={style} className={styles.messageItem}>
-    <MessageBubble message={data[index]} />
+const MessageItem = ({
+  index,
+  style,
+  messages,
+  ariaAttributes,
+}: RowComponentProps<MessageItemProps>) => (
+  <div style={style} className={styles.messageItem} {...ariaAttributes}>
+    <MessageBubble message={messages[index]} />
   </div>
 );
 
 export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading }) => {
-  const listRef = useRef<List>(null);
+  const listRef = useListRef(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 自动滚动到底部
   useEffect(() => {
     if (listRef.current && messages.length > 0) {
-      listRef.current.scrollToItem(messages.length - 1, 'end');
+      listRef.current.scrollToRow({ index: messages.length - 1, align: 'end' });
     }
-  }, [messages.length]);
+  }, [listRef, messages.length]);
 
   // 如果消息数量较少，使用普通渲染
   if (messages.length < 50) {
@@ -59,16 +64,14 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
   return (
     <div className={styles.messageListContainer} ref={containerRef}>
       <List
-        ref={listRef}
-        height={400}
-        itemCount={messages.length}
-        itemSize={120} // 估算每条消息的高度
-        itemData={messages}
-        width="100%"
+        listRef={listRef}
+        rowComponent={MessageItem}
+        rowCount={messages.length}
+        rowHeight={120} // 估算每条消息的高度
+        rowProps={{ messages }}
+        style={{ height: 400, width: '100%' }}
         className={styles.virtualList}
-      >
-        {MessageItem}
-      </List>
+      />
       {isLoading && (
         <div className={styles.loadingIndicator}>
           <div className={styles.loadingDots}>
@@ -81,4 +84,4 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
       )}
     </div>
   );
-}; 
+};
