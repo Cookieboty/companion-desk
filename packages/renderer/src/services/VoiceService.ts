@@ -6,6 +6,8 @@ import {
   type VoiceContribute,
 } from '@ig-live/types';
 
+import { toFileUrl } from '../utils/fileUrl';
+
 /**
  * 语音服务类
  * 负责管理语音播放、键盘监听和定时播报功能
@@ -480,14 +482,8 @@ export class VoiceService {
       this.currentAudio = new Audio();
 
       // 处理文件路径 - 在Electron中需要特殊处理
-      let audioSrc = filePath;
-      if (filePath.startsWith('/')) {
-        // 绝对路径，使用file://协议
-        audioSrc = `file://${filePath}`;
-      } else if (!filePath.startsWith('http') && !filePath.startsWith('file://')) {
-        // 相对路径，转换为绝对路径
-        audioSrc = `file://${filePath}`;
-      }
+      // 绝对路径（含 Windows 盘符 / UNC）转为 file:// URL，URL 原样使用
+      const audioSrc = toFileUrl(filePath);
 
       this.currentAudio.src = audioSrc;
       this.currentAudio.volume = Math.max(0, Math.min(1, volume));

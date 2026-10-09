@@ -3,8 +3,11 @@
  * 处理语音播放、键盘监听等相关的IPC通信
  */
 
+import * as path from 'path';
+
 import { type IConfigService } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
+import { getKeyServerConfig, type KeyServerConfig } from '../../utils/keyServerPaths';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -24,6 +27,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
   private configService: IConfigService;
   private globalKeyboardListener: any = null;
   private keyboardListener: any = null;
+  private keyServerConfig: KeyServerConfig | undefined;
   private isKeyboardListening = false;
 
   constructor(logger: ILoggerService, configService: IConfigService) {
@@ -38,6 +42,9 @@ export class VoiceIpcHandler extends BaseIpcHandler {
   private initializeGlobalKeyboardListener(): void {
     try {
       const { GlobalKeyboardListener } = require('node-global-key-listener');
+      // 打包后 key server 可执行文件位于 app.asar.unpacked（见 electron-builder asarUnpack）
+      const packageDir = path.dirname(require.resolve('node-global-key-listener/package.json'));
+      this.keyServerConfig = getKeyServerConfig(packageDir);
       this.globalKeyboardListener = GlobalKeyboardListener;
       this.logger.info('全局键盘监听器初始化成功');
     } catch (error) {
@@ -94,7 +101,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
       }
 
       try {
-        this.keyboardListener = new this.globalKeyboardListener();
+        this.keyboardListener = new this.globalKeyboardListener(this.keyServerConfig);
 
         this.keyboardListener.addListener((e: any, down: any) => {
           const keyEvent: KeyboardEvent = {
