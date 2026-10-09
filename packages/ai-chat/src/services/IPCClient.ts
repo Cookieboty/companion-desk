@@ -160,7 +160,7 @@ export class SdkIPCClient implements IPCClient {
       });
       return typeof resp?.content === 'string' ? resp.content : '';
     } catch (error) {
-      throw new Error(`发送消息失败: ${(error as Error).message ?? String(error)}`, {
+      throw Object.assign(new Error(`发送消息失败: ${(error as Error).message ?? String(error)}`), {
         cause: error,
       });
     }
@@ -187,9 +187,10 @@ export class SdkIPCClient implements IPCClient {
         }
       }
     } catch (error) {
-      throw new Error(`发送流式消息失败: ${(error as Error).message ?? String(error)}`, {
-        cause: error,
-      });
+      throw Object.assign(
+        new Error(`发送流式消息失败: ${(error as Error).message ?? String(error)}`),
+        { cause: error },
+      );
     }
   }
 
