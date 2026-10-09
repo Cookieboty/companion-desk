@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
+import { DEFAULT_VRM_MODEL_PATH } from '../../config/vrm';
 import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type VirtualCharacter3DProps } from '../../types/character3d';
 
@@ -10,7 +11,7 @@ import { Character3DCanvas } from './Character3DCanvas';
  * 集成所有3D功能的入口组件
  */
 export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
-  modelPath = '/assets/models/default-character.vrm',
+  modelPath = DEFAULT_VRM_MODEL_PATH,
   enableMCPIntegration = true,
   enableVoiceSync = true,
   enableControls = false,

@@ -1,9 +1,9 @@
 import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
-import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 
+import { isDefaultVrmModelPath } from '../../config/vrm';
 import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type VRMCharacterControllerProps } from '../../types/character3d';
 
@@ -40,7 +40,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     useCharacter3DStore();
 
   // 暂时禁用VRM加载，直接使用fallback
-  // const gltf = useGLTF(modelPath || '/assets/models/default-character.vrm', true, true, (loader) => {
+  // const gltf = useGLTF(modelPath || DEFAULT_VRM_MODEL_PATH, true, true, (loader) => {
   //   loader.register((parser: any) => new VRMLoaderPlugin(parser) as any);
   // });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
@@ -54,8 +54,8 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
         setError(null);
 
         // 检查是否应该使用回退模型
-        const shouldUseFallback =
-          !modelPath || modelPath.includes('default-character.vrm') || !gltf.userData?.vrm;
+        // 默认 VRM 文件尚未随仓库提供：直接走回退角色，不发起网络请求
+        const shouldUseFallback = isDefaultVrmModelPath(modelPath) || !gltf.userData?.vrm;
 
         if (shouldUseFallback) {
           console.log('VRMCharacterController: 使用回退模型');
@@ -306,7 +306,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   return <group ref={groupRef} />;
 };
 
-// 预加载常用模型
-useGLTF.preload('/assets/models/default-character.vrm');
+// 注意：不要对 DEFAULT_VRM_MODEL_PATH 调用 useGLTF.preload —— 该文件目前不存在，
+// 预加载会在每次启动时产生 404。真正提供 VRM 文件后再按需预加载。
 
 export default VRMCharacterController;
