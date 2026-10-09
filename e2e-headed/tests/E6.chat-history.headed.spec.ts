@@ -105,24 +105,26 @@ test.describe('E6 · real app · AI chat history', () => {
     const diag: string[] = [];
     app.process().stdout?.on('data', (d: Buffer) => diag.push(`[stdout] ${String(d).trim()}`));
     app.process().stderr?.on('data', (d: Buffer) => diag.push(`[stderr] ${String(d).trim()}`));
-    app.on('window', (w) => {
-      diag.push(`[window] ${w.url()}`);
-      w.on('console', (m) => diag.push(`[console:${m.type()}] ${m.text()}`));
-      w.on('pageerror', (e) => diag.push(`[pageerror] ${e.message}`));
-    });
     const main = await app.firstWindow({ timeout: 20_000 });
-    try {
-      await main.waitForFunction(
+    main.on('console', (m) => diag.push(`[console:${m.type()}] ${m.text()}`));
+    main.on('pageerror', (e) => diag.push(`[pageerror] ${e.message}`));
+    main.on('crash', () => diag.push('[crash] renderer crashed'));
+    const hasPreload = () =>
+      main.waitForFunction(
         () => typeof (window as unknown as { electronAPI?: unknown }).electronAPI !== 'undefined',
         undefined,
-        { timeout: 30_000 },
+        { timeout: 20_000 },
       );
-    } catch (err) {
-      const urls = app.windows().map((w) => w.url());
-      console.error(
-        `[E6] electronAPI missing; windows=${JSON.stringify(urls)}\n${diag.join('\n')}`,
-      );
-      throw err;
+    try {
+      await hasPreload();
+    } catch {
+      // CI（xvfb）上偶发：紧接 E5 启动时首个渲染进程空白、preload 未注入；记录现场后重载一次
+      const state = await main
+        .evaluate(() => `${document.readyState} ${location.href}`)
+        .catch((e: unknown) => `evaluate failed: ${String(e)}`);
+      console.warn(`[E6] electronAPI missing (${state}); reloading once\n${diag.join('\n')}`);
+      await main.reload();
+      await hasPreload();
     }
 
     const chatWindow = app.waitForEvent('window', { timeout: 20_000 });
