@@ -2,10 +2,7 @@
   "name": "dsh-profile-chat-only",
   "private": true,
   "version": "0.0.0",
-  "description": "纯文字聊天 profile：只启用 ai-chat 前端所需的最小 dsh-base 能力",
-  "dependencies": {
-    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
-  },
+  "description": "\u7eaf\u6587\u5b57\u804a\u5929 profile\uff1a\u53ea\u542f\u7528 ai-chat \u524d\u7aef\u6240\u9700\u7684\u6700\u5c0f dsh-base \u80fd\u529b",
   "dsh": {
     "profile": {
       "bundles": [
@@ -13,5 +10,9 @@
       ],
       "patchReload": "live"
     }
+  },
+  "peerDependenciesMeta": {},
+  "optionalDependencies": {
+    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
   }
 }

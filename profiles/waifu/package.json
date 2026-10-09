@@ -2,10 +2,7 @@
   "name": "dsh-profile-waifu",
   "private": true,
   "version": "0.0.0",
-  "description": "看板娘一体化 profile：桌宠 + 语音互动 + AI 对话（Electron 主进程/渲染进程双端）",
-  "dependencies": {
-    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
-  },
+  "description": "\u770b\u677f\u5a18\u4e00\u4f53\u5316 profile\uff1a\u684c\u5ba0 + \u8bed\u97f3\u4e92\u52a8 + AI \u5bf9\u8bdd\uff08Electron \u4e3b\u8fdb\u7a0b/\u6e32\u67d3\u8fdb\u7a0b\u53cc\u7aef\uff09",
   "dsh": {
     "profile": {
       "bundles": [
@@ -13,5 +10,9 @@
       ],
       "patchReload": "live"
     }
+  },
+  "peerDependenciesMeta": {},
+  "optionalDependencies": {
+    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
   }
 }

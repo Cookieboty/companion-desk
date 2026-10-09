@@ -18,7 +18,11 @@ export * from './logger';
 export * from './observability';
 export * from './ObservabilityBridge';
 export * from './AIRuntimeService';
+export * from './AiSdkBooter';
 export * from './DshBooter';
+export * from './ai-sdk/AiSdkLlmProvider';
+export * from './ai-sdk/mapTools';
+export * from './ai-sdk/AiSdkLLMProvidersPlugin';
 export * from './IgPluginHost';
 export * from './igPlugins';
 export * from './ElectronLifecycle';
@@ -32,8 +36,8 @@ export * from './legacy/AiChatCompat';
 /**
  * `runtime` 单例。业务方在 Electron 主进程中：
  * ```ts
- * import { runtime, createDshBooter, createElectronLifecycle } from '@ig-live/ai-runtime';
- * await runtime.configure({ booter: createDshBooter(), lifecycle: createElectronLifecycle() })
+ * import { runtime, createAiSdkBooter, createElectronLifecycle } from '@ig-live/ai-runtime';
+ * await runtime.configure({ booter: createAiSdkBooter(), lifecycle: createElectronLifecycle() })
  *              .start('waifu', { home: app.getAppPath() });
  * ```
  * 允许多次 configure 但只能在未启动状态。

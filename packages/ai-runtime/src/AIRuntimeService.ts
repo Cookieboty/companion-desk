@@ -1,15 +1,15 @@
 /**
- * AIRuntimeService —— dsh 主进程运行时门面。
+ * AIRuntimeService —— 主进程 AI 运行时门面。
  *
- * 责任（对齐 P6 计划 §P6-2）：
- * 1. 通过注入的 `Booter` 完成 `boot(profile, { home })`，拿到 dsh `PluginContext`。
+ * 责任：
+ * 1. 通过注入的 `Booter` 完成 `boot(profile, { home })`，拿到 `PluginContext`
+ *    （生产默认 `createAiSdkBooter` / IgPluginHost；可选 `createDshBooter`）。
  * 2. 用 `toSdkContext` 收窄成 `SdkContext` 后构造 [`AIClient`](file:///../../ai-sdk/src/AIClient.ts)。
- * 3. 挂接 `AppLifecycle.onBeforeQuit`（默认使用 Electron `app.on('before-quit', ...)`），
- *    在应用退出前调用 `stop()` 释放监听。
- * 4. 打印一次 `dsh booted (<profile>)`，用于运维定位。
+ * 3. 挂接 `AppLifecycle.onBeforeQuit`，在应用退出前调用 `stop()`。
+ * 4. 打印一次 `AI runtime booted (<profile>)`，用于运维定位。
  *
  * 设计注解：
- * - `Booter` 与 `AppLifecycle` 都以 **DI 参数** 传入，避免把 Electron / dsh 硬耦合到本类，
+ * - `Booter` 与 `AppLifecycle` 都以 **DI 参数** 传入，避免把 Electron / 具体 harness 硬耦合到本类，
  *   测试里可以完全 mock 掉，保证在纯 Node 环境跑通 vitest。
  * - `runtime` 单例只是**便利导出**；仍然允许业务方 `new AIRuntimeService(...)` 自建实例
  *   （多窗口 / 多 profile 场景）。
@@ -30,8 +30,8 @@ export interface StartOptions {
 
 export interface Booter {
   /**
-   * 完成 dsh 装配并返回 PluginContext。生产环境使用 `@deepseek-ai/dsh` 的 `boot()`；
-   * 测试环境注入 fake 版本。
+   * 完成宿主装配并返回 PluginContext。生产默认 `createAiSdkBooter`（IgPluginHost +
+   * Vercel AI SDK providers）；可选 `createDshBooter`；测试注入 fake。
    */
   boot(profile: string, opts: StartOptions): Promise<PluginContext>;
   /** 可选：dispose dsh runtime。 */
@@ -101,7 +101,7 @@ export class AIRuntimeService {
       this.lifecycleOff = this.opts.lifecycle.onBeforeQuit(() => this.stop());
     }
 
-    this.logger.info(`dsh booted (${profile})`, { home: startOpts.home });
+    this.logger.info(`AI runtime booted (${profile})`, { home: startOpts.home });
     return client;
   }
 

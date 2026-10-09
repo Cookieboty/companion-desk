@@ -2,7 +2,7 @@
   "name": "@ig-live/ai-runtime",
   "version": "0.0.1",
   "private": true,
-  "description": "Electron 主进程运行时：dsh boot + AIClient + IPCTransportServer + EventBroadcaster + 旧通道兼容层",
+  "description": "Electron \u4e3b\u8fdb\u7a0b\u8fd0\u884c\u65f6\uff1aIgPluginHost + Vercel AI SDK Booter + AIClient + IPC + \u53ef\u9009 dsh",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -49,5 +49,11 @@
     "tsup": "^8.3.5",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "ai": "^7.0.136",
+    "@ai-sdk/openai-compatible": "^3.0.67",
+    "@ai-sdk/deepseek": "^3.0.63",
+    "zod": "^4.6.5"
   }
 }

@@ -3,7 +3,7 @@
  *
  * 责任：
  * 1. 装配 `@ig-live/ai-runtime` 单例（Booter + Lifecycle + Logger）；
- * 2. 启动 dsh，得到 `AIClient`；
+ * 2. 启动 IgPluginHost + AI SDK providers，得到 `AIClient`；
  * 3. 挂上 `IPCTransportServer`（业务方法反射）、`EventBroadcaster`（事件广播）、
  *    `CapabilityIpcServer`（seams 通道）、`AiChatCompat`（旧通道兼容）；
  * 4. 可选：把遗留 `AdvancedTTSEngine` 注册为 `electron-native` TtsProvider（P8-5 尾巴）；
@@ -21,10 +21,9 @@ import {
   CapabilityIpcServer,
   EventBroadcaster,
   IPCTransportServer,
-  createDshBooter,
+  createAiSdkBooter,
   createElectronIpcAdapter,
   createElectronLifecycle,
-  defaultIgPlugins,
   runtime,
   type Booter,
   type RuntimeLogger,
@@ -122,7 +121,7 @@ function tryRegisterTtsProviders(
  * - 开发 / 未打包生产（`electron packages/electron`）：`app.getAppPath()` 是
  *   `packages/electron`，profiles 在仓库根目录，逐级向上查找；
  * - 打包产物：`process.resourcesPath`（若随包带了 profiles）；
- * - 都找不到时回退 `app.getAppPath()`，dsh 内核在 `auto` 模式下会告警并跳过。
+ * - 都找不到时回退 `app.getAppPath()`（仅 optional dsh / doctor 需要 profiles）。
  */
 export function resolveProfileHome(profile: string): string {
   const candidates: string[] = [];
@@ -149,17 +148,17 @@ export async function startAIRuntime(
   const home = opts.home ?? resolveProfileHome(profile);
   const runtimeLogger = toRuntimeLogger(logger);
 
-  // dsh 默认把状态写到 ~/.dsh；桌面应用收敛到 userData 下（用户显式设置 DSH_HOME 时尊重之）
+  // Optional dsh state dir (only used when IG_DSH_CORE=auto|required and dsh is installed)
   if (!process.env.DSH_HOME?.trim()) {
     process.env.DSH_HOME = path.join(app.getPath('userData'), 'dsh');
   }
 
   const booter =
     opts.booter ??
-    createDshBooter({
+    createAiSdkBooter({
       logger: runtimeLogger,
       // FileSessionStorePlugin 提供 ProfileStorageKey → 用户画像持久化到 userData/ai-chat/memory
-      plugins: (p) => defaultIgPlugins(p, { before: [{ plugin: FileSessionStorePlugin }] }),
+      before: [{ plugin: FileSessionStorePlugin }],
     });
   const lifecycle = createElectronLifecycle();
   const service = runtime.configure({ booter, lifecycle, logger: runtimeLogger });
