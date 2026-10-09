@@ -23,6 +23,8 @@ export * from './DshBooter';
 export * from './ai-sdk/AiSdkLlmProvider';
 export * from './ai-sdk/mapTools';
 export * from './ai-sdk/AiSdkLLMProvidersPlugin';
+export * from './ai-sdk/AiSdkMcpPlugin';
+export * from './ai-sdk/mcpBridge';
 export * from './IgPluginHost';
 export * from './igPlugins';
 export * from './ElectronLifecycle';

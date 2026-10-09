@@ -38,6 +38,7 @@
     "@ai-sdk/anthropic": "^4.0.78",
     "@ai-sdk/deepseek": "^3.0.63",
     "@ai-sdk/google": "^4.0.93",
+    "@ai-sdk/mcp": "^2.0.73",
     "@ai-sdk/openai-compatible": "^3.0.67",
     "@ig-live/ai-runtime": "workspace:*",
     "@ig-live/ai-sdk": "workspace:*",

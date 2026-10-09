@@ -2,16 +2,23 @@
  * AiSdkBooter —— production Booter: IgPluginHost only (no dsh kernel).
  *
  * Registers Vercel AI SDK-backed LLM providers for DeepSeek / OpenAI / Claude / Gemini /
- * Ollama, keeps ToolsBuiltin + McpBridge + the rest of the ig plugin stack.
+ * Ollama, wires `@ai-sdk/mcp` via AiSdkMcpPlugin + McpBridge, keeps ToolsBuiltin + the rest.
  * Optional dsh remains available via `createDshBooter({ core: 'required' })`
  * for doctor / experimental harness work.
  */
 import { UserProfileKey, type PluginContext } from '@ig-live/bundle-ig-base';
 
 import { AiSdkLLMProvidersPlugin } from './ai-sdk/AiSdkLLMProvidersPlugin';
+import { AiSdkMcpPlugin } from './ai-sdk/AiSdkMcpPlugin';
 import type { Booter, StartOptions } from './AIRuntimeService';
 import { createIgPluginHost, type IgPluginEntry, type IgPluginHost } from './IgPluginHost';
-import { defaultIgPlugins, llmProvidersFromEnv, type IgPluginsOptions } from './igPlugins';
+import {
+  defaultIgPlugins,
+  llmProvidersFromEnv,
+  mcpAutoConnectFromEnv,
+  mcpServersFromEnv,
+  type IgPluginsOptions,
+} from './igPlugins';
 import { ConsoleRuntimeLogger, type RuntimeLogger } from './logger';
 
 export interface AiSdkBooterOptions {
@@ -26,15 +33,32 @@ export interface AiSdkBooterOptions {
 /** defaultIgPlugins with AI SDK LLM providers instead of BaseOpenAICompat. */
 export function defaultAiSdkPlugins(profile: string, opts: IgPluginsOptions = {}): IgPluginEntry[] {
   const env = opts.env ?? process.env;
-  return defaultIgPlugins(profile, opts).map((entry) => {
+  const servers = mcpServersFromEnv(env);
+  const autoConnect = mcpAutoConnectFromEnv(env);
+  const mapped: IgPluginEntry[] = [];
+  for (const entry of defaultIgPlugins(profile, opts)) {
     if (entry.plugin.name === 'LLMProvidersPlugin') {
-      return {
+      mapped.push({
         plugin: AiSdkLLMProvidersPlugin,
         config: { providers: llmProvidersFromEnv(env) },
-      };
+      });
+      continue;
     }
-    return entry;
-  });
+    if (entry.plugin.name === 'McpBridgePlugin') {
+      // Provide @ai-sdk/mcp service first; McpBridge reuses it and may auto-connect.
+      mapped.push({
+        plugin: AiSdkMcpPlugin,
+        config: { servers, autoConnect: false, prefixToolNames: true },
+      });
+      mapped.push({
+        plugin: entry.plugin,
+        config: { servers, autoConnect },
+      });
+      continue;
+    }
+    mapped.push(entry);
+  }
+  return mapped;
 }
 
 export function createAiSdkBooter(opts: AiSdkBooterOptions = {}): Booter {
