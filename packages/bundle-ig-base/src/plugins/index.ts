@@ -4,3 +4,5 @@ export * from './McpBridgePlugin';
 export * from './MemoryPolicyPlugin';
 export * from './ToolsBuiltinPlugin';
 export * from './UserPreferenceMemoryPlugin';
+export * from './tools/builtin';
+export * from './llm';

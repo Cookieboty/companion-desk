@@ -166,7 +166,7 @@ test.describe('E6 · real app · AI chat history', () => {
     await chat.waitForFunction(() => document.body.innerText.includes('answer3'));
     await send('继续', 'answer4');
 
-    expect(requests[2]!.stream).toBe(false);
+    expect(requests[2]!.stream).toBeFalsy(); // AI SDK omit stream on generateText
     expect(requests[2]!.messages.map((m) => m.content).join('|')).not.toContain('小明');
     expect(requests[3]!.messages.slice(1)).toEqual([
       { role: 'user', content: '你好，请介绍一下自己' },

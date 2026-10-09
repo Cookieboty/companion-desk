@@ -11,9 +11,9 @@
  *    dsh 内核 context 以 `ctx.dsh` 挂在宿主上，供后续桥接。
  *
  * 内核模式（`core` 选项或 `IG_DSH_CORE` 环境变量）：
- * - `auto`（默认）：能解析 dsh 就启动；失败（如打包产物未带 dsh）只告警，ig 宿主照常工作；
- * - `required`：内核启动失败即抛错；
- * - `off`：跳过内核，仅启动 ig 宿主。
+ * - `off`（默认）：跳过 dsh 内核，仅启动 IgPluginHost（生产路径）；
+ * - `auto`：能解析 dsh 就启动；失败只告警，ig 宿主照常工作；
+ * - `required`：内核启动失败即抛错（doctor / 实验用）。
  */
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -37,7 +37,7 @@ export interface DshBooterOptions {
    * 默认从本包位置 `require.resolve`。
    */
   installAnchor?: string;
-  /** dsh 内核模式，默认取 `IG_DSH_CORE`，再默认 `auto` */
+  /** dsh 内核模式，默认取 `IG_DSH_CORE`，再默认 `off` */
   core?: DshCoreMode;
   /** profile → ig 插件清单，默认 [defaultIgPlugins](./igPlugins.ts) */
   plugins?: (profile: string) => IgPluginEntry[];
@@ -68,8 +68,10 @@ export interface DshCoreContext {
 }
 
 function resolveCoreMode(opt: DshCoreMode | undefined): DshCoreMode {
-  const raw = opt ?? process.env.IG_DSH_CORE;
-  return raw === 'required' || raw === 'off' ? raw : 'auto';
+  // Production default is off (IgPluginHost + AI SDK). Set IG_DSH_CORE=required|auto
+  // only for doctor / experimental harness work when optional @deepseek-ai/dsh* are installed.
+  const raw = opt ?? process.env.IG_DSH_CORE ?? 'off';
+  return raw === 'required' || raw === 'auto' ? raw : 'off';
 }
 
 export function createDshBooter(opts: DshBooterOptions = {}): Booter {

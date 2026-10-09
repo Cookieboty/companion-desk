@@ -1,7 +1,7 @@
 /**
  * AIRuntimeService & runtime 单例的生命周期测试。
  *
- * - `start(profile)` → 返回 AIClient，`isStarted=true`，logger 打印 `dsh booted (profile)`；
+ * - `start(profile)` → 返回 AIClient，`isStarted=true`，logger 打印 `AI runtime booted (profile)`；
  * - `stop()` 后 booter.dispose 被调用、before-quit off 被调用；
  * - 重复 start 抛 `RuntimeAlreadyStartedError`；
  * - `runtime.configure` 在运行时状态下抛错。
@@ -66,7 +66,7 @@ describe('AIRuntimeService', () => {
     expect(svc.profile).toBe('waifu');
   });
 
-  it('start() logs "dsh booted (<profile>)"', async () => {
+  it('start() logs "AI runtime booted (<profile>)"', async () => {
     const { booter } = fakeBooter();
     const info = vi.fn();
     const svc = new AIRuntimeService({
@@ -75,7 +75,7 @@ describe('AIRuntimeService', () => {
     });
     await svc.start('chat-only', { home: '/tmp' });
     const bootedLog = info.mock.calls.find(([msg]) =>
-      String(msg).includes('dsh booted (chat-only)'),
+      String(msg).includes('AI runtime booted (chat-only)'),
     );
     expect(bootedLog).toBeTruthy();
   });

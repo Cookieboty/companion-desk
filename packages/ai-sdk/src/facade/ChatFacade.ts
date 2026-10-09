@@ -1,22 +1,21 @@
 /**
- * ChatFacade —— 消息发送 / 流式接收 / 中断 / 重生。
+ * ChatFacade —— 消息发送 / 流式接收 / 中断 / 重生 / 可选 tool agent 循环。
  *
- * P5 阶段做**薄封装**：
- * - `sendMessage` / `stream` 落在 LLM Provider 上（当前 provider 由 AppConfig 选出，
- *   在 P6 会由 runtime 补齐 systemPrompt / memory / tools 装配）。
- * - `abort` 通过 provider.abort(reqId) 转发；`regenerate` 生成新的 reqId 复用最近一次消息。
- *
- * 与 dsh 事件的关系：真实的 delta 由 dsh session 层驱动，本 Facade 只暴露 provider-level
- * 的低阶 chat/stream，供 UI 直接消费；`AIClient.on('message:delta')` 才是订阅入口。
+ * - `sendMessage` / `stream` 落在 LLM Provider 上（由 IgPluginHost 注入的 registry 选出）。
+ * - `agent` / `agentStream`：当 provider 暴露 `withTools`（Vercel AI SDK 后端）时，
+ *   把 ToolRegistry 中的工具交给 AI SDK `stopWhen: stepCountIs` 循环；否则退化为
+ *   单次 stream/chat（保持 IPC 契约稳定）。
  */
 
 import {
   LLMRegistryKey,
+  ToolRegistryKey,
   type ChatChunk,
   type ChatMessage,
   type ChatRequest,
   type ChatResponse,
   type LLMProvider,
+  type ToolDefinition,
 } from '@ig-live/bundle-ig-base';
 
 import type { SdkContext } from '../di/SdkContext';
@@ -39,11 +38,27 @@ export interface ChatStreamOptions {
    * 传 `false` 关闭裁剪。默认 [DEFAULT_CONTEXT_BUDGET](./chatContext.ts)。
    */
   context?: ContextBudget | false;
+  /** Agent loop max steps when using AI SDK tools (default 5). */
+  maxSteps?: number;
+}
+
+interface WithTools {
+  withTools(defs: ToolDefinition[]): {
+    chat: (req: ChatRequest) => Promise<ChatResponse>;
+    stream: (req: ChatRequest) => AsyncIterable<ChatChunk>;
+  };
+}
+
+function hasWithTools(p: LLMProvider): p is LLMProvider & WithTools {
+  return typeof (p as unknown as WithTools).withTools === 'function';
 }
 
 export interface ChatFacade {
   sendMessage(opts: ChatStreamOptions): Promise<ChatResponse>;
   stream(opts: ChatStreamOptions): AsyncIterable<ChatChunk>;
+  /** Single-turn or multi-step tool agent (AI SDK when available). */
+  agent(opts: ChatStreamOptions): Promise<ChatResponse>;
+  agentStream(opts: ChatStreamOptions): AsyncIterable<ChatChunk>;
   abort(reqId: string): void;
   regenerate(opts: ChatStreamOptions): AsyncIterable<ChatChunk>;
 }
@@ -85,6 +100,20 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     extra: opts.extra,
   });
 
+  const listTools = (): ToolDefinition[] => {
+    const reg = ctx.inject(ToolRegistryKey);
+    return reg ? (reg.list() as ToolDefinition[]) : [];
+  };
+
+  const runAgent = (opts: ChatStreamOptions) => {
+    const provider = pickProvider(opts.provider);
+    const tools = listTools();
+    if (hasWithTools(provider) && tools.length > 0) {
+      return provider.withTools(tools);
+    }
+    return provider;
+  };
+
   return {
     async sendMessage(opts) {
       const provider = pickProvider(opts.provider);
@@ -95,6 +124,18 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
       const provider = pickProvider(opts.provider);
       const req = { ...buildRequest(opts, provider), stream: true };
       return provider.stream(req);
+    },
+    async agent(opts) {
+      const runner = runAgent(opts);
+      const provider = pickProvider(opts.provider);
+      const req = buildRequest(opts, provider);
+      return runner.chat(req);
+    },
+    agentStream(opts) {
+      const runner = runAgent(opts);
+      const provider = pickProvider(opts.provider);
+      const req = { ...buildRequest(opts, provider), stream: true };
+      return runner.stream(req);
     },
     abort(reqId) {
       const reg = ctx.inject(LLMRegistryKey);
