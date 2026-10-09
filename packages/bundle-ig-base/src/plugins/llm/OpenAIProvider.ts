@@ -7,9 +7,11 @@ export interface OpenAIProviderOptions extends Omit<OpenAICompatOptions, 'id' | 
 export class OpenAIProvider extends BaseOpenAICompat {
   constructor(opts: OpenAIProviderOptions = {}) {
     super({
+      ...opts,
       id: 'openai',
       baseURL: opts.baseURL ?? 'https://api.openai.com/v1',
-      ...opts,
+      defaultModel: opts.defaultModel ?? 'gpt-4o-mini',
+      requiresApiKey: opts.requiresApiKey ?? true,
     });
   }
 }

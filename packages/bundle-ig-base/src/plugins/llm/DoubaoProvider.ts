@@ -10,9 +10,10 @@ export interface DoubaoProviderOptions extends Omit<OpenAICompatOptions, 'id' | 
 export class DoubaoProvider extends BaseOpenAICompat {
   constructor(opts: DoubaoProviderOptions = {}) {
     super({
+      ...opts,
       id: 'doubao',
       baseURL: opts.baseURL ?? 'https://ark.cn-beijing.volces.com/api/v3',
-      ...opts,
+      requiresApiKey: opts.requiresApiKey ?? true,
     });
   }
 }

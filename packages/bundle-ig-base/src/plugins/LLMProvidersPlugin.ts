@@ -20,6 +20,8 @@ export interface LLMProviderEntry {
   id: ProviderId;
   apiKey?: string;
   baseURL?: string;
+  /** 默认模型（UI / SDK 未指定模型时使用） */
+  model?: string;
   extra?: Record<string, unknown>;
 }
 
@@ -42,7 +44,7 @@ class InMemoryLLMRegistry implements LLMRegistry {
 }
 
 function createProvider(entry: LLMProviderEntry): LLMProvider {
-  const shared = { apiKey: entry.apiKey, baseURL: entry.baseURL };
+  const shared = { apiKey: entry.apiKey, baseURL: entry.baseURL, defaultModel: entry.model };
   switch (entry.id) {
     case 'openai':
       return new OpenAIProvider(shared);

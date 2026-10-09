@@ -10,9 +10,11 @@ export interface OllamaProviderOptions extends Omit<OpenAICompatOptions, 'id' | 
 export class OllamaProvider extends BaseOpenAICompat {
   constructor(opts: OllamaProviderOptions = {}) {
     super({
+      ...opts,
       id: 'ollama',
       baseURL: opts.baseURL ?? 'http://127.0.0.1:11434/v1',
-      ...opts,
+      defaultModel: opts.defaultModel ?? 'qwen2.5:3b-instruct',
+      requiresApiKey: opts.requiresApiKey ?? false,
     });
   }
 }
