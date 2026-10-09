@@ -19,6 +19,8 @@ export * from './observability';
 export * from './ObservabilityBridge';
 export * from './AIRuntimeService';
 export * from './DshBooter';
+export * from './IgPluginHost';
+export * from './igPlugins';
 export * from './ElectronLifecycle';
 export * from './IpcAdapter';
 export * from './channels';
