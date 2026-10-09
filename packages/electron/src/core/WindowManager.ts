@@ -81,7 +81,7 @@ export class WindowManager implements IWindowManager {
         resizable: false,
         alwaysOnTop: true,
         show: false,
-        preloadScript: 'preload.js',
+        preloadScript: 'preload.bundle.js',
       };
 
       this.mainWindow = await this.createWindow(windowOptions, 'main');
@@ -133,7 +133,7 @@ export class WindowManager implements IWindowManager {
         resizable: true,
         show: false,
         title: '智能助手',
-        preloadScript: 'ai-chat-preload.js',
+        preloadScript: 'ai-chat-preload.bundle.js',
       };
 
       this.aiChatWindow = await this.createWindow(windowOptions, 'aiChat');
@@ -185,7 +185,7 @@ export class WindowManager implements IWindowManager {
         resizable: true,
         show: false,
         title: 'TTS语音配置',
-        preloadScript: 'preload.js',
+        preloadScript: 'preload.bundle.js',
       };
 
       this.ttsConfigWindow = await this.createWindow(windowOptions, 'ttsConfig');
@@ -285,7 +285,7 @@ export class WindowManager implements IWindowManager {
       hasShadow: false,
       backgroundColor: type === 'main' ? '#00000000' : undefined,
       webPreferences: {
-        preload: path.join(__dirname, '..', options.preloadScript || 'preload.js'),
+        preload: path.join(__dirname, '..', options.preloadScript || 'preload.bundle.js'),
         contextIsolation: true,
         nodeIntegration: false,
         webSecurity: false, // 开发环境需要
