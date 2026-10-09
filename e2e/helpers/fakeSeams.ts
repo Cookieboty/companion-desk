@@ -353,13 +353,13 @@ export function createWriteFileTool(): WriteFileTool {
 }
 
 /**
- * 复刻 [GuardrailsPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/GuardrailsPlugin.ts)
+ * 复刻 [GuardrailsPlugin](../../packages/bundle-ig-base/src/plugins/GuardrailsPlugin.ts)
  * 的 danger-tool 分支：命中 dangerTools 且 `confirmed !== true` 时
  * 通过 `triggerEvent('tool/confirm-required', ...)` 派发（fanout 到 AIClient 桥接
  * 与 emit 记录），并 reject。用于 E5 拒绝路径断言。
  *
  * 注意：真实 dsh 中 `ctx.emit` 即会触发 handler；本 e2e FakeSdkCtx 里 emit 只做
- * record，因此 helper 用 `triggerEvent` 才能让 [AIClient.bindDshBridges](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/AIClient.ts) 命中。
+ * record，因此 helper 用 `triggerEvent` 才能让 [AIClient.bindDshBridges](../../packages/ai-sdk/src/AIClient.ts) 命中。
  */
 export function installDangerToolGuardrail(
   ctx: {

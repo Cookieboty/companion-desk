@@ -5,13 +5,13 @@
 
 ## 全景一览
 
-| 关切   | 模块                                                                                                                    | 默认后端                        | 生产可切换                                         |
-| ------ | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------- |
-| 日志   | [logger.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/observability/logger.ts)             | `console.<level>` + JSON        | 注入 `LogSink`（pino / winston / 文件流）          |
-| 脱敏   | [redaction.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/observability/redaction.ts)       | 默认字段列表 + WeakSet 循环防御 | `extraKeys` / `placeholder` / `maxDepth`           |
-| 指标   | [metrics.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/observability/metrics.ts)           | 进程内 `defaultRegistry`        | `MetricsRegistry.toPrometheus()` → HTTP `/metrics` |
-| 追踪   | [tracing.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/observability/tracing.ts)           | no-op tracer（不分配对象）      | `configureTracing({ exporter })` → OTLP HTTP       |
-| 事件桥 | [ObservabilityBridge.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/ObservabilityBridge.ts) | 关闭                            | `EventBroadcaster({ observability: true })`        |
+| 关切   | 模块                                                                        | 默认后端                        | 生产可切换                                         |
+| ------ | --------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------- |
+| 日志   | [logger.ts](../packages/ai-runtime/src/observability/logger.ts)             | `console.<level>` + JSON        | 注入 `LogSink`（pino / winston / 文件流）          |
+| 脱敏   | [redaction.ts](../packages/ai-runtime/src/observability/redaction.ts)       | 默认字段列表 + WeakSet 循环防御 | `extraKeys` / `placeholder` / `maxDepth`           |
+| 指标   | [metrics.ts](../packages/ai-runtime/src/observability/metrics.ts)           | 进程内 `defaultRegistry`        | `MetricsRegistry.toPrometheus()` → HTTP `/metrics` |
+| 追踪   | [tracing.ts](../packages/ai-runtime/src/observability/tracing.ts)           | no-op tracer（不分配对象）      | `configureTracing({ exporter })` → OTLP HTTP       |
+| 事件桥 | [ObservabilityBridge.ts](../packages/ai-runtime/src/ObservabilityBridge.ts) | 关闭                            | `EventBroadcaster({ observability: true })`        |
 
 ## P9-1 · 结构化日志
 
@@ -29,7 +29,7 @@ sess.info('turn started', { turnId: 't1' });
 //    "bindings":{"app":"ai-runtime","sessionId":"s1"},"meta":{"turnId":"t1"}}
 ```
 
-- 所有日志字段都会走 [createRedactor](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/observability/redaction.ts#L50-L88) 脱敏，`apiKey / token / password` 等替换为 `***`。
+- 所有日志字段都会走 [createRedactor](../packages/ai-runtime/src/observability/redaction.ts#L50-L88) 脱敏，`apiKey / token / password` 等替换为 `***`。
 - `Error` 对象自动拆到顶层 `err: { name, message, stack, code }`。
 - `sink` 可注入 pino / winston；默认走 `console.<level>` 打印 JSON。
 
@@ -65,8 +65,8 @@ const body = defaultRegistry.toPrometheus();
 
 ### 事件驱动埋点
 
-用 [ObservabilityBridge](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/ObservabilityBridge.ts) 把 `AIClient` 事件自动翻译为 metrics 调用，
-在 [EventBroadcaster](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/EventBroadcaster.ts) 打开：
+用 [ObservabilityBridge](../packages/ai-runtime/src/ObservabilityBridge.ts) 把 `AIClient` 事件自动翻译为 metrics 调用，
+在 [EventBroadcaster](../packages/ai-runtime/src/EventBroadcaster.ts) 打开：
 
 ```ts
 const broadcaster = new EventBroadcaster({
@@ -143,7 +143,7 @@ if (endpoint) {
 
 ## 事件桥接（Metrics ↔ Tracing）
 
-[ObservabilityBridge](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/ObservabilityBridge.ts) 把 `AIClient` 事件同时喂给 metrics 与 tracer：
+[ObservabilityBridge](../packages/ai-runtime/src/ObservabilityBridge.ts) 把 `AIClient` 事件同时喂给 metrics 与 tracer：
 
 - 一次 `chat.turn` span 生命周期：
   - `agent:step` → span.addEvent('agent.step', { step, reason })
@@ -157,12 +157,12 @@ if (endpoint) {
 ## Diagnostics UI（后续）
 
 `ai-chat/settings/Diagnostics` 页（P9-2 计划）会消费
-[MetricsRegistry.snapshot()](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/observability/metrics.ts#L189-L217) 呈现最近 24h 摘要，
+[MetricsRegistry.snapshot()](../packages/ai-runtime/src/observability/metrics.ts#L189-L217) 呈现最近 24h 摘要，
 本 sprint 暂未落地（放在 Polish D）。
 
 ## 相关计划
 
-- [P9-1 · 日志系统统一](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-1-日志系统统一)
-- [P9-2 · 指标采集](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-2-指标采集)
-- [P9-3 · 追踪 (OpenTelemetry)](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-3-追踪-opentelemetry)
-- [P9-6 · 安全审计](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-6-安全审计)（留待 Polish D，与 metrics/tracing 出网复核联动）
+- [P9-1 · 日志系统统一](plans/P9-polish-observability-release.md#p9-1-日志系统统一)
+- [P9-2 · 指标采集](plans/P9-polish-observability-release.md#p9-2-指标采集)
+- [P9-3 · 追踪 (OpenTelemetry)](plans/P9-polish-observability-release.md#p9-3-追踪-opentelemetry)
+- [P9-6 · 安全审计](plans/P9-polish-observability-release.md#p9-6-安全审计)（留待 Polish D，与 metrics/tracing 出网复核联动）

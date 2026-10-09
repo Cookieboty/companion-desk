@@ -2,7 +2,7 @@
 
 > P8-9 交付物。适用于把「主进程 / renderer（看板娘） / ai-chat」三端接入 dsh + `@ig-live/ai-sdk-client` 的最短路径。
 >
-> 迁移总纲：[P8-consumer-migration.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P8-consumer-migration.md)　·　变更时间线：[docs/plans/CHANGELOG.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md)　·　旧通道映射：[legacy-channel-mapping.md](file:///Users/botycookie/self/ai-live2d-client/docs/legacy-channel-mapping.md)
+> 迁移总纲：[P8-consumer-migration.md](plans/P8-consumer-migration.md)　·　变更时间线：[docs/plans/CHANGELOG.md](plans/CHANGELOG.md)　·　旧通道映射：[legacy-channel-mapping.md](legacy-channel-mapping.md)
 
 ## 0. 心智模型
 
@@ -36,22 +36,22 @@
 
 关键包：
 
-- [@ig-live/ai-runtime](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime) —— 主进程装配（dsh Booter + IPCTransportServer + EventBroadcaster + CapabilityIpcServer + AiChatCompat）。
-- [@ig-live/ai-sdk](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk) —— 主进程 `AIClient` 门面（P5）。
-- [@ig-live/ai-sdk-client](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client) —— 渲染进程 `ClientAIClient`（IPC Proxy）+ 5 个 React Hook + preload 模板。
-- [profiles/](file:///Users/botycookie/self/ai-live2d-client/profiles) —— `waifu` / `chat-only` / `mcp-headless` 三份 dsh profile，装载不同的 seam & bundle。
+- [@ig-live/ai-runtime](../packages/ai-runtime) —— 主进程装配（dsh Booter + IPCTransportServer + EventBroadcaster + CapabilityIpcServer + AiChatCompat）。
+- [@ig-live/ai-sdk](../packages/ai-sdk) —— 主进程 `AIClient` 门面（P5）。
+- [@ig-live/ai-sdk-client](../packages/ai-sdk-client) —— 渲染进程 `ClientAIClient`（IPC Proxy）+ 5 个 React Hook + preload 模板。
+- [profiles/](../profiles) —— `waifu` / `chat-only` / `mcp-headless` 三份 dsh profile，装载不同的 seam & bundle。
 
 ## 1. 主进程（Electron main）
 
 ### 1.1 预检
 
-- [ ] `pnpm --filter @ig-live/electron install`：依赖已含 `@ig-live/ai-runtime`、`@ig-live/ai-sdk`、`@deepseek-ai/dsh*`（版本三处锁死，见 [README.md#dsh-基座版本策略](file:///Users/botycookie/self/ai-live2d-client/README.md#-dsh-基座版本策略)）。
-- [ ] `pnpm run doctor <profile>` 装配诊断通过（[scripts/dsh-doctor.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/dsh-doctor.ts)）。
+- [ ] `pnpm --filter @ig-live/electron install`：依赖已含 `@ig-live/ai-runtime`、`@ig-live/ai-sdk`、`@deepseek-ai/dsh*`（版本三处锁死，见 [README.md#dsh-基座版本策略](../README.md#-dsh-基座版本策略)）。
+- [ ] `pnpm run doctor <profile>` 装配诊断通过（[scripts/dsh-doctor.ts](../scripts/dsh-doctor.ts)）。
 - [ ] 明确 profile：`waifu`（看板娘 + TTS + Live2D） / `chat-only`（纯聊天）/ `mcp-headless`（CLI）。
 
 ### 1.2 装配 AI Runtime
 
-在 [Application.start()](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/core/Application.ts#L100-L112) 里 `app.whenReady()` 之后调用一次：
+在 [Application.start()](../packages/electron/src/core/Application.ts#L100-L112) 里 `app.whenReady()` 之后调用一次：
 
 ```ts
 import { startAIRuntime } from '@ig-live/electron/ai';
@@ -76,18 +76,18 @@ const handle = await startAIRuntime(logger, {
 
 ### 1.3 生命周期
 
-- [ ] `before-quit` 前调用 `handle.dispose()`（[Application.stop()](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/core/Application.ts#L174-L189) 已封装）。
+- [ ] `before-quit` 前调用 `handle.dispose()`（[Application.stop()](../packages/electron/src/core/Application.ts#L174-L189) 已封装）。
 - [ ] 启动日志出现 `AI runtime ready (profile=<profile>)`；`channels.business.length > 0`。
 - [ ] `SEAM_NOT_INJECTED`：若当前 profile 未装载对应 bundle（如 chat-only 没有 TTS），`tryRegisterTtsProviders` 会 warn 不抛，属预期行为。
 
 ### 1.4 旧通道兼容
 
-- [ ] `enableLegacyCompat=true` 时 [AiChatCompat](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/legacy/AiChatCompat.ts) 会挂 `ai:legacy:ai-chat:*`；每次调用 warn `deprecated: ai:legacy:<method>`。
-- [ ] 保留 2 个 minor 版本后移除，见 [CHANGELOG#Deprecated](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md#deprecated)。
+- [ ] `enableLegacyCompat=true` 时 [AiChatCompat](../packages/ai-runtime/src/legacy/AiChatCompat.ts) 会挂 `ai:legacy:ai-chat:*`；每次调用 warn `deprecated: ai:legacy:<method>`。
+- [ ] 保留 2 个 minor 版本后移除，见 [CHANGELOG#Deprecated](plans/CHANGELOG.md#deprecated)。
 
 ## 2. Preload（renderer / ai-chat 各一份）
 
-参考 [docs/preload-usage.md](file:///Users/botycookie/self/ai-live2d-client/docs/preload-usage.md)。
+参考 [docs/preload-usage.md](preload-usage.md)。
 
 - [ ] `BrowserWindow` 必须 `contextIsolation: true` + `sandbox: true`。
 - [ ] preload 脚本：
@@ -125,13 +125,13 @@ export function Root() {
 
 ### 3.2 5 个 Hook 一览
 
-| Hook                                                                                                                | 责任                               | 关键 API                                                               |
-| ------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------- |
-| [useChat](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/react/useChat.ts)               | 消息流转                           | `messages / streaming / send(text) / abort() / regenerate() / reset()` |
-| [useAgent](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/react/useAgent.ts)             | agent 步骤 + 危险工具确认          | `steps / pending / confirm(id, ok)`                                    |
-| [useAIEvents](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/react/useAIEvents.ts)       | 订阅任意 `AIClientEvent`           | `useAIEvents(evt, handler)`                                            |
-| [useTTSLipSync](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/react/useTTSLipSync.ts)   | 订阅 `tts:chunk` 输出 rms `[0..1]` | `const rms = useTTSLipSync()`                                          |
-| [useUserProfile](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/react/useUserProfile.ts) | 读/写 `UserProfile`                | `{ profile, loading, set, reset, exportSnapshot, importSnapshot }`     |
+| Hook                                                                    | 责任                               | 关键 API                                                               |
+| ----------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------- |
+| [useChat](../packages/ai-sdk-client/src/react/useChat.ts)               | 消息流转                           | `messages / streaming / send(text) / abort() / regenerate() / reset()` |
+| [useAgent](../packages/ai-sdk-client/src/react/useAgent.ts)             | agent 步骤 + 危险工具确认          | `steps / pending / confirm(id, ok)`                                    |
+| [useAIEvents](../packages/ai-sdk-client/src/react/useAIEvents.ts)       | 订阅任意 `AIClientEvent`           | `useAIEvents(evt, handler)`                                            |
+| [useTTSLipSync](../packages/ai-sdk-client/src/react/useTTSLipSync.ts)   | 订阅 `tts:chunk` 输出 rms `[0..1]` | `const rms = useTTSLipSync()`                                          |
+| [useUserProfile](../packages/ai-sdk-client/src/react/useUserProfile.ts) | 读/写 `UserProfile`                | `{ profile, loading, set, reset, exportSnapshot, importSnapshot }`     |
 
 ### 3.3 校验点
 
@@ -142,8 +142,8 @@ export function Root() {
 
 ### 3.4 看板娘专属（waifu profile）
 
-- [ ] Live2D 嘴型：`useTTSLipSync()` → 写入 [lipSyncStore](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/lipSyncStore.ts) → [useLive2DModel](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/hooks/useLive2DModel.ts) 每帧写 `PARAM_MOUTH_OPEN_Y`。
-- [ ] Live2D 场景注册器（`ctx.live2d.registerSceneProvider`）与 `waifuTipsTool` 挂钩留待 P8-3 后续子任务；参考 [P8-3 尚未落地子项](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P8-consumer-migration.md#p8-3-看板娘接入renderer)。
+- [ ] Live2D 嘴型：`useTTSLipSync()` → 写入 [lipSyncStore](../packages/renderer/src/ai/lipSyncStore.ts) → [useLive2DModel](../packages/renderer/src/hooks/useLive2DModel.ts) 每帧写 `PARAM_MOUTH_OPEN_Y`。
+- [ ] Live2D 场景注册器（`ctx.live2d.registerSceneProvider`）与 `waifuTipsTool` 挂钩留待 P8-3 后续子任务；参考 [P8-3 尚未落地子项](plans/P8-consumer-migration.md#p8-3-看板娘接入renderer)。
 
 ## 4. 迁移遗留数据 / 配置（可选）
 
@@ -164,9 +164,9 @@ pnpm exec tsx scripts/migrate-user-profile.ts --input userData/settings.json --d
 
 - 会话：`<userData>/ai-chat/sessions/<sessionId>.jsonl`
 - Profile：`<userData>/ai-chat/memory/user_profile.json`
-- 密钥：由 Electron 侧消费 `_secretPayload` 交给 [SafeKeyProvider.set](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/SafeKeyProvider.ts) 写入 `<userData>/keys/<keyRef>.bin`
+- 密钥：由 Electron 侧消费 `_secretPayload` 交给 [SafeKeyProvider.set](../packages/electron/src/ai/SafeKeyProvider.ts) 写入 `<userData>/keys/<keyRef>.bin`
 
-单测：[scripts/**tests**/](file:///Users/botycookie/self/ai-live2d-client/scripts/__tests__)（共 14 用例，已并入 `pnpm test`）。
+单测：[scripts/**tests**/](../scripts/__tests__)（共 14 用例，已并入 `pnpm test`）。
 
 ## 5. 三 profile 能力矩阵
 
@@ -203,8 +203,8 @@ pnpm exec tsx scripts/migrate-user-profile.ts --input userData/settings.json --d
 
 ## 引用
 
-- 计划：[P8-consumer-migration.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P8-consumer-migration.md)
-- 变更：[docs/plans/CHANGELOG.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md)
-- Preload 深入：[docs/preload-usage.md](file:///Users/botycookie/self/ai-live2d-client/docs/preload-usage.md)
-- 旧通道映射：[docs/legacy-channel-mapping.md](file:///Users/botycookie/self/ai-live2d-client/docs/legacy-channel-mapping.md)
-- 设计基线：[docs/AI_HARNESS_DESIGN.md](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md)
+- 计划：[P8-consumer-migration.md](plans/P8-consumer-migration.md)
+- 变更：[docs/plans/CHANGELOG.md](plans/CHANGELOG.md)
+- Preload 深入：[docs/preload-usage.md](preload-usage.md)
+- 旧通道映射：[docs/legacy-channel-mapping.md](legacy-channel-mapping.md)
+- 设计基线：[docs/AI_HARNESS_DESIGN.md](AI_HARNESS_DESIGN.md)

@@ -1,6 +1,6 @@
 # dsh Profiles
 
-本目录承载本项目的三份 dsh profile。dsh 官方的运行时会在 `$DSH_HOME/profiles/<name>/` 下查找同名 profile，我们在项目内维护"权威副本"，并通过 [scripts/dsh-doctor.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/dsh-doctor.ts) 直接读取本目录，避免 CI/开发机之间因 `~/.dsh` 状态差异带来的漂移。
+本目录承载本项目的三份 dsh profile。dsh 官方的运行时会在 `$DSH_HOME/profiles/<name>/` 下查找同名 profile，我们在项目内维护"权威副本"，并通过 [scripts/dsh-doctor.ts](../scripts/dsh-doctor.ts) 直接读取本目录，避免 CI/开发机之间因 `~/.dsh` 状态差异带来的漂移。
 
 ## 目录结构
 
@@ -55,7 +55,7 @@ dsh 的每次启动都会按下面顺序把补丁层"依次叠加"到空的 entr
 > dsh 尚处 developer preview，本项目锁定 exact 版本 + 只跟主线 patch。
 
 1. **拉分支**：`git switch -c chore/dsh-<new-version>`
-2. **改版本**：把根 [package.json](file:///Users/botycookie/self/ai-live2d-client/package.json)`.dependencies` 里所有 `@deepseek-ai/dsh*` 从旧版改到新版（**exact，不带 `^`**）
+2. **改版本**：把根 [package.json](../package.json)`.dependencies` 里所有 `@deepseek-ai/dsh*` 从旧版改到新版（**exact，不带 `^`**）
 3. **同步 profile package.json**：本目录下三份 `package.json` 里的 `@deepseek-ai/dsh-base` 版本也要同步
 4. **同步 bundle peer**：`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']` 同步
 5. **重装依赖**：`pnpm install`（会重新生成 `pnpm-lock.yaml`）

@@ -5,14 +5,14 @@
 | 项 | 值 |
 |---|---|
 | 层级 | L0.5（跨环境 dsh bundle） |
-| 依赖 Plan | [P1](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P1-dsh-kernel-adoption.md) |
+| 依赖 Plan | [P1](P1-dsh-kernel-adoption.md) |
 | 建议 Sprint | Sprint 1（1~2 周） |
 | 预估工作量 | 8~12 人日 |
-| 关联设计章节 | [§3.0.1](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L300-L318) / [§6.3.1](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1255-L1397) / [§14 P2](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1726-L1742) |
+| 关联设计章节 | [§3.0.1](../AI_HARNESS_DESIGN.md#L300-L318) / [§6.3.1](../AI_HARNESS_DESIGN.md#L1255-L1397) / [§14 P2](../AI_HARNESS_DESIGN.md#L1726-L1742) |
 
 ## 目标
 
-一句话：**交付 [bundle-ig-base](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base)——把 LLM Provider、内置工具、护栏、MCP 桥接、4 层记忆（含用户偏好薄层）全部注册到 dsh 生态，让任意 profile 只要挂上这个 bundle 就能获得完整的"跨环境通用 AI 能力"。**
+一句话：**交付 [bundle-ig-base](../../packages/bundle-ig-base)——把 LLM Provider、内置工具、护栏、MCP 桥接、4 层记忆（含用户偏好薄层）全部注册到 dsh 生态，让任意 profile 只要挂上这个 bundle 就能获得完整的"跨环境通用 AI 能力"。**
 
 ## 准入前提
 
@@ -34,8 +34,8 @@
 
 ### P2-1 · 包骨架
 
-- 从 [templates/pkg-template](file:///Users/botycookie/self/ai-live2d-client/templates/pkg-template) 复制到 [packages/bundle-ig-base](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base)
-- [package.json](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/package.json)：
+- 从 [templates/pkg-template](../../templates/pkg-template) 复制到 [packages/bundle-ig-base](../../packages/bundle-ig-base)
+- [package.json](../../packages/bundle-ig-base/package.json)：
   ```jsonc
   {
     "name": "@ig-live/bundle-ig-base",
@@ -50,33 +50,33 @@
     "dependencies":     { "zod": "^3", "yaml": "^2" }
   }
   ```
-- [src/index.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/index.ts)：`export default definePlugin({ name, apply(ctx) { ... } })`
-- [src/patch.yml](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/patch.yml)：默认 row id + config
+- [src/index.ts](../../packages/bundle-ig-base/src/index.ts)：`export default definePlugin({ name, apply(ctx) { ... } })`
+- [src/patch.yml](../../packages/bundle-ig-base/src/patch.yml)：默认 row id + config
 - 验收：加入 `waifu.yml` 后 `pnpm doctor waifu` 打印本 bundle 名
 
 ### P2-2 · LLMProvidersPlugin（8 个 provider）
 
-- 目录 [src/plugins/llm/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/llm)
-- 抽 [BaseOpenAICompat.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/llm/BaseOpenAICompat.ts)：request builder / SSE 流式解析 / tool_call 结构映射 / usage 归一
+- 目录 [src/plugins/llm/](../../packages/bundle-ig-base/src/plugins/llm)
+- 抽 [BaseOpenAICompat.ts](../../packages/bundle-ig-base/src/plugins/llm/BaseOpenAICompat.ts)：request builder / SSE 流式解析 / tool_call 结构映射 / usage 归一
 - 每个 provider 一文件：`OpenAIProvider.ts / DeepSeekProvider.ts / OllamaProvider.ts / LlamaCppProvider.ts / ClaudeProvider.ts / GeminiProvider.ts / QwenProvider.ts / DoubaoProvider.ts`
-- [LLMProvidersPlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/LLMProvidersPlugin.ts)：`ctx.llm.register(id, adapter)` × 8
+- [LLMProvidersPlugin.ts](../../packages/bundle-ig-base/src/plugins/LLMProvidersPlugin.ts)：`ctx.llm.register(id, adapter)` × 8
 - 每个 provider 必须实现：`chat(request): Promise<Response>`、`stream(request): AsyncIterable<Chunk>`、`abort(reqId)`
-- 参数映射表放 [docs/provider-compat.md](file:///Users/botycookie/self/ai-live2d-client/docs/provider-compat.md)
+- 参数映射表放 [docs/provider-compat.md](../provider-compat.md)
 - 验收：对每个 provider 跑 mock server 单测 `chat/stream/abort` 三件套
 
 ### P2-3 · ToolsBuiltinPlugin（4 个内置工具）
 
-- 目录 [src/plugins/tools/builtin/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/tools/builtin)
-- [time_now.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/tools/builtin/time_now.ts)：`{ tz?: string }` → ISO 字符串
-- [random.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/tools/builtin/random.ts)：`{ min, max, integer? }`
-- [echo.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/tools/builtin/echo.ts)：`{ text }` → `text`
-- [http_get_readonly.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/tools/builtin/http_get_readonly.ts)：白名单域名 + `Content-Length` 上限 + 只允许 GET
+- 目录 [src/plugins/tools/builtin/](../../packages/bundle-ig-base/src/plugins/tools/builtin)
+- [time_now.ts](../../packages/bundle-ig-base/src/plugins/tools/builtin/time_now.ts)：`{ tz?: string }` → ISO 字符串
+- [random.ts](../../packages/bundle-ig-base/src/plugins/tools/builtin/random.ts)：`{ min, max, integer? }`
+- [echo.ts](../../packages/bundle-ig-base/src/plugins/tools/builtin/echo.ts)：`{ text }` → `text`
+- [http_get_readonly.ts](../../packages/bundle-ig-base/src/plugins/tools/builtin/http_get_readonly.ts)：白名单域名 + `Content-Length` 上限 + 只允许 GET
 - 每个工具**必须带 zod schema**，schema 自动进入 systemPrompt
 - 验收：`ctx.tools.list().length >= 4`；单测覆盖参数校验错误路径
 
 ### P2-4 · GuardrailsPlugin（5 类拦截）
 
-- [src/plugins/GuardrailsPlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/GuardrailsPlugin.ts)：注册 dsh waterfall
+- [src/plugins/GuardrailsPlugin.ts](../../packages/bundle-ig-base/src/plugins/GuardrailsPlugin.ts)：注册 dsh waterfall
   | 规则 | 挂点 | 触发 |
   |---|---|---|
   | ToolWhitelist | `tools/pre-execute` | 未授权 → reject |
@@ -89,7 +89,7 @@
 
 ### P2-5 · MCP 桥接（seams/mcp.ts）
 
-- [src/seams/mcp.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/seams/mcp.ts)：`defineService<McpService>('ctx.mcp')`
+- [src/seams/mcp.ts](../../packages/bundle-ig-base/src/seams/mcp.ts)：`defineService<McpService>('ctx.mcp')`
   ```ts
   interface McpService {
     listServers(): McpServerInfo[];
@@ -98,7 +98,7 @@
     on(evt: 'server:up'|'server:down', fn): () => void;
   }
   ```
-- [src/plugins/McpBridgePlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/McpBridgePlugin.ts)：
+- [src/plugins/McpBridgePlugin.ts](../../packages/bundle-ig-base/src/plugins/McpBridgePlugin.ts)：
   - 依赖 `@modelcontextprotocol/sdk`（peer）
   - `ctx.provide(McpKey, impl)`
   - 桥接：MCP tool → 注册进 `ctx.tools`，前缀 `mcp:<server>:<tool>`
@@ -107,7 +107,7 @@
 
 ### P2-6 · MemoryPolicyPlugin（L2 + L4 + L3 编排入口）
 
-- [src/plugins/MemoryPolicyPlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts)：
+- [src/plugins/MemoryPolicyPlugin.ts](../../packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts)：
   - 订阅 `agent/pre-request`（waterfall）→ 组装 systemPrompt sections：
     1. `[Identity]`（来自 UserProfile.identity）
     2. `[User Preferences]`（来自 UserProfile.preferences + habits，见 P2-7）
@@ -120,28 +120,28 @@
 
 ### P2-7 · 用户偏好薄层记忆（L3）—— 5 插件 + 1 seam
 
-> 对齐 [§6.3.1](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1255-L1397)
+> 对齐 [§6.3.1](../AI_HARNESS_DESIGN.md#L1255-L1397)
 
-- 目录 [src/plugins/preference/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference)
+- 目录 [src/plugins/preference/](../../packages/bundle-ig-base/src/plugins/preference)
 
 #### P2-7.1 UserProfile 类型 + zod schema
 
-- 新建 [src/types/UserProfile.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/types/UserProfile.ts) —— 严格对齐 §6.3.1 (1) 的 interface
-- 新建 [src/types/UserProfileSchema.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/types/UserProfileSchema.ts) —— zod 校验（`.strict()` 拒未知字段）
+- 新建 [src/types/UserProfile.ts](../../packages/bundle-ig-base/src/types/UserProfile.ts) —— 严格对齐 §6.3.1 (1) 的 interface
+- 新建 [src/types/UserProfileSchema.ts](../../packages/bundle-ig-base/src/types/UserProfileSchema.ts) —— zod 校验（`.strict()` 拒未知字段）
 
 #### P2-7.2 UserProfileStorePlugin + seam
 
-- 新建 [src/seams/userProfile.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/seams/userProfile.ts)：`UserProfileService` 接口（get/set/reset/subscribe/export/import）
-- 新建 [src/plugins/preference/UserProfileStorePlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/UserProfileStorePlugin.ts)：
+- 新建 [src/seams/userProfile.ts](../../packages/bundle-ig-base/src/seams/userProfile.ts)：`UserProfileService` 接口（get/set/reset/subscribe/export/import）
+- 新建 [src/plugins/preference/UserProfileStorePlugin.ts](../../packages/bundle-ig-base/src/plugins/preference/UserProfileStorePlugin.ts)：
   - `ctx.provide(UserProfileKey, impl)`
-  - 读写走注入的 `IProfileStorage`（默认 InMemory；文件版由 P3 [FileSessionStorePlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts) 覆盖）
+  - 读写走注入的 `IProfileStorage`（默认 InMemory；文件版由 P3 [FileSessionStorePlugin](../../packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts) 覆盖）
   - 读时执行 `migrate()`；写时 deep-merge + zod 校验 + emit `userProfile/changed`
 
 #### P2-7.3 PreferenceExtractor（规则中间件）
 
-- 新建 [src/plugins/preference/PreferenceExtractor.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/PreferenceExtractor.ts)：
+- 新建 [src/plugins/preference/PreferenceExtractor.ts](../../packages/bundle-ig-base/src/plugins/preference/PreferenceExtractor.ts)：
   - 订阅 `session/user-message`
-  - 规则表放 [src/plugins/preference/rules.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/rules.ts)：
+  - 规则表放 [src/plugins/preference/rules.ts](../../packages/bundle-ig-base/src/plugins/preference/rules.ts)：
     | 正则 | patch |
     |---|---|
     | `/回答简短|别啰嗦/` | `preferences.replyStyle = 'concise'` |
@@ -154,7 +154,7 @@
 
 #### P2-7.4 PreferenceDistiller（LLM 蒸馏）
 
-- 新建 [src/plugins/preference/PreferenceDistiller.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/PreferenceDistiller.ts)：
+- 新建 [src/plugins/preference/PreferenceDistiller.ts](../../packages/bundle-ig-base/src/plugins/preference/PreferenceDistiller.ts)：
   - 触发时机：每 N 轮（默认 20） 或 `session/closed`
   - 用 `ctx.llm` 的**小模型 slot**（`patch.id: llm.distill`）
   - 严格 JSON schema 输出（用 `response_format: json_schema` 或 tool_call 强制）
@@ -164,7 +164,7 @@
 
 #### P2-7.5 HabitStatCollector（隐式统计）
 
-- 新建 [src/plugins/preference/HabitStatCollector.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/HabitStatCollector.ts)：
+- 新建 [src/plugins/preference/HabitStatCollector.ts](../../packages/bundle-ig-base/src/plugins/preference/HabitStatCollector.ts)：
   - 订阅事件与更新字段：
     | 事件 | 更新 |
     |---|---|
@@ -178,11 +178,11 @@
 
 #### P2-7.6 migrate.ts
 
-- 新建 [src/plugins/preference/migrate.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/migrate.ts)：`migrate(json, from, to)`；预留 v1→v2 空实现
+- 新建 [src/plugins/preference/migrate.ts](../../packages/bundle-ig-base/src/plugins/preference/migrate.ts)：`migrate(json, from, to)`；预留 v1→v2 空实现
 
 #### P2-7.7 只读工具挂载
 
-- [src/plugins/preference/PreferenceToolsPlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/PreferenceToolsPlugin.ts)：
+- [src/plugins/preference/PreferenceToolsPlugin.ts](../../packages/bundle-ig-base/src/plugins/preference/PreferenceToolsPlugin.ts)：
   - `user_profile_read({ path? })` → 只读
   - `user_profile_suggest_update({ patch, reason })` → 触发 `tool/confirm-required` 事件，需 UI 二次确认
 
@@ -190,11 +190,11 @@
 
 - Vitest + dsh 测试工具装配 mock ctx
 - 单包覆盖率门槛：**语句 ≥ 80% / 分支 ≥ 70%**
-- 关键契约测试放 [tests/contracts/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/tests/contracts)：LLM provider 8 家 stream 断言一致性
+- 关键契约测试放 [tests/contracts/](../../packages/bundle-ig-base/tests/contracts)：LLM provider 8 家 stream 断言一致性
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/bundle-ig-base](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base)
+- 1 个可发布 npm 包 [@ig-live/bundle-ig-base](../../packages/bundle-ig-base)
 - `waifu.yml` 追加本 bundle 后：`ctx.llm.list().length === 8` / `ctx.tools.list().length ≥ 6` / `ctx.mcp` / `ctx.userProfile` 均可用
 - 至少 60 条单测，覆盖率达门槛
 

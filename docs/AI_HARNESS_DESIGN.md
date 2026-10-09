@@ -192,7 +192,7 @@
 | U8 | **`agent.ctx` 作用域** — agent 卸载即回滚 | 用 dsh 原生 API | 看板娘临时工具自动清理 |
 | U9 | **`agent.inject(context)`** — 排队进入下一 admitted request | 用 dsh 原生 API | 触摸 / 剪贴板 / 唤醒词的被动上下文注入 |
 | U10 | **Isolate Realm**（预设级隔离命名空间） | 通过 `preset: { isolate: true }` 声明 | 看板娘 vs ai-chat 会话互不污染 |
-| U11 | **Profile + Bundle + Patch YAML** — `dsh --profile waifu --dump-config` | 本项目提供 3 份 profile（`waifu` / `chat-only` / `mcp-headless`）和 3 个 bundle，注册进 `dsh.profile` / `dsh.bundle` 字段 | [profiles/](file:///Users/botycookie/self/ai-live2d-client/profiles) |
+| U11 | **Profile + Bundle + Patch YAML** — `dsh --profile waifu --dump-config` | 本项目提供 3 份 profile（`waifu` / `chat-only` / `mcp-headless`）和 3 个 bundle，注册进 `dsh.profile` / `dsh.bundle` 字段 | [profiles/](../profiles) |
 | U12 | **`dsh doctor / dump-config` CLI** | 直接用 dsh 自带命令排障 | 无需实现 |
 | U13 | **LLM Provider 生态** — dsh 内置的 OpenAI / Claude / Gemini / Ollama 等适配器 | 优先复用；仅在缺失时（如豆包、通义特殊参数）自行写 dsh-plugin | Provider 生态零成本 |
 
@@ -1084,7 +1084,7 @@ export interface IClock { now(): number; }
 - `FileMemoryStorage`（Electron userData 落盘）
 - `SafeKeyStore`（Electron safeStorage 加密）
 - `ElectronToolExecutor`（抓屏/剪贴板/文件/MCP 桥接）
-- `ElectronLogger`（复用现有 [LoggerService](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/services/LoggerService.ts)）
+- `ElectronLogger`（复用现有 [LoggerService](../packages/electron/src/services/LoggerService.ts)）
 
 ---
 
@@ -1250,13 +1250,13 @@ runTask(task):
 | L4 长期事实 | `memory/facts.json` | 跨会话 | "我是 xxx / 我的项目在 xxx" 等硬事实 |
 
 - **会话隔离**：按 `sessionId` 分文件保存 `memory/sessions/<id>.json`（dsh 原生）
-- **注入方式**：L2/L3/L4 都以 section 形式注入 `ctx.systemPrompt`，由 [MemoryPolicyPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts) 统一编排
+- **注入方式**：L2/L3/L4 都以 section 形式注入 `ctx.systemPrompt`，由 [MemoryPolicyPlugin](../packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts) 统一编排
 
 ### 6.3.1 用户偏好薄层记忆（UserPreferenceMemory）
 
 > **定位**：一层"薄"的、结构化的、可解释、可编辑、可导出的用户画像。不做向量检索，不做深度模型推理，只做**规则抽取 + LLM 轻量提炼 + 硬 schema 存储**——保证快、可预测、可关闭。
 
-#### （1）数据模型 [UserProfile](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/UserProfile.ts)
+#### （1）数据模型 [UserProfile](../packages/ai-sdk/src/types/UserProfile.ts)
 
 ```typescript
 // packages/ai-sdk/src/types/UserProfile.ts
@@ -1314,9 +1314,9 @@ export interface UserProfile {
 | 通道 | 触发 | 可信度 | 实现 |
 |---|---|---|---|
 | A. 用户显式设置 | Settings UI 里勾选/输入 | ★★★★★ | 直接 `ctx.userProfile.set(patch)` |
-| B. 规则抽取器 | 每条用户消息/事件流经中间件 | ★★★★ | [PreferenceExtractor](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/PreferenceExtractor.ts) —— 关键词/正则/模式匹配 |
-| C. LLM 轻量提炼 | 每 N 轮或会话结束时批量跑一次 | ★★★ | [PreferenceDistiller](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/PreferenceDistiller.ts) —— 用小模型 + 严格 JSON schema 输出 |
-| D. 交互统计器 | 订阅 dsh 事件计数 | ★★★ | [HabitStatCollector](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/HabitStatCollector.ts) —— 只更新 `habits.*` |
+| B. 规则抽取器 | 每条用户消息/事件流经中间件 | ★★★★ | [PreferenceExtractor](../packages/bundle-ig-base/src/plugins/preference/PreferenceExtractor.ts) —— 关键词/正则/模式匹配 |
+| C. LLM 轻量提炼 | 每 N 轮或会话结束时批量跑一次 | ★★★ | [PreferenceDistiller](../packages/bundle-ig-base/src/plugins/preference/PreferenceDistiller.ts) —— 用小模型 + 严格 JSON schema 输出 |
+| D. 交互统计器 | 订阅 dsh 事件计数 | ★★★ | [HabitStatCollector](../packages/bundle-ig-base/src/plugins/preference/HabitStatCollector.ts) —— 只更新 `habits.*` |
 
 规则抽取示例（不需要调用模型，纯本地）：
 
@@ -1331,7 +1331,7 @@ export interface UserProfile {
 
 #### （3）消费通道（如何进入 prompt）
 
-- 由 [MemoryPolicyPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts) 在每次请求前，把 `UserProfile` 压缩成 `<200 tokens` 的固定 section 注入 `ctx.systemPrompt`：
+- 由 [MemoryPolicyPlugin](../packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts) 在每次请求前，把 `UserProfile` 压缩成 `<200 tokens` 的固定 section 注入 `ctx.systemPrompt`：
 
   ```
   [User Preferences]
@@ -1349,10 +1349,10 @@ export interface UserProfile {
 
 #### （4）存储与安全
 
-- 位置：`app.getPath('userData')/memory/user_profile.json`（由 [FileSessionStorePlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts) 同侧管理）
+- 位置：`app.getPath('userData')/memory/user_profile.json`（由 [FileSessionStorePlugin](../packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts) 同侧管理）
 - 加密：仅当包含 `identity.displayName` 或用户勾选"敏感"时，走 `electron.safeStorage` 加密
 - 导出/导入：Settings 中提供 JSON 导出、导入、一键清空
-- 版本迁移：`version` 字段 + [migrate.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference/migrate.ts) 做 schema 演进
+- 版本迁移：`version` 字段 + [migrate.ts](../packages/bundle-ig-base/src/plugins/preference/migrate.ts) 做 schema 演进
 - 隐私：默认**不**上传远端；只在用户显式勾选"云同步"时走独立通道（后续 Phase）
 
 #### （5）Seam 定义（供 SDK / UI 消费）
@@ -1370,11 +1370,11 @@ export interface UserProfileService {
 export const UserProfileKey = defineService<UserProfileService>('ctx.userProfile');
 ```
 
-对应门面：[MemoryFacade.userProfile.\*](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/MemoryFacade.ts)（get/set/reset/subscribe/export/import），并在 [ai-sdk-client](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client) 中自动生成对应 IPC 通道 `ai:userProfile:*`。
+对应门面：[MemoryFacade.userProfile.\*](../packages/ai-sdk/src/facade/MemoryFacade.ts)（get/set/reset/subscribe/export/import），并在 [ai-sdk-client](../packages/ai-sdk-client) 中自动生成对应 IPC 通道 `ai:userProfile:*`。
 
 #### （6）新增插件在 bundle 中的落位
 
-在 [bundle-ig-base](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins) 下新增 `preference/` 目录：
+在 [bundle-ig-base](../packages/bundle-ig-base/src/plugins) 下新增 `preference/` 目录：
 
 ```
 packages/bundle-ig-base/src/plugins/preference/
@@ -1385,7 +1385,7 @@ packages/bundle-ig-base/src/plugins/preference/
 └── migrate.ts                         version 迁移
 ```
 
-并把 UserProfile section 注入逻辑追加到既有的 [MemoryPolicyPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts) 里（不再单独注入一条 system message，避免重复）。
+并把 UserProfile section 注入逻辑追加到既有的 [MemoryPolicyPlugin](../packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts) 里（不再单独注入一条 system message，避免重复）。
 
 #### （7）默认工具补充
 
@@ -1675,14 +1675,14 @@ userData/
 | Plan | 层级 | 名称 | 依赖 Plan | 关键包 / 目录 |
 |---|---|---|---|---|
 | **P0** | L-1 | 工程底座与骨架 | — | `pnpm-workspace.yaml`、`turbo.json`、`tsconfig.base.json` |
-| **P1** | L0 | dsh 基座接入 | P0 | `@deepseek-ai/dsh`（npm 依赖）+ [profiles/](file:///Users/botycookie/self/ai-live2d-client/profiles) |
-| **P2** | L0.5 | Bundle 通用能力 | P1 | [bundle-ig-base](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base) |
-| **P3** | L0.5 | Bundle Electron 能力 | P2 | [bundle-ig-electron-caps](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps) |
-| **P4** | L0.5 | Bundle 看板娘能力 | P2 | [bundle-ig-live2d](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-live2d) |
-| **P5** | L1 | ai-sdk 业务门面 | P2 | [packages/ai-sdk](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk) |
-| **P6** | L2 | ai-runtime 主进程运行时 | P3 + P5 | [packages/ai-runtime](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime) |
-| **P7** | L3 | ai-sdk-client 渲染薄层 | P5 + P6 | [packages/ai-sdk-client](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client) |
-| **P8** | L4 | 三端消费方接入 | P4 + P7 | [ai-chat](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat) / [renderer](file:///Users/botycookie/self/ai-live2d-client/packages/renderer) / [electron](file:///Users/botycookie/self/ai-live2d-client/packages/electron) |
+| **P1** | L0 | dsh 基座接入 | P0 | `@deepseek-ai/dsh`（npm 依赖）+ [profiles/](../profiles) |
+| **P2** | L0.5 | Bundle 通用能力 | P1 | [bundle-ig-base](../packages/bundle-ig-base) |
+| **P3** | L0.5 | Bundle Electron 能力 | P2 | [bundle-ig-electron-caps](../packages/bundle-ig-electron-caps) |
+| **P4** | L0.5 | Bundle 看板娘能力 | P2 | [bundle-ig-live2d](../packages/bundle-ig-live2d) |
+| **P5** | L1 | ai-sdk 业务门面 | P2 | [packages/ai-sdk](../packages/ai-sdk) |
+| **P6** | L2 | ai-runtime 主进程运行时 | P3 + P5 | [packages/ai-runtime](../packages/ai-runtime) |
+| **P7** | L3 | ai-sdk-client 渲染薄层 | P5 + P6 | [packages/ai-sdk-client](../packages/ai-sdk-client) |
+| **P8** | L4 | 三端消费方接入 | P4 + P7 | [ai-chat](../packages/ai-chat) / [renderer](../packages/renderer) / [electron](../packages/electron) |
 | **P9** | L5 | 打磨、观测、发布 | P8 | 全仓库 |
 
 依赖关系（可并行）：`P0 → P1 → P2 → { P3, P4, P5 } → P6 → P7 → P8 → P9`。其中 **P3 / P4 / P5 三者可并行**；P2 完成后 P4/P5 可与 P3 并行推进。
@@ -1714,7 +1714,7 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P1-1 | 根 `package.json` 加 `@deepseek-ai/dsh@^0.1.2-alpha.2`，锁 pnpm-lock | 依赖树可复现 |
-| P1-2 | 新建 [profiles/waifu.yml](file:///Users/botycookie/self/ai-live2d-client/profiles/waifu.yml) / [chat-only.yml](file:///Users/botycookie/self/ai-live2d-client/profiles/chat-only.yml) / [mcp-headless.yml](file:///Users/botycookie/self/ai-live2d-client/profiles/mcp-headless.yml)（仅列 `dsh-base`，暂不含本项目 bundle） | 3 个 profile 骨架 |
+| P1-2 | 新建 [profiles/waifu.yml](../profiles/waifu.yml) / [chat-only.yml](../profiles/chat-only.yml) / [mcp-headless.yml](../profiles/mcp-headless.yml)（仅列 `dsh-base`，暂不含本项目 bundle） | 3 个 profile 骨架 |
 | P1-3 | 写 `scripts/dsh-doctor.ts`：`pnpm doctor waifu` → 打印装配后的 ctx 服务清单 | 命令可跑，输出 `ctx.llm/tools/sessions/agents/systemPrompt` |
 | P1-4 | 冒烟测试：用 dsh 内置 `echo` provider 走完一次 turn / step | Vitest 单测通过 |
 | P1-5 | 文档：README 章节"dsh 升级流程"（CI 冒烟 → 升版本 → 回归） | 升级 SOP |
@@ -1726,17 +1726,17 @@ userData/
 ### P2 · L0.5 · Bundle 通用能力（跨环境）
 
 **准入前提**：P1 完成。
-**目标**：交付 [bundle-ig-base](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base)，把 LLM / 工具 / 记忆 / MCP / 护栏这套"跨环境通用"的插件全部落到 dsh 生态。
+**目标**：交付 [bundle-ig-base](../packages/bundle-ig-base)，把 LLM / 工具 / 记忆 / MCP / 护栏这套"跨环境通用"的插件全部落到 dsh 生态。
 
 | # | 任务 | 交付物 |
 |---|---|---|
 | P2-1 | 创建包骨架 + `package.json.dsh.bundle` 字段 + `patch.yml` | 可被 `boot` 识别 |
-| P2-2 | [LLMProvidersPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/LLMProvidersPlugin.ts)：OpenAI / DeepSeek / Ollama / llama.cpp / Claude / Gemini / Qwen / Doubao | 8 个 provider 挂 `ctx.llm` |
-| P2-3 | [ToolsBuiltinPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/ToolsBuiltinPlugin.ts)：`time_now / random / echo / http_get_readonly` | 4 个内置 Tool |
-| P2-4 | [GuardrailsPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/GuardrailsPlugin.ts)：白名单 / RateLimit / DangerConfirm / RepeatCall / Timeout | 拦截器全量 |
-| P2-5 | [McpBridgePlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/McpBridgePlugin.ts) + [seams/mcp.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/seams/mcp.ts) | 桥接外部 MCP Server |
-| P2-6 | [MemoryPolicyPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts)：L2 摘要 + L4 facts 注入 `ctx.systemPrompt` | section 编排就绪 |
-| P2-7 | **用户偏好薄层记忆**（对齐 §6.3.1）：新增 [preference/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/plugins/preference)：`UserProfileStorePlugin` / `PreferenceExtractor` / `PreferenceDistiller` / `HabitStatCollector` / `migrate.ts` + [seams/userProfile.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-base/src/seams/userProfile.ts) | L3 记忆闭环 |
+| P2-2 | [LLMProvidersPlugin](../packages/bundle-ig-base/src/plugins/LLMProvidersPlugin.ts)：OpenAI / DeepSeek / Ollama / llama.cpp / Claude / Gemini / Qwen / Doubao | 8 个 provider 挂 `ctx.llm` |
+| P2-3 | [ToolsBuiltinPlugin](../packages/bundle-ig-base/src/plugins/ToolsBuiltinPlugin.ts)：`time_now / random / echo / http_get_readonly` | 4 个内置 Tool |
+| P2-4 | [GuardrailsPlugin](../packages/bundle-ig-base/src/plugins/GuardrailsPlugin.ts)：白名单 / RateLimit / DangerConfirm / RepeatCall / Timeout | 拦截器全量 |
+| P2-5 | [McpBridgePlugin](../packages/bundle-ig-base/src/plugins/McpBridgePlugin.ts) + [seams/mcp.ts](../packages/bundle-ig-base/src/seams/mcp.ts) | 桥接外部 MCP Server |
+| P2-6 | [MemoryPolicyPlugin](../packages/bundle-ig-base/src/plugins/MemoryPolicyPlugin.ts)：L2 摘要 + L4 facts 注入 `ctx.systemPrompt` | section 编排就绪 |
+| P2-7 | **用户偏好薄层记忆**（对齐 §6.3.1）：新增 [preference/](../packages/bundle-ig-base/src/plugins/preference)：`UserProfileStorePlugin` / `PreferenceExtractor` / `PreferenceDistiller` / `HabitStatCollector` / `migrate.ts` + [seams/userProfile.ts](../packages/bundle-ig-base/src/seams/userProfile.ts) | L3 记忆闭环 |
 | P2-8 | 单元测试：mock ctx + 每个 plugin 独立 spec | 覆盖率 ≥ 80% |
 
 **退出准则**：`waifu.yml` 追加 `@ig-live/bundle-ig-base` 后，`ctx.llm.list()` 返回 8 项、`ctx.tools.list()` 返回内置工具、`ctx.userProfile.get()` 返回默认 profile。
@@ -1751,11 +1751,11 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P3-1 | 包骨架 + `patch.yml` | 可 `boot` |
-| P3-2 | [SafeKeyStorePlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/SafeKeyStorePlugin.ts) + [FileSessionStorePlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts) | apiKey 加密落盘 / 会话 JSONL |
-| P3-3 | [ScreenSeamPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/ScreenSeamPlugin.ts) + [ClipboardSeamPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/ClipboardSeamPlugin.ts) | `ctx.screen` / `ctx.clipboard` |
-| P3-4 | [AsrPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/AsrPlugin.ts)：WhisperLocal / OpenAI Whisper / 火山 ASR + `ctx.asr` seam | 3 provider |
-| P3-5 | [TtsPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/TtsPlugin.ts)：System TTS / Edge-TTS / OpenAI TTS / Azure TTS + `ctx.tts` seam | 4 provider |
-| P3-6 | [WakeWordPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/WakeWordPlugin.ts)（Porcupine，可关） + [ShortcutPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/ShortcutPlugin.ts) | 唤醒 / 快捷键 |
+| P3-2 | [SafeKeyStorePlugin](../packages/bundle-ig-electron-caps/src/plugins/SafeKeyStorePlugin.ts) + [FileSessionStorePlugin](../packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts) | apiKey 加密落盘 / 会话 JSONL |
+| P3-3 | [ScreenSeamPlugin](../packages/bundle-ig-electron-caps/src/plugins/ScreenSeamPlugin.ts) + [ClipboardSeamPlugin](../packages/bundle-ig-electron-caps/src/plugins/ClipboardSeamPlugin.ts) | `ctx.screen` / `ctx.clipboard` |
+| P3-4 | [AsrPlugin](../packages/bundle-ig-electron-caps/src/plugins/AsrPlugin.ts)：WhisperLocal / OpenAI Whisper / 火山 ASR + `ctx.asr` seam | 3 provider |
+| P3-5 | [TtsPlugin](../packages/bundle-ig-electron-caps/src/plugins/TtsPlugin.ts)：System TTS / Edge-TTS / OpenAI TTS / Azure TTS + `ctx.tts` seam | 4 provider |
+| P3-6 | [WakeWordPlugin](../packages/bundle-ig-electron-caps/src/plugins/WakeWordPlugin.ts)（Porcupine，可关） + [ShortcutPlugin](../packages/bundle-ig-electron-caps/src/plugins/ShortcutPlugin.ts) | 唤醒 / 快捷键 |
 | P3-7 | 单元 + Electron 集成测试（`@electron/mocha`） | 主进程可跑通 |
 
 **退出准则**：`chat-only.yml` 加载后 `ctx.asr.list()` / `ctx.tts.list()` 齐全，`ctx.screen.capture()` 能返回 buffer；apiKey 加解密验证通过。
@@ -1770,10 +1770,10 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P4-1 | 包骨架 + `patch.yml` | 可 `boot` |
-| P4-2 | [Live2dSeamPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-live2d/src/plugins/Live2dSeamPlugin.ts)：`playMotion / setExpression / driveLipSync(rms)` + `ctx.live2d` seam | 渲染实现 |
-| P4-3 | [TouchInjectPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-live2d/src/plugins/TouchInjectPlugin.ts)：Live2D 触摸 → `ctx.agents.inject(sensory part)` | 触摸感知 |
-| P4-4 | [TtsLipSyncPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-live2d/src/plugins/TtsLipSyncPlugin.ts)：订阅 `tts:chunk` → 嘴型 | 联动就绪 |
-| P4-5 | [WaifuAgentPresetPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-live2d/src/plugins/WaifuAgentPresetPlugin.ts) + [WaifuToolsPlugin](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-live2d/src/plugins/WaifuToolsPlugin.ts)：`live2d_play_motion` / `live2d_set_expression` | 看板娘 agent + 工具 |
+| P4-2 | [Live2dSeamPlugin](../packages/bundle-ig-live2d/src/plugins/Live2dSeamPlugin.ts)：`playMotion / setExpression / driveLipSync(rms)` + `ctx.live2d` seam | 渲染实现 |
+| P4-3 | [TouchInjectPlugin](../packages/bundle-ig-live2d/src/plugins/TouchInjectPlugin.ts)：Live2D 触摸 → `ctx.agents.inject(sensory part)` | 触摸感知 |
+| P4-4 | [TtsLipSyncPlugin](../packages/bundle-ig-live2d/src/plugins/TtsLipSyncPlugin.ts)：订阅 `tts:chunk` → 嘴型 | 联动就绪 |
+| P4-5 | [WaifuAgentPresetPlugin](../packages/bundle-ig-live2d/src/plugins/WaifuAgentPresetPlugin.ts) + [WaifuToolsPlugin](../packages/bundle-ig-live2d/src/plugins/WaifuToolsPlugin.ts)：`live2d_play_motion` / `live2d_set_expression` | 看板娘 agent + 工具 |
 | P4-6 | 渲染端单测（jsdom + 假 canvas） | 覆盖率达标 |
 
 **退出准则**：`waifu.yml` 加载后 `ctx.live2d.playMotion('idle')` 有反馈；工具在 `ctx.tools.list()` 中可见。
@@ -1783,15 +1783,15 @@ userData/
 ### P5 · L1 · ai-sdk 业务门面（环境无关）
 
 **准入前提**：P2 完成（可与 P3、P4 并行）。
-**目标**：交付 [AIClient](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/AIClient.ts) 及各 Facade —— 屏蔽 dsh 表面变动，对上暴露稳定 API。
+**目标**：交付 [AIClient](../packages/ai-sdk/src/AIClient.ts) 及各 Facade —— 屏蔽 dsh 表面变动，对上暴露稳定 API。
 
 | # | 任务 | 交付物 |
 |---|---|---|
 | P5-1 | 包骨架（tsup 双出 esm/cjs），`peerDependencies: @deepseek-ai/dsh, @ig-live/bundle-ig-base` | 可发布 |
-| P5-2 | [types/](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types)：Message / Session / ToolSpec / MemoryFact / **UserProfile**（§6.3.1）/ events | 跨端 DTO 定稿 |
-| P5-3 | [AIClient](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/AIClient.ts)：接收 dsh `Context`，组合各 Facade | 门面稳定 |
+| P5-2 | [types/](../packages/ai-sdk/src/types)：Message / Session / ToolSpec / MemoryFact / **UserProfile**（§6.3.1）/ events | 跨端 DTO 定稿 |
+| P5-3 | [AIClient](../packages/ai-sdk/src/AIClient.ts)：接收 dsh `Context`，组合各 Facade | 门面稳定 |
 | P5-4 | Facade 全量：Chat / Session / Tools / Memory（含 `userProfile.*`）/ Asr / Tts / Live2d | 6 个 Facade |
-| P5-5 | [config/validators.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/config/validators.ts)：zod schema 校验 AppConfig | 参数护栏 |
+| P5-5 | [config/validators.ts](../packages/ai-sdk/src/config/validators.ts)：zod schema 校验 AppConfig | 参数护栏 |
 | P5-6 | 集成测试：用 dsh testing utility 构造 mock ctx，跑通 sendMessage / stream / abort | 全绿 |
 
 **退出准则**：`new AIClient(ctx).chat.sendMessage(...)` 端到端流式返回；`aiClient.memory.userProfile.set(...)` 可持久化。
@@ -1806,11 +1806,11 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P6-1 | 包骨架（仅 Electron 主进程用） | 可发布 |
-| P6-2 | [AIRuntimeService](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/AIRuntimeService.ts)：`boot('waifu')` → `AIClient` 全局单例 + 生命周期钩子 | app 启停可控 |
-| P6-3 | [IPCTransportServer](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/IPCTransportServer.ts)：反射 AIClient 全 API → `ai:*` 通道 | 自动导出通道 |
-| P6-4 | [EventBroadcaster](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/EventBroadcaster.ts)：主进程事件 → 全部渲染窗口 | 多窗口一致 |
+| P6-2 | [AIRuntimeService](../packages/ai-runtime/src/AIRuntimeService.ts)：`boot('waifu')` → `AIClient` 全局单例 + 生命周期钩子 | app 启停可控 |
+| P6-3 | [IPCTransportServer](../packages/ai-runtime/src/IPCTransportServer.ts)：反射 AIClient 全 API → `ai:*` 通道 | 自动导出通道 |
+| P6-4 | [EventBroadcaster](../packages/ai-runtime/src/EventBroadcaster.ts)：主进程事件 → 全部渲染窗口 | 多窗口一致 |
 | P6-5 | 挂 P3 的 `ctx.screen / clipboard / asr / tts / userProfile` IPC handler | 主进程能力可用 |
-| P6-6 | 与 [AiChatIpcHandler](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 的兼容适配层：旧通道保留 + 新通道并行 | 平滑迁移 |
+| P6-6 | 与 [AiChatIpcHandler](../packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 的兼容适配层：旧通道保留 + 新通道并行 | 平滑迁移 |
 | P6-7 | 集成测试：playwright-electron 跑 send/receive | 端到端通 |
 
 **退出准则**：Electron 启动后主进程日志有 `dsh booted (waifu)`；渲染窗口能通过 IPC 收发消息。
@@ -1825,8 +1825,8 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P7-1 | 包骨架（React 19 + TS，仅渲染进程） | 可发布 |
-| P7-2 | [ClientAIClient](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/ClientAIClient.ts)：与 [AIClient](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/AIClient.ts) 同签名的 IPC Proxy | 类型完全一致 |
-| P7-3 | [AIProvider](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/AIProvider.tsx) + hooks：`useChat / useAgent / useAIEvents / useTTSLipSync / useUserProfile` | 5 个 hook |
+| P7-2 | [ClientAIClient](../packages/ai-sdk-client/src/ClientAIClient.ts)：与 [AIClient](../packages/ai-sdk/src/AIClient.ts) 同签名的 IPC Proxy | 类型完全一致 |
+| P7-3 | [AIProvider](../packages/ai-sdk-client/src/AIProvider.tsx) + hooks：`useChat / useAgent / useAIEvents / useTTSLipSync / useUserProfile` | 5 个 hook |
 | P7-4 | preload 脚本模板（`window.aiChatAPI` / `window.waifuAPI`），contextBridge 白名单 | 可复用 |
 | P7-5 | Storybook 或 example 应用演示 hooks | 可视化验证 |
 
@@ -1841,9 +1841,9 @@ userData/
 
 | # | 任务 | 交付物 |
 |---|---|---|
-| P8-1 | [ai-chat](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat)：删除 [AIService](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/services/AIService.ts) 与 [AdapterFactory](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/services/adapters/AdapterFactory.ts)，全面切换到 `useChat / useAgent / useUserProfile` | 无历史死代码 |
-| P8-2 | [renderer](file:///Users/botycookie/self/ai-live2d-client/packages/renderer)：挂载 bundle-ig-live2d，接入 `useWaifuAgent` + `useTTSLipSync` | 看板娘可发起 agent |
-| P8-3 | [electron 主进程](file:///Users/botycookie/self/ai-live2d-client/packages/electron)：在 `app.whenReady` 里初始化 `AIRuntimeService.boot('waifu')`；旧 [AiChatIpcHandler](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 迁移到 IPCTransportServer | 单入口 |
+| P8-1 | [ai-chat](../packages/ai-chat)：删除 [AIService](../packages/ai-chat/src/services/AIService.ts) 与 [AdapterFactory](../packages/ai-chat/src/services/adapters/AdapterFactory.ts)，全面切换到 `useChat / useAgent / useUserProfile` | 无历史死代码 |
+| P8-2 | [renderer](../packages/renderer)：挂载 bundle-ig-live2d，接入 `useWaifuAgent` + `useTTSLipSync` | 看板娘可发起 agent |
+| P8-3 | [electron 主进程](../packages/electron)：在 `app.whenReady` 里初始化 `AIRuntimeService.boot('waifu')`；旧 [AiChatIpcHandler](../packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 迁移到 IPCTransportServer | 单入口 |
 | P8-4 | UI 补齐：ConfigPanel 增加"用户偏好"面板（读写 `ctx.userProfile`）；ProviderPicker 顶部快切 | 用户可编辑画像 |
 | P8-5 | 首次启动向导（下载本地模型、授权、测试连接） | 新用户可自助初始化 |
 

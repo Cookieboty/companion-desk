@@ -1,10 +1,10 @@
 /**
  * E5 · 危险工具 `write_file` 确认弹窗（headless / 拒绝路径自动化）
  *
- * 语义对齐（对照 [P9-11](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)）：
+ * 语义对齐（对照 [P9-11](../../docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)）：
  * - 场景：chat-only profile，Agent 触发 `write_file` 时应弹出确认；
  *   本 headless 用例只跑**拒绝路径自动化**（同意路径涉及真实 fs / dialog，
- *   延到 [P9-11 手工验收清单](file:///Users/botycookie/self/ai-live2d-client/docs/consumer-integration.md)）；
+ *   延到 [P9-11 手工验收清单](../../docs/consumer-integration.md)）；
  * - 断言（拒绝前）：`tools/pre-execute` 被 dsh 拒绝、`write_file.execute` 未被调用；
  * - 断言（弹窗）：AIClient 侧收到 `tool:confirm-required` 事件；
  * - 断言（拒绝后）：`tools/post-execute { ok: false, code: 'E_TOOL_DENIED' }` 广播到渲染窗口的 `tool:executed`。

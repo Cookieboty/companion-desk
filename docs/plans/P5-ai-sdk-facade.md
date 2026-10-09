@@ -5,10 +5,10 @@
 | 项 | 值 |
 |---|---|
 | 层级 | L1（业务门面，环境无关） |
-| 依赖 Plan | [P2](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P2-bundle-ig-base.md) |
+| 依赖 Plan | [P2](P2-bundle-ig-base.md) |
 | 建议 Sprint | Sprint 2（并行） |
 | 预估工作量 | 6~8 人日 |
-| 关联设计章节 | [§3.1](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L471-L523) / [§14 P5](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1783-L1797) |
+| 关联设计章节 | [§3.1](../AI_HARNESS_DESIGN.md#L471-L523) / [§14 P5](../AI_HARNESS_DESIGN.md#L1783-L1797) |
 
 ## 目标
 
@@ -16,7 +16,7 @@
 
 ## 准入前提
 
-- [P2](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P2-bundle-ig-base.md) 完成（`ctx.llm / tools / sessions / agents / userProfile / mcp` 就绪）。
+- [P2](P2-bundle-ig-base.md) 完成（`ctx.llm / tools / sessions / agents / userProfile / mcp` 就绪）。
 
 ## 范围
 
@@ -28,8 +28,8 @@
 
 ### P5-1 · 包骨架
 
-- 目录 [packages/ai-sdk](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk)
-- [package.json](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/package.json)：
+- 目录 [packages/ai-sdk](../../packages/ai-sdk)
+- [package.json](../../packages/ai-sdk/package.json)：
   - `"name": "@ig-live/ai-sdk"`
   - `"peerDependencies": { "@deepseek-ai/dsh": "^0.1.2", "@ig-live/bundle-ig-base": "workspace:*" }`
   - `"dependencies": { "zod": "^3" }`
@@ -38,20 +38,20 @@
 
 ### P5-2 · 业务 DTO 类型（跨端 IPC 契约）
 
-- 目录 [src/types/](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types)
+- 目录 [src/types/](../../packages/ai-sdk/src/types)
 - 文件：
-  - [Message.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/Message.ts)：`Message = { id, role, parts: MessagePart[], createdAt, sessionId }`；`MessagePart` 覆盖 text/image/audio/toolCall/toolResult/sensory
-  - [Session.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/Session.ts)：`{ id, title, createdAt, meta, agentPreset? }`
-  - [ToolSpec.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/ToolSpec.ts)：`{ name, description, schema: zod.ZodType, dangerous?: boolean }`
-  - [MemoryFact.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/MemoryFact.ts)：`{ id, kind, text, source, at }`
-  - [UserProfile.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/UserProfile.ts)：**re-export from `@ig-live/bundle-ig-base`**（避免类型漂移）
-  - [events.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/types/events.ts)：`AIClientEvent` 枚举 + payload map（`message:delta` / `agent:step` / `tool:confirm-required` / `tts:chunk` / `userProfile:changed` ...）
+  - [Message.ts](../../packages/ai-sdk/src/types/Message.ts)：`Message = { id, role, parts: MessagePart[], createdAt, sessionId }`；`MessagePart` 覆盖 text/image/audio/toolCall/toolResult/sensory
+  - [Session.ts](../../packages/ai-sdk/src/types/Session.ts)：`{ id, title, createdAt, meta, agentPreset? }`
+  - [ToolSpec.ts](../../packages/ai-sdk/src/types/ToolSpec.ts)：`{ name, description, schema: zod.ZodType, dangerous?: boolean }`
+  - [MemoryFact.ts](../../packages/ai-sdk/src/types/MemoryFact.ts)：`{ id, kind, text, source, at }`
+  - [UserProfile.ts](../../packages/ai-sdk/src/types/UserProfile.ts)：**re-export from `@ig-live/bundle-ig-base`**（避免类型漂移）
+  - [events.ts](../../packages/ai-sdk/src/types/events.ts)：`AIClientEvent` 枚举 + payload map（`message:delta` / `agent:step` / `tool:confirm-required` / `tts:chunk` / `userProfile:changed` ...）
 - 所有 DTO 必须 **structuredClone-safe**（准备 IPC 序列化）
 - 验收：`tsc --noEmit` 通过；DTO 快照测试锁字段
 
 ### P5-3 · AIClient 门面
 
-- 新建 [src/AIClient.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/AIClient.ts)
+- 新建 [src/AIClient.ts](../../packages/ai-sdk/src/AIClient.ts)
   ```ts
   export class AIClient {
     readonly chat: ChatFacade;
@@ -72,25 +72,25 @@
 
 ### P5-4 · Facade 全量实现
 
-- 目录 [src/facade/](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade)
-  - [ChatFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/ChatFacade.ts)：`sendMessage / stream / abort / regenerate`
-  - [SessionFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/SessionFacade.ts)：`list / get / create / fork / rename / delete`
-  - [ToolsFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/ToolsFacade.ts)：`list / register(local) / setEnabled / confirm(reqId, ok)`
-  - [MemoryFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/MemoryFacade.ts)：`facts.list/put/delete`、`summaries.get(sessionId)`、`userProfile.{get,set,reset,subscribe,export,import}`
-  - [AsrFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/AsrFacade.ts) / [TtsFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/TtsFacade.ts)：`list / synth / transcribe / stream / stop`
-  - [Live2dFacade.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/facade/Live2dFacade.ts)：`playMotion / setExpression / driveLipSync / on('motion:end'|'touch')`
-- 每个 Facade 必须导出 **接口类型** 供 [P7 ClientAIClient](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P7-ai-sdk-client.md#p7-2-clientaiclientipc-proxy) 保持签名一致
+- 目录 [src/facade/](../../packages/ai-sdk/src/facade)
+  - [ChatFacade.ts](../../packages/ai-sdk/src/facade/ChatFacade.ts)：`sendMessage / stream / abort / regenerate`
+  - [SessionFacade.ts](../../packages/ai-sdk/src/facade/SessionFacade.ts)：`list / get / create / fork / rename / delete`
+  - [ToolsFacade.ts](../../packages/ai-sdk/src/facade/ToolsFacade.ts)：`list / register(local) / setEnabled / confirm(reqId, ok)`
+  - [MemoryFacade.ts](../../packages/ai-sdk/src/facade/MemoryFacade.ts)：`facts.list/put/delete`、`summaries.get(sessionId)`、`userProfile.{get,set,reset,subscribe,export,import}`
+  - [AsrFacade.ts](../../packages/ai-sdk/src/facade/AsrFacade.ts) / [TtsFacade.ts](../../packages/ai-sdk/src/facade/TtsFacade.ts)：`list / synth / transcribe / stream / stop`
+  - [Live2dFacade.ts](../../packages/ai-sdk/src/facade/Live2dFacade.ts)：`playMotion / setExpression / driveLipSync / on('motion:end'|'touch')`
+- 每个 Facade 必须导出 **接口类型** 供 [P7 ClientAIClient](P7-ai-sdk-client.md#p7-2-clientaiclientipc-proxy) 保持签名一致
 
 ### P5-5 · Config 与 zod 校验
 
-- 新建 [src/config/AppConfig.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/config/AppConfig.ts)：业务配置类型（provider 选择 / 默认模型 / 快捷键 / UI 偏好）
-- 新建 [src/config/validators.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/config/validators.ts)：`AppConfigSchema = z.object({...}).strict()`
+- 新建 [src/config/AppConfig.ts](../../packages/ai-sdk/src/config/AppConfig.ts)：业务配置类型（provider 选择 / 默认模型 / 快捷键 / UI 偏好）
+- 新建 [src/config/validators.ts](../../packages/ai-sdk/src/config/validators.ts)：`AppConfigSchema = z.object({...}).strict()`
 - 加载入口：`loadAppConfig(raw): AppConfig`——失败时把 zod issue 转成用户可读的错误
 - 单测：正/负样本各 10 条
 
 ### P5-6 · DI 与日志
 
-- 新建 [src/di/ILogger.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk/src/di/ILogger.ts)：`{ debug/info/warn/error }`
+- 新建 [src/di/ILogger.ts](../../packages/ai-sdk/src/di/ILogger.ts)：`{ debug/info/warn/error }`
 - `AIClient` 构造第二参数 `{ logger?: ILogger }`；默认 no-op
 - 其余 DI（KeyStore/Storage）通过 dsh ctx seam 拿，不在 SDK 里定义
 
@@ -106,7 +106,7 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/ai-sdk](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk)
+- 1 个可发布 npm 包 [@ig-live/ai-sdk](../../packages/ai-sdk)
 - 7 个 Facade + AIClient + 完整 DTO + zod 校验器
 
 ## 退出准则（自动化）
