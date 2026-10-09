@@ -24,7 +24,14 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**", ".turbo/**"],
-      "inputs": ["src/**", "package.json", "tsconfig.json", "tsup.config.ts", "vite.config.ts"]
+      "inputs": [
+        "src/**",
+        "package.json",
+        "tsconfig.json",
+        "tsup.config.ts",
+        "vite.config.ts",
+        "vite.config.mts"
+      ]
     },
     "typecheck": {
       "dependsOn": ["^build"],
