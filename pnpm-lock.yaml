@@ -388,6 +388,9 @@ importers:
       '@ig-live/bundle-ig-electron-caps':
         specifier: workspace:*
         version: link:../bundle-ig-electron-caps
+      '@ig-live/bundle-ig-live2d':
+        specifier: workspace:*
+        version: link:../bundle-ig-live2d
       '@modelcontextprotocol/sdk':
         specifier: ^1.17.1
         version: 1.17.1
