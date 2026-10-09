@@ -101,10 +101,29 @@ test.describe('E6 · real app · AI chat history', () => {
       env,
       timeout: 30_000,
     });
+    // 收集主进程输出与页面 console，失败时打印，便于定位 CI 环境差异
+    const diag: string[] = [];
+    app.process().stdout?.on('data', (d: Buffer) => diag.push(`[stdout] ${String(d).trim()}`));
+    app.process().stderr?.on('data', (d: Buffer) => diag.push(`[stderr] ${String(d).trim()}`));
+    app.on('window', (w) => {
+      diag.push(`[window] ${w.url()}`);
+      w.on('console', (m) => diag.push(`[console:${m.type()}] ${m.text()}`));
+      w.on('pageerror', (e) => diag.push(`[pageerror] ${e.message}`));
+    });
     const main = await app.firstWindow({ timeout: 20_000 });
-    await main.waitForFunction(
-      () => typeof (window as unknown as { electronAPI?: unknown }).electronAPI !== 'undefined',
-    );
+    try {
+      await main.waitForFunction(
+        () => typeof (window as unknown as { electronAPI?: unknown }).electronAPI !== 'undefined',
+        undefined,
+        { timeout: 30_000 },
+      );
+    } catch (err) {
+      const urls = app.windows().map((w) => w.url());
+      console.error(
+        `[E6] electronAPI missing; windows=${JSON.stringify(urls)}\n${diag.join('\n')}`,
+      );
+      throw err;
+    }
 
     const chatWindow = app.waitForEvent('window', { timeout: 20_000 });
     await main.evaluate(() =>
