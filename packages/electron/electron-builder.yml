@@ -7,10 +7,10 @@
 # - 便于 [P9-9 CI 三平台 build](../../docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
 # - Notarize / Windows Sign 通过环境变量启用（默认关闭以便本地开发 & PR CI 免凭证）。
 #
-# v26 note: pnpm "node module collector" can OOM on large workspaces (~4GB heap);
+# v26 note: pnpm "node module collector" OOMs on this monorepo (~4GB default heap).
 # electron-builder then falls back to manual node_modules traversal and packaging
-# still succeeds. Prefer raising NODE_OPTIONS=--max-old-space-size if you need a
-# clean collector pass; pnpm deploy staging is an alternative if traversal fails.
+# still succeeds — do NOT raise NODE_OPTIONS to force the collector (it can hang for
+# tens of minutes on CI). pnpm deploy staging is only needed if traversal also fails.
 
 appId: com.cookieboty.companion-desk
 productName: Companion Desk
