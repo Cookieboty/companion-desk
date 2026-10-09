@@ -1,11 +1,11 @@
 /**
  * ClipboardGateway - 基于 Electron `clipboard` 模块实现 ClipboardService
  *
- * 图像读写：`clipboard.readImage()` 返回 nativeImage，本类转 PNG buffer + width/height。
- * 事件订阅：Electron 未提供剪贴板变化事件，通过 setInterval 轮询 hash 实现最小版本。
+ * Electron ≥ 40 的 clipboard 是 W3C 风格的异步 API（readText/writeText/read 均返回 Promise，
+ * 不再提供 readImage）。图像读取：`clipboard.read()` 取 `image/png` Blob，
+ * 再借助 nativeImage 获取 width/height。
+ * 事件订阅：Electron 未提供剪贴板变化事件，通过 setInterval 轮询文本实现最小版本。
  */
-
-import { clipboard, nativeImage } from 'electron';
 
 import type {
   ClipboardChangePayload,
@@ -13,6 +13,7 @@ import type {
   ClipboardImage,
   ClipboardService,
 } from '@ig-live/bundle-ig-electron-caps';
+import { clipboard, nativeImage } from 'electron';
 
 export interface ClipboardGatewayOptions {
   /** 轮询间隔，默认 500ms。设为 0 关闭事件订阅（`on()` 会返回 no-op） */
@@ -23,6 +24,7 @@ export class ClipboardGateway implements ClipboardService {
   private readonly pollMs: number;
   private timer: NodeJS.Timeout | undefined;
   private lastText = '';
+  private polling = false;
   private readonly listeners = new Set<(p: ClipboardChangePayload) => void>();
 
   constructor(opts: ClipboardGatewayOptions = {}) {
@@ -34,20 +36,18 @@ export class ClipboardGateway implements ClipboardService {
   }
 
   async writeText(text: string): Promise<void> {
-    clipboard.writeText(text);
+    await clipboard.writeText(text);
   }
 
   async readImage(): Promise<ClipboardImage | undefined> {
-    const img = clipboard.readImage();
-    if (img.isEmpty()) return undefined;
-    const buf = img.toPNG();
-    const size = img.getSize();
-    return {
-      mime: 'image/png',
-      data: new Uint8Array(buf),
-      width: size.width,
-      height: size.height,
-    };
+    const items = await clipboard.read();
+    const item = items.find((i) => i.types.includes('image/png'));
+    if (!item) return undefined;
+    const blob = (await item.getType('image/png')) as Blob;
+    const data = new Uint8Array(await blob.arrayBuffer());
+    if (data.byteLength === 0) return undefined;
+    const size = nativeImage.createFromBuffer(Buffer.from(data)).getSize();
+    return { mime: 'image/png', data, width: size.width, height: size.height };
   }
 
   on(evt: ClipboardEvent, fn: (p: ClipboardChangePayload) => void): () => void {
@@ -62,21 +62,39 @@ export class ClipboardGateway implements ClipboardService {
   }
 
   private startPolling(): void {
-    this.lastText = clipboard.readText();
+    void clipboard.readText().then(
+      (t) => {
+        this.lastText = t;
+      },
+      () => {},
+    );
     this.timer = setInterval(() => {
-      const text = clipboard.readText();
-      if (text === this.lastText) return;
-      this.lastText = text;
-      const payload: ClipboardChangePayload =
-        text === '' ? { kind: 'empty' } : { kind: 'text', text };
-      for (const fn of this.listeners) {
-        try {
-          fn(payload);
-        } catch {
-          /* ignore listener error */
-        }
-      }
+      if (this.polling) return;
+      this.polling = true;
+      void this.pollOnce().finally(() => {
+        this.polling = false;
+      });
     }, this.pollMs);
+  }
+
+  private async pollOnce(): Promise<void> {
+    let text: string;
+    try {
+      text = await clipboard.readText();
+    } catch {
+      return;
+    }
+    if (text === this.lastText) return;
+    this.lastText = text;
+    const payload: ClipboardChangePayload =
+      text === '' ? { kind: 'empty' } : { kind: 'text', text };
+    for (const fn of this.listeners) {
+      try {
+        fn(payload);
+      } catch {
+        /* ignore listener error */
+      }
+    }
   }
 
   private stopPolling(): void {

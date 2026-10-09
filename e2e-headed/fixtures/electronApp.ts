@@ -1,8 +1,10 @@
-import { test as base, _electron as electron } from '@playwright/test';
-import type { ElectronApplication, Page } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import type { ElectronApplication, Page } from '@playwright/test';
+import { test as base, _electron as electron } from '@playwright/test';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,7 +17,9 @@ export interface HeadedLaunchOptions {
 export interface HeadedFixture {
   app: ElectronApplication;
   page: Page | null;
-  launchHeaded(opts?: HeadedLaunchOptions): Promise<{ app: ElectronApplication; page: Page | null }>;
+  launchHeaded(
+    opts?: HeadedLaunchOptions,
+  ): Promise<{ app: ElectronApplication; page: Page | null }>;
 }
 
 /**
@@ -28,31 +32,28 @@ export function repoRoot(): string {
 /**
  * 定位 electron 可执行文件的**绝对路径**。
  *
- * 背景：Playwright 的 `_electron.launch()` 默认按 CWD 找 `node_modules/electron`；
- * 本仓库根 `node_modules/electron` 是随 `@playwright/test` 后装的空壳（postinstall
- * 未成功下载 dist），而完整的 `electron@25.9.8` 二进制在 `packages/electron/node_modules/electron`。
- * 这里显式读 `path.txt` + 手工拼绝对路径，避免 Playwright 触发 electron 二进制下载。
+ * 以 packages/electron 为起点做模块解析（pnpm 可能把 electron 提升到根 node_modules），
+ * 拿到 `@ig-live/electron` 声明的那份 electron，再读 `path.txt` 拼出可执行文件路径，
+ * 避免 Playwright 按 CWD 去找 electron 或触发二进制下载。
  */
 export function resolveElectronExecutable(): string {
-  const pkgElectronDir = resolve(
-    repoRoot(),
-    'packages',
-    'electron',
-    'node_modules',
-    'electron',
-  );
+  const req = createRequire(resolve(repoRoot(), 'packages', 'electron', 'package.json'));
+  let pkgElectronDir: string;
+  try {
+    pkgElectronDir = dirname(req.resolve('electron/package.json'));
+  } catch {
+    throw new Error('[e2e-headed] 无法从 packages/electron 解析 electron；请先运行 pnpm install');
+  }
   const pathTxt = resolve(pkgElectronDir, 'path.txt');
   if (!existsSync(pathTxt)) {
     throw new Error(
-      `[e2e-headed] 找不到 packages/electron 的 electron 二进制描述: ${pathTxt}\n请先运行 pnpm install（该 workspace 声明 electron@25.9.8 为 devDependency）`,
+      `[e2e-headed] electron 二进制未下载（缺少 ${pathTxt}）；请重新运行 pnpm install`,
     );
   }
   const relative = readFileSync(pathTxt, 'utf8').trim();
   const abs = resolve(pkgElectronDir, 'dist', relative);
   if (!existsSync(abs)) {
-    throw new Error(
-      `[e2e-headed] path.txt 指向的 electron 可执行文件不存在: ${abs}`,
-    );
+    throw new Error(`[e2e-headed] path.txt 指向的 electron 可执行文件不存在: ${abs}`);
   }
   return abs;
 }

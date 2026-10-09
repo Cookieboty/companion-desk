@@ -408,8 +408,8 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3
       electron:
-        specifier: 25.9.8
-        version: 25.9.8
+        specifier: 44.1.0
+        version: 44.1.0
       electron-builder:
         specifier: ^23.6.0
         version: 23.6.0
@@ -5994,11 +5994,6 @@ packages:
 
   electron-to-chromium@1.5.155:
     resolution: {integrity: sha512-ps5KcGGmwL8VaeJlvlDlu4fORQpv3+GIcF5I3f9tUKUlJ/wsysh6HU8P5L1XWRYeXfA0oJd4PyM8ds8zTFf6Ng==}
-
-  electron@25.9.8:
-    resolution: {integrity: sha512-PGgp6PH46QVENHuAHc2NT1Su8Q1qov7qIl2jI5tsDpTibwV2zD8539AeWBQySeBU4dhbj9onIl7+1bXQ0wefBg==}
-    engines: {node: '>= 12.20.55'}
-    hasBin: true
 
   electron@44.1.0:
     resolution: {integrity: sha512-kmLg8axOg22DC3fXx5NCwBYW8fx0rK2zzJ3Tf67GjNCkxfoxEcd+yo0QfDjlBtHJs3xeA8fTg64b6iVzFTVErg==}
@@ -16257,14 +16252,6 @@ snapshots:
       chokidar: 3.6.0
 
   electron-to-chromium@1.5.155: {}
-
-  electron@25.9.8:
-    dependencies:
-      '@electron/get': 2.0.3
-      '@types/node': 18.19.103
-      extract-zip: 2.0.1
-    transitivePeerDependencies:
-      - supports-color
 
   electron@44.1.0:
     dependencies:
