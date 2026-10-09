@@ -1,12 +1,13 @@
 /**
  * ElectronLifecycle —— 把 Electron `app.on('before-quit', ...)` 适配成 `AppLifecycle`。
  *
- * 采用惰性 `require('electron')`：
+ * 采用惰性 `require('electron')`（经 nodeRequire / createRequire 获取 require）：
  * - 生产环境（主进程）能拿到真实 `app`；
  * - Node 纯脚本环境下 require 会抛错，此时应传入 `NoopLifecycle`。
  */
 
 import type { AppLifecycle } from './AIRuntimeService';
+import { nodeRequire } from './nodeRequire';
 
 interface ElectronAppLike {
   on(evt: 'before-quit', fn: () => void): unknown;
@@ -21,7 +22,7 @@ export const NoopLifecycle: AppLifecycle = {
 export function createElectronLifecycle(): AppLifecycle {
   let app: ElectronAppLike;
   try {
-    const req = (0, eval)('require');
+    const req = nodeRequire();
     const mod = req('electron') as { app: ElectronAppLike };
     app = mod.app;
   } catch (err) {
