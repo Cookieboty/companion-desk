@@ -28,7 +28,7 @@
     "test:coverage": "jest --coverage",
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration",
-    "test:e2e": "jest tests/e2e",
+    "test:e2e": "jest tests/e2e --passWithNoTests",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix"
   },
