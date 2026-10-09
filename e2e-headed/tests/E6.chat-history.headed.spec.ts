@@ -120,7 +120,10 @@ test.describe('E6 · real app · AI chat history', () => {
     } catch {
       // CI（xvfb）上偶发：紧接 E5 启动时首个渲染进程空白、preload 未注入；记录现场后重载一次
       const state = await main
-        .evaluate(() => `${document.readyState} ${location.href}`)
+        .evaluate(
+          () =>
+            `${document.readyState} ${location.href} aiIPC=${typeof (window as unknown as { aiIPC?: unknown }).aiIPC}`,
+        )
         .catch((e: unknown) => `evaluate failed: ${String(e)}`);
       console.warn(`[E6] electronAPI missing (${state}); reloading once\n${diag.join('\n')}`);
       await main.reload();
