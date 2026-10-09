@@ -16,7 +16,7 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/*.min.js',
       'packages/renderer/public/**',
-      'scripts/generate-model-list.cjs',
+      'scripts/generate-costume-model-list.cjs',
     ],
   },
 
