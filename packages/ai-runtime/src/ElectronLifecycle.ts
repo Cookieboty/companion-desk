@@ -30,6 +30,7 @@ export function createElectronLifecycle(): AppLifecycle {
       '[ai-runtime] failed to require("electron"); ' +
         'if you are not inside Electron main, use NoopLifecycle instead. ' +
         `underlying error: ${(err as Error).message}`,
+      { cause: err },
     );
   }
   return {

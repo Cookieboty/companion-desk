@@ -73,8 +73,9 @@ export function useUserProfile<P = unknown>(): UseUserProfileResult<P> {
     listenersRef.current.add(cb);
     return () => listenersRef.current.delete(cb);
   }, []);
-  const getSnapshot = useCallback(() => versionRef.current, []);
-  useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  // 快照即不可变状态对象本身（每次更新都替换 stateRef.current），渲染期只读快照不读 ref
+  const getSnapshot = useCallback(() => stateRef.current, []);
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const set = useCallback(
     async (patch: Partial<P>) => {
@@ -112,9 +113,9 @@ export function useUserProfile<P = unknown>(): UseUserProfileResult<P> {
   }, [userProfile, notify]);
 
   return {
-    profile: stateRef.current.profile,
-    loading: stateRef.current.loading,
-    error: stateRef.current.error,
+    profile: state.profile,
+    loading: state.loading,
+    error: state.error,
     set,
     reset,
     refresh,
