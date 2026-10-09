@@ -41,9 +41,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.2-alpha.3",
-    "@deepseek-ai/dsh-app-boot": "0.1.2-alpha.3",
-    "@deepseek-ai/dsh-home-paths": "0.1.2-alpha.3"
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-app-boot": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
