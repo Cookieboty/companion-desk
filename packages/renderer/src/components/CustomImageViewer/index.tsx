@@ -1,5 +1,6 @@
+import { type CustomImageInfo } from '@ig-live/types';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CustomImageInfo } from '@ig-live/types';
+
 import styles from './style.module.css';
 
 interface CustomImageViewerProps {
@@ -21,7 +22,7 @@ export const CustomImageViewer: React.FC<CustomImageViewerProps> = ({
   onImageError,
   onImageLoad,
   enableDrag = true,
-  transparent = true
+  transparent = true,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -63,38 +64,44 @@ export const CustomImageViewer: React.FC<CustomImageViewerProps> = ({
   }, [imagePath, onImageError]);
 
   // 拖拽开始
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!enableDrag) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!enableDrag) return;
 
-    e.preventDefault();
-    setIsDragging(true);
+      e.preventDefault();
+      setIsDragging(true);
 
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDragOffset({
-        x: e.clientX - rect.left - position.x,
-        y: e.clientY - rect.top - position.y
-      });
-    }
-  }, [enableDrag, position]);
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        setDragOffset({
+          x: e.clientX - rect.left - position.x,
+          y: e.clientY - rect.top - position.y,
+        });
+      }
+    },
+    [enableDrag, position],
+  );
 
   // 拖拽过程
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !enableDrag) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging || !enableDrag) return;
 
-    e.preventDefault();
-    const newPosition = {
-      x: e.clientX - dragOffset.x,
-      y: e.clientY - dragOffset.y
-    };
+      e.preventDefault();
+      const newPosition = {
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y,
+      };
 
-    setPosition(newPosition);
+      setPosition(newPosition);
 
-    // 通知Electron窗口移动
-    if (window.electronAPI?.moveWindow) {
-      window.electronAPI.moveWindow(e.movementX, e.movementY);
-    }
-  }, [isDragging, enableDrag, dragOffset]);
+      // 通知Electron窗口移动
+      if (window.electronAPI?.moveWindow) {
+        window.electronAPI.moveWindow(e.movementX, e.movementY);
+      }
+    },
+    [isDragging, enableDrag, dragOffset],
+  );
 
   // 拖拽结束
   const handleMouseUp = useCallback(() => {
@@ -172,7 +179,7 @@ export const CustomImageViewer: React.FC<CustomImageViewerProps> = ({
             onMouseDown={handleMouseDown}
             style={{
               transform: `translate(${position.x}px, ${position.y}px)`,
-              cursor: enableDrag ? (isDragging ? 'grabbing' : 'grab') : 'default'
+              cursor: enableDrag ? (isDragging ? 'grabbing' : 'grab') : 'default',
             }}
             draggable={false}
           />
@@ -195,7 +202,9 @@ export const CustomImageViewer: React.FC<CustomImageViewerProps> = ({
               {imageInfo.dimensions && (
                 <div className={styles.infoItem}>
                   <span>尺寸:</span>
-                  <span>{imageInfo.dimensions.width} × {imageInfo.dimensions.height}</span>
+                  <span>
+                    {imageInfo.dimensions.width} × {imageInfo.dimensions.height}
+                  </span>
                 </div>
               )}
             </div>

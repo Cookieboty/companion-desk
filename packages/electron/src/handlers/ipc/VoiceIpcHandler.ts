@@ -3,9 +3,10 @@
  * 处理语音播放、键盘监听等相关的IPC通信
  */
 
+import { type IConfigService } from '../../services/ConfigService';
+import { type ILoggerService } from '../../services/LoggerService';
+
 import { BaseIpcHandler } from './BaseIpcHandler';
-import { ILoggerService } from '../../services/LoggerService';
-import { IConfigService } from '../../services/ConfigService';
 
 // 全局键盘监听器类型定义
 interface KeyboardEvent {
@@ -66,7 +67,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
         const updatedSettings = { ...currentSettings, ...settings };
 
         this.configService.set('voiceSettings', updatedSettings);
-        this.configService.save().catch(error => {
+        this.configService.save().catch((error) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.error('保存语音设置失败', { error: errorMessage });
         });
@@ -99,7 +100,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
           const keyEvent: KeyboardEvent = {
             key: e.name,
             timestamp: Date.now(),
-            type: e.state === 'DOWN' ? 'keydown' : 'keyup'
+            type: e.state === 'DOWN' ? 'keydown' : 'keyup',
           };
 
           this.logger.debug('键盘事件', { keyEvent });
@@ -109,7 +110,6 @@ export class VoiceIpcHandler extends BaseIpcHandler {
         this.isKeyboardListening = true;
         this.logger.info('键盘监听器启动成功');
         this.sendKeyboardListenerStarted();
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('启动键盘监听器失败', { error: errorMessage });
@@ -140,7 +140,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
       const status = {
         isListening: this.isKeyboardListening,
         isAvailable: !!this.globalKeyboardListener,
-        hasListener: !!this.keyboardListener
+        hasListener: !!this.keyboardListener,
       };
 
       this.logger.debug('键盘监听器状态', { status });
@@ -160,11 +160,10 @@ export class VoiceIpcHandler extends BaseIpcHandler {
         this.logger.info('播放语音', { text, voice, speed, volume });
 
         // 模拟播放延迟
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         this.logger.info('语音播放完成');
         return this.createSuccessResponse();
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('语音播放失败', { error: errorMessage, voiceConfig });
@@ -179,12 +178,11 @@ export class VoiceIpcHandler extends BaseIpcHandler {
         const voices = [
           { id: 'voice1', name: '标准女声', language: 'zh-CN' },
           { id: 'voice2', name: '标准男声', language: 'zh-CN' },
-          { id: 'voice3', name: '英文女声', language: 'en-US' }
+          { id: 'voice3', name: '英文女声', language: 'en-US' },
         ];
 
         this.logger.debug('获取可用语音列表', { voices });
         return voices;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取可用语音列表失败', { error: errorMessage });
@@ -204,15 +202,14 @@ export class VoiceIpcHandler extends BaseIpcHandler {
           text: '这是语音测试',
           voice: voiceId,
           speed: 1.0,
-          volume: 0.8
+          volume: 0.8,
         };
 
         // 模拟测试播放
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         this.logger.info('语音测试完成');
         return this.createSuccessResponse();
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('语音测试失败', { error: errorMessage, voiceId });
@@ -234,7 +231,6 @@ export class VoiceIpcHandler extends BaseIpcHandler {
 
         this.logger.info('语音音量已设置', { volume });
         return this.createSuccessResponse();
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('设置语音音量失败', { error: errorMessage, volume });
@@ -257,7 +253,6 @@ export class VoiceIpcHandler extends BaseIpcHandler {
 
         this.logger.info('语音模式已设置', { mode });
         return this.createSuccessResponse();
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('设置语音模式失败', { error: errorMessage, mode });
@@ -267,7 +262,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
 
     this.logger.info('VoiceIpcHandler 初始化完成', {
       registeredChannels: this.getRegisteredChannels().length,
-      keyboardListenerAvailable: !!this.globalKeyboardListener
+      keyboardListenerAvailable: !!this.globalKeyboardListener,
     });
   }
 
