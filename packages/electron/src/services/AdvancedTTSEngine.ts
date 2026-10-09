@@ -1,6 +1,6 @@
-import { spawn, ChildProcess } from 'child_process';
-import * as path from 'path';
+import { spawn, type ChildProcess } from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * TTS音色配置接口
@@ -55,7 +55,15 @@ export class AdvancedTTSEngine {
       let configPath: string;
 
       if (isDev) {
-        configPath = path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json');
+        configPath = path.join(
+          process.cwd(),
+          'packages',
+          'renderer',
+          'public',
+          'assets',
+          'voice',
+          'config.json',
+        );
       } else {
         configPath = path.join(process.resourcesPath, 'renderer', 'assets', 'voice', 'config.json');
       }
@@ -85,16 +93,16 @@ export class AdvancedTTSEngine {
           platform: process.platform as any,
           language: 'zh-CN',
           gender: 'female',
-          style: 'standard'
-        }
+          style: 'standard',
+        },
       },
       settings: {
         speed: 1.0,
         pitch: 1.0,
         volume: 0.8,
         autoSelectByPlatform: true,
-        fallbackToDefault: true
-      }
+        fallbackToDefault: true,
+      },
     };
   }
 
@@ -105,8 +113,8 @@ export class AdvancedTTSEngine {
     if (!this.config) return [];
 
     const currentPlatform = process.platform;
-    return Object.values(this.config.voices).filter(voice =>
-      voice.platform === currentPlatform || !this.config!.settings.autoSelectByPlatform
+    return Object.values(this.config.voices).filter(
+      (voice) => voice.platform === currentPlatform || !this.config!.settings.autoSelectByPlatform,
     );
   }
 
@@ -116,15 +124,17 @@ export class AdvancedTTSEngine {
   public getCurrentVoice(): TTSVoiceConfig | null {
     if (!this.config) return null;
 
-    let voiceId = this.config.currentVoice;
+    const voiceId = this.config.currentVoice;
     let voice = this.config.voices[voiceId];
 
     // 如果启用了平台自动选择，尝试找到适合当前平台的音色
-    if (this.config.settings.autoSelectByPlatform && (!voice || voice.platform !== process.platform)) {
+    if (
+      this.config.settings.autoSelectByPlatform &&
+      (!voice || voice.platform !== process.platform)
+    ) {
       const platformVoices = this.getAvailableVoices();
       if (platformVoices.length > 0) {
         voice = platformVoices[0];
-        voiceId = Object.keys(this.config.voices).find(key => this.config!.voices[key] === voice) || voiceId;
       }
     }
 
@@ -166,7 +176,15 @@ export class AdvancedTTSEngine {
       let configPath: string;
 
       if (isDev) {
-        configPath = path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json');
+        configPath = path.join(
+          process.cwd(),
+          'packages',
+          'renderer',
+          'public',
+          'assets',
+          'voice',
+          'config.json',
+        );
       } else {
         configPath = path.join(process.resourcesPath, 'renderer', 'assets', 'voice', 'config.json');
       }
@@ -219,7 +237,6 @@ export class AdvancedTTSEngine {
         } else {
           resolve();
         }
-
       } catch (error) {
         console.error('AdvancedTTSEngine: 播放失败:', error);
         resolve();
@@ -230,7 +247,11 @@ export class AdvancedTTSEngine {
   /**
    * 创建TTS进程
    */
-  private createTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess | null {
+  private createTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess | null {
     const platform = process.platform;
 
     switch (platform) {
@@ -249,11 +270,17 @@ export class AdvancedTTSEngine {
   /**
    * 创建macOS TTS进程
    */
-  private createMacOSTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess {
+  private createMacOSTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess {
     const args = [
-      '-v', voice.systemVoice,
-      '-r', Math.round(settings.speed * 200).toString(), // 转换速度范围
-      text
+      '-v',
+      voice.systemVoice,
+      '-r',
+      Math.round(settings.speed * 200).toString(), // 转换速度范围
+      text,
     ];
 
     return spawn('say', args);
@@ -262,7 +289,11 @@ export class AdvancedTTSEngine {
   /**
    * 创建Windows TTS进程
    */
-  private createWindowsTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess {
+  private createWindowsTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess {
     const script = `
       Add-Type -AssemblyName System.speech;
       $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;
@@ -278,12 +309,12 @@ export class AdvancedTTSEngine {
   /**
    * 创建Linux TTS进程
    */
-  private createLinuxTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess {
-    const args = [
-      '-v', voice.systemVoice,
-      '-s', Math.round(settings.speed * 160).toString(),
-      text
-    ];
+  private createLinuxTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess {
+    const args = ['-v', voice.systemVoice, '-s', Math.round(settings.speed * 160).toString(), text];
 
     const process = spawn('espeak', args);
 
@@ -333,7 +364,11 @@ export class AdvancedTTSEngine {
   /**
    * 获取音色统计信息
    */
-  public getVoiceStats(): { total: number; byPlatform: Record<string, number>; byGender: Record<string, number> } {
+  public getVoiceStats(): {
+    total: number;
+    byPlatform: Record<string, number>;
+    byGender: Record<string, number>;
+  } {
     if (!this.config) {
       return { total: 0, byPlatform: {}, byGender: {} };
     }
@@ -342,10 +377,10 @@ export class AdvancedTTSEngine {
     const stats = {
       total: voices.length,
       byPlatform: {} as Record<string, number>,
-      byGender: {} as Record<string, number>
+      byGender: {} as Record<string, number>,
     };
 
-    voices.forEach(voice => {
+    voices.forEach((voice) => {
       stats.byPlatform[voice.platform] = (stats.byPlatform[voice.platform] || 0) + 1;
       stats.byGender[voice.gender] = (stats.byGender[voice.gender] || 0) + 1;
     });

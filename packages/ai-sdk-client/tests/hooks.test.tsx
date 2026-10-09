@@ -9,12 +9,7 @@ import { act, render, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  AI_EVENT_CHANNEL,
-  IPC_METHODS,
-  channelName,
-  chunkChannelName,
-} from '../src/channels';
+import { AI_EVENT_CHANNEL, IPC_METHODS, channelName, chunkChannelName } from '../src/channels';
 import { AIProvider } from '../src/react/AIProvider';
 import { useAgent } from '../src/react/useAgent';
 import { useAIEvents } from '../src/react/useAIEvents';
@@ -37,10 +32,7 @@ describe('useAIEvents', () => {
     const bridge = new FakeBridge();
     const seen: unknown[] = [];
     const wrapper = wrapperFactory(bridge);
-    const { unmount } = renderHook(
-      () => useAIEvents('tts:end', (p) => seen.push(p)),
-      { wrapper },
-    );
+    const { unmount } = renderHook(() => useAIEvents('tts:end', (p) => seen.push(p)), { wrapper });
     act(() => bridge.emit(AI_EVENT_CHANNEL, { evt: 'tts:end', data: { reqId: 'r1' } }));
     expect(seen).toEqual([{ reqId: 'r1' }]);
     unmount();
@@ -157,9 +149,7 @@ describe('useUserProfile', () => {
     const { result } = renderHook(() => useUserProfile<{ id: string; nickname: string }>(), {
       wrapper,
     });
-    await waitFor(() =>
-      expect(result.current.profile).toEqual({ id: 'u1', nickname: 'nya' }),
-    );
+    await waitFor(() => expect(result.current.profile).toEqual({ id: 'u1', nickname: 'nya' }));
 
     // 事件推送应触发更新
     act(() =>
@@ -191,9 +181,8 @@ describe('AIProvider', () => {
     );
     // 无法直接监听 dispose；用 listeners size 侧证：先加事件订阅，
     // 卸载后再 emit 不再触发（即 ai:event 侧的监听已被 dispose 清空）。
-    let hit = 0;
     bridge.emit(AI_EVENT_CHANNEL, { evt: 'agent:step', data: {} });
-    hit = bridge.listeners.get(AI_EVENT_CHANNEL)?.size ?? 0;
+    const hit = bridge.listeners.get(AI_EVENT_CHANNEL)?.size ?? 0;
     expect(hit).toBeGreaterThan(0);
     unmount();
     expect(disposeSpy).not.toHaveBeenCalled();
