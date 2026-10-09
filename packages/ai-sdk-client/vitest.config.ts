@@ -1,4 +1,4 @@
-import { createVitest } from '../../vitest.base';
+import { createVitest } from '../../vitest.base.ts';
 
 export default createVitest({
   environment: 'happy-dom',
