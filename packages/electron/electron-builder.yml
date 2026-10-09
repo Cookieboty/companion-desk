@@ -24,6 +24,8 @@ extraResources:
     to: renderer
   - from: ../renderer/tts-config.html
     to: renderer/tts-config.html
+  - from: ../ai-chat/dist
+    to: ai-chat
   - from: assets
     to: assets
 

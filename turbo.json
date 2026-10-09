@@ -52,7 +52,7 @@
     },
     "@ig-live/electron#package": {
       "cache": false,
-      "dependsOn": ["@ig-live/electron#build", "@ig-live/renderer#build"]
+      "dependsOn": ["@ig-live/electron#build", "@ig-live/renderer#build", "@ig-live/ai-chat#build"]
     },
     "@ig-live/renderer#package": {
       "cache": false,

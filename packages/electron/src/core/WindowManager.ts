@@ -440,7 +440,8 @@ export class WindowManager implements IWindowManager {
       const devUrl = 'http://localhost:5175';
       await window.loadURL(devUrl);
     } else {
-      const aiChatPath = path.join(__dirname, '..', 'ai-chat', 'dist', 'index.html');
+      const aiChatPath = this.getAiChatPath();
+      this.logger.info('AI对话窗口加载路径', { path: aiChatPath });
       await window.loadFile(aiChatPath);
     }
   }
@@ -470,6 +471,19 @@ export class WindowManager implements IWindowManager {
       this.logger.error('TTS配置窗口加载失败', { error: errorMessage });
       throw error;
     }
+  }
+
+  /**
+   * 获取 AI 对话窗口页面路径（生产环境）
+   *
+   * - 打包后：electron-builder 的 extraResources 把 ../ai-chat/dist 放到 resources/ai-chat
+   * - 本地未打包：scripts/copy-renderer.js 把 ai-chat/dist 复制到 dist/ai-chat
+   */
+  private getAiChatPath(): string {
+    if (app.isPackaged) {
+      return path.join(process.resourcesPath, 'ai-chat', 'index.html');
+    }
+    return path.join(app.getAppPath(), 'dist', 'ai-chat', 'index.html');
   }
 
   /**
