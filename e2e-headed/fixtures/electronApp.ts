@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,27 +33,22 @@ export function repoRoot(): string {
  * 定位 electron 可执行文件的**绝对路径**。
  *
  * 以 packages/electron 为起点做模块解析（pnpm 可能把 electron 提升到根 node_modules），
- * 拿到 `@ig-live/electron` 声明的那份 electron，再读 `path.txt` 拼出可执行文件路径，
- * 避免 Playwright 按 CWD 去找 electron 或触发二进制下载。
+ * 拿到 `@ig-live/electron` 声明的那份 electron。Electron >= 44 不再在 postinstall 中
+ * 下载二进制：`require('electron')` 会在缺少 path.txt 时按需下载并返回可执行文件路径，
+ * 因此直接用它（同时兼容 Windows 的 electron.exe 路径）。
  */
 export function resolveElectronExecutable(): string {
   const req = createRequire(resolve(repoRoot(), 'packages', 'electron', 'package.json'));
-  let pkgElectronDir: string;
+  let abs: unknown;
   try {
-    pkgElectronDir = dirname(req.resolve('electron/package.json'));
-  } catch {
-    throw new Error('[e2e-headed] 无法从 packages/electron 解析 electron；请先运行 pnpm install');
-  }
-  const pathTxt = resolve(pkgElectronDir, 'path.txt');
-  if (!existsSync(pathTxt)) {
+    abs = req('electron');
+  } catch (err) {
     throw new Error(
-      `[e2e-headed] electron 二进制未下载（缺少 ${pathTxt}）；请重新运行 pnpm install`,
+      `[e2e-headed] 无法从 packages/electron 解析/下载 electron；请先运行 pnpm install（${String(err)}）`,
     );
   }
-  const relative = readFileSync(pathTxt, 'utf8').trim();
-  const abs = resolve(pkgElectronDir, 'dist', relative);
-  if (!existsSync(abs)) {
-    throw new Error(`[e2e-headed] path.txt 指向的 electron 可执行文件不存在: ${abs}`);
+  if (typeof abs !== 'string' || !existsSync(abs)) {
+    throw new Error(`[e2e-headed] electron 可执行文件不存在: ${String(abs)}`);
   }
   return abs;
 }
