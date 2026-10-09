@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { AiChatContextProvider } from './contexts/AiChatContext';
-import { MessageList } from './components/MessageList';
-import { MessageInput } from './components/MessageInput';
-import { ConfigPanel } from './components/ConfigPanel';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { Sidebar } from './components/Sidebar';
-import { useAiChat } from './contexts/AiChatContext';
 import type { ClientAIClient } from '@ig-live/ai-sdk-client';
 import * as AISdkReact from '@ig-live/ai-sdk-client/react';
+import React, { useState } from 'react';
+
+import { ConfigPanel } from './components/ConfigPanel';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { MessageInput } from './components/MessageInput';
+import { MessageList } from './components/MessageList';
+import { Sidebar } from './components/Sidebar';
+import { AiChatContextProvider } from './contexts/AiChatContext';
+import { useAiChat } from './contexts/AiChatContext';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
@@ -16,7 +17,7 @@ const AiChatContent: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleNewChat = () => {
-    actions.clearChatHistory();
+    actions.newConversation();
   };
 
   return (
@@ -30,8 +31,6 @@ const AiChatContent: React.FC = () => {
 
       {/* 主内容区域 */}
       <div className="main-content">
-
-
         {/* 对话区域 */}
         <main className="chat-container">
           {state.messages.length === 0 ? (
@@ -40,27 +39,45 @@ const AiChatContent: React.FC = () => {
                 <h2 className="welcome-title">开始新的对话</h2>
                 <p className="welcome-subtitle">选择一个AI模型，然后开始与AI助手对话</p>
                 <div className="quick-actions">
-                  <button className="quick-action-btn" onClick={() => actions.sendMessage('你好，请介绍一下自己')}>
+                  <button
+                    className="quick-action-btn"
+                    onClick={() => actions.sendMessage('你好，请介绍一下自己')}
+                  >
                     <span>👋</span>
                     <span>打个招呼</span>
                   </button>
-                  <button className="quick-action-btn" onClick={() => actions.sendMessage('帮我写一段代码')}>
+                  <button
+                    className="quick-action-btn"
+                    onClick={() => actions.sendMessage('帮我写一段代码')}
+                  >
                     <span>💻</span>
                     <span>编程助手</span>
                   </button>
-                  <button className="quick-action-btn" onClick={() => actions.sendMessage('解释一个概念')}>
+                  <button
+                    className="quick-action-btn"
+                    onClick={() => actions.sendMessage('解释一个概念')}
+                  >
                     <span>📚</span>
                     <span>学习助手</span>
                   </button>
-                  <button className="quick-action-btn" onClick={() => actions.sendMessage('帮我分析问题')}>
+                  <button
+                    className="quick-action-btn"
+                    onClick={() => actions.sendMessage('帮我分析问题')}
+                  >
                     <span>🔍</span>
                     <span>分析助手</span>
                   </button>
-                  <button className="quick-action-btn" onClick={() => actions.sendMessage('帮我写一篇文章')}>
+                  <button
+                    className="quick-action-btn"
+                    onClick={() => actions.sendMessage('帮我写一篇文章')}
+                  >
                     <span>✍️</span>
                     <span>写作助手</span>
                   </button>
-                  <button className="quick-action-btn" onClick={() => actions.sendMessage('帮我翻译内容')}>
+                  <button
+                    className="quick-action-btn"
+                    onClick={() => actions.sendMessage('帮我翻译内容')}
+                  >
                     <span>🌐</span>
                     <span>翻译助手</span>
                   </button>
@@ -68,10 +85,7 @@ const AiChatContent: React.FC = () => {
               </div>
             </div>
           ) : (
-            <MessageList
-              messages={state.messages}
-              isLoading={state.isLoading}
-            />
+            <MessageList messages={state.messages} isLoading={state.isLoading} />
           )}
         </main>
 
@@ -82,10 +96,7 @@ const AiChatContent: React.FC = () => {
       </div>
 
       {/* 配置面板 */}
-      <ConfigPanel
-        isVisible={showConfig}
-        onClose={() => setShowConfig(false)}
-      />
+      <ConfigPanel isVisible={showConfig} onClose={() => setShowConfig(false)} />
     </div>
   );
 };

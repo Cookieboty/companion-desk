@@ -27,4 +27,6 @@ export interface ChatConfig {
   fontSize: number;
   autoSave: boolean;
   maxHistoryLength: number;
-} 
+  /** 发送给模型的 system prompt（每次请求都会带上，不参与历史裁剪） */
+  systemPrompt?: string;
+}

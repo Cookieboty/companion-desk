@@ -1,7 +1,11 @@
 import { ClientAIClient } from '@ig-live/ai-sdk-client';
-import { IPCClient, ElectronAPI } from '../types/ipc';
-import { ChatMessage, ChatConfig } from '../types/chat';
-import { AIModelConfig } from '../types/config';
+
+import { type ChatMessage, type ChatConfig, type ChatSession } from '../types/chat';
+import { type AIModelConfig } from '../types/config';
+import { type IPCClient, type ElectronAPI } from '../types/ipc';
+
+import { ConversationStore } from './conversationStore';
+import { buildProviderMessages } from './history';
 
 declare global {
   interface Window {
@@ -11,7 +15,6 @@ declare global {
 }
 
 const LOCAL_CONFIG_KEY = 'ai-chat:config';
-const LOCAL_HISTORY_KEY = 'ai-chat:history';
 const LOCAL_MODELS_KEY = 'ai-chat:models';
 const LOCAL_CURRENT_MODEL_KEY = 'ai-chat:currentModel';
 
@@ -39,7 +42,7 @@ type SdkUserProfileFacade = {
   set: (input: { patch: Record<string, unknown>; source?: string }) => Promise<unknown>;
 };
 
-const readStorage = <T,>(key: string): T | undefined => {
+const readStorage = <T>(key: string): T | undefined => {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return undefined;
     const raw = window.localStorage.getItem(key);
@@ -65,6 +68,8 @@ const DEFAULT_CONFIG: ChatConfig = {
   fontSize: 14,
   autoSave: true,
   maxHistoryLength: 1000,
+  systemPrompt:
+    '你是 Companion Desk，一个运行在用户电脑上的本地 AI 助手。请结合之前的对话内容，简洁、准确地回答。',
 };
 
 const DEFAULT_MODELS: AIModelConfig[] = [
@@ -81,6 +86,7 @@ const DEFAULT_MODELS: AIModelConfig[] = [
 export class SdkIPCClient implements IPCClient {
   private readonly client: ClientAIClient;
   private readonly owned: boolean;
+  private readonly store = new ConversationStore();
 
   constructor(client?: ClientAIClient) {
     if (client) {
@@ -108,11 +114,16 @@ export class SdkIPCClient implements IPCClient {
     return fallback ?? readStorage<string>(LOCAL_CURRENT_MODEL_KEY);
   }
 
-  async sendMessage(message: string, modelId?: string): Promise<string> {
+  private async buildMessages(message: string, history: ChatMessage[] = []) {
+    const { systemPrompt } = await this.getConfig();
+    return buildProviderMessages(history, message, systemPrompt);
+  }
+
+  async sendMessage(message: string, modelId?: string, history?: ChatMessage[]): Promise<string> {
     try {
       const resp = await this.chat.sendMessage({
         provider: this.currentModelId(modelId),
-        messages: [{ role: 'user', content: message }],
+        messages: await this.buildMessages(message, history),
       });
       return typeof resp?.content === 'string' ? resp.content : '';
     } catch (error) {
@@ -124,11 +135,12 @@ export class SdkIPCClient implements IPCClient {
     message: string,
     modelId?: string,
     onChunk?: (chunk: string) => void,
+    history?: ChatMessage[],
   ): Promise<void> {
     try {
       const iterable = this.chat.stream({
         provider: this.currentModelId(modelId),
-        messages: [{ role: 'user', content: message }],
+        messages: await this.buildMessages(message, history),
       });
       for await (const chunk of iterable) {
         if (!chunk || typeof chunk !== 'object') continue;
@@ -145,17 +157,28 @@ export class SdkIPCClient implements IPCClient {
   }
 
   async getChatHistory(): Promise<ChatMessage[]> {
-    return readStorage<ChatMessage[]>(LOCAL_HISTORY_KEY) ?? [];
+    return this.store.getMessages();
   }
 
   async clearChatHistory(): Promise<void> {
-    writeStorage(LOCAL_HISTORY_KEY, []);
+    this.store.clear();
   }
 
   async saveMessage(message: ChatMessage): Promise<void> {
-    const list = (await this.getChatHistory()) ?? [];
-    list.push(message);
-    writeStorage(LOCAL_HISTORY_KEY, list);
+    this.store.maxMessages = (await this.getConfig()).maxHistoryLength;
+    this.store.append(message);
+  }
+
+  async listConversations(): Promise<Array<Omit<ChatSession, 'messages'>>> {
+    return this.store.list();
+  }
+
+  async newConversation(name?: string): Promise<string> {
+    return this.store.create(name).id;
+  }
+
+  async switchConversation(id: string): Promise<void> {
+    this.store.switchTo(id);
   }
 
   async getConfig(): Promise<ChatConfig> {
@@ -200,7 +223,10 @@ export class SdkIPCClient implements IPCClient {
 
   async removeModel(modelId: string): Promise<void> {
     const list = await this.getAvailableModels();
-    writeStorage(LOCAL_MODELS_KEY, list.filter((m) => m.id !== modelId));
+    writeStorage(
+      LOCAL_MODELS_KEY,
+      list.filter((m) => m.id !== modelId),
+    );
   }
 
   async updateModel(modelId: string, updates: Partial<AIModelConfig>): Promise<void> {
@@ -225,13 +251,25 @@ export class SdkIPCClient implements IPCClient {
 export class MockIPCClient implements IPCClient {
   private history: ChatMessage[] = [
     { id: '1', role: 'user', content: '你好', timestamp: Date.now() - 60000 },
-    { id: '2', role: 'assistant', content: '你好！有什么可以帮助你的吗？', timestamp: Date.now() - 50000 },
+    {
+      id: '2',
+      role: 'assistant',
+      content: '你好！有什么可以帮助你的吗？',
+      timestamp: Date.now() - 50000,
+    },
   ];
   private config: ChatConfig = { ...DEFAULT_CONFIG };
   private models: AIModelConfig[] = [...DEFAULT_MODELS];
 
-  async sendMessage(message: string, modelId?: string): Promise<string> {
-    console.log('[Mock] Send message:', message, 'to model:', modelId);
+  async sendMessage(message: string, modelId?: string, history?: ChatMessage[]): Promise<string> {
+    console.log(
+      '[Mock] Send message:',
+      message,
+      'to model:',
+      modelId,
+      'history:',
+      history?.length ?? 0,
+    );
     await new Promise((r) => setTimeout(r, 500));
     return `模拟回复: ${message}`;
   }
@@ -258,6 +296,19 @@ export class MockIPCClient implements IPCClient {
 
   async saveMessage(message: ChatMessage): Promise<void> {
     this.history.push(message);
+  }
+
+  async listConversations(): Promise<Array<Omit<ChatSession, 'messages'>>> {
+    return [{ id: 'mock', name: 'Mock 对话', createdAt: 0, updatedAt: 0 }];
+  }
+
+  async newConversation(): Promise<string> {
+    this.history = [];
+    return 'mock';
+  }
+
+  async switchConversation(): Promise<void> {
+    /* mock 只有一个会话 */
   }
 
   async getConfig(): Promise<ChatConfig> {
