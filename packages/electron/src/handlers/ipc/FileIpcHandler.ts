@@ -11,6 +11,7 @@ import { app, dialog } from 'electron';
 
 import { type ICacheService } from '../../services/CacheService';
 import { type ILoggerService } from '../../services/LoggerService';
+import { resolveUnpackagedAssetPath } from '../../utils/localAssetPath';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -496,32 +497,9 @@ export class FileIpcHandler extends BaseIpcHandler {
         return resolvedPath;
       }
     } else {
-      // 开发环境中的路径解析
-      let resolvedPath = path.join(app.getAppPath(), filePath);
-
-      // 如果不存在，尝试在renderer/public目录下查找
-      if (!fs.existsSync(resolvedPath)) {
-        resolvedPath = path.join(
-          app.getAppPath(),
-          'packages',
-          'renderer',
-          'public',
-          filePath.replace(/^\//, ''),
-        );
-      }
-
-      // 如果还不存在，尝试在renderer/dist目录下查找
-      if (!fs.existsSync(resolvedPath)) {
-        resolvedPath = path.join(
-          app.getAppPath(),
-          'packages',
-          'renderer',
-          'dist',
-          filePath.replace(/^\//, ''),
-        );
-      }
-
-      return resolvedPath;
+      // 未打包（本地 `electron .` / dev）：app.getAppPath() 指向 packages/electron，
+      // 依次在 dist/renderer、../renderer/dist、../renderer/public 中查找
+      return resolveUnpackagedAssetPath(app.getAppPath(), filePath, fs.existsSync);
     }
   }
 
