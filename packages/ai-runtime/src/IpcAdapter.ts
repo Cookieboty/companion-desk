@@ -6,6 +6,8 @@
  * - 生产环境注入 `createElectronIpcAdapter()`，把 `ipcMain.handle` / `webContents.send` 直接串起来。
  */
 
+import { nodeRequire } from './nodeRequire';
+
 export interface IpcInvokeEvent {
   /** 发起窗口的 id；不可信但足以做白名单过滤 */
   senderId: number;
@@ -36,7 +38,7 @@ export interface IpcAdapter {
  * 仅在 Electron 主进程可调用（否则 `require('electron')` 会抛错）。
  */
 export function createElectronIpcAdapter(): IpcAdapter {
-  const req = (0, eval)('require');
+  const req = nodeRequire();
   const { ipcMain, webContents } = req('electron') as {
     ipcMain: {
       handle(channel: string, handler: (event: unknown, ...args: unknown[]) => unknown): void;
