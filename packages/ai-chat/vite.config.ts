@@ -3,6 +3,8 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  // 相对路径：生产环境由 Electron 通过 file:// 加载，绝对路径 /assets/* 会指向文件系统根目录
+  base: './',
   define: {
     'process.env.MODE': JSON.stringify(mode),
     'process.env.ELECTRON_ENV': JSON.stringify(!!process.env.ELECTRON_ENV),
