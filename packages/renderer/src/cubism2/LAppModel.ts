@@ -237,7 +237,9 @@ class LAppModel extends L2DBaseModel {
       this.physics.updateParam(this.live2DModel);
     }
 
-    if (this.lipSync == null) {
+    // lipSync 默认为 false（不是 null），旧条件 `== null` 永远不成立，导致 TTS 嘴型不生效。
+    // 显式开启 lipSync，或外部（lipSyncStore → setLipSyncValue）写入了非零值时驱动嘴型。
+    if (this.lipSync || this.lipSyncValue > 0) {
       this.live2DModel.setParamFloat('PARAM_MOUTH_OPEN_Y', this.lipSyncValue);
     }
 
