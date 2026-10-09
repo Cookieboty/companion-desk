@@ -41,7 +41,8 @@ export function createElectronLifecycle(): AppLifecycle {
       };
       app.on('before-quit', wrapped);
       return () => {
-        (app.off ?? app.removeListener)?.('before-quit', wrapped);
+        // 必须以 app 作为 this 调用（EventEmitter 方法依赖 this._events）
+        (app.off ?? app.removeListener)?.call(app, 'before-quit', wrapped);
       };
     },
   };
