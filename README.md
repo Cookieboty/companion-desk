@@ -1,25 +1,43 @@
-# 智能编程助手桌面应用
+# Companion Desk
 
-基于Electron和React的桌面看板娘应用，专为程序员设计的智能语音助手，支持Live2D模型展示、编程关键词语音反馈和智能时间播报。
+> A local-first desktop AI assistant, with an optional Live2D desktop companion.
+
+Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
+[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 内核与 `@ig-live/*` 插件包提供，
+可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
+Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示、换装、语音与口型同步，但不再是产品核心。
 
 ## 🚀 项目特点
 
-- 🎭 **Live2D模型支持** - 完整的Live2D Cubism SDK集成，支持模型动画和互动
-- 🪟 **透明无边框窗口** - 现代化的桌面应用界面设计
-- 🎯 **窗口置顶功能** - 可切换的窗口置顶状态，编程时的贴心伴侣
-- 🖱️ **拖拽移动** - 支持窗口拖拽移动，随心所欲调整位置
-- ⌨️ **智能键盘监听** - 全局监听编程关键词，实时语音反馈
-- 🔊 **编程语音助手** - 识别function、if、for、await等关键词并播放相应语音
-- ⏰ **智能时间播报** - 根据时间段自动播放问候语音（早上、中午、晚上等）
-- 🔄 **热重载开发** - 开发模式下支持代码热重载
-- 💬 **消息气泡** - 模型互动和消息显示
-- 🎨 **模型换装** - 支持模型服装和配饰切换
-- 📦 **工程化管理** - 使用pnpm workspace + Turborepo
+- 🤖 **本地 AI 助手** - 独立的 AI 对话窗口，流式输出，支持多 provider（DeepSeek / OpenAI / Ollama / llama.cpp / Qwen / 豆包）
+- 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
+- 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
+- 🧩 **可扩展内核** - dsh profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包，MCP 桥接
+- 🎭 **可选 Live2D 桌面伙伴** - Live2D Cubism 模型展示、动画互动、换装、TTS 口型同步
+- 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
+- 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
+- 📦 **工程化管理** - pnpm workspace + Turborepo，Vitest / Jest / Playwright 全链路测试
+
+## ⚙️ 配置 AI 模型
+
+主进程启动时从环境变量读取 LLM provider（未配置 key 的云端 provider 仍会注册，调用时给出明确报错）：
+
+| 变量                                                        | 说明                                                                                  |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                  |
+| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                               |
+| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key） |
+| `IG_AI_PROFILE`                                             | dsh profile，默认 `waifu`                                                             |
+| `IG_DSH_CORE`                                               | `auto`（默认，dsh 内核启动失败仅告警）/ `required` / `off`                            |
+| `DSH_HOME`                                                  | dsh 状态目录，默认 `<userData>/dsh`                                                   |
+
+例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；使用 DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`。
+AI 对话窗口默认选择 `deepseek` provider，可在模型设置中切换。
 
 ## 📁 项目结构
 
 ```
-ig-live-monorepo/
+companion-desk/
 ├── packages/
 │   ├── electron/           # Electron主进程和预加载脚本
 │   │   ├── src/
@@ -53,8 +71,8 @@ ig-live-monorepo/
 
 ### 系统要求
 
-- Node.js >= 16.0.0
-- pnpm >= 8.0.0
+- Node.js >= 20（构建/测试）；运行时使用 Electron 44 自带的 Node 24（dsh 需要 Node >= 22）
+- pnpm 9（见 `packageManager`）
 - macOS/Windows/Linux
 
 ### 安装依赖

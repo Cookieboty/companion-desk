@@ -7,8 +7,8 @@
 # - 便于 [P9-9 CI 三平台 build](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
 # - Notarize / Windows Sign 通过环境变量启用（默认关闭以便本地开发 & PR CI 免凭证）。
 
-appId: com.ig-live.electron
-productName: 智能小助手
+appId: com.cookieboty.companion-desk
+productName: Companion Desk
 
 files:
   - dist/**/*
@@ -37,16 +37,16 @@ extraMetadata:
   main: dist/main.js
 
 protocols:
-  - name: 智能小助手
+  - name: Companion Desk
     schemes:
-      - ai-live
+      - companion-desk
 
 # ---------------------------------------------------------------
 # macOS · DMG（默认）；notarize 需要 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
 # APPLE_TEAM_ID 三件套齐全时才启用（缺失时静默降级，便于 CI 免凭证跑 build 冒烟）。
 # ---------------------------------------------------------------
 mac:
-  category: public.app-category.entertainment
+  category: public.app-category.productivity
   target:
     - target: dmg
       arch:
