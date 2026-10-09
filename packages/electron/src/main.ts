@@ -3,7 +3,20 @@
  * 简化架构，使用Application类管理应用生命周期
  */
 
+import { app } from 'electron';
+
 import { Application } from './core/Application';
+import { migrateLegacyUserData } from './utils/legacyUserData';
+
+// 品牌更名后沿用旧 userData（仅打包产物；需在 ready 之前）
+if (app.isPackaged) {
+  try {
+    const res = migrateLegacyUserData(app.getPath('appData'), app.getPath('userData'));
+    if (res.migrated) console.log(`📦 已迁移旧版用户数据: ${res.from} → ${res.to}`);
+  } catch (error) {
+    console.warn('旧版用户数据迁移失败:', error);
+  }
+}
 
 // 全局应用实例
 let application: Application | null = null;
@@ -20,7 +33,7 @@ async function main(): Promise<void> {
     await application.initialize();
     await application.start();
 
-    console.log('✅ 智能看板娘应用启动成功');
+    console.log('✅ Companion Desk 启动成功');
   } catch (error) {
     console.error('❌ 应用启动失败:', error);
     process.exit(1);
@@ -40,7 +53,7 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 // 启动应用
-main().catch(error => {
+main().catch((error) => {
   console.error('主程序异常:', error);
   process.exit(1);
 });
