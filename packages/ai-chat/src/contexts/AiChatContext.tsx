@@ -1,9 +1,17 @@
-import React, { createContext, useContext, useReducer, useEffect, useMemo, ReactNode } from 'react';
 import type { ClientAIClient } from '@ig-live/ai-sdk-client';
-import { ChatMessage, ChatConfig } from '../types/chat';
-import { AIModelConfig } from '../types/config';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from 'react';
+
 import { createIPCClient } from '../services/IPCClient';
-import { IPCClient } from '../types/ipc';
+import { type ChatMessage, type ChatConfig } from '../types/chat';
+import { type AIModelConfig } from '../types/config';
+import { type IPCClient } from '../types/ipc';
 
 interface AiChatState {
   messages: ChatMessage[];
@@ -26,6 +34,9 @@ type AiChatAction =
   | { type: 'SET_ERROR'; payload: string | undefined }
   | { type: 'SET_IPC_CLIENT'; payload: IPCClient }
   | { type: 'CLEAR_MESSAGES' };
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 const LOCAL_CURRENT_MODEL_KEY = 'ai-chat:currentModel';
 
@@ -72,10 +83,8 @@ function aiChatReducer(state: AiChatState, action: AiChatAction): AiChatState {
     case 'UPDATE_MESSAGE':
       return {
         ...state,
-        messages: state.messages.map(msg =>
-          msg.id === action.payload.id
-            ? { ...msg, content: action.payload.content }
-            : msg
+        messages: state.messages.map((msg) =>
+          msg.id === action.payload.id ? { ...msg, content: action.payload.content } : msg,
         ),
       };
     case 'SET_CONFIG':
@@ -106,6 +115,7 @@ interface AiChatContextType {
     sendStreamMessage: (content: string) => Promise<void>;
     loadChatHistory: () => Promise<void>;
     clearChatHistory: () => Promise<void>;
+    newConversation: () => Promise<void>;
     loadConfig: () => Promise<void>;
     updateConfig: (config: Partial<ChatConfig>) => Promise<void>;
     loadModels: () => Promise<void>;
@@ -154,9 +164,11 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         timestamp: Date.now(),
         modelId: state.currentModelId,
       };
+      // 本轮之前的会话消息作为多轮上下文（state.messages 尚未包含本轮 userMessage）
+      const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
 
-      const response = await state.ipcClient.sendMessage(content, state.currentModelId);
+      const response = await state.ipcClient.sendMessage(content, state.currentModelId, history);
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -169,8 +181,8 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
 
       await state.ipcClient.saveMessage(userMessage);
       await state.ipcClient.saveMessage(aiMessage);
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -189,6 +201,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         timestamp: Date.now(),
         modelId: state.currentModelId,
       };
+      const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
 
       const aiMessageId = (Date.now() + 1).toString();
@@ -211,14 +224,15 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
             type: 'UPDATE_MESSAGE',
             payload: { id: aiMessageId, content: accumulated },
           });
-        }
+        },
+        history,
       );
 
       const finalAiMessage: ChatMessage = { ...aiMessage, content: accumulated };
       await state.ipcClient.saveMessage(userMessage);
       await state.ipcClient.saveMessage(finalAiMessage);
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -229,8 +243,8 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     try {
       const history = await state.ipcClient.getChatHistory();
       dispatch({ type: 'SET_MESSAGES', payload: history });
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     }
   };
 
@@ -239,8 +253,18 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     try {
       await state.ipcClient.clearChatHistory();
       dispatch({ type: 'CLEAR_MESSAGES' });
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
+    }
+  };
+
+  // 新建会话（旧会话保留在本地存储中）
+  const newConversation = async () => {
+    try {
+      await state.ipcClient.newConversation();
+      dispatch({ type: 'CLEAR_MESSAGES' });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     }
   };
 
@@ -249,8 +273,8 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     try {
       const config = await state.ipcClient.getConfig();
       dispatch({ type: 'SET_CONFIG', payload: config });
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     }
   };
 
@@ -259,8 +283,8 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     try {
       await state.ipcClient.updateConfig(config);
       dispatch({ type: 'SET_CONFIG', payload: { ...state.config, ...config } });
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     }
   };
 
@@ -274,8 +298,8 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         const enabledModel = models.find((m: AIModelConfig) => m.enabled) || models[0];
         dispatch({ type: 'SET_CURRENT_MODEL', payload: enabledModel.id });
       }
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     }
   };
 
@@ -284,8 +308,8 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     try {
       await state.ipcClient.updateModel(modelId, updates);
       await loadModels();
-    } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
       throw error;
     }
   };
@@ -311,6 +335,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       sendStreamMessage,
       loadChatHistory,
       clearChatHistory,
+      newConversation,
       loadConfig,
       updateConfig,
       loadModels,
@@ -319,11 +344,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     },
   };
 
-  return (
-    <AiChatContext.Provider value={contextValue}>
-      {children}
-    </AiChatContext.Provider>
-  );
+  return <AiChatContext.Provider value={contextValue}>{children}</AiChatContext.Provider>;
 }
 
 export function useAiChat() {
