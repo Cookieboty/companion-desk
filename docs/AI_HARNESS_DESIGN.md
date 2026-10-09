@@ -13,7 +13,7 @@
 
 ## 0. 文档说明
 
-本文档面向 **ai-live2d-client** 项目，规划一套：
+本文档面向 **Companion Desk**（原 ai-live2d-client，本地桌面 AI 助手 + 可选 Live2D 桌面伙伴）项目，规划一套：
 
 1. **多模态 AI 服务矩阵**（LLM / ASR / TTS / Vision / ImageGen，本地+远端并存）
 2. **Agent Harness（智能体运行时）**：让 LLM 从"只会说话"升级为"能规划、能调用工具、能感知环境"的桌面 AI 伴侣

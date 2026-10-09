@@ -11,11 +11,11 @@
 
 ## 平台产物
 
-| 平台              | 安装包                             | 大小 | SHA256 |
-| ----------------- | ---------------------------------- | ---- | ------ |
-| macOS (x64/arm64) | `智能小助手-{{VERSION}}.dmg`       |      |        |
-| Windows (x64)     | `智能小助手-Setup-{{VERSION}}.exe` |      |        |
-| Linux (x64)       | `智能小助手-{{VERSION}}.AppImage`  |      |        |
+| 平台              | 安装包                                 | 大小 | SHA256 |
+| ----------------- | -------------------------------------- | ---- | ------ |
+| macOS (x64/arm64) | `Companion Desk-{{VERSION}}.dmg`       |      |        |
+| Windows (x64)     | `Companion Desk Setup {{VERSION}}.exe` |      |        |
+| Linux (x64)       | `Companion Desk-{{VERSION}}.AppImage`  |      |        |
 
 ## 变更
 

@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 
 /**
  * Cursor IDE集成管理器
@@ -72,7 +72,7 @@ export class CursorIDEIntegration {
       console.log('CursorIDEIntegration: 注册MCP服务器到Cursor IDE...');
 
       // 加载现有配置
-      let config = await this.loadCursorConfig();
+      const config = await this.loadCursorConfig();
 
       // 确保mcpServers配置存在
       if (!config.mcpServers) {
@@ -90,7 +90,6 @@ export class CursorIDEIntegration {
 
       // 尝试通知Cursor IDE重新加载配置
       await this.notifyCursorReload();
-
     } catch (error) {
       console.error('CursorIDEIntegration: 注册MCP服务器失败:', error);
       throw error;
@@ -105,25 +104,48 @@ export class CursorIDEIntegration {
     const homeDir = os.homedir();
 
     const configPaths: Record<string, string> = {
-      win32: path.join(homeDir, 'AppData', 'Roaming', 'Cursor', 'User', 'globalStorage', 'cursor.mcp-config.json'),
-      darwin: path.join(homeDir, 'Library', 'Application Support', 'Cursor', 'User', 'globalStorage', 'cursor.mcp-config.json'),
-      linux: path.join(homeDir, '.config', 'Cursor', 'User', 'globalStorage', 'cursor.mcp-config.json')
+      win32: path.join(
+        homeDir,
+        'AppData',
+        'Roaming',
+        'Cursor',
+        'User',
+        'globalStorage',
+        'cursor.mcp-config.json',
+      ),
+      darwin: path.join(
+        homeDir,
+        'Library',
+        'Application Support',
+        'Cursor',
+        'User',
+        'globalStorage',
+        'cursor.mcp-config.json',
+      ),
+      linux: path.join(
+        homeDir,
+        '.config',
+        'Cursor',
+        'User',
+        'globalStorage',
+        'cursor.mcp-config.json',
+      ),
     };
 
     // 备选路径
     const alternatePaths: Record<string, string[]> = {
       win32: [
         path.join(homeDir, 'AppData', 'Roaming', 'Cursor', 'mcp.json'),
-        path.join(homeDir, 'AppData', 'Local', 'Cursor', 'mcp.json')
+        path.join(homeDir, 'AppData', 'Local', 'Cursor', 'mcp.json'),
       ],
       darwin: [
         path.join(homeDir, 'Library', 'Preferences', 'Cursor', 'mcp.json'),
-        path.join(homeDir, '.cursor', 'mcp.json')
+        path.join(homeDir, '.cursor', 'mcp.json'),
       ],
       linux: [
         path.join(homeDir, '.cursor', 'mcp.json'),
-        path.join(homeDir, '.local', 'share', 'Cursor', 'mcp.json')
-      ]
+        path.join(homeDir, '.local', 'share', 'Cursor', 'mcp.json'),
+      ],
     };
 
     const primaryPath = configPaths[platform] || configPaths.linux;
@@ -145,22 +167,22 @@ export class CursorIDEIntegration {
         CHARACTER_MODEL_PATH: this.getDefaultModelPath(),
         VOICE_ENGINE: 'enhanced',
         PERFORMANCE_MODE: 'balanced',
-        NODE_ENV: process.env.NODE_ENV || 'production'
+        NODE_ENV: process.env.NODE_ENV || 'production',
       },
       workingDirectory: process.cwd(),
       timeout: 30000, // 30秒超时
       capabilities: {
         tools: true,
         resources: true,
-        prompts: false
+        prompts: false,
       },
       metadata: {
-        name: '3D虚拟人物智能助手',
+        name: 'Companion Desk',
         description: '提供代码解释、动画演示、语音反馈和手势引导的3D虚拟角色',
         version: '1.0.0',
         author: 'Virtual Character Team',
-        homepage: 'https://github.com/virtual-character/3d-assistant'
-      }
+        homepage: 'https://github.com/virtual-character/3d-assistant',
+      },
     };
   }
 
@@ -180,7 +202,12 @@ export class CursorIDEIntegration {
       // Debug构建：asar被禁用，文件在app目录下
       return path.join(process.resourcesPath, 'app', 'dist', 'standalone-mcp-server.js');
     } else {
-      return path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'standalone-mcp-server.js');
+      return path.join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'dist',
+        'standalone-mcp-server.js',
+      );
     }
   }
 
@@ -195,7 +222,10 @@ export class CursorIDEIntegration {
       const packageJsonPath = path.join(currentDir, 'package.json');
       const workspaceConfigPath = path.join(currentDir, 'pnpm-workspace.yaml');
 
-      if (require('fs').existsSync(packageJsonPath) && require('fs').existsSync(workspaceConfigPath)) {
+      if (
+        require('fs').existsSync(packageJsonPath) &&
+        require('fs').existsSync(workspaceConfigPath)
+      ) {
         return currentDir;
       }
 
@@ -238,7 +268,7 @@ export class CursorIDEIntegration {
         return {
           mcpServers: {},
           version: '1.0.0',
-          lastModified: Date.now()
+          lastModified: Date.now(),
         };
       }
     } catch (error) {
@@ -311,7 +341,7 @@ export class CursorIDEIntegration {
       const result: ValidationResult = {
         isValid: true,
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
       // 检查服务器可执行文件
@@ -343,7 +373,7 @@ export class CursorIDEIntegration {
       return {
         isValid: false,
         errors: [`配置验证失败: ${error}`],
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -356,7 +386,7 @@ export class CursorIDEIntegration {
       isRegistered: this.isRegistered,
       configPath: this.configPath,
       serverConfig: this.serverConfig,
-      lastCheck: Date.now()
+      lastCheck: Date.now(),
     };
   }
 
@@ -375,7 +405,7 @@ export class CursorIDEIntegration {
       modelPath: this.getDefaultModelPath(),
       isRegistered: this.isRegistered,
       validation,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 

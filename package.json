@@ -1,7 +1,7 @@
 {
-  "name": "ig-live-monorepo",
+  "name": "companion-desk",
   "version": "1.0.0",
-  "description": "基于 Electron 的看板娘桌面应用 + AI Harness（dsh）",
+  "description": "Companion Desk：本地运行的桌面 AI 助手（Electron + dsh），可选 Live2D 桌面伙伴",
   "private": true,
   "type": "module",
   "scripts": {
