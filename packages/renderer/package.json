@@ -17,11 +17,11 @@
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@types/three": "^0.186.0",
-    "immer": "^10.1.1",
+    "immer": "^11.1.21",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.186.1",
-    "zustand": "^4.5.0"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@ig-live/types": "workspace:*",
