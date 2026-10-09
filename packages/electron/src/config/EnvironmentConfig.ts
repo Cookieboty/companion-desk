@@ -5,6 +5,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { app } from 'electron';
 
 export type Environment = 'development' | 'production' | 'test';
@@ -142,11 +143,7 @@ export class EnvironmentConfig {
     const configPath = this.getConfigPath(targetConfig);
 
     try {
-      await fs.promises.writeFile(
-        configPath,
-        JSON.stringify(config, null, 2),
-        'utf8'
-      );
+      await fs.promises.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
       console.log(`✅ 配置已保存: ${configPath}`);
     } catch (error) {
       console.error(`❌ 配置保存失败: ${configPath}`, error);
@@ -217,7 +214,7 @@ export class EnvironmentConfig {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -255,11 +252,10 @@ export class EnvironmentConfig {
 
       this.configs.set(configName, config);
       console.log(`📄 已加载配置: ${configName}`);
-
     } catch (error) {
       if (required) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        throw new Error(`加载配置失败 ${configName}: ${errorMessage}`);
+        throw new Error(`加载配置失败 ${configName}: ${errorMessage}`, { cause: error });
       } else {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.warn(`⚠️ 可选配置加载失败: ${configName}`, errorMessage);
@@ -376,7 +372,11 @@ export class EnvironmentConfig {
   private deepMerge(target: any, source: any): void {
     for (const key in source) {
       if (source.hasOwnProperty(key)) {
-        if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+        if (
+          typeof source[key] === 'object' &&
+          source[key] !== null &&
+          !Array.isArray(source[key])
+        ) {
           if (!(key in target) || typeof target[key] !== 'object') {
             target[key] = {};
           }
