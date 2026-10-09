@@ -1,4 +1,5 @@
 export * from './ChatFacade';
+export * from './chatContext';
 export * from './SessionFacade';
 export * from './ToolsFacade';
 export * from './MemoryFacade';

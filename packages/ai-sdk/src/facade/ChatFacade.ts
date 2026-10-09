@@ -22,6 +22,8 @@ import {
 import type { SdkContext } from '../di/SdkContext';
 import { AIClientError, ErrorCodes } from '../errors';
 
+import { fitMessagesToBudget, type ContextBudget } from './chatContext';
+
 export interface ChatStreamOptions {
   reqId?: string;
   provider?: string;
@@ -32,6 +34,11 @@ export interface ChatStreamOptions {
   maxTokens?: number;
   signal?: AbortSignal;
   extra?: Record<string, unknown>;
+  /**
+   * 多轮上下文预算：`messages` 为完整对话（含 system），发送前按预算裁剪；
+   * 传 `false` 关闭裁剪。默认 [DEFAULT_CONTEXT_BUDGET](./chatContext.ts)。
+   */
+  context?: ContextBudget | false;
 }
 
 export interface ChatFacade {
@@ -68,7 +75,8 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     reqId: opts.reqId ?? cryptoRandomId(),
     provider: provider.id,
     model: opts.model ?? 'default',
-    messages: opts.messages,
+    messages:
+      opts.context === false ? opts.messages : fitMessagesToBudget(opts.messages, opts.context),
     temperature: opts.temperature,
     topP: opts.topP,
     maxTokens: opts.maxTokens,
