@@ -24,6 +24,8 @@ module.exports = {
       {
         tsconfig: {
           module: 'commonjs',
+          // TypeScript 6 起 types 默认为 []，测试需显式引入 node / jest 全局类型
+          types: ['node', 'jest'],
         },
       },
     ],
