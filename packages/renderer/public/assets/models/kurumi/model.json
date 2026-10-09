@@ -77,7 +77,6 @@
 			}
 		]
 	},
-	"physics":"physics.json",
 	"project_settings":"bust_10401.settings.json",
 	"name":"bust_10401"
 }
