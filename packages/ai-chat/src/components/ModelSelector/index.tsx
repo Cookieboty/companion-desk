@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+
 import { useAiChat } from '../../contexts/AiChatContext';
-import { AIModelConfig } from '../../types/config';
+import { type AIModelConfig } from '../../types/config';
+
 import styles from './index.module.css';
 
 export const ModelSelector: React.FC = () => {
   const { state, actions } = useAiChat();
   const [isOpen, setIsOpen] = useState(false);
 
-  const currentModel = state.models.find(m => m.id === state.currentModelId);
-  const enabledModels = state.models.filter(m => m.enabled);
+  const currentModel = state.models.find((m) => m.id === state.currentModelId);
+  const enabledModels = state.models.filter((m) => m.enabled);
 
   const handleModelSelect = (modelId: string) => {
     actions.setCurrentModel(modelId);
@@ -26,6 +28,8 @@ export const ModelSelector: React.FC = () => {
         return '🤖';
       case 'claude':
         return '🎭';
+      case 'gemini':
+        return '✨';
       case 'ollama':
         return '🦙';
       default:
@@ -52,9 +56,7 @@ export const ModelSelector: React.FC = () => {
           <span className={styles.modelIcon}>
             {currentModel ? getModelStatusIcon(currentModel) : '❓'}
           </span>
-          <span className={styles.modelName}>
-            {currentModel?.name || '选择模型'}
-          </span>
+          <span className={styles.modelName}>{currentModel?.name || '选择模型'}</span>
         </div>
         <svg
           className={`${styles.dropdownIcon} ${isOpen ? styles.open : ''}`}
@@ -71,10 +73,7 @@ export const ModelSelector: React.FC = () => {
         <div className={styles.dropdown}>
           <div className={styles.dropdownHeader}>
             <span>选择AI模型</span>
-            <button
-              className={styles.closeButton}
-              onClick={() => setIsOpen(false)}
-            >
+            <button className={styles.closeButton} onClick={() => setIsOpen(false)}>
               ✕
             </button>
           </div>
@@ -83,14 +82,13 @@ export const ModelSelector: React.FC = () => {
             {enabledModels.map((model) => (
               <button
                 key={model.id}
-                className={`${styles.modelItem} ${model.id === state.currentModelId ? styles.active : ''
-                  }`}
+                className={`${styles.modelItem} ${
+                  model.id === state.currentModelId ? styles.active : ''
+                }`}
                 onClick={() => handleModelSelect(model.id)}
               >
                 <div className={styles.modelItemContent}>
-                  <span className={styles.modelIcon}>
-                    {getModelStatusIcon(model)}
-                  </span>
+                  <span className={styles.modelIcon}>{getModelStatusIcon(model)}</span>
                   <div className={styles.modelDetails}>
                     <span className={styles.modelName}>{model.name}</span>
                     <span className={styles.modelProvider}>
@@ -120,12 +118,7 @@ export const ModelSelector: React.FC = () => {
       )}
 
       {/* 点击外部关闭下拉菜单 */}
-      {isOpen && (
-        <div
-          className={styles.overlay}
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {isOpen && <div className={styles.overlay} onClick={() => setIsOpen(false)} />}
     </div>
   );
-}; 
+};

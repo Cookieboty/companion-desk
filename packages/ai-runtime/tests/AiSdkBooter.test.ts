@@ -1,7 +1,7 @@
 import { LLMRegistryKey, ToolRegistryKey, UserProfileKey, echoTool } from '@ig-live/bundle-ig-base';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AiSdkLlmProvider } from '../src/ai-sdk/AiSdkLlmProvider';
+import { AiSdkLlmProvider, createAiSdkProviderFromEntry } from '../src/ai-sdk/AiSdkLlmProvider';
 import { toAiSdkToolSet } from '../src/ai-sdk/mapTools';
 import { createAiSdkBooter, defaultAiSdkPlugins } from '../src/AiSdkBooter';
 import { NoopRuntimeLogger } from '../src/logger';
@@ -17,7 +17,7 @@ describe('createAiSdkBooter', () => {
       .inject(LLMRegistryKey)!
       .list()
       .map((p) => p.id);
-    expect(ids).toEqual(['deepseek', 'ollama', 'openai']);
+    expect(ids).toEqual(['deepseek', 'ollama', 'openai', 'claude', 'gemini']);
     const deepseek = ctx.inject(LLMRegistryKey)!.get('deepseek');
     expect(deepseek).toBeInstanceOf(AiSdkLlmProvider);
     expect(
@@ -132,5 +132,83 @@ describe('AiSdkLlmProvider', () => {
     }
     expect(chunks.join('')).toContain('hel');
     expect(fetchImpl).toHaveBeenCalled();
+  });
+
+  it('claude backend uses @ai-sdk/anthropic (mock fetch)', async () => {
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string };
+      expect(body.model).toBe('claude-sonnet-4-5');
+      return new Response(
+        JSON.stringify({
+          id: 'msg_1',
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'bonjour' }],
+          model: 'claude-sonnet-4-5',
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const p = new AiSdkLlmProvider({
+      id: 'claude',
+      backend: 'anthropic',
+      apiKey: 'sk-ant',
+      defaultModel: 'claude-sonnet-4-5',
+      requiresApiKey: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const resp = await p.chat({
+      reqId: 'c1',
+      provider: 'claude',
+      model: 'default',
+      messages: [
+        { role: 'system', content: 'be brief' },
+        { role: 'user', content: 'hi' },
+      ],
+    });
+    expect(resp.content).toContain('bonjour');
+    expect(fetchImpl).toHaveBeenCalled();
+  });
+
+  it('gemini backend uses @ai-sdk/google (mock fetch)', async () => {
+    const fetchImpl = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: { parts: [{ text: 'namaste' }], role: 'model' },
+              finishReason: 'STOP',
+            },
+          ],
+          usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const p = new AiSdkLlmProvider({
+      id: 'gemini',
+      backend: 'google',
+      apiKey: 'gk',
+      defaultModel: 'gemini-2.5-flash',
+      requiresApiKey: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const resp = await p.chat({
+      reqId: 'g1',
+      provider: 'gemini',
+      model: 'default',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    expect(resp.content).toContain('namaste');
+    expect(fetchImpl).toHaveBeenCalled();
+  });
+
+  it('createAiSdkProviderFromEntry picks anthropic/google backends', () => {
+    const c = createAiSdkProviderFromEntry({ id: 'claude', apiKey: 'k' });
+    const g = createAiSdkProviderFromEntry({ id: 'gemini', apiKey: 'k' });
+    expect(c.id).toBe('claude');
+    expect(g.id).toBe('gemini');
   });
 });

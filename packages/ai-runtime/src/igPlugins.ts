@@ -4,6 +4,11 @@
  * LLM provider 由环境变量配置（主进程启动时读取）：
  *   DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / DEEPSEEK_MODEL
  *   OPENAI_API_KEY   / OPENAI_BASE_URL   / OPENAI_MODEL
+ *   ANTHROPIC_API_KEY | CLAUDE_API_KEY / ANTHROPIC_BASE_URL | CLAUDE_BASE_URL /
+ *     ANTHROPIC_MODEL | CLAUDE_MODEL     （Claude via @ai-sdk/anthropic）
+ *   GOOGLE_GENERATIVE_AI_API_KEY | GEMINI_API_KEY /
+ *     GOOGLE_GENERATIVE_AI_BASE_URL | GEMINI_BASE_URL /
+ *     GOOGLE_GENERATIVE_AI_MODEL | GEMINI_MODEL  （Gemini via @ai-sdk/google）
  *   OLLAMA_BASE_URL  / OLLAMA_MODEL      （本地 Ollama，无需 key，始终注册）
  * 注册顺序决定"未指定 provider 时"的默认项：已配置 key 的云端 provider → ollama →
  * 未配置 key 的云端 provider（仍注册，调用时给出明确的 "API key is not configured"）。
@@ -26,6 +31,14 @@ export type EnvLike = Record<string, string | undefined>;
 const nonEmpty = (v: string | undefined): string | undefined =>
   v !== undefined && v.trim() !== '' ? v.trim() : undefined;
 
+const first = (...vals: Array<string | undefined>): string | undefined => {
+  for (const v of vals) {
+    const n = nonEmpty(v);
+    if (n) return n;
+  }
+  return undefined;
+};
+
 /** 从环境变量推导 LLM provider 列表 */
 export function llmProvidersFromEnv(env: EnvLike = process.env): LLMProviderEntry[] {
   const cloud: LLMProviderEntry[] = [
@@ -40,6 +53,18 @@ export function llmProvidersFromEnv(env: EnvLike = process.env): LLMProviderEntr
       apiKey: nonEmpty(env.OPENAI_API_KEY),
       baseURL: nonEmpty(env.OPENAI_BASE_URL),
       model: nonEmpty(env.OPENAI_MODEL),
+    },
+    {
+      id: 'claude',
+      apiKey: first(env.ANTHROPIC_API_KEY, env.CLAUDE_API_KEY),
+      baseURL: first(env.ANTHROPIC_BASE_URL, env.CLAUDE_BASE_URL),
+      model: first(env.ANTHROPIC_MODEL, env.CLAUDE_MODEL),
+    },
+    {
+      id: 'gemini',
+      apiKey: first(env.GOOGLE_GENERATIVE_AI_API_KEY, env.GEMINI_API_KEY),
+      baseURL: first(env.GOOGLE_GENERATIVE_AI_BASE_URL, env.GEMINI_BASE_URL),
+      model: first(env.GOOGLE_GENERATIVE_AI_MODEL, env.GEMINI_MODEL),
     },
   ];
   const ollama: LLMProviderEntry = {

@@ -1,7 +1,7 @@
 /**
  * AiSdkBooter —— production Booter: IgPluginHost only (no dsh kernel).
  *
- * Registers Vercel AI SDK-backed LLM providers for DeepSeek / OpenAI /
+ * Registers Vercel AI SDK-backed LLM providers for DeepSeek / OpenAI / Claude / Gemini /
  * Ollama, keeps ToolsBuiltin + McpBridge + the rest of the ig plugin stack.
  * Optional dsh remains available via `createDshBooter({ core: 'required' })`
  * for doctor / experimental harness work.

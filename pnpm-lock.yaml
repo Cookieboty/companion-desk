@@ -203,9 +203,15 @@ importers:
 
   packages/ai-runtime:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^4.0.78
+        version: 4.0.78(zod@4.6.5)
       '@ai-sdk/deepseek':
         specifier: ^3.0.63
         version: 3.0.63(zod@4.6.5)
+      '@ai-sdk/google':
+        specifier: ^4.0.93
+        version: 4.0.93(zod@4.6.5)
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.67
         version: 3.0.67(zod@4.6.5)
@@ -397,9 +403,15 @@ importers:
 
   packages/electron:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^4.0.78
+        version: 4.0.78(zod@4.6.5)
       '@ai-sdk/deepseek':
         specifier: ^3.0.63
         version: 3.0.63(zod@4.6.5)
+      '@ai-sdk/google':
+        specifier: ^4.0.93
+        version: 4.0.93(zod@4.6.5)
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.67
         version: 3.0.67(zod@4.6.5)
@@ -572,6 +584,12 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
+  '@ai-sdk/anthropic@4.0.78':
+    resolution: {integrity: sha512-lVMxa9tLM5WoB72bqxjzWEWQlCwtBTo1L3yIKxAefowWATd+1YKohrINey6wTn8gtGEqyYm79z4DUGJBYauUFw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/deepseek@3.0.63':
     resolution: {integrity: sha512-oSIwe9tIpRXkANMsdNcW7JnJRLp+dakWiudl8ZImffhw3PD91i5zpN8x3V6jkXhknvEhRxyd6IIiCSCevVZHyw==}
     engines: {node: '>=22'}
@@ -580,6 +598,12 @@ packages:
 
   '@ai-sdk/gateway@4.0.110':
     resolution: {integrity: sha512-5IwnOR6v7KC+D9eddUqsCobXl/FbLUVb2LaQc/uyuQdpP3/n9s0YLc9zl4/W3IS/R2pjHrqUfCzEAeOu7bFLoQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/google@4.0.93':
+    resolution: {integrity: sha512-hubOUxbG2W7oD3acdCxxnrQ84NlnLqfzcHe9uWMmwkglHxq/rwsbjloPhvebeQlcQ2G0gaX+akDF1Ddm/fNAnQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -9125,6 +9149,12 @@ snapshots:
     dependencies:
       zod: 4.6.5
 
+  '@ai-sdk/anthropic@4.0.78(zod@4.6.5)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.26
+      '@ai-sdk/provider-utils': 5.0.58(zod@4.6.5)
+      zod: 4.6.5
+
   '@ai-sdk/deepseek@3.0.63(zod@4.6.5)':
     dependencies:
       '@ai-sdk/provider': 4.0.26
@@ -9136,6 +9166,12 @@ snapshots:
       '@ai-sdk/provider': 4.0.26
       '@ai-sdk/provider-utils': 5.0.58(zod@4.6.5)
       '@vercel/oidc': 3.2.0
+      zod: 4.6.5
+
+  '@ai-sdk/google@4.0.93(zod@4.6.5)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.26
+      '@ai-sdk/provider-utils': 5.0.58(zod@4.6.5)
       zod: 4.6.5
 
   '@ai-sdk/openai-compatible@3.0.67(zod@4.6.5)':

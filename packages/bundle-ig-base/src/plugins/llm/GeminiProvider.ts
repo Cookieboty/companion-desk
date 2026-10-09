@@ -9,7 +9,7 @@ export interface GeminiProviderOptions {
 /**
  * Google Gemini (generativelanguage.googleapis.com) 使用独立协议。
  *
- * 骨架版：TODO(P2-2) 实现 generateContent + streamGenerateContent + function calling 映射。
+ * Legacy stub kept for classic LLMProvidersPlugin. Production uses AiSdkLlmProvider (google backend).
  */
 export class GeminiProvider implements LLMProvider {
   readonly id = 'gemini';

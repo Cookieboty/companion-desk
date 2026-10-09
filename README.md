@@ -23,16 +23,18 @@ Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示
 
 主进程启动时从环境变量读取 LLM provider（未配置 key 的云端 provider 仍会注册，调用时给出明确报错）：
 
-| 变量                                                        | 说明                                                                                    |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                    |
-| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                                 |
-| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key）   |
-| `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                |
-| `IG_DSH_CORE`                                               | `off`（默认，生产不用 dsh）/ `auto` / `required`（需安装 optional `@deepseek-ai/dsh*`） |
-| `DSH_HOME`                                                  | 可选 dsh 状态目录，默认 `<userData>/dsh`（仅 `IG_DSH_CORE≠off` 时有意义）               |
+| 变量                                                        | 说明                                                                                                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                                                                                         |
+| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                                                                                                      |
+| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key）                                                                        |
+| `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY`                      | Claude（`@ai-sdk/anthropic`）；另可选 `ANTHROPIC_BASE_URL`/`CLAUDE_BASE_URL`、`ANTHROPIC_MODEL`/`CLAUDE_MODEL`（默认 `claude-sonnet-4-5`）                   |
+| `GOOGLE_GENERATIVE_AI_API_KEY` / `GEMINI_API_KEY`           | Gemini（`@ai-sdk/google`）；另可选 `GOOGLE_GENERATIVE_AI_BASE_URL`/`GEMINI_BASE_URL`、`GOOGLE_GENERATIVE_AI_MODEL`/`GEMINI_MODEL`（默认 `gemini-2.5-flash`） |
+| `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                                                                                     |
+| `IG_DSH_CORE`                                               | `off`（默认，生产不用 dsh）/ `auto` / `required`（需安装 optional `@deepseek-ai/dsh*`）                                                                      |
+| `DSH_HOME`                                                  | 可选 dsh 状态目录，默认 `<userData>/dsh`（仅 `IG_DSH_CORE≠off` 时有意义）                                                                                    |
 
-例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；使用 DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`。
+例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`；Claude：`ANTHROPIC_API_KEY=sk-ant-... pnpm dev`；Gemini：`GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev`。
 AI 对话窗口默认选择 `deepseek` provider，可在模型设置中切换。
 
 ## 📁 项目结构
