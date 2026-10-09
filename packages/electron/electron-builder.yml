@@ -52,10 +52,9 @@ mac:
       arch:
         - x64
         - arm64
-  icon: assets/logo.jpg
+  icon: assets/icon.png
   hardenedRuntime: true
   gatekeeperAssess: false
-  notarize: false # 由 afterSign 钩子按需触发；见 scripts/notarize.mjs（后续增量）
 
 # ---------------------------------------------------------------
 # Windows · NSIS；code sign 通过 CSC_LINK / CSC_KEY_PASSWORD 环境变量启用
@@ -66,7 +65,7 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: assets/logo.jpg
+  icon: assets/icon.png
 
 # ---------------------------------------------------------------
 # Linux · AppImage（P9-9 alpha 首发目标）
@@ -77,4 +76,6 @@ linux:
       arch:
         - x64
   category: Utility
-  icon: assets/logo.jpg
+  # 可执行文件名（默认取 package.json name，会得到 '@ig-liveelectron'）
+  executableName: companion-desk
+  icon: assets/icon.png
