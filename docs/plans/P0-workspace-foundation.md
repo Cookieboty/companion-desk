@@ -8,7 +8,7 @@
 | 依赖 Plan | 无 |
 | 建议 Sprint | Sprint 0（1 周） |
 | 预估工作量 | 3~5 人日 |
-| 关联设计章节 | [§14 P0](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1692-L1705) |
+| 关联设计章节 | [§14 P0](../AI_HARNESS_DESIGN.md#L1692-L1705) |
 
 ## 目标
 
@@ -28,7 +28,7 @@
 
 ### P0-1 · pnpm workspace 配置
 
-- 文件：[pnpm-workspace.yaml](file:///Users/botycookie/self/ai-live2d-client/pnpm-workspace.yaml)
+- 文件：[pnpm-workspace.yaml](../../pnpm-workspace.yaml)
 - 内容：
   ```yaml
   packages:
@@ -36,23 +36,23 @@
     - '!packages/**/dist'
     - '!packages/**/node_modules'
   ```
-- 根 [package.json](file:///Users/botycookie/self/ai-live2d-client/package.json) 追加：
+- 根 [package.json](../../package.json) 追加：
   - `"packageManager": "pnpm@9.x"`
   - `"engines": { "node": ">=20.11", "pnpm": ">=9" }`
-- 新建 [.npmrc](file:///Users/botycookie/self/ai-live2d-client/.npmrc)：`auto-install-peers=true` / `strict-peer-dependencies=false` / `enable-pre-post-scripts=true`
+- 新建 [.npmrc](../../.npmrc)：`auto-install-peers=true` / `strict-peer-dependencies=false` / `enable-pre-post-scripts=true`
 - 验收：`pnpm i` 无 warning；`pnpm -r --filter <any> exec node -v` 返回 20+
 
 ### P0-2 · 共享 TS/构建/测试配置
 
-- 新建 [tsconfig.base.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.base.json)：`target: ES2022 / module: ESNext / moduleResolution: Bundler / strict: true / verbatimModuleSyntax: true / isolatedModules: true`
-- 新建 [tsconfig.node.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.node.json)、[tsconfig.dom.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.dom.json)（分别开 lib: node / dom），供子包 `extends`
-- 新建 [tsup.base.ts](file:///Users/botycookie/self/ai-live2d-client/tsup.base.ts)：defineConfig 工厂函数，`format: ['esm','cjs']`、`dts: true`、`splitting: false`、`clean: true`、`sourcemap: true`
-- 新建 [vitest.base.ts](file:///Users/botycookie/self/ai-live2d-client/vitest.base.ts)：`environment: 'node' | 'jsdom'` 可覆盖；覆盖率报告 `provider: 'v8'`、`reporter: ['text','lcov']`
+- 新建 [tsconfig.base.json](../../tsconfig.base.json)：`target: ES2022 / module: ESNext / moduleResolution: Bundler / strict: true / verbatimModuleSyntax: true / isolatedModules: true`
+- 新建 [tsconfig.node.json](../../tsconfig.node.json)、[tsconfig.dom.json](../../tsconfig.dom.json)（分别开 lib: node / dom），供子包 `extends`
+- 新建 [tsup.base.ts](../../tsup.base.ts)：defineConfig 工厂函数，`format: ['esm','cjs']`、`dts: true`、`splitting: false`、`clean: true`、`sourcemap: true`
+- 新建 [vitest.base.ts](../../vitest.base.ts)：`environment: 'node' | 'jsdom'` 可覆盖；覆盖率报告 `provider: 'v8'`、`reporter: ['text','lcov']`
 - 验收：任意子包只需 3 行即可 extends
 
 ### P0-3 · Turborepo pipeline
 
-- 新建 [turbo.json](file:///Users/botycookie/self/ai-live2d-client/turbo.json)：
+- 新建 [turbo.json](../../turbo.json)：
   ```jsonc
   {
     "$schema": "https://turbo.build/schema.json",
@@ -70,22 +70,22 @@
 
 ### P0-4 · ESLint 9（flat config）+ Prettier
 
-- 新建 [eslint.config.mjs](file:///Users/botycookie/self/ai-live2d-client/eslint.config.mjs)：
+- 新建 [eslint.config.mjs](../../eslint.config.mjs)：
   - `@typescript-eslint`、`eslint-plugin-import`、`eslint-plugin-react`（仅对 renderer/ai-chat/sdk-client 生效）、`eslint-plugin-react-hooks`
   - 规则：`no-console: warn / no-restricted-imports: [electron in renderer]`
-- 新建 [.prettierrc](file:///Users/botycookie/self/ai-live2d-client/.prettierrc)：`printWidth: 100 / semi: true / singleQuote: true / trailingComma: 'all'`
+- 新建 [.prettierrc](../../.prettierrc)：`printWidth: 100 / semi: true / singleQuote: true / trailingComma: 'all'`
 - 验收：`pnpm lint` / `pnpm format` 全绿
 
 ### P0-5 · Git hooks（husky + lint-staged）
 
-- 新建 [.husky/pre-commit](file:///Users/botycookie/self/ai-live2d-client/.husky/pre-commit) → `pnpm lint-staged`
-- 新建 [.husky/commit-msg](file:///Users/botycookie/self/ai-live2d-client/.husky/commit-msg) → `pnpm commitlint --edit $1`（Conventional Commits）
+- 新建 [.husky/pre-commit](../../.husky/pre-commit) → `pnpm lint-staged`
+- 新建 [.husky/commit-msg](../../.husky/commit-msg) → `pnpm commitlint --edit $1`（Conventional Commits）
 - 根 `package.json` 追加 `lint-staged` 段：`*.{ts,tsx}: eslint --fix / prettier -w`
 - 验收：`git commit -m "wip"` 被拒（非 conventional）；`git commit -m "chore: init"` 成功
 
 ### P0-6 · CI（GitHub Actions）
 
-- 新建 [.github/workflows/ci.yml](file:///Users/botycookie/self/ai-live2d-client/.github/workflows/ci.yml)：
+- 新建 [.github/workflows/ci.yml](../../.github/workflows/ci.yml)：
   - matrix: `os: [ubuntu-latest, macos-latest, windows-latest]`
   - steps: `pnpm/action-setup` → `setup-node@v4 (cache: pnpm)` → `pnpm i --frozen-lockfile` → `pnpm turbo run typecheck lint test build`
   - artifact: 上传 `coverage/`
@@ -94,10 +94,10 @@
 
 ### P0-7 · License / CODEOWNERS / 基础文档
 
-- 新建 [LICENSE](file:///Users/botycookie/self/ai-live2d-client/LICENSE)（MIT）
-- 新建 [.github/CODEOWNERS](file:///Users/botycookie/self/ai-live2d-client/.github/CODEOWNERS)
-- 更新根 [README.md](file:///Users/botycookie/self/ai-live2d-client/README.md)：加"如何新建一个 workspace 包（复制 templates/pkg-template）"章节
-- 新建 [templates/pkg-template](file:///Users/botycookie/self/ai-live2d-client/templates/pkg-template)：一个空 workspace 包模板，含 `package.json / tsconfig.json / tsup.config.ts / vitest.config.ts / src/index.ts / README.md`
+- 新建 [LICENSE](../../LICENSE)（MIT）
+- 新建 [.github/CODEOWNERS](../../.github/CODEOWNERS)
+- 更新根 [README.md](../../README.md)：加"如何新建一个 workspace 包（复制 templates/pkg-template）"章节
+- 新建 [templates/pkg-template](../../templates/pkg-template)：一个空 workspace 包模板，含 `package.json / tsconfig.json / tsup.config.ts / vitest.config.ts / src/index.ts / README.md`
 
 ## 交付物
 

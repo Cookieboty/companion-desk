@@ -5,19 +5,19 @@
 | 项 | 值 |
 |---|---|
 | 层级 | L2（Electron 主进程运行时） |
-| 依赖 Plan | [P3](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P3-bundle-ig-electron-caps.md) + [P5](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P5-ai-sdk-facade.md) |
+| 依赖 Plan | [P3](P3-bundle-ig-electron-caps.md) + [P5](P5-ai-sdk-facade.md) |
 | 建议 Sprint | Sprint 3（1 周） |
 | 预估工作量 | 4~6 人日 |
-| 关联设计章节 | [§3.2](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L525-L555) / [§14 P6](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1801-L1816) |
+| 关联设计章节 | [§3.2](../AI_HARNESS_DESIGN.md#L525-L555) / [§14 P6](../AI_HARNESS_DESIGN.md#L1801-L1816) |
 
 ## 目标
 
-一句话：**在 Electron 主进程里 `boot('waifu')`，把 AIClient 通过 IPC 桥给所有渲染窗口，广播事件；替换旧 [AiChatIpcHandler](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 但保留兼容通道。**
+一句话：**在 Electron 主进程里 `boot('waifu')`，把 AIClient 通过 IPC 桥给所有渲染窗口，广播事件；替换旧 [AiChatIpcHandler](../../packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 但保留兼容通道。**
 
 ## 准入前提
 
-- [P3](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P3-bundle-ig-electron-caps.md) 完成（Electron seam 就绪）
-- [P5](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P5-ai-sdk-facade.md) 完成（AIClient 稳定）
+- [P3](P3-bundle-ig-electron-caps.md) 完成（Electron seam 就绪）
+- [P5](P5-ai-sdk-facade.md) 完成（AIClient 稳定）
 
 ## 范围
 
@@ -29,7 +29,7 @@
 
 ### P6-1 · 包骨架
 
-- 目录 [packages/ai-runtime](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime)
+- 目录 [packages/ai-runtime](../../packages/ai-runtime)
 - `package.json`：
   - `peerDependencies: electron @ig-live/ai-sdk @ig-live/bundle-ig-base @ig-live/bundle-ig-electron-caps @deepseek-ai/dsh`
   - 仅 CJS 输出（Electron main 兼容性）
@@ -38,7 +38,7 @@
 
 ### P6-2 · AIRuntimeService（生命周期）
 
-- 新建 [src/AIRuntimeService.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/AIRuntimeService.ts)：
+- 新建 [src/AIRuntimeService.ts](../../packages/ai-runtime/src/AIRuntimeService.ts)：
   ```ts
   export class AIRuntimeService {
     private client?: AIClient;
@@ -54,7 +54,7 @@
 
 ### P6-3 · IPCTransportServer（自动反射挂通道）
 
-- 新建 [src/IPCTransportServer.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/IPCTransportServer.ts)：
+- 新建 [src/IPCTransportServer.ts](../../packages/ai-runtime/src/IPCTransportServer.ts)：
   - 输入：AIClient 与通道前缀 `ai`
   - 反射策略：对每个 Facade 遍历方法名 → 挂 `ipcMain.handle(`${prefix}:${facade}:${method}`, async (e, ...args) => client[facade][method](...args))`
   - 流式方法（返回 `AsyncIterable`）走事件通道：`sender.send(`${prefix}:${facade}:${method}:chunk`, chunk)`；订阅端用 `reqId` 关联
@@ -65,7 +65,7 @@
 
 ### P6-4 · EventBroadcaster
 
-- 新建 [src/EventBroadcaster.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/EventBroadcaster.ts)：
+- 新建 [src/EventBroadcaster.ts](../../packages/ai-runtime/src/EventBroadcaster.ts)：
   - 订阅 `AIClient.on('*')` → 用 `webContents.getAllWebContents()` 广播 `ai:event`（payload: `{ evt, data }`）
   - 支持"按窗口订阅子集"（渲染层 send `ai:event:subscribe` 携带过滤器）
   - 生命周期：`start(client)` / `stop()`
@@ -73,19 +73,19 @@
 
 ### P6-5 · Electron 能力 IPC handler
 
-- 新建 [src/handlers/](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/handlers)：把 P3 的 seam 也挂通道
+- 新建 [src/handlers/](../../packages/ai-runtime/src/handlers)：把 P3 的 seam 也挂通道
   - `ai:screen:capture` / `ai:clipboard:read/write` / `ai:keyStore:*`
 - 大对象（截屏 buffer）走 `MessagePort` 而不是 `ipc.send`（避免拷贝）
 - 验收：渲染层能拿到 capture buffer
 
 ### P6-6 · 与旧 AiChatIpcHandler 的兼容适配
 
-- 新建 [src/legacy/AiChatCompat.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/legacy/AiChatCompat.ts)：
+- 新建 [src/legacy/AiChatCompat.ts](../../packages/ai-runtime/src/legacy/AiChatCompat.ts)：
   - 保留旧通道名（如 `ai-chat:send-message`）
   - 内部转发到新 AIClient
   - 打 deprecation warning（`console.warn` + telemetry 计数）
   - 计划保留 2 个次版本；文档写清弃用节奏
-- 逐通道 mapping 表放 [docs/legacy-channel-mapping.md](file:///Users/botycookie/self/ai-live2d-client/docs/legacy-channel-mapping.md)
+- 逐通道 mapping 表放 [docs/legacy-channel-mapping.md](../legacy-channel-mapping.md)
 
 ### P6-7 · 集成测试（playwright-electron）
 
@@ -98,7 +98,7 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/ai-runtime](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime)
+- 1 个可发布 npm 包 [@ig-live/ai-runtime](../../packages/ai-runtime)
 - IPCTransportServer + EventBroadcaster + 兼容层
 - Legacy channel mapping 文档
 

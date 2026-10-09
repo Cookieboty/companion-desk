@@ -1,7 +1,7 @@
 # Changesets
 
 > 本目录由 [@changesets/cli](https://github.com/changesets/changesets) 管理。
-> 计划背景：[P9-8 · SDK 版本化与发布](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-8-sdk-版本化与发布)
+> 计划背景：[P9-8 · SDK 版本化与发布](../docs/plans/P9-polish-observability-release.md#p9-8-sdk-版本化与发布)
 
 ## Fixed group
 
@@ -11,7 +11,7 @@
 - `@ig-live/ai-runtime`
 - `@ig-live/ai-sdk-client`
 
-见 [config.json](file:///Users/botycookie/self/ai-live2d-client/.changeset/config.json) 的 `fixed` 数组。
+见 [config.json](config.json) 的 `fixed` 数组。
 
 ## Ignored（不参与版本化）
 
@@ -45,4 +45,4 @@
 - 新增 facade / 方法 → **minor**
 - bugfix / 内部重构 → **patch**
 
-详见 [docs/sdk-compat.md](file:///Users/botycookie/self/ai-live2d-client/docs/sdk-compat.md)（P9 后续补齐）。
+详见 [docs/sdk-compat.md](../docs/sdk-compat.md)（P9 后续补齐）。

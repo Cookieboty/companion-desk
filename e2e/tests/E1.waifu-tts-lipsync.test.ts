@@ -10,7 +10,7 @@
  *
  * 由于当前无法在 Electron 环境跑 Playwright，且 P8-8 计划里的 `message:complete` 事件
  * 未在 AIClient.bindDshBridges 中显式桥接（P9 会补上），此处用 `agent:turn-end` 作为
- * 语义等价的完成信号；详见 [P8-consumer-migration.md#P8-8](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P8-consumer-migration.md#p8-8-e2e-冒烟三端-三-profile)。
+ * 语义等价的完成信号；详见 [P8-consumer-migration.md#P8-8](../../docs/plans/P8-consumer-migration.md#p8-8-e2e-冒烟三端-三-profile)。
  */
 
 import { EVENT_BROADCAST_CHANNEL } from '@ig-live/ai-runtime';

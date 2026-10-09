@@ -5,10 +5,10 @@
 | 项 | 值 |
 |---|---|
 | 层级 | L0.5（Electron 主进程 dsh bundle） |
-| 依赖 Plan | [P2](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P2-bundle-ig-base.md) |
+| 依赖 Plan | [P2](P2-bundle-ig-base.md) |
 | 建议 Sprint | Sprint 2（并行） |
 | 预估工作量 | 8~10 人日 |
-| 关联设计章节 | [§3.0.3](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L340-L361) / [§14 P3](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1746-L1761) |
+| 关联设计章节 | [§3.0.3](../AI_HARNESS_DESIGN.md#L340-L361) / [§14 P3](../AI_HARNESS_DESIGN.md#L1746-L1761) |
 
 ## 目标
 
@@ -16,7 +16,7 @@
 
 ## 准入前提
 
-- [P2](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P2-bundle-ig-base.md) 全部退出准则达成（`ctx.userProfile` 可用；本包会覆盖其存储后端为文件版）。
+- [P2](P2-bundle-ig-base.md) 全部退出准则达成（`ctx.userProfile` 可用；本包会覆盖其存储后端为文件版）。
 
 ## 范围
 
@@ -28,16 +28,16 @@
 
 ### P3-1 · 包骨架
 
-- 从 template 复制到 [packages/bundle-ig-electron-caps](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps)
+- 从 template 复制到 [packages/bundle-ig-electron-caps](../../packages/bundle-ig-electron-caps)
 - `package.json.dsh.bundle`、`peerDependencies: electron @ig-live/bundle-ig-base @deepseek-ai/dsh`
-- [src/patch.yml](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/patch.yml) 默认配置
+- [src/patch.yml](../../packages/bundle-ig-electron-caps/src/patch.yml) 默认配置
 - **仅在主进程加载**：`index.ts` 顶部 `if (!process.versions.electron || process.type !== 'browser') throw`
 - 验收：`chat-only.yml` 挂上后 `pnpm doctor chat-only` 通过（在 Electron main 上下文里）
 
 ### P3-2 · SafeKeyStorePlugin
 
-- 新建 [src/plugins/SafeKeyStorePlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/SafeKeyStorePlugin.ts)
-- 新建 [src/seams/keyStore.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/seams/keyStore.ts)：`KeyStoreService { get(id); set(id, v); del(id); list(); }`
+- 新建 [src/plugins/SafeKeyStorePlugin.ts](../../packages/bundle-ig-electron-caps/src/plugins/SafeKeyStorePlugin.ts)
+- 新建 [src/seams/keyStore.ts](../../packages/bundle-ig-electron-caps/src/seams/keyStore.ts)：`KeyStoreService { get(id); set(id, v); del(id); list(); }`
 - 用 `electron.safeStorage.encryptString/decryptString`，若 `safeStorage.isEncryptionAvailable() === false` 则**明确抛错**（不允许明文兜底）
 - 落盘位置：`app.getPath('userData')/ai-chat/keys.enc`
 - 单元测试：mock safeStorage 双向
@@ -45,23 +45,23 @@
 
 ### P3-3 · FileSessionStorePlugin（覆盖 dsh 会话存储 + UserProfile 存储）
 
-- 新建 [src/plugins/FileSessionStorePlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts)
+- 新建 [src/plugins/FileSessionStorePlugin.ts](../../packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts)
 - 覆盖 `ctx.sessions` 的 `IStorage`（JSONL append-only；每 session 一个文件；轮转 100MB）
-- 覆盖 [P2 UserProfileStorePlugin](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P2-bundle-ig-base.md#p2-72-userprofilestoreplugin--seam) 注入的 `IProfileStorage`：落 `userData/ai-chat/memory/user_profile.json`；写时用原子替换（write→rename）
+- 覆盖 [P2 UserProfileStorePlugin](P2-bundle-ig-base.md#p2-72-userprofilestoreplugin--seam) 注入的 `IProfileStorage`：落 `userData/ai-chat/memory/user_profile.json`；写时用原子替换（write→rename）
 - 验收：kill 进程后重新启动能读回上一会话与偏好
 
 ### P3-4 · Screen / Clipboard seam
 
-- 新建 [src/seams/screen.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/seams/screen.ts)：`ScreenService { listDisplays(); capture(display?, area?) }`
-- 新建 [src/seams/clipboard.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/seams/clipboard.ts)：`ClipboardService { readText(); writeText(); readImage(); on('change') }`
+- 新建 [src/seams/screen.ts](../../packages/bundle-ig-electron-caps/src/seams/screen.ts)：`ScreenService { listDisplays(); capture(display?, area?) }`
+- 新建 [src/seams/clipboard.ts](../../packages/bundle-ig-electron-caps/src/seams/clipboard.ts)：`ClipboardService { readText(); writeText(); readImage(); on('change') }`
 - 分别用 `desktopCapturer` / `clipboard`
 - Clipboard 变化监听用 200ms 轮询（macOS/Windows 一致）
 - 验收：单元 + 手工
 
 ### P3-5 · AsrPlugin（3 provider + `ctx.asr` seam）
 
-- 新建 [src/seams/asr.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/seams/asr.ts)：`AsrService { transcribe(pcm, opts); stream(pcmStream, opts); list() }`
-- 目录 [src/plugins/asr/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/asr)
+- 新建 [src/seams/asr.ts](../../packages/bundle-ig-electron-caps/src/seams/asr.ts)：`AsrService { transcribe(pcm, opts); stream(pcmStream, opts); list() }`
+- 目录 [src/plugins/asr/](../../packages/bundle-ig-electron-caps/src/plugins/asr)
   - `WhisperLocalProvider.ts`（`nodejs-whisper` 或 `whisper.cpp` binding；模型走首启动向导下载到 `models/whisper/`）
   - `OpenAIWhisperProvider.ts`（`audio/transcriptions`）
   - `VolcAsrProvider.ts`（火山 ASR WebSocket）
@@ -70,18 +70,18 @@
 
 ### P3-6 · TtsPlugin（4 provider + `ctx.tts` seam）
 
-- 新建 [src/seams/tts.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/seams/tts.ts)：`TtsService { synth(text, opts); stream(text, opts): AsyncIterable<TTSChunk>; stop(reqId); listVoices() }`
-- 目录 [src/plugins/tts/](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/tts)
+- 新建 [src/seams/tts.ts](../../packages/bundle-ig-electron-caps/src/seams/tts.ts)：`TtsService { synth(text, opts); stream(text, opts): AsyncIterable<TTSChunk>; stop(reqId); listVoices() }`
+- 目录 [src/plugins/tts/](../../packages/bundle-ig-electron-caps/src/plugins/tts)
   - `SystemTtsProvider.ts`（macOS `say` / Windows `SAPI`）
   - `EdgeTtsProvider.ts`
   - `OpenAiTtsProvider.ts`
   - `AzureTtsProvider.ts`
-- 每个 TTSChunk 附带 `rms` 用于 P4 [TtsLipSyncPlugin](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P4-bundle-ig-live2d.md#p4-4-ttslipsyncplugin) 驱动嘴型
+- 每个 TTSChunk 附带 `rms` 用于 P4 [TtsLipSyncPlugin](P4-bundle-ig-live2d.md#p4-4-ttslipsyncplugin) 驱动嘴型
 - 验收：4 家分别合成 5s 音频且能被浏览器播放
 
 ### P3-7 · WakeWordPlugin（Porcupine，可关）
 
-- 新建 [src/plugins/WakeWordPlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/WakeWordPlugin.ts)
+- 新建 [src/plugins/WakeWordPlugin.ts](../../packages/bundle-ig-electron-caps/src/plugins/WakeWordPlugin.ts)
 - 依赖 `@picovoice/porcupine-node`，access key 从 `ctx.keyStore.get('porcupine')` 读
 - 触发时 emit `wakeword/detected` 事件 → 由消费方决定是否开始 ASR
 - 默认关闭；`patch.id: wakeword.default.config.enabled = false`
@@ -89,7 +89,7 @@
 
 ### P3-8 · ShortcutPlugin
 
-- 新建 [src/plugins/ShortcutPlugin.ts](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/ShortcutPlugin.ts)
+- 新建 [src/plugins/ShortcutPlugin.ts](../../packages/bundle-ig-electron-caps/src/plugins/ShortcutPlugin.ts)
 - 用 `globalShortcut`：默认 `Cmd/Ctrl+Shift+Space` = toggle 唤醒；`Cmd/Ctrl+Shift+X` = 截屏送 Agent
 - 每个快捷键映射到 `ctx.commands.dispatch(cmd)`
 - 生命周期：`app.will-quit` 自动 unregister
@@ -103,7 +103,7 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/bundle-ig-electron-caps](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps)
+- 1 个可发布 npm 包 [@ig-live/bundle-ig-electron-caps](../../packages/bundle-ig-electron-caps)
 - 4 个新 seam（keyStore / screen / clipboard / asr / tts）
 - 8 个 provider（1 keyStore + 3 asr + 4 tts）
 

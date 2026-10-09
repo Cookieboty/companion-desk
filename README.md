@@ -285,7 +285,7 @@ assets/voice/
 
 ### 新建一个 workspace 包（模板法）
 
-本仓库已内置一个"3 行 extends 即可起手"的包模板：[templates/pkg-template](file:///Users/botycookie/self/ai-live2d-client/templates/pkg-template)。
+本仓库已内置一个"3 行 extends 即可起手"的包模板：[templates/pkg-template](templates/pkg-template)。
 
 ```bash
 # 1. 复制模板到 packages/
@@ -302,15 +302,15 @@ pnpm --filter @ig-live/<your-pkg> build test lint typecheck
 
 模板复用的根级配置：
 
-- 类型：[tsconfig.base.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.base.json) + [tsconfig.node.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.node.json) / [tsconfig.dom.json](file:///Users/botycookie/self/ai-live2d-client/tsconfig.dom.json)
-- 打包：[tsup.base.ts](file:///Users/botycookie/self/ai-live2d-client/tsup.base.ts)（预设 `node-lib` / `react-lib` / `node-cli`）
-- 测试：[vitest.base.ts](file:///Users/botycookie/self/ai-live2d-client/vitest.base.ts)
-- Lint：[eslint.config.mjs](file:///Users/botycookie/self/ai-live2d-client/eslint.config.mjs)（ESLint 9 flat config，渲染进程禁引 `electron`）
-- Turbo pipeline：[turbo.json](file:///Users/botycookie/self/ai-live2d-client/turbo.json)（`build` / `test` / `lint` / `typecheck` / `test:e2e`）
+- 类型：[tsconfig.base.json](tsconfig.base.json) + [tsconfig.node.json](tsconfig.node.json) / [tsconfig.dom.json](tsconfig.dom.json)
+- 打包：[tsup.base.ts](tsup.base.ts)（预设 `node-lib` / `react-lib` / `node-cli`）
+- 测试：[vitest.base.ts](vitest.base.ts)
+- Lint：[eslint.config.mjs](eslint.config.mjs)（ESLint 9 flat config，渲染进程禁引 `electron`）
+- Turbo pipeline：[turbo.json](turbo.json)（`build` / `test` / `lint` / `typecheck` / `test:e2e`）
 
 ## 🤖 AI SDK 最小示例
 
-自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@ig-live/ai-sdk-client`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client)（渲染进程）与 [`@ig-live/ai-sdk`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/consumer-integration.md](file:///Users/botycookie/self/ai-live2d-client/docs/consumer-integration.md)。
+自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@ig-live/ai-sdk-client`](packages/ai-sdk-client)（渲染进程）与 [`@ig-live/ai-sdk`](packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/consumer-integration.md](docs/consumer-integration.md)。
 
 **渲染进程（React）**：
 
@@ -345,7 +345,7 @@ export function App() {
 }
 ```
 
-**主进程（Electron）**：由 [Application.startAIRuntime](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/core/Application.ts#L121-L148) 自动装配；如需自定义可直接调用 [startAIRuntime](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/AIRuntimeBoot.ts#L120-L217)：
+**主进程（Electron）**：由 [Application.startAIRuntime](packages/electron/src/core/Application.ts#L121-L148) 自动装配；如需自定义可直接调用 [startAIRuntime](packages/electron/src/ai/AIRuntimeBoot.ts#L120-L217)：
 
 ```ts
 import { startAIRuntime, TtsElectronNativeProvider } from '@ig-live/electron/ai';
@@ -363,9 +363,9 @@ for await (const chunk of runtime.client.chat.stream({
 }
 ```
 
-**preload**：使用 [`mkAiPreload`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/preload/mkAiPreload.ts) 注入白名单 IPC 通道（`ai:*` 前缀）；详见 [docs/preload-usage.md](file:///Users/botycookie/self/ai-live2d-client/docs/preload-usage.md)。
+**preload**：使用 [`mkAiPreload`](packages/ai-sdk-client/src/preload/mkAiPreload.ts) 注入白名单 IPC 通道（`ai:*` 前缀）；详见 [docs/preload-usage.md](docs/preload-usage.md)。
 
-**升级说明与旧 API 弃用时间线**：[docs/plans/CHANGELOG.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md)。
+**升级说明与旧 API 弃用时间线**：[docs/plans/CHANGELOG.md](docs/plans/CHANGELOG.md)。
 
 ## 🙏 致谢
 
@@ -422,17 +422,17 @@ https://www.live2d.com/eula/live2d-open-software-license-agreement_cn.html
 
 本项目以开源 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 作为 AI 基座，不再自研 kernel。为避免 developer preview 阶段的漂移，我们采取如下版本策略：
 
-- **锁死主版本**：根 [package.json](file:///Users/botycookie/self/ai-live2d-client/package.json)`.dependencies` 中所有 `@deepseek-ai/dsh*` 均写 **exact** 版本（不带 `^` / `~`），当前锁定 `0.1.2-alpha.3`。
-- **三处同步**：升级 dsh 需同步更新 3 个地方 —— 根 [package.json](file:///Users/botycookie/self/ai-live2d-client/package.json)、`profiles/*/package.json`（`@deepseek-ai/dsh-base`）、`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']`。
-- **profiles/ 承载配置**：三份 profile（`waifu` / `chat-only` / `mcp-headless`）以目录形式存放在 [profiles/](file:///Users/botycookie/self/ai-live2d-client/profiles)，每份 = `package.json` + `cordis.patch.yml`，详细结构与 override 顺序见 [profiles/README.md](file:///Users/botycookie/self/ai-live2d-client/profiles/README.md)。
-- **升级 SOP**：完整 9 步升级流程记录在 [profiles/README.md](file:///Users/botycookie/self/ai-live2d-client/profiles/README.md#dsh-升级-sop)。
+- **锁死主版本**：根 [package.json](package.json)`.dependencies` 中所有 `@deepseek-ai/dsh*` 均写 **exact** 版本（不带 `^` / `~`），当前锁定 `0.1.2-alpha.3`。
+- **三处同步**：升级 dsh 需同步更新 3 个地方 —— 根 [package.json](package.json)、`profiles/*/package.json`（`@deepseek-ai/dsh-base`）、`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']`。
+- **profiles/ 承载配置**：三份 profile（`waifu` / `chat-only` / `mcp-headless`）以目录形式存放在 [profiles/](profiles)，每份 = `package.json` + `cordis.patch.yml`，详细结构与 override 顺序见 [profiles/README.md](profiles/README.md)。
+- **升级 SOP**：完整 9 步升级流程记录在 [profiles/README.md](profiles/README.md#dsh-升级-sop)。
 - **本地自检**：`pnpm run doctor <profile>` 装配诊断；`pnpm run test:root` 冒烟三份 profile 的 `loadProfile + composeEntries` 契约。
 
 ---
 
 ## 🔗 相关链接
 
-- [项目仓库](https://github.com/your-username/ig-live-monorepo)
-- [问题反馈](https://github.com/your-username/ig-live-monorepo/issues)
+- [项目仓库](https://github.com/Cookieboty/companion-desk)
+- [问题反馈](https://github.com/Cookieboty/companion-desk/issues)
 - [开发文档](./docs/)
 - [更新日志](./CHANGELOG.md)

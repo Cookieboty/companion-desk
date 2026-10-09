@@ -5,34 +5,34 @@
 | 项 | 值 |
 |---|---|
 | 层级 | L4（消费方 / 业务集成层） |
-| 依赖 Plan | [P4](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P4-bundle-ig-live2d.md) + [P7](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P7-ai-sdk-client.md) |
+| 依赖 Plan | [P4](P4-bundle-ig-live2d.md) + [P7](P7-ai-sdk-client.md) |
 | 建议 Sprint | Sprint 5（1.5 周） |
 | 预估工作量 | 8~10 人日 |
-| 关联设计章节 | [§13](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1560-L1668) / [§14 P8](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md#L1834-L1860) |
+| 关联设计章节 | [§13](../AI_HARNESS_DESIGN.md#L1560-L1668) / [§14 P8](../AI_HARNESS_DESIGN.md#L1834-L1860) |
 
 ## 目标
 
-一句话：**将 [electron](file:///Users/botycookie/self/ai-live2d-client/packages/electron) 主进程、[renderer](file:///Users/botycookie/self/ai-live2d-client/packages/renderer)（看板娘）、[ai-chat](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat)（对话 UI）三端全部切换为通过 SDK/Runtime/Client 访问 AI 能力，同时下线所有旧的直连、Mock 与重复 IPC 定义。**
+一句话：**将 [electron](../../packages/electron) 主进程、[renderer](../../packages/renderer)（看板娘）、[ai-chat](../../packages/ai-chat)（对话 UI）三端全部切换为通过 SDK/Runtime/Client 访问 AI 能力，同时下线所有旧的直连、Mock 与重复 IPC 定义。**
 
 ## 准入前提
 
-- [P4](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P4-bundle-ig-live2d.md) 完成：看板娘 bundle（Live2dSeam / TtsLipSync / WaifuAgent）可加载
-- [P7](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P7-ai-sdk-client.md) 完成：`@ig-live/ai-sdk-client` 可发布并稳定
-- 三个 profile（waifu / chat-only / mcp-headless）冒烟通过（[P1](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P1-dsh-kernel-adoption.md) 退出准则）
+- [P4](P4-bundle-ig-live2d.md) 完成：看板娘 bundle（Live2dSeam / TtsLipSync / WaifuAgent）可加载
+- [P7](P7-ai-sdk-client.md) 完成：`@ig-live/ai-sdk-client` 可发布并稳定
+- 三个 profile（waifu / chat-only / mcp-headless）冒烟通过（[P1](P1-dsh-kernel-adoption.md) 退出准则）
 
 ## 范围与非范围
 
 **范围**
-- 主进程接入 [ai-runtime](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime)（启动、依赖注入、生命周期）
-- 渲染进程用 [ai-sdk-client](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client) 全面替换旧 AIService
-- 移除 / 归档旧代码（[AIService](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/services/AIService.ts)、[AdapterFactory](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/services/adapters/AdapterFactory.ts)、[AiChatIpcHandler](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 的 Mock 段）
+- 主进程接入 [ai-runtime](../../packages/ai-runtime)（启动、依赖注入、生命周期）
+- 渲染进程用 [ai-sdk-client](../../packages/ai-sdk-client) 全面替换旧 AIService
+- 移除 / 归档旧代码（[AIService](../../packages/ai-chat/src/services/AIService.ts)、[AdapterFactory](../../packages/ai-chat/src/services/adapters/AdapterFactory.ts)、[AiChatIpcHandler](../../packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 的 Mock 段）
 - 配置迁移脚本（旧 `AIModelConfig` → dsh profile / SDK options）
 - 数据迁移脚本（旧本地历史 → dsh session log；旧 chat setting → UserProfile）
 - 三端 E2E 冒烟
 
 **非范围**
 - 新 UI 视觉（保留原样式；仅底层切换）
-- 观测与打磨（→ [P9](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md)）
+- 观测与打磨（→ [P9](P9-polish-observability-release.md)）
 
 ## 进度总览
 
@@ -63,20 +63,20 @@
 > **仍未落地项**：`FileGateway` / `HotkeyGateway` / `WindowGateway` 三个 seam（当前 profile 尚不需要，待 P9 打磨阶段按需补齐）
 
 
-- 修改 [packages/electron/src/main.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/main.ts)（或等价入口）：
+- 修改 [packages/electron/src/main.ts](../../packages/electron/src/main.ts)（或等价入口）：
   - `app.whenReady()` 后 `await createAIRuntime({ profile: 'waifu', userDataDir })`
   - 挂载 IPC：`runtime.attach(ipcMain)`
   - `before-quit` 调用 `runtime.dispose()`
-- 依赖注入实现（放在 [packages/electron/src/ai/](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai)）：
+- 依赖注入实现（放在 [packages/electron/src/ai/](../../packages/electron/src/ai)）：
   | Seam | Electron 侧实现 | 文件 |
   |---|---|---|
-  | `IKeyProvider` | `safeStorage` 加解密 | [SafeKeyProvider.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/SafeKeyProvider.ts) |
-  | `IFileGateway` | `dialog + fs.promises` | [FileGateway.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/FileGateway.ts) |
-  | `IClipboardGateway` | `clipboard` | [ClipboardGateway.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/ClipboardGateway.ts) |
-  | `IScreenCapture` | `desktopCapturer` | [ScreenCapture.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/ScreenCapture.ts) |
-  | `IHotkeyGateway` | `globalShortcut` | [HotkeyGateway.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/HotkeyGateway.ts) |
-  | `IWindowGateway` | 现有窗口管理 | [WindowGateway.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/WindowGateway.ts) |
-- 上述实现只做适配，不写业务；业务逻辑全在 [bundle-ig-electron-caps](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps)
+  | `IKeyProvider` | `safeStorage` 加解密 | [SafeKeyProvider.ts](../../packages/electron/src/ai/SafeKeyProvider.ts) |
+  | `IFileGateway` | `dialog + fs.promises` | [FileGateway.ts](../../packages/electron/src/ai/FileGateway.ts) |
+  | `IClipboardGateway` | `clipboard` | [ClipboardGateway.ts](../../packages/electron/src/ai/ClipboardGateway.ts) |
+  | `IScreenCapture` | `desktopCapturer` | [ScreenCapture.ts](../../packages/electron/src/ai/ScreenCapture.ts) |
+  | `IHotkeyGateway` | `globalShortcut` | [HotkeyGateway.ts](../../packages/electron/src/ai/HotkeyGateway.ts) |
+  | `IWindowGateway` | 现有窗口管理 | [WindowGateway.ts](../../packages/electron/src/ai/WindowGateway.ts) |
+- 上述实现只做适配，不写业务；业务逻辑全在 [bundle-ig-electron-caps](../../packages/bundle-ig-electron-caps)
 - 验收：`pnpm dev:electron` 启动后日志出现 `AI runtime ready (profile=waifu)`
 
 ### P8-2 · preload 迁移
@@ -88,10 +88,10 @@
 > - AI Chat preload：[packages/electron/src/ai-chat-preload.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai-chat-preload.ts) 同样注入 `window.aiIPC`
 > - 白名单校验由 [`mkAiPreload`](file:///d:/self_git/ai-live2d-client/packages/ai-sdk-client/src/preload/mkAiPreload.ts) 内部完成，仅暴露 `ai:` 前缀通道
 
-- **renderer preload**：[packages/renderer/electron/preload.ts](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/electron/preload.ts)
+- **renderer preload**：[packages/renderer/electron/preload.ts](../../packages/renderer/electron/preload.ts)
   - 引入 `mkAiPreload('aiIPC')`
   - 保留原有 `window.electronAPI`（看板娘控制），另开 `window.aiIPC`
-- **ai-chat preload**：[packages/ai-chat/electron/preload.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/electron/preload.ts)
+- **ai-chat preload**：[packages/ai-chat/electron/preload.ts](../../packages/ai-chat/electron/preload.ts)
   - 同上，`mkAiPreload('aiIPC')`
   - 移除旧 `sendAIChat` / `onAIStream` 桥接
 - 验收：`window.aiIPC.invoke('ai:chat:sendMessage', ...)` 从 devtools 可用
@@ -101,30 +101,30 @@
 > **状态：✅ 已完成**（本轮补齐 Agent 气泡桥接 + 场景汇报，替换掉旧 `waifu.tips.json` 静态提示）
 >
 > **主要变更**：
-> - **入口装配**：[packages/renderer/src/index.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/index.tsx) 使用 [`<WaifuAIRoot>`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/WaifuAIRoot.tsx) 包裹 `<App />`；仅当 `window.aiIPC` 就绪时启用 `<AIProvider>`，否则透明放行，保持浏览器/单测场景可运行。
-> - **嘴型桥接**：新增 [`packages/renderer/src/ai/`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai)：
->   - [`WaifuLipSyncBridge`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/WaifuLipSyncBridge.tsx)：`useTTSLipSync()` → 写入模块级 [`lipSyncStore`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/lipSyncStore.ts)；
->   - [`lipSyncStore`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/lipSyncStore.ts)：`0..1` clamp + 订阅广播，作为 React 层与 WebGL 层之间的桥。
+> - **入口装配**：[packages/renderer/src/index.tsx](../../packages/renderer/src/index.tsx) 使用 [`<WaifuAIRoot>`](../../packages/renderer/src/ai/WaifuAIRoot.tsx) 包裹 `<App />`；仅当 `window.aiIPC` 就绪时启用 `<AIProvider>`，否则透明放行，保持浏览器/单测场景可运行。
+> - **嘴型桥接**：新增 [`packages/renderer/src/ai/`](../../packages/renderer/src/ai)：
+>   - [`WaifuLipSyncBridge`](../../packages/renderer/src/ai/WaifuLipSyncBridge.tsx)：`useTTSLipSync()` → 写入模块级 [`lipSyncStore`](../../packages/renderer/src/ai/lipSyncStore.ts)；
+>   - [`lipSyncStore`](../../packages/renderer/src/ai/lipSyncStore.ts)：`0..1` clamp + 订阅广播，作为 React 层与 WebGL 层之间的桥。
 > - **Live2D 侧对接**：
->   - [`Cubism2Model.setLipSyncValue`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/cubism2/index.ts) 新增，转发到 `L2DBaseModel.setLipSyncValue`（`LAppModel.update` 每帧读取 `PARAM_MOUTH_OPEN_Y`）；
->   - [`useLive2DModel`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/hooks/useLive2DModel.ts) 订阅 `lipSyncStore`，rms 变化时立即写入当前模型；卸载/切换模型时重置为 0。
+>   - [`Cubism2Model.setLipSyncValue`](../../packages/renderer/src/cubism2/index.ts) 新增，转发到 `L2DBaseModel.setLipSyncValue`（`LAppModel.update` 每帧读取 `PARAM_MOUTH_OPEN_Y`）；
+>   - [`useLive2DModel`](../../packages/renderer/src/hooks/useLive2DModel.ts) 订阅 `lipSyncStore`，rms 变化时立即写入当前模型；卸载/切换模型时重置为 0。
 > - **Agent 气泡桥接（本轮新增）**：
->   - [`bubbleReducer`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/bubbleReducer.ts)：纯函数从 AI 事件 (`agent:step` / `message:complete` / `tool:executed` / `live2d:touch`) 派生 `BubbleDirective`（文本、优先级、超时），负责助手文本抽取、截断、去重判定；
->   - [`WaifuAgentBubbleBridge`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/WaifuAgentBubbleBridge.tsx)：订阅 `useAgent()` + `useAIEvents()`，把派生结果通过 [`useWaifuMessage.showMessage`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/hooks/useWaifuMessage.ts) 输出到既有 `<MessageBubble>`，同一文本 3s 内去重；
->   - 挂载于 [`packages/renderer/src/components/Live2D/index.tsx`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/components/Live2D/index.tsx) 内 `Live2DProvider` 子树，仅当 `window.aiIPC` 就绪时启用（借 [`isAiIpcReady`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/env.ts#L1-L7) 门控）。
+>   - [`bubbleReducer`](../../packages/renderer/src/ai/bubbleReducer.ts)：纯函数从 AI 事件 (`agent:step` / `message:complete` / `tool:executed` / `live2d:touch`) 派生 `BubbleDirective`（文本、优先级、超时），负责助手文本抽取、截断、去重判定；
+>   - [`WaifuAgentBubbleBridge`](../../packages/renderer/src/ai/WaifuAgentBubbleBridge.tsx)：订阅 `useAgent()` + `useAIEvents()`，把派生结果通过 [`useWaifuMessage.showMessage`](../../packages/renderer/src/hooks/useWaifuMessage.ts) 输出到既有 `<MessageBubble>`，同一文本 3s 内去重；
+>   - 挂载于 [`packages/renderer/src/components/Live2D/index.tsx`](../../packages/renderer/src/components/Live2D/index.tsx) 内 `Live2DProvider` 子树，仅当 `window.aiIPC` 就绪时启用（借 [`isAiIpcReady`](../../packages/renderer/src/ai/env.ts#L1-L7) 门控）。
 > - **场景汇报（本轮新增）**：
->   - [`waifuSceneStore`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/waifuSceneStore.ts)：模块级订阅型快照（当前模型、当前换装、可用换装/动作），带浅比较避免重复通知；
->   - [`WaifuLive2dSceneReporter`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/WaifuLive2dSceneReporter.tsx)：从 `useLive2D()` 派生并写入 `waifuSceneStore`；模型卸载时自动 reset；作为过渡通道供后续 `ctx.live2d.registerSceneProvider` 消费（受限于 `UserProfile` schema，尚不直接落到 `client.userProfile.set`）。
+>   - [`waifuSceneStore`](../../packages/renderer/src/ai/waifuSceneStore.ts)：模块级订阅型快照（当前模型、当前换装、可用换装/动作），带浅比较避免重复通知；
+>   - [`WaifuLive2dSceneReporter`](../../packages/renderer/src/ai/WaifuLive2dSceneReporter.tsx)：从 `useLive2D()` 派生并写入 `waifuSceneStore`；模型卸载时自动 reset；作为过渡通道供后续 `ctx.live2d.registerSceneProvider` 消费（受限于 `UserProfile` schema，尚不直接落到 `client.userProfile.set`）。
 > - **旧 tips 归零**：`packages/renderer/src/App.tsx` 已不再直读 `waifu.tips.json`（`waifuPath` 仅作为兼容 prop 保留），Agent 气泡桥接接管所有对话/工具/触摸提示。
-> - **依赖同步**：[packages/renderer/package.json](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/package.json) 已在早前提交升级 `@types/react ^18.3.12`、`@types/react-dom ^18.3.0`。
+> - **依赖同步**：[packages/renderer/package.json](../../packages/renderer/package.json) 已在早前提交升级 `@types/react ^18.3.12`、`@types/react-dom ^18.3.0`。
 >
 > **产出证据（本轮）**：
-> - 新文件：[`bubbleReducer.ts`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/bubbleReducer.ts) / [`WaifuAgentBubbleBridge.tsx`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/WaifuAgentBubbleBridge.tsx) / [`waifuSceneStore.ts`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/waifuSceneStore.ts) / [`WaifuLive2dSceneReporter.tsx`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/WaifuLive2dSceneReporter.tsx) / [`env.ts`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/ai/env.ts)
-> - 组件挂载点：[`Live2D/index.tsx`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/components/Live2D/index.tsx)
+> - 新文件：[`bubbleReducer.ts`](../../packages/renderer/src/ai/bubbleReducer.ts) / [`WaifuAgentBubbleBridge.tsx`](../../packages/renderer/src/ai/WaifuAgentBubbleBridge.tsx) / [`waifuSceneStore.ts`](../../packages/renderer/src/ai/waifuSceneStore.ts) / [`WaifuLive2dSceneReporter.tsx`](../../packages/renderer/src/ai/WaifuLive2dSceneReporter.tsx) / [`env.ts`](../../packages/renderer/src/ai/env.ts)
+> - 组件挂载点：[`Live2D/index.tsx`](../../packages/renderer/src/components/Live2D/index.tsx)
 > - 单测（vitest node 环境）：
->   - [`bubbleReducer.test.ts`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/tests/ai/bubbleReducer.test.ts)（18 用例：文本抽取 / 截断 / 各事件派生 / 去重）
->   - [`lipSyncStore.test.ts`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/tests/ai/lipSyncStore.test.ts)（6 用例：clamp / listener / reset）
->   - [`waifuSceneStore.test.ts`](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/tests/ai/waifuSceneStore.test.ts)（6 用例：set / 幂等 / listener / reset）
+>   - [`bubbleReducer.test.ts`](../../packages/renderer/tests/ai/bubbleReducer.test.ts)（18 用例：文本抽取 / 截断 / 各事件派生 / 去重）
+>   - [`lipSyncStore.test.ts`](../../packages/renderer/tests/ai/lipSyncStore.test.ts)（6 用例：clamp / listener / reset）
+>   - [`waifuSceneStore.test.ts`](../../packages/renderer/tests/ai/waifuSceneStore.test.ts)（6 用例：set / 幂等 / listener / reset）
 > - 命令：`pnpm --filter @ig-live/renderer typecheck / build / test`（`3 files / 30 tests` 全绿）；`pnpm run typecheck`（16/16 绿）；`pnpm run test`（17/17 + root 4/18 绿）；`pnpm run doctor waifu|chat-only|mcp-headless`（三 profile 均 `ok: 86 entries composed, no warnings`）
 >
 > **仍未落地的子项（下沉到 P9 打磨阶段）**：
@@ -132,12 +132,12 @@
 > - `WaifuTools` 中 `live2d_play_motion` / `live2d_set_expression` 与 `waifuSceneStore` 的双向读取
 > - 触摸事件转 dsh `sensory.input` 的通道（当前仅气泡消费）
 
-- 修改 [packages/renderer/src/App.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/App.tsx)：外层包 `<AIProvider profile="waifu">`
-- 新组件 [WaifuAI/WaifuChat.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/renderer/src/components/WaifuAI/WaifuChat.tsx)：
+- 修改 [packages/renderer/src/App.tsx](../../packages/renderer/src/App.tsx)：外层包 `<AIProvider profile="waifu">`
+- 新组件 [WaifuAI/WaifuChat.tsx](../../packages/renderer/src/components/WaifuAI/WaifuChat.tsx)：
   - `useChat()` 收发消息
   - `useTTSLipSync()` → 传给 Live2D `setMouthOpenY`
   - `useAgent()` → 展示当前"想干什么"（可选气泡）
-- 挂载 [WaifuTools](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P4-bundle-ig-live2d.md#p4-4-waifutools-面向工具集)：
+- 挂载 [WaifuTools](P4-bundle-ig-live2d.md#p4-4-waifutools-面向工具集)：
   - Live2D 场景注册器：`ctx.live2d.registerSceneProvider(...)`，把当前模型、可切换动作、可用表情喂给 dsh
 - 移除旧的 `waifu.tips.json` 直读逻辑，改由 `waifuTipsTool` 通过 `session:before-response` 生成
 - 验收：与看板娘对话时嘴型同步、可通过对话触发换装 / 动作
@@ -158,14 +158,14 @@
 > - Tools 面板（`client.tools.list()`）
 > - `types/config.ts` 中的 `AIModelConfig` → `ClientOptions` 完全替换（目前仍保留 `AIModelConfig` 作为 UI 层数据结构）
 
-- 修改 [packages/ai-chat/src/App.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/App.tsx)：`<AIProvider profile="chat-only">`
+- 修改 [packages/ai-chat/src/App.tsx](../../packages/ai-chat/src/App.tsx)：`<AIProvider profile="chat-only">`
 - 消息列表改由 `useChat({ sessionId })` 提供
-- 会话侧栏：新组件 [SessionList.tsx](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/components/SessionList.tsx) 调 `client.session.list()`
+- 会话侧栏：新组件 [SessionList.tsx](../../packages/ai-chat/src/components/SessionList.tsx) 调 `client.session.list()`
 - 工具面板：`client.tools.list()` 展示所有可用工具，勾选启用
 - **删除**：
-  - [packages/ai-chat/src/services/AIService.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/services/AIService.ts)
-  - [packages/ai-chat/src/services/adapters/](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/services/adapters) 整个目录
-  - [types/config.ts](file:///Users/botycookie/self/ai-live2d-client/packages/ai-chat/src/types/config.ts) 中的 `AIModelConfig`（改为 `ClientOptions`）
+  - [packages/ai-chat/src/services/AIService.ts](../../packages/ai-chat/src/services/AIService.ts)
+  - [packages/ai-chat/src/services/adapters/](../../packages/ai-chat/src/services/adapters) 整个目录
+  - [types/config.ts](../../packages/ai-chat/src/types/config.ts) 中的 `AIModelConfig`（改为 `ClientOptions`）
 - 保留 UI 组件不动，只切数据源
 
 ### P8-5 · 旧 IPC 与 Mock 下线
@@ -176,14 +176,14 @@
 > - 删除 [`AiChatIpcHandler`](file:///d:/self_git/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts)（含全部 Mock 分支），并在 [IpcRegistry.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/handlers/ipc/IpcRegistry.ts) 取消注册；
 > - 旧 `ai-chat:*` 调用路径已由 [`AiChatCompat`](file:///d:/self_git/ai-live2d-client/packages/ai-runtime/src/legacy/AiChatCompat.ts)（由 ai-runtime 提供）向新的 AIClient 反射，附带弃用日志；
 > - ai-chat 侧移除 `crypto-js`/`axios` 与旧 adapter，`AIModelConfig` 仍保留作 UI 层数据，等 tools/session 面板落地后再最终切换；
-> - **P8-5 尾巴**：[AdvancedTTSEngine](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/services/AdvancedTTSEngine.ts) 已由 [TtsElectronNativeProvider](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/TtsElectronNativeProvider.ts) 适配为 dsh `TtsProvider('electron-native')`，通过 [`AIRuntimeBootOptions.ttsProviders`](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/AIRuntimeBoot.ts#L53-L64) 注入；profile 未加载 `bundle-ig-electron-caps` 的 `TtsPlugin` 时 `SEAM_NOT_INJECTED` 被吞并 log warn；
-> - **CHANGELOG 下线窗口**：[docs/plans/CHANGELOG.md#Deprecated](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md#deprecated) 已写明 `ai:legacy:*` 保留 2 个 minor 版本后移除。
+> - **P8-5 尾巴**：[AdvancedTTSEngine](../../packages/electron/src/services/AdvancedTTSEngine.ts) 已由 [TtsElectronNativeProvider](../../packages/electron/src/ai/TtsElectronNativeProvider.ts) 适配为 dsh `TtsProvider('electron-native')`，通过 [`AIRuntimeBootOptions.ttsProviders`](../../packages/electron/src/ai/AIRuntimeBoot.ts#L53-L64) 注入；profile 未加载 `bundle-ig-electron-caps` 的 `TtsPlugin` 时 `SEAM_NOT_INJECTED` 被吞并 log warn；
+> - **CHANGELOG 下线窗口**：[docs/plans/CHANGELOG.md#Deprecated](CHANGELOG.md#deprecated) 已写明 `ai:legacy:*` 保留 2 个 minor 版本后移除。
 
-- [packages/electron/src/handlers/ipc/AiChatIpcHandler.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/handlers/ipc/AiChatIpcHandler.ts)：
+- [packages/electron/src/handlers/ipc/AiChatIpcHandler.ts](../../packages/electron/src/handlers/ipc/AiChatIpcHandler.ts)：
   - 删除所有 Mock 分支
   - 保留必要的向后兼容通道（`ai:legacy:*`），映射到 AIClient 对应方法
-  - 4 周后彻底删除（在 [CHANGELOG](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md) 标注）
-- [packages/electron/src/services/AdvancedTTSEngine.ts](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/services/AdvancedTTSEngine.ts)：
+  - 4 周后彻底删除（在 [CHANGELOG](CHANGELOG.md) 标注）
+- [packages/electron/src/services/AdvancedTTSEngine.ts](../../packages/electron/src/services/AdvancedTTSEngine.ts)：
   - 保留实现，但只作为 `ttsProvider('electron-native')` 的一个供应商注册到 dsh，不再从 UI 直接调用
 
 ### P8-6 · 配置迁移脚本
@@ -191,18 +191,18 @@
 > **状态：✅ 已完成**
 >
 > **产出证据**：
-> - 迁移纯函数：[migrateLegacyConfig](file:///Users/botycookie/self/ai-live2d-client/scripts/lib/migrate/config.ts) —— 输入 `LegacyAppConfig`，输出 `{ providers[], defaultProviderId, keyEntries[], skipped[] }`，具备 provider 校验、重复 id 去重、`isLocal` / `keyRef` 归一化
-> - CLI 脚本：[migrate-config.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/migrate-config.ts) —— 支持 `--input / --out / --dry-run`；非 dry-run 时把 `<input>` 备份为 `<input>.legacy.json`
-> - 单测：[scripts/__tests__/migrate-config.test.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/__tests__/migrate-config.test.ts)（5 用例：主流程 / keyEntries / 默认 provider fallback / 校验失败分支 / 空输入）
+> - 迁移纯函数：[migrateLegacyConfig](../../scripts/lib/migrate/config.ts) —— 输入 `LegacyAppConfig`，输出 `{ providers[], defaultProviderId, keyEntries[], skipped[] }`，具备 provider 校验、重复 id 去重、`isLocal` / `keyRef` 归一化
+> - CLI 脚本：[migrate-config.ts](../../scripts/migrate-config.ts) —— 支持 `--input / --out / --dry-run`；非 dry-run 时把 `<input>` 备份为 `<input>.legacy.json`
+> - 单测：[scripts/__tests__/migrate-config.test.ts](../../scripts/__tests__/migrate-config.test.ts)（5 用例：主流程 / keyEntries / 默认 provider fallback / 校验失败分支 / 空输入）
 >
 > **说明**：
-> - Electron 侧只需消费 `_secretPayload`：把每条 `{ keyRef, secret }` 交给 [SafeKeyProvider.set](file:///Users/botycookie/self/ai-live2d-client/packages/electron/src/ai/SafeKeyProvider.ts#L54-L65) 即可写入 `<userData>/keys/<keyRef>.bin`。脚本本身不引入 electron 依赖，纯 Node 可跑
-> - 已由 [dsh-smoke 根测试套件](file:///Users/botycookie/self/ai-live2d-client/vitest.root.config.ts) 自动纳入 `pnpm test`
+> - Electron 侧只需消费 `_secretPayload`：把每条 `{ keyRef, secret }` 交给 [SafeKeyProvider.set](../../packages/electron/src/ai/SafeKeyProvider.ts#L54-L65) 即可写入 `<userData>/keys/<keyRef>.bin`。脚本本身不引入 electron 依赖，纯 Node 可跑
+> - 已由 [dsh-smoke 根测试套件](../../vitest.root.config.ts) 自动纳入 `pnpm test`
 
-- 新建 [scripts/migrate-config.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/migrate-config.ts)：
+- 新建 [scripts/migrate-config.ts](../../scripts/migrate-config.ts)：
   - 读旧 `userData/config.json` 中的 `AIModelConfig[]`
   - 转换为 dsh profile 中 `llm.providers[]` 结构
-  - 密钥经 `safeStorage.encryptString` 写入 [userData/keys/](file:///Users/botycookie/self/ai-live2d-client/userData/keys)
+  - 密钥经 `safeStorage.encryptString` 写入 [userData/keys/](../../userData/keys)
   - 备份原文件为 `config.legacy.json`
 - 首次启动检测并自动执行；提供 `--dry-run` 选项
 - 验收：老用户升级后无感切换，聊天历史保留
@@ -212,21 +212,21 @@
 > **状态：✅ 已完成**
 >
 > **产出证据**：
-> - 历史迁移纯函数：[migrateLegacyHistory](file:///Users/botycookie/self/ai-live2d-client/scripts/lib/migrate/history.ts) —— 按 `sessionId` 分桶、缺省会话合并到 `--fallback-session`（默认 `legacy`），保留 `createdAt / updatedAt`；`serializeSessionFile` 输出与 [FileSessionStore](file:///Users/botycookie/self/ai-live2d-client/packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts#L40-L97) 一致的 JSONL
-> - Profile 迁移纯函数：[migrateLegacyUserProfile](file:///Users/botycookie/self/ai-live2d-client/scripts/lib/migrate/userProfile.ts) —— 将 `chat.language` / `chat.ttsVoiceId` 映射为 `PreferenceValue<string>`（`source: 'user'`），可传入 `base` 合并旧 profile
-> - CLI 脚本：[migrate-history.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/migrate-history.ts) + [migrate-user-profile.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/migrate-user-profile.ts) —— 均支持 `--dry-run`；user-profile 额外提供 `--overwrite` 防止覆盖已有 profile
-> - 单测：[migrate-history.test.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/__tests__/migrate-history.test.ts)（5 用例）+ [migrate-user-profile.test.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/__tests__/migrate-user-profile.test.ts)（4 用例，含 base-merge / 未知语言 / 空 chat）
+> - 历史迁移纯函数：[migrateLegacyHistory](../../scripts/lib/migrate/history.ts) —— 按 `sessionId` 分桶、缺省会话合并到 `--fallback-session`（默认 `legacy`），保留 `createdAt / updatedAt`；`serializeSessionFile` 输出与 [FileSessionStore](../../packages/bundle-ig-electron-caps/src/plugins/FileSessionStorePlugin.ts#L40-L97) 一致的 JSONL
+> - Profile 迁移纯函数：[migrateLegacyUserProfile](../../scripts/lib/migrate/userProfile.ts) —— 将 `chat.language` / `chat.ttsVoiceId` 映射为 `PreferenceValue<string>`（`source: 'user'`），可传入 `base` 合并旧 profile
+> - CLI 脚本：[migrate-history.ts](../../scripts/migrate-history.ts) + [migrate-user-profile.ts](../../scripts/migrate-user-profile.ts) —— 均支持 `--dry-run`；user-profile 额外提供 `--overwrite` 防止覆盖已有 profile
+> - 单测：[migrate-history.test.ts](../../scripts/__tests__/migrate-history.test.ts)（5 用例）+ [migrate-user-profile.test.ts](../../scripts/__tests__/migrate-user-profile.test.ts)（4 用例，含 base-merge / 未知语言 / 空 chat）
 >
 > **落盘路径与线上一致**：
 > - 会话：`<userData>/ai-chat/sessions/<sessionId>.jsonl`
 > - Profile：`<userData>/ai-chat/memory/user_profile.json`
 
-- 新建 [scripts/migrate-history.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/migrate-history.ts)：
+- 新建 [scripts/migrate-history.ts](../../scripts/migrate-history.ts)：
   - 旧 `chat_history.json` → dsh `session log` schema
   - 每条 conversation 建一个 sessionId
   - 保留 `createdAt` / `updatedAt`
-- 新建 [scripts/migrate-user-profile.ts](file:///Users/botycookie/self/ai-live2d-client/scripts/migrate-user-profile.ts)：
-  - 旧 chat setting 中的偏好（模型偏好、语言、TTS 音色）→ 初始 `UserProfile` 写入 [userData/memory/user_profile.json](file:///Users/botycookie/self/ai-live2d-client/userData/memory/user_profile.json)
+- 新建 [scripts/migrate-user-profile.ts](../../scripts/migrate-user-profile.ts)：
+  - 旧 chat setting 中的偏好（模型偏好、语言、TTS 音色）→ 初始 `UserProfile` 写入 [userData/memory/user_profile.json](../../userData/memory/user_profile.json)
 - 单测：给定旧文件 fixture，输出 diff 与预期一致
 
 ### P8-8 · E2E 冒烟（三端 × 三 profile）
@@ -237,14 +237,14 @@
 >
 > **产出证据**：
 > - E2E vitest 骨架：
->   - 配置：[vitest.e2e.config.ts](file:///Users/botycookie/self/ai-live2d-client/vitest.e2e.config.ts)（`dir: 'e2e'`，`name: 'e2e-headless'`，不与 turbo 的 per-package `test:e2e` 冲突）
->   - 根脚本：[package.json#scripts.test:e2e](file:///Users/botycookie/self/ai-live2d-client/package.json)（`vitest run --config vitest.e2e.config.ts`），`test:e2e:pkg` 保留给未来 per-package Playwright 用
+>   - 配置：[vitest.e2e.config.ts](../../vitest.e2e.config.ts)（`dir: 'e2e'`，`name: 'e2e-headless'`，不与 turbo 的 per-package `test:e2e` 冲突）
+>   - 根脚本：[package.json#scripts.test:e2e](../../package.json)（`vitest run --config vitest.e2e.config.ts`），`test:e2e:pkg` 保留给未来 per-package Playwright 用
 >   - Helpers：
->     - [fakeIpc.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/fakeIpc.ts) —— 实现 [`IpcAdapter`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-runtime/src/IpcAdapter.ts) 契约的内存桥，`addWebContents()` 模拟多渲染窗口；
->     - [fakeSdkCtx.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/fakeSdkCtx.ts) —— `provide`/`inject`/`on`/`emit`/`triggerEvent` 的内存实现，与 `packages/ai-sdk/tests/helpers/fakeSdkCtx.ts` 对齐；
->     - [fakeSeams.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/fakeSeams.ts) —— FakeLLM / FakeToolRegistry / FakeProfileService / FakeTts / FakeLive2d + echo 工具；
->     - [clientBridge.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/clientBridge.ts) —— 把 FakeIpcAdapter 包装为 [`IPCBridge`](file:///Users/botycookie/self/ai-live2d-client/packages/ai-sdk-client/src/IPCBridge.ts)，让 `new ClientAIClient({ bridge })` 直接可用；
->     - [e2eRuntime.ts](file:///Users/botycookie/self/ai-live2d-client/e2e/helpers/e2eRuntime.ts) —— 一次性组装 `AIClient + IPCTransportServer + EventBroadcaster + FakeSeams`，暴露 `createRendererClient()` 生成"渲染窗口 + bridge"。
+>     - [fakeIpc.ts](../../e2e/helpers/fakeIpc.ts) —— 实现 [`IpcAdapter`](../../packages/ai-runtime/src/IpcAdapter.ts) 契约的内存桥，`addWebContents()` 模拟多渲染窗口；
+>     - [fakeSdkCtx.ts](../../e2e/helpers/fakeSdkCtx.ts) —— `provide`/`inject`/`on`/`emit`/`triggerEvent` 的内存实现，与 `packages/ai-sdk/tests/helpers/fakeSdkCtx.ts` 对齐；
+>     - [fakeSeams.ts](../../e2e/helpers/fakeSeams.ts) —— FakeLLM / FakeToolRegistry / FakeProfileService / FakeTts / FakeLive2d + echo 工具；
+>     - [clientBridge.ts](../../e2e/helpers/clientBridge.ts) —— 把 FakeIpcAdapter 包装为 [`IPCBridge`](../../packages/ai-sdk-client/src/IPCBridge.ts)，让 `new ClientAIClient({ bridge })` 直接可用；
+>     - [e2eRuntime.ts](../../e2e/helpers/e2eRuntime.ts) —— 一次性组装 `AIClient + IPCTransportServer + EventBroadcaster + FakeSeams`，暴露 `createRendererClient()` 生成"渲染窗口 + bridge"。
 > - 用例（5 文件 · 15 test，全部通过；E5 由 [P9-11 Polish B](file:///d:/self_git/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项) 补齐）：
 >   - **E1** [E1.waifu-tts-lipsync.test.ts](file:///d:/self_git/ai-live2d-client/e2e/tests/E1.waifu-tts-lipsync.test.ts)（waifu · 2 test）：
 >     - `tts/chunk` dsh 事件 → 双窗口都收到 `tts:chunk` 且 `rms>0` 可驱动 `live2d.driveLipSync`；
@@ -287,16 +287,16 @@
 > **状态：✅ 已完成**
 >
 > **产出证据**：
-> - [README.md#-ai-sdk-最小示例](file:///Users/botycookie/self/ai-live2d-client/README.md) 新增「AI SDK 最小示例」段落（renderer React 示例 + 主进程 `startAIRuntime` 示例 + preload 使用链接）；
-> - 新增 [docs/consumer-integration.md](file:///Users/botycookie/self/ai-live2d-client/docs/consumer-integration.md) —— 三端接入 checklist（主进程 / preload / renderer / 迁移脚本 / 能力矩阵 / 上线自检 / 常见坑）；
-> - [docs/plans/CHANGELOG.md](file:///Users/botycookie/self/ai-live2d-client/docs/plans/CHANGELOG.md) 已覆盖 P8-5 / P8-6 / P8-7 的 Added / Changed / Deprecated / Removed / Migration Notes；
-> - [docs/preload-usage.md](file:///Users/botycookie/self/ai-live2d-client/docs/preload-usage.md) 和 [docs/legacy-channel-mapping.md](file:///Users/botycookie/self/ai-live2d-client/docs/legacy-channel-mapping.md) 已在早前提交对齐，本轮由 checklist 统一交叉引用。
+> - [README.md#-ai-sdk-最小示例](../../README.md) 新增「AI SDK 最小示例」段落（renderer React 示例 + 主进程 `startAIRuntime` 示例 + preload 使用链接）；
+> - 新增 [docs/consumer-integration.md](../consumer-integration.md) —— 三端接入 checklist（主进程 / preload / renderer / 迁移脚本 / 能力矩阵 / 上线自检 / 常见坑）；
+> - [docs/plans/CHANGELOG.md](CHANGELOG.md) 已覆盖 P8-5 / P8-6 / P8-7 的 Added / Changed / Deprecated / Removed / Migration Notes；
+> - [docs/preload-usage.md](../preload-usage.md) 和 [docs/legacy-channel-mapping.md](../legacy-channel-mapping.md) 已在早前提交对齐，本轮由 checklist 统一交叉引用。
 >
 > **未落地**：`docs/AI_HARNESS_DESIGN.md` 目前与实现一致，未发现需要变更说明段；如后续 P8-8（E2E）或 P9（打磨）出现偏差再补。
 
-- 更新 [README.md](file:///Users/botycookie/self/ai-live2d-client/README.md)：入门 → 使用 SDK 的最小示例
-- 新增 [docs/consumer-integration.md](file:///Users/botycookie/self/ai-live2d-client/docs/consumer-integration.md)：三端接入 checklist
-- 更新 [docs/AI_HARNESS_DESIGN.md](file:///Users/botycookie/self/ai-live2d-client/docs/AI_HARNESS_DESIGN.md) 变更说明段（如有偏差）
+- 更新 [README.md](../../README.md)：入门 → 使用 SDK 的最小示例
+- 新增 [docs/consumer-integration.md](../consumer-integration.md)：三端接入 checklist
+- 更新 [docs/AI_HARNESS_DESIGN.md](../AI_HARNESS_DESIGN.md) 变更说明段（如有偏差）
 
 ## 交付物
 

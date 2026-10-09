@@ -1,10 +1,10 @@
 # electron-builder 配置 · P9-9 Polish B
 #
-# 本文件由 [packages/electron/package.json](file:///Users/botycookie/self/ai-live2d-client/packages/electron/package.json)
+# 本文件由 [packages/electron/package.json](package.json)
 # 的 `package:*` 脚本消费。相较此前内嵌在 package.json 的 `build` 字段，独立成
 # YAML 后：
 # - 便于按 target/env 变量差分（AppImage / DMG / NSIS / notarize / sign）；
-# - 便于 [P9-9 CI 三平台 build](file:///Users/botycookie/self/ai-live2d-client/docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
+# - 便于 [P9-9 CI 三平台 build](../../docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
 # - Notarize / Windows Sign 通过环境变量启用（默认关闭以便本地开发 & PR CI 免凭证）。
 
 appId: com.cookieboty.companion-desk
