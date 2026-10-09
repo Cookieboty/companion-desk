@@ -81,6 +81,39 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     model: 'deepseek-chat',
     enabled: true,
   },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    provider: 'openai',
+    apiUrl: 'https://api.openai.com',
+    model: 'gpt-4o-mini',
+    enabled: true,
+  },
+  {
+    id: 'claude',
+    name: 'Claude',
+    provider: 'claude',
+    apiUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-5',
+    enabled: true,
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini',
+    provider: 'gemini',
+    apiUrl: 'https://generativelanguage.googleapis.com',
+    model: 'gemini-2.5-flash',
+    enabled: true,
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama',
+    provider: 'ollama',
+    apiUrl: 'http://127.0.0.1:11434',
+    model: 'qwen2.5:3b-instruct',
+    enabled: true,
+    isLocal: true,
+  },
 ];
 
 export class SdkIPCClient implements IPCClient {
@@ -127,7 +160,9 @@ export class SdkIPCClient implements IPCClient {
       });
       return typeof resp?.content === 'string' ? resp.content : '';
     } catch (error) {
-      throw new Error(`发送消息失败: ${(error as Error).message ?? String(error)}`);
+      throw new Error(`发送消息失败: ${(error as Error).message ?? String(error)}`, {
+        cause: error,
+      });
     }
   }
 
@@ -152,7 +187,9 @@ export class SdkIPCClient implements IPCClient {
         }
       }
     } catch (error) {
-      throw new Error(`发送流式消息失败: ${(error as Error).message ?? String(error)}`);
+      throw new Error(`发送流式消息失败: ${(error as Error).message ?? String(error)}`, {
+        cause: error,
+      });
     }
   }
 

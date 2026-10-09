@@ -10,7 +10,7 @@ export interface ClaudeProviderOptions {
 /**
  * Claude / Anthropic 使用独立协议（Messages API），非 OpenAI 兼容。
  *
- * 骨架版：只保留 LLMProvider 接口签名，TODO(P2-2) 实现 messages API + SSE 解析 + tool_use 映射。
+ * Legacy stub kept for classic LLMProvidersPlugin. Production uses AiSdkLlmProvider (anthropic backend).
  */
 export class ClaudeProvider implements LLMProvider {
   readonly id = 'claude';

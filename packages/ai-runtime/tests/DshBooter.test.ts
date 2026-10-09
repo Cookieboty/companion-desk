@@ -60,17 +60,27 @@ describe('IgPluginHost', () => {
 
 describe('llmProvidersFromEnv', () => {
   it('keyed cloud providers first, then ollama, then key-less cloud providers', () => {
-    expect(llmProvidersFromEnv({}).map((p) => p.id)).toEqual(['ollama', 'deepseek', 'openai']);
+    expect(llmProvidersFromEnv({}).map((p) => p.id)).toEqual([
+      'ollama',
+      'deepseek',
+      'openai',
+      'claude',
+      'gemini',
+    ]);
     const list = llmProvidersFromEnv({
       OPENAI_API_KEY: 'sk-o',
       OPENAI_BASE_URL: 'http://127.0.0.1:9999/v1',
       OLLAMA_MODEL: 'llama3.2',
       DEEPSEEK_API_KEY: ' ',
+      ANTHROPIC_API_KEY: 'sk-ant',
+      GEMINI_API_KEY: 'gk',
     });
-    expect(list.map((p) => p.id)).toEqual(['openai', 'ollama', 'deepseek']);
+    expect(list.map((p) => p.id)).toEqual(['openai', 'claude', 'gemini', 'ollama', 'deepseek']);
     expect(list[0]).toMatchObject({ apiKey: 'sk-o', baseURL: 'http://127.0.0.1:9999/v1' });
-    expect(list[1]).toMatchObject({ model: 'llama3.2' });
-    expect(list[2]!.apiKey).toBeUndefined();
+    expect(list[1]).toMatchObject({ apiKey: 'sk-ant' });
+    expect(list[2]).toMatchObject({ apiKey: 'gk' });
+    expect(list[3]).toMatchObject({ model: 'llama3.2' });
+    expect(list[4]!.apiKey).toBeUndefined();
   });
 });
 
@@ -87,7 +97,7 @@ describe('createDshBooter', () => {
         .inject(LLMRegistryKey)!
         .list()
         .map((p) => p.id),
-    ).toEqual(['deepseek', 'ollama', 'openai']);
+    ).toEqual(['deepseek', 'ollama', 'openai', 'claude', 'gemini']);
     expect(
       ctx
         .inject(ToolRegistryKey)!

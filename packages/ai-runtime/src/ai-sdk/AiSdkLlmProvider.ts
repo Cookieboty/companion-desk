@@ -1,9 +1,16 @@
 /**
  * LLMProvider backed by Vercel AI SDK (`generateText` / `streamText`).
  *
+ * Backends:
+ * - openai-compatible — DeepSeek / OpenAI / Ollama / … via @ai-sdk/openai-compatible
+ * - anthropic — Claude via @ai-sdk/anthropic
+ * - google — Gemini via @ai-sdk/google
+ *
  * Keeps the existing ChatFacade / IPC surface: chat() and stream() still speak
  * bundle-ig-base ChatRequest / ChatChunk. Tool loops use `stopWhen: stepCountIs`.
  */
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type {
   ChatChunk,
@@ -25,12 +32,16 @@ import {
 
 import { toAiSdkToolSet } from './mapTools';
 
+export type AiSdkBackend = 'openai-compatible' | 'anthropic' | 'google';
+
 export interface AiSdkLlmProviderOptions {
   id: string;
-  baseURL: string;
+  /** Required for openai-compatible; optional override for anthropic/google. */
+  baseURL?: string;
   apiKey?: string;
   defaultModel?: string;
   requiresApiKey?: boolean;
+  backend?: AiSdkBackend;
   /** Max agent loop steps when tools are attached (default 5). */
   maxSteps?: number;
   fetchImpl?: typeof fetch;
@@ -101,6 +112,38 @@ function finishOf(raw: string | undefined): ChatResponse['finishReason'] {
   }
 }
 
+function buildModelFactory(opts: AiSdkLlmProviderOptions): (modelId: string) => LanguageModel {
+  const backend = opts.backend ?? 'openai-compatible';
+  const fetchImpl = opts.fetchImpl as never;
+  if (backend === 'anthropic') {
+    const provider = createAnthropic({
+      apiKey: opts.apiKey,
+      baseURL: opts.baseURL,
+      fetch: fetchImpl,
+    });
+    return (modelId) => provider.chat(modelId);
+  }
+  if (backend === 'google') {
+    const provider = createGoogleGenerativeAI({
+      apiKey: opts.apiKey,
+      baseURL: opts.baseURL,
+      fetch: fetchImpl,
+    });
+    return (modelId) => provider.chat(modelId);
+  }
+  if (!opts.baseURL?.trim()) {
+    throw new Error(`[${opts.id}] baseURL is required for openai-compatible backend`);
+  }
+  const provider = createOpenAICompatible({
+    name: opts.id,
+    baseURL: opts.baseURL.replace(/\/$/, ''),
+    apiKey: opts.apiKey,
+    fetch: fetchImpl,
+    includeUsage: true,
+  });
+  return (modelId) => provider.chatModel(modelId);
+}
+
 export class AiSdkLlmProvider implements LLMProvider {
   readonly id: string;
   private readonly opts: AiSdkLlmProviderOptions;
@@ -110,14 +153,7 @@ export class AiSdkLlmProvider implements LLMProvider {
   constructor(opts: AiSdkLlmProviderOptions) {
     this.id = opts.id;
     this.opts = opts;
-    const provider = createOpenAICompatible({
-      name: opts.id,
-      baseURL: opts.baseURL.replace(/\/$/, ''),
-      apiKey: opts.apiKey,
-      fetch: opts.fetchImpl as never,
-      includeUsage: true,
-    });
-    this.modelFactory = (modelId) => provider.chatModel(modelId);
+    this.modelFactory = buildModelFactory(opts);
   }
 
   /** Attach ToolDefinitions for a single request (agent loop). */
@@ -244,30 +280,72 @@ export class AiSdkLlmProvider implements LLMProvider {
   }
 }
 
+type ProviderDefaults = {
+  backend: AiSdkBackend;
+  baseURL?: string;
+  model: string;
+  requiresApiKey: boolean;
+};
+
+const PROVIDER_DEFAULTS: Record<string, ProviderDefaults> = {
+  deepseek: {
+    backend: 'openai-compatible',
+    baseURL: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    requiresApiKey: true,
+  },
+  openai: {
+    backend: 'openai-compatible',
+    baseURL: 'https://api.openai.com/v1',
+    model: 'gpt-4o-mini',
+    requiresApiKey: true,
+  },
+  ollama: {
+    backend: 'openai-compatible',
+    baseURL: 'http://127.0.0.1:11434/v1',
+    model: 'qwen2.5:3b-instruct',
+    requiresApiKey: false,
+  },
+  llamacpp: {
+    backend: 'openai-compatible',
+    baseURL: 'http://127.0.0.1:8080/v1',
+    model: 'local',
+    requiresApiKey: false,
+  },
+  qwen: {
+    backend: 'openai-compatible',
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen-plus',
+    requiresApiKey: true,
+  },
+  doubao: {
+    backend: 'openai-compatible',
+    baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+    model: 'doubao-pro',
+    requiresApiKey: true,
+  },
+  claude: {
+    backend: 'anthropic',
+    baseURL: 'https://api.anthropic.com/v1',
+    model: 'claude-sonnet-4-5',
+    requiresApiKey: true,
+  },
+  gemini: {
+    backend: 'google',
+    baseURL: 'https://generativelanguage.googleapis.com/v1beta',
+    model: 'gemini-2.5-flash',
+    requiresApiKey: true,
+  },
+};
+
 export function createAiSdkProviderFromEntry(entry: {
   id: string;
   apiKey?: string;
   baseURL?: string;
   model?: string;
 }): AiSdkLlmProvider {
-  const defaults: Record<string, { baseURL: string; model: string; requiresApiKey: boolean }> = {
-    deepseek: {
-      baseURL: 'https://api.deepseek.com/v1',
-      model: 'deepseek-chat',
-      requiresApiKey: true,
-    },
-    openai: {
-      baseURL: 'https://api.openai.com/v1',
-      model: 'gpt-4o-mini',
-      requiresApiKey: true,
-    },
-    ollama: {
-      baseURL: 'http://127.0.0.1:11434/v1',
-      model: 'qwen2.5:3b-instruct',
-      requiresApiKey: false,
-    },
-  };
-  const d = defaults[entry.id] ?? {
+  const d = PROVIDER_DEFAULTS[entry.id] ?? {
+    backend: 'openai-compatible' as const,
     baseURL: entry.baseURL ?? 'http://127.0.0.1',
     model: 'default',
     requiresApiKey: Boolean(entry.apiKey),
@@ -278,5 +356,6 @@ export function createAiSdkProviderFromEntry(entry: {
     baseURL: entry.baseURL ?? d.baseURL,
     defaultModel: entry.model ?? d.model,
     requiresApiKey: d.requiresApiKey,
+    backend: d.backend,
   });
 }
