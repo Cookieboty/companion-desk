@@ -1,4 +1,10 @@
-import { VoiceConfig, VoiceSettings, KeyboardEvent, VoiceContribute } from '@ig-live/types';
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy untyped window.electronAPI bridge */
+import {
+  type VoiceConfig,
+  type VoiceSettings,
+  type KeyboardEvent,
+  type VoiceContribute,
+} from '@ig-live/types';
 
 /**
  * 语音服务类
@@ -325,7 +331,6 @@ export class VoiceService {
 
       // 回退到标准的音频播放方式（开发环境）
       this.playAudioFromUrl(voicePath, this.voiceSettings?.volume || 0.8);
-
     } catch (error) {
       console.error('VoiceService: 播放语音失败:', error);
     }
@@ -353,7 +358,7 @@ export class VoiceService {
       });
 
       // 播放音频
-      this.currentAudio.play().catch(error => {
+      this.currentAudio.play().catch((error) => {
         console.error('VoiceService: 播放音频失败:', error);
       });
 
@@ -361,7 +366,6 @@ export class VoiceService {
       this.currentAudio.addEventListener('ended', () => {
         this.currentAudio = null;
       });
-
     } catch (error) {
       console.error('VoiceService: 播放音频失败:', error);
     }
@@ -394,7 +398,7 @@ export class VoiceService {
             console.error('VoiceService: 音频播放失败:', e);
           });
 
-          this.currentAudio.play().catch(error => {
+          this.currentAudio.play().catch((error) => {
             console.error('VoiceService: 播放data URL音频失败:', error);
           });
 
@@ -421,7 +425,10 @@ export class VoiceService {
       } else if (audioData && typeof audioData === 'object' && 'buffer' in audioData) {
         // 处理Node.js Buffer对象
         const bufferData = audioData as any;
-        buffer = bufferData.buffer.slice(bufferData.byteOffset, bufferData.byteOffset + bufferData.byteLength) as ArrayBuffer;
+        buffer = bufferData.buffer.slice(
+          bufferData.byteOffset,
+          bufferData.byteOffset + bufferData.byteLength,
+        ) as ArrayBuffer;
       } else {
         console.error('VoiceService: 不支持的音频数据类型:', typeof audioData);
         return;
@@ -443,7 +450,7 @@ export class VoiceService {
       });
 
       // 播放音频
-      this.currentAudio.play().catch(error => {
+      this.currentAudio.play().catch((error) => {
         console.error('VoiceService: 播放音频数据失败:', error);
         URL.revokeObjectURL(audioUrl); // 清理Blob URL
       });
@@ -453,7 +460,6 @@ export class VoiceService {
         URL.revokeObjectURL(audioUrl); // 清理Blob URL
         this.currentAudio = null;
       });
-
     } catch (error) {
       console.error('VoiceService: 播放音频数据失败:', error);
     }
@@ -492,14 +498,14 @@ export class VoiceService {
       });
 
       // 播放音频
-      this.currentAudio.play().catch(error => {
+      this.currentAudio.play().catch((error) => {
         console.error('VoiceService: 播放音频失败:', error);
 
         // 尝试使用不同的路径格式
         if (audioSrc.startsWith('file://')) {
           const alternativeSrc = filePath.replace(/\\/g, '/');
           this.currentAudio!.src = alternativeSrc;
-          this.currentAudio!.play().catch(err => {
+          this.currentAudio!.play().catch((err) => {
             console.error('VoiceService: 备用路径也失败:', err);
           });
         }
@@ -509,7 +515,6 @@ export class VoiceService {
       this.currentAudio.addEventListener('ended', () => {
         this.currentAudio = null;
       });
-
     } catch (error) {
       console.error('VoiceService: 播放音频文件失败:', error);
     }
@@ -567,7 +572,7 @@ export class VoiceService {
 
     if (timeKeyword) {
       const contribute = this.voiceConfig.contributes.find((c: VoiceContribute) =>
-        c.keywords.includes(timeKeyword)
+        c.keywords.includes(timeKeyword),
       );
 
       if (contribute) {
@@ -650,4 +655,4 @@ export class VoiceService {
       this.currentAudio = null;
     }
   }
-} 
+}
