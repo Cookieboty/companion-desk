@@ -8,8 +8,15 @@ import { defineConfig } from 'tsup';
  * 因此拆两条 tsup 流水线：
  * 1) 主入口 `src/index.ts` → 浏览器 ESM
  * 2) `src/seams/index.ts`  → node，ESM + CJS 双格式
+ *
+ * 两条流水线并行执行，`clean: true` 会在主入口的 DTS 阶段删掉 seams 的 .d.ts（竞态），
+ * 所以这里都不 clean，改由 build 脚本先 `rimraf dist`。
  */
-const externals = ['@deepseek-ai/dsh', '@ig-live/bundle-ig-base', '@ig-live/bundle-ig-electron-caps'];
+const externals = [
+  '@deepseek-ai/dsh',
+  '@ig-live/bundle-ig-base',
+  '@ig-live/bundle-ig-electron-caps',
+];
 
 export default defineConfig([
   {
@@ -18,7 +25,7 @@ export default defineConfig([
     platform: 'browser',
     dts: true,
     splitting: false,
-    clean: true,
+    clean: false,
     sourcemap: true,
     target: 'es2022',
     treeshake: true,

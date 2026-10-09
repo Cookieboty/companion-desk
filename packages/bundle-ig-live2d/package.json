@@ -27,7 +27,7 @@
     "bundle": "./dist/patch.yml"
   },
   "scripts": {
-    "build": "tsup && node scripts/copy-patch.mjs",
+    "build": "rimraf dist && tsup && node scripts/copy-patch.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
