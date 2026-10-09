@@ -292,6 +292,18 @@ export class WindowManager implements IWindowManager {
       },
     });
 
+    // preload 抛错或渲染进程退出时 renderer 会缺少 window.electronAPI 而表现为空白窗口；
+    // 记到主进程日志里，便于定位（例如 E6 在全新 userData 首启时偶发的空白窗口）
+    window.webContents.on('preload-error', (_event, preloadPath, error) => {
+      this.logger.error(`[${type}] preload 脚本执行失败`, {
+        preloadPath,
+        error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      });
+    });
+    window.webContents.on('render-process-gone', (_event, details) => {
+      this.logger.error(`[${type}] 渲染进程退出`, { ...details });
+    });
+
     // 通用窗口事件
     window.once('ready-to-show', () => {
       window.show();
