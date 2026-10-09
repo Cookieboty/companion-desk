@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "description": "纯文字聊天 profile：只启用 ai-chat 前端所需的最小 dsh-base 能力",
   "dependencies": {
-    "@deepseek-ai/dsh-base": "0.1.2-alpha.3"
+    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
   },
   "dsh": {
     "profile": {

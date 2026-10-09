@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "description": "无 UI 的 MCP headless profile：供 IDE / MCP client 以工具接口访问 dsh 能力",
   "dependencies": {
-    "@deepseek-ai/dsh-base": "0.1.2-alpha.3"
+    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
   },
   "dsh": {
     "profile": {
