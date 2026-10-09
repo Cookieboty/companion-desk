@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Character3DCanvas } from './Character3DCanvas';
+
 import { useCharacter3DStore } from '../../stores/character3DStore';
-import { VirtualCharacter3DProps } from '../../types/character3d';
+import { type VirtualCharacter3DProps } from '../../types/character3d';
+
+import { Character3DCanvas } from './Character3DCanvas';
 
 /**
  * 3D虚拟角色主组件
@@ -22,13 +24,8 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    isLoaded,
-    isVisible,
-    mcpConnected,
-    setCurrentModel,
-    setMCPConnected
-  } = useCharacter3DStore();
+  const { isLoaded, isVisible, mcpConnected, setCurrentModel, setMCPConnected } =
+    useCharacter3DStore();
 
   // 初始化3D角色系统
   useEffect(() => {
@@ -49,7 +46,6 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
 
         // 触发就绪回调
         onReady?.();
-
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : '初始化失败';
         setError(errorMessage);
@@ -82,13 +78,16 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   };
 
   // 处理模型加载成功
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
   const handleModelLoaded = (vrm: any) => {
     console.log('VirtualCharacter3D: 模型加载成功', vrm);
 
     // 触发模型加载事件
-    window.dispatchEvent(new CustomEvent('character3d:modelLoaded', {
-      detail: { vrm, modelPath }
-    }));
+    window.dispatchEvent(
+      new CustomEvent('character3d:modelLoaded', {
+        detail: { vrm, modelPath },
+      }),
+    );
   };
 
   // 处理错误
@@ -116,16 +115,12 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
           fontSize: '14px',
           textAlign: 'center',
           padding: '20px',
-          ...style
+          ...style,
         }}
       >
         <div>
-          <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>
-            3D角色加载失败
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.8 }}>
-            {error}
-          </div>
+          <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>3D角色加载失败</div>
+          <div style={{ fontSize: '12px', opacity: 0.8 }}>{error}</div>
         </div>
       </div>
     );
@@ -144,7 +139,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
           height: '100%',
           background: 'rgba(0, 0, 0, 0.05)',
           borderRadius: '8px',
-          ...style
+          ...style,
         }}
       >
         <div style={{ textAlign: 'center', color: '#666' }}>
@@ -169,7 +164,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
         width: '100%',
         height: '100%',
         position: 'relative',
-        ...style
+        ...style,
       }}
       {...props}
     >
@@ -184,17 +179,19 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
 
       {/* 状态指示器 */}
       {(process.env.NODE_ENV === 'development' || enableControls) && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          color: 'white',
-          padding: '8px 12px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 1000
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            zIndex: 1000,
+          }}
+        >
           <div>模型: {isLoaded ? '已加载' : '加载中'}</div>
           <div>MCP: {mcpConnected ? '已连接' : '断开'}</div>
         </div>

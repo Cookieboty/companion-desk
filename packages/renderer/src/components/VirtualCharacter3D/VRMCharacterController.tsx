@@ -1,13 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { useGLTF } from '@react-three/drei';
+import { useFrame, useThree } from '@react-three/fiber';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
 import { useCharacter3DStore } from '../../stores/character3DStore';
-import { VRMCharacterControllerProps } from '../../types/character3d';
-import VRMModelFallback from './VRMModelFallback';
-import DefaultCharacter3D from './DefaultCharacter3D';
+import { type VRMCharacterControllerProps } from '../../types/character3d';
+
 import CuteCharacter3D from './CuteCharacter3D';
+import DefaultCharacter3D from './DefaultCharacter3D';
+import VRMModelFallback from './VRMModelFallback';
 
 /**
  * VRM角色控制器组件
@@ -22,7 +24,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   position = [0, 0, 0],
   onModelLoaded,
   onAnimationUpdate,
-  onError
+  onError,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const vrmRef = useRef<VRM | null>(null);
@@ -34,18 +36,14 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   const [useFallback, setUseFallback] = useState(false);
 
   const { scene } = useThree();
-  const {
-    currentAnimation,
-    currentExpression,
-    isLoaded,
-    setIsLoaded,
-    updatePerformanceMetrics
-  } = useCharacter3DStore();
+  const { currentAnimation, currentExpression, isLoaded, setIsLoaded, updatePerformanceMetrics } =
+    useCharacter3DStore();
 
   // 暂时禁用VRM加载，直接使用fallback
   // const gltf = useGLTF(modelPath || '/assets/models/default-character.vrm', true, true, (loader) => {
   //   loader.register((parser: any) => new VRMLoaderPlugin(parser) as any);
   // });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
   const gltf: any = { scene: null, userData: null };
 
   // 初始化VRM模型
@@ -56,7 +54,8 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
         setError(null);
 
         // 检查是否应该使用回退模型
-        const shouldUseFallback = !modelPath || modelPath.includes('default-character.vrm') || !gltf.userData?.vrm;
+        const shouldUseFallback =
+          !modelPath || modelPath.includes('default-character.vrm') || !gltf.userData?.vrm;
 
         if (shouldUseFallback) {
           console.log('VRMCharacterController: 使用回退模型');
@@ -127,7 +126,18 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     };
 
     initializeVRM();
-  }, [gltf, modelPath, scale, position, enableExpressions, enableLookAt, scene, setIsLoaded, onModelLoaded, onError]);
+  }, [
+    gltf,
+    modelPath,
+    scale,
+    position,
+    enableExpressions,
+    enableLookAt,
+    scene,
+    setIsLoaded,
+    onModelLoaded,
+    onError,
+  ]);
 
   // 播放动画
   useEffect(() => {
@@ -167,7 +177,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     const expressionManager = vrmRef.current.expressionManager;
 
     // 重置所有表情
-    Object.keys(expressionManager.expressionMap).forEach(key => {
+    Object.keys(expressionManager.expressionMap).forEach((key) => {
       expressionManager.setValue(key, 0);
     });
 
@@ -213,7 +223,8 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     // 性能监控
     updatePerformanceMetrics({
       fps: 1 / delta,
-      memoryMB: (performance as any).memory?.usedJSHeapSize / 1024 / 1024 || 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
+      memoryMB: (performance as any).memory?.usedJSHeapSize / 1024 / 1024 || 0,
     });
   });
 
@@ -228,16 +239,18 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
       if (spine) {
         const times = [0, duration * 0.5, duration];
         const values = [
-          1, 1, 1,           // 初始缩放
-          1.02, 1.01, 1,     // 吸气
-          1, 1, 1            // 呼气
+          1,
+          1,
+          1, // 初始缩放
+          1.02,
+          1.01,
+          1, // 吸气
+          1,
+          1,
+          1, // 呼气
         ];
 
-        const scaleTrack = new THREE.VectorKeyframeTrack(
-          spine.name + '.scale',
-          times,
-          values
-        );
+        const scaleTrack = new THREE.VectorKeyframeTrack(spine.name + '.scale', times, values);
         tracks.push(scaleTrack);
       }
 
@@ -269,6 +282,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   if (error) {
     return (
       <mesh>
+        {/* eslint-disable-next-line react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */}
         <boxGeometry args={[1, 2, 0.5]} />
         <meshBasicMaterial color="red" />
       </mesh>

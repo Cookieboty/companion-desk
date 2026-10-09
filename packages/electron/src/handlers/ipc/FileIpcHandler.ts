@@ -5,11 +5,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
+import { type CustomImageInfo, type ImageUploadConfig } from '@ig-live/types';
 import { app, dialog } from 'electron';
+
+import { type ICacheService } from '../../services/CacheService';
+import { type ILoggerService } from '../../services/LoggerService';
+
 import { BaseIpcHandler } from './BaseIpcHandler';
-import { ILoggerService } from '../../services/LoggerService';
-import { ICacheService } from '../../services/CacheService';
-import { CustomImageInfo, ImageUploadConfig } from '@ig-live/types';
 
 export class FileIpcHandler extends BaseIpcHandler {
   private cacheService?: ICacheService;
@@ -18,7 +21,7 @@ export class FileIpcHandler extends BaseIpcHandler {
   private readonly imageUploadConfig: ImageUploadConfig = {
     maxFileSize: 10 * 1024 * 1024, // 10MB
     allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
   };
 
   constructor(logger: ILoggerService, cacheService?: ICacheService) {
@@ -67,7 +70,7 @@ export class FileIpcHandler extends BaseIpcHandler {
       } catch (error) {
         this.logger.error('读取JSON文件失败', {
           error: error instanceof Error ? error.message : String(error),
-          filePath
+          filePath,
         });
         return null;
       }
@@ -120,14 +123,14 @@ export class FileIpcHandler extends BaseIpcHandler {
           filePath,
           absolutePath,
           extension,
-          size: content.length
+          size: content.length,
         });
 
         return result;
       } catch (error) {
         this.logger.error('读取文件失败', {
           error: error instanceof Error ? error.message : String(error),
-          filePath
+          filePath,
         });
         return null;
       }
@@ -146,7 +149,7 @@ export class FileIpcHandler extends BaseIpcHandler {
       } catch (error) {
         this.logger.error('检查文件存在失败', {
           error: error instanceof Error ? error.message : String(error),
-          filePath
+          filePath,
         });
         return false;
       }
@@ -157,10 +160,7 @@ export class FileIpcHandler extends BaseIpcHandler {
       let resourcesPath: string;
 
       if (app.isPackaged) {
-        resourcesPath = path.join(
-          path.dirname(path.dirname(app.getPath('exe'))),
-          'Resources'
-        );
+        resourcesPath = path.join(path.dirname(path.dirname(app.getPath('exe'))), 'Resources');
       } else {
         resourcesPath = app.getAppPath();
       }
@@ -201,7 +201,7 @@ export class FileIpcHandler extends BaseIpcHandler {
           isDirectory: stats.isDirectory(),
           mtime: stats.mtime,
           ctime: stats.ctime,
-          atime: stats.atime
+          atime: stats.atime,
         };
 
         this.logger.debug('获取文件统计信息', { filePath, resolvedPath, fileStats });
@@ -209,7 +209,7 @@ export class FileIpcHandler extends BaseIpcHandler {
       } catch (error) {
         this.logger.error('获取文件统计信息失败', {
           error: error instanceof Error ? error.message : String(error),
-          filePath
+          filePath,
         });
         return null;
       }
@@ -231,7 +231,7 @@ export class FileIpcHandler extends BaseIpcHandler {
           throw new Error('指定路径不是目录');
         }
 
-        const items = fs.readdirSync(resolvedPath).map(item => {
+        const items = fs.readdirSync(resolvedPath).map((item) => {
           const itemPath = path.join(resolvedPath, item);
           const stats = fs.statSync(itemPath);
 
@@ -241,21 +241,21 @@ export class FileIpcHandler extends BaseIpcHandler {
             isFile: stats.isFile(),
             isDirectory: stats.isDirectory(),
             size: stats.size,
-            mtime: stats.mtime
+            mtime: stats.mtime,
           };
         });
 
         this.logger.debug('列出目录内容', {
           dirPath,
           resolvedPath,
-          itemCount: items.length
+          itemCount: items.length,
         });
 
         return items;
       } catch (error) {
         this.logger.error('列出目录内容失败', {
           error: error instanceof Error ? error.message : String(error),
-          dirPath
+          dirPath,
         });
         return [];
       }
@@ -284,10 +284,12 @@ export class FileIpcHandler extends BaseIpcHandler {
           filters: [
             {
               name: '图片文件',
-              extensions: this.imageUploadConfig.allowedExtensions.map(ext => ext.replace('.', ''))
-            }
+              extensions: this.imageUploadConfig.allowedExtensions.map((ext) =>
+                ext.replace('.', ''),
+              ),
+            },
           ],
-          properties: ['openFile']
+          properties: ['openFile'],
         });
 
         if (result.canceled || result.filePaths.length === 0) {
@@ -304,9 +306,10 @@ export class FileIpcHandler extends BaseIpcHandler {
 
         this.logger.info('图片文件选择成功', { filePath });
         return this.createSuccessResponse({ filePath });
-
       } catch (error) {
-        this.logger.error('选择图片文件失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('选择图片文件失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -342,14 +345,16 @@ export class FileIpcHandler extends BaseIpcHandler {
           imagePath: targetPath,
           fileName: targetFileName,
           uploadTime: Date.now(),
-          fileSize: stats.size
+          fileSize: stats.size,
         };
 
         this.logger.info('自定义图片保存成功', { sourcePath, targetPath, imageInfo });
         return this.createSuccessResponse({ savedPath: targetPath, imageInfo });
-
       } catch (error) {
-        this.logger.error('保存自定义图片失败', { error: error instanceof Error ? error.message : String(error), sourcePath });
+        this.logger.error('保存自定义图片失败', {
+          error: error instanceof Error ? error.message : String(error),
+          sourcePath,
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -360,8 +365,8 @@ export class FileIpcHandler extends BaseIpcHandler {
         const customImageDir = this.getCustomImageDirectory();
 
         // 查找用户上传的图片文件
-        const possibleFiles = this.imageUploadConfig.allowedExtensions.map(ext =>
-          path.join(customImageDir, `user-uploaded${ext}`)
+        const possibleFiles = this.imageUploadConfig.allowedExtensions.map((ext) =>
+          path.join(customImageDir, `user-uploaded${ext}`),
         );
 
         let imagePath: string | null = null;
@@ -382,14 +387,15 @@ export class FileIpcHandler extends BaseIpcHandler {
           imagePath,
           fileName: path.basename(imagePath),
           uploadTime: stats.mtime.getTime(),
-          fileSize: stats.size
+          fileSize: stats.size,
         };
 
         this.logger.debug('获取自定义图片成功', { imagePath, imageInfo });
         return this.createSuccessResponse({ imagePath, imageInfo });
-
       } catch (error) {
-        this.logger.error('获取自定义图片失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('获取自定义图片失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -400,8 +406,8 @@ export class FileIpcHandler extends BaseIpcHandler {
         const customImageDir = this.getCustomImageDirectory();
 
         // 查找并删除用户上传的图片文件
-        const possibleFiles = this.imageUploadConfig.allowedExtensions.map(ext =>
-          path.join(customImageDir, `user-uploaded${ext}`)
+        const possibleFiles = this.imageUploadConfig.allowedExtensions.map((ext) =>
+          path.join(customImageDir, `user-uploaded${ext}`),
         );
 
         let deletedCount = 0;
@@ -419,15 +425,16 @@ export class FileIpcHandler extends BaseIpcHandler {
 
         this.logger.info('自定义图片删除成功', { deletedCount });
         return this.createSuccessResponse();
-
       } catch (error) {
-        this.logger.error('删除自定义图片失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('删除自定义图片失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
 
     this.logger.info('FileIpcHandler 初始化完成', {
-      registeredChannels: this.getRegisteredChannels().length
+      registeredChannels: this.getRegisteredChannels().length,
     });
   }
 
@@ -449,7 +456,7 @@ export class FileIpcHandler extends BaseIpcHandler {
           path.dirname(path.dirname(app.getPath('exe'))),
           'Resources',
           'app.asar.unpacked',
-          filePath
+          filePath,
         );
 
         // 如果不存在，尝试其他可能的位置
@@ -457,7 +464,7 @@ export class FileIpcHandler extends BaseIpcHandler {
           resolvedPath = path.join(
             path.dirname(path.dirname(app.getPath('exe'))),
             'Resources',
-            filePath
+            filePath,
           );
         }
 
@@ -467,18 +474,14 @@ export class FileIpcHandler extends BaseIpcHandler {
             path.dirname(path.dirname(app.getPath('exe'))),
             'Resources',
             'renderer',
-            filePath.replace(/^\//, '')
+            filePath.replace(/^\//, ''),
           );
         }
 
         return resolvedPath;
       } else {
         // Windows/Linux应用包结构
-        let resolvedPath = path.join(
-          path.dirname(app.getPath('exe')),
-          'resources',
-          filePath
-        );
+        let resolvedPath = path.join(path.dirname(app.getPath('exe')), 'resources', filePath);
 
         // 如果不存在，尝试在renderer目录下查找
         if (!fs.existsSync(resolvedPath)) {
@@ -486,7 +489,7 @@ export class FileIpcHandler extends BaseIpcHandler {
             path.dirname(app.getPath('exe')),
             'resources',
             'renderer',
-            filePath.replace(/^\//, '')
+            filePath.replace(/^\//, ''),
           );
         }
 
@@ -503,7 +506,7 @@ export class FileIpcHandler extends BaseIpcHandler {
           'packages',
           'renderer',
           'public',
-          filePath.replace(/^\//, '')
+          filePath.replace(/^\//, ''),
         );
       }
 
@@ -514,7 +517,7 @@ export class FileIpcHandler extends BaseIpcHandler {
           'packages',
           'renderer',
           'dist',
-          filePath.replace(/^\//, '')
+          filePath.replace(/^\//, ''),
         );
       }
 
@@ -544,7 +547,7 @@ export class FileIpcHandler extends BaseIpcHandler {
       if (!this.imageUploadConfig.allowedExtensions.includes(ext)) {
         return {
           isValid: false,
-          error: `不支持的文件格式: ${ext}，支持的格式: ${this.imageUploadConfig.allowedExtensions.join(', ')}`
+          error: `不支持的文件格式: ${ext}，支持的格式: ${this.imageUploadConfig.allowedExtensions.join(', ')}`,
         };
       }
 
@@ -555,11 +558,10 @@ export class FileIpcHandler extends BaseIpcHandler {
       fs.closeSync(fd);
 
       return { isValid: true };
-
     } catch (error) {
       return {
         isValid: false,
-        error: `文件验证失败: ${error instanceof Error ? error.message : String(error)}`
+        error: `文件验证失败: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }

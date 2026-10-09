@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
+
 const copydir = require('fs-extra').copy;
 
 // 路径设置
@@ -41,4 +42,4 @@ async function copyRenderer() {
   }
 }
 
-copyRenderer(); 
+copyRenderer();
