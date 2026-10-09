@@ -49,7 +49,7 @@
     }
   },
   "dependencies": {
-    "yaml": "^2.6.1"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@ig-live/bundle-ig-base": "workspace:*",
