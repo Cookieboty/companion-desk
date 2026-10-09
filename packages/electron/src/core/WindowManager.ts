@@ -2,11 +2,14 @@
  * 窗口管理器 - 统一管理所有窗口的创建、销毁和状态
  */
 
-import { BrowserWindow, screen, app } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
-import { ILoggerService } from '../services/LoggerService';
-import { IConfigService } from '../services/ConfigService';
+
+import { BrowserWindow, screen, app } from 'electron';
+
+import { type IConfigService } from '../services/ConfigService';
+import { type ILoggerService } from '../services/LoggerService';
+
 import { eventBus } from './EventBus';
 
 export interface WindowOptions {
@@ -78,7 +81,7 @@ export class WindowManager implements IWindowManager {
         resizable: false,
         alwaysOnTop: true,
         show: false,
-        preloadScript: 'preload.js'
+        preloadScript: 'preload.js',
       };
 
       this.mainWindow = await this.createWindow(windowOptions, 'main');
@@ -130,7 +133,7 @@ export class WindowManager implements IWindowManager {
         resizable: true,
         show: false,
         title: '智能助手',
-        preloadScript: 'ai-chat-preload.js'
+        preloadScript: 'ai-chat-preload.js',
       };
 
       this.aiChatWindow = await this.createWindow(windowOptions, 'aiChat');
@@ -182,7 +185,7 @@ export class WindowManager implements IWindowManager {
         resizable: true,
         show: false,
         title: 'TTS语音配置',
-        preloadScript: 'preload.js'
+        preloadScript: 'preload.js',
       };
 
       this.ttsConfigWindow = await this.createWindow(windowOptions, 'ttsConfig');
@@ -285,8 +288,8 @@ export class WindowManager implements IWindowManager {
         preload: path.join(__dirname, '..', options.preloadScript || 'preload.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        webSecurity: false // 开发环境需要
-      }
+        webSecurity: false, // 开发环境需要
+      },
     });
 
     // 通用窗口事件
@@ -325,7 +328,7 @@ export class WindowManager implements IWindowManager {
       const position = window.getPosition();
       this.configService.set('windowPosition.x', position[0]);
       this.configService.set('windowPosition.y', position[1]);
-      this.configService.save().catch(error => {
+      this.configService.save().catch((error) => {
         this.logger.error('保存窗口位置失败', { error: error.message });
       });
     });
@@ -385,7 +388,8 @@ export class WindowManager implements IWindowManager {
         const cursorPos = screen.getCursorScreenPoint();
         const windowBounds = window.getBounds();
 
-        const isInWindow = cursorPos.x >= windowBounds.x &&
+        const isInWindow =
+          cursorPos.x >= windowBounds.x &&
           cursorPos.x <= windowBounds.x + windowBounds.width &&
           cursorPos.y >= windowBounds.y &&
           cursorPos.y <= windowBounds.y + windowBounds.height;

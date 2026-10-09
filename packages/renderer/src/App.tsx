@@ -1,11 +1,12 @@
+import type { RenderMode, DisplayModeConfig, CustomImageInfo } from '@ig-live/types';
 import React, { useEffect, useState } from 'react';
-import Live2dWidget from './components/Live2dWidget';
-import VirtualCharacter3D from './components/VirtualCharacter3D';
+
 import CustomImageManager from './components/CustomImageManager';
+import Live2dWidget from './components/Live2dWidget';
 import { ToolBar } from './components/ToolBar';
+import VirtualCharacter3D from './components/VirtualCharacter3D';
 import { Live2DProvider } from './contexts/Live2DContext';
 import type { ModelConfig } from './types/live2d';
-import type { RenderMode, DisplayModeConfig, CustomImageInfo } from '@ig-live/types';
 
 const App: React.FC = () => {
   const [isElectron, setIsElectron] = useState(false);
@@ -69,7 +70,7 @@ const App: React.FC = () => {
       'mode-switch', // 模式切换工具（Live2D、3D、自定义图片）
       'cursor-mcp', // 添加Cursor MCP注入工具
       'toggle-top',
-      'quit'
+      'quit',
     ],
     logLevel: 'warn',
     drag: true,
@@ -82,7 +83,7 @@ const App: React.FC = () => {
 
     // 保存到配置
     if (window.electronAPI) {
-      window.electronAPI.setCurrentMode(mode).catch(error => {
+      window.electronAPI.setCurrentMode(mode).catch((error) => {
         console.error('App: 保存模式配置失败', error);
       });
     }
@@ -97,10 +98,10 @@ const App: React.FC = () => {
     if (window.electronAPI) {
       const config: DisplayModeConfig = {
         currentMode: currentMode,
-        customImage: imageInfo || undefined
+        customImage: imageInfo || undefined,
       };
 
-      window.electronAPI.saveDisplayModeConfig(config).catch(error => {
+      window.electronAPI.saveDisplayModeConfig(config).catch((error) => {
         console.error('App: 保存图片配置失败', error);
       });
     }
@@ -108,6 +109,7 @@ const App: React.FC = () => {
 
   // 监听工具栏的模式切换事件
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
     const handleModeSwitch = (event: any) => {
       const { mode } = event.detail;
       if (['live2d', '3d', 'custom-image'].includes(mode)) {
@@ -116,7 +118,7 @@ const App: React.FC = () => {
         // 通知ToolBar组件模式已切换完成
         setTimeout(() => {
           const completeEvent = new CustomEvent('mode-switch-complete', {
-            detail: { mode }
+            detail: { mode },
           });
           window.dispatchEvent(completeEvent);
         }, 100);
@@ -131,27 +133,30 @@ const App: React.FC = () => {
 
   return (
     <div className="app" style={{ width: '100%', height: '100vh', position: 'relative' }}>
-
       {/* 角色渲染 */}
       {currentMode === 'live2d' && (
-        <div style={{
-          width: '100%',
-          height: '100%',
-          position: 'relative'
-          /* 移除transform，在Live2D内部处理定位 */
-        }}>
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            /* 移除transform，在Live2D内部处理定位 */
+          }}
+        >
           <Live2dWidget config={live2dConfig} />
         </div>
       )}
 
       {currentMode === '3d' && enable3D && (
         <Live2DProvider config={live2dConfig}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            position: 'relative'
-            /* 移除transform，使用内部定位 */
-          }}>
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+              /* 移除transform，使用内部定位 */
+            }}
+          >
             {/* 3D角色 */}
             <VirtualCharacter3D
               enableMCPIntegration={true}
@@ -161,7 +166,7 @@ const App: React.FC = () => {
               onReady={() => console.log('App: 3D角色就绪')}
               onError={(error) => console.error('App: 3D角色错误:', error)}
               style={{
-                transform: 'translateX(-40px)' /* 3D角色也稍微左移以配合布局 */
+                transform: 'translateX(-40px)' /* 3D角色也稍微左移以配合布局 */,
               }}
             />
             {/* 独立的工具栏，在3D模式下也显示 */}
@@ -172,11 +177,13 @@ const App: React.FC = () => {
 
       {currentMode === 'custom-image' && (
         <Live2DProvider config={live2dConfig}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            position: 'relative'
-          }}>
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+            }}
+          >
             {/* 自定义图片管理器 */}
             <CustomImageManager
               onModeChange={handleModeChange}
@@ -191,4 +198,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

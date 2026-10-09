@@ -1,8 +1,9 @@
 /* global UtSystem, document */
-import { L2DBaseModel, Live2DFramework, L2DEyeBlink, L2DMotionManager } from './Live2DFramework';
-import ModelSettingJson from './utils/ModelSettingJson';
 import LAppDefine from './LAppDefine';
+import { L2DBaseModel, Live2DFramework, L2DEyeBlink, L2DMotionManager } from './Live2DFramework';
 import MatrixStack from './utils/MatrixStack';
+import ModelSettingJson from './utils/ModelSettingJson';
+
 import logger from '@/utils/logger';
 
 // 声明全局变量
@@ -31,25 +32,18 @@ class LAppModel extends L2DBaseModel {
 
     this.loadModelData(path, () => {
       for (let i = 0; i < this.modelSetting!.getTextureNum(); i++) {
-        const texPaths =
-          this.modelHomeDir + this.modelSetting!.getTextureFile(i);
+        const texPaths = this.modelHomeDir + this.modelSetting!.getTextureFile(i);
 
         this.loadTexture(i, texPaths, () => {
           if (this.isTexLoaded) {
             if (this.modelSetting!.getExpressionNum() > 0) {
               this.expressions = {};
 
-              for (
-                let j = 0;
-                j < this.modelSetting!.getExpressionNum();
-                j++
-              ) {
+              for (let j = 0; j < this.modelSetting!.getExpressionNum(); j++) {
                 const expName = this.modelSetting!.getExpressionName(j);
                 if (!expName) continue;
 
-                const expFilePath =
-                  this.modelHomeDir +
-                  this.modelSetting!.getExpressionFile(j);
+                const expFilePath = this.modelHomeDir + this.modelSetting!.getExpressionFile(j);
 
                 this.loadExpression(expName, expFilePath);
               }
@@ -63,22 +57,17 @@ class LAppModel extends L2DBaseModel {
             }
 
             if (this.modelSetting!.getPhysicsFile() != null) {
-              this.loadPhysics(
-                this.modelHomeDir + this.modelSetting!.getPhysicsFile()!,
-              );
+              this.loadPhysics(this.modelHomeDir + this.modelSetting!.getPhysicsFile()!);
             } else {
               this.physics = null;
             }
 
             if (this.modelSetting!.getPoseFile() != null) {
-              this.loadPose(
-                this.modelHomeDir + this.modelSetting!.getPoseFile()!,
-                () => {
-                  if (this.pose) {
-                    this.pose.updateParam(this.live2DModel);
-                  }
-                },
-              );
+              this.loadPose(this.modelHomeDir + this.modelSetting!.getPoseFile()!, () => {
+                if (this.pose) {
+                  this.pose.updateParam(this.live2DModel);
+                }
+              });
             } else {
               this.pose = null;
             }
@@ -99,12 +88,10 @@ class LAppModel extends L2DBaseModel {
                 this.modelMatrix.centerX(layout['center_x']);
               if (layout['center_y'] != null && this.modelMatrix)
                 this.modelMatrix.centerY(layout['center_y']);
-              if (layout['top'] != null && this.modelMatrix)
-                this.modelMatrix.top(layout['top']);
+              if (layout['top'] != null && this.modelMatrix) this.modelMatrix.top(layout['top']);
               if (layout['bottom'] != null && this.modelMatrix)
                 this.modelMatrix.bottom(layout['bottom']);
-              if (layout['left'] != null && this.modelMatrix)
-                this.modelMatrix.left(layout['left']);
+              if (layout['left'] != null && this.modelMatrix) this.modelMatrix.left(layout['left']);
               if (layout['right'] != null && this.modelMatrix)
                 this.modelMatrix.right(layout['right']);
             }
@@ -116,11 +103,7 @@ class LAppModel extends L2DBaseModel {
               );
             }
 
-            for (
-              let j = 0;
-              j < this.modelSetting!.getInitPartsVisibleNum();
-              j++
-            ) {
+            for (let j = 0; j < this.modelSetting!.getInitPartsVisibleNum(); j++) {
               this.live2DModel.setPartsOpacity(
                 this.modelSetting!.getInitPartsVisibleID(j),
                 this.modelSetting!.getInitPartsVisibleValue(j),
@@ -142,28 +125,23 @@ class LAppModel extends L2DBaseModel {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
   async loadModelSetting(modelSettingPath: string, modelSetting: any): Promise<void> {
     this.setUpdating(true);
     this.setInitialized(false);
 
-    this.modelHomeDir = modelSettingPath.substring(
-      0,
-      modelSettingPath.lastIndexOf('/') + 1,
-    );
+    this.modelHomeDir = modelSettingPath.substring(0, modelSettingPath.lastIndexOf('/') + 1);
 
     this.modelSetting = new ModelSettingJson();
     this.modelSetting.json = modelSetting;
-    await new Promise<void>(resolve => this.loadJSON(resolve));
+    await new Promise<void>((resolve) => this.loadJSON(resolve));
   }
 
   load(gl: WebGLRenderingContext, modelSettingPath: string, callback: () => void): void {
     this.setUpdating(true);
     this.setInitialized(false);
 
-    this.modelHomeDir = modelSettingPath.substring(
-      0,
-      modelSettingPath.lastIndexOf('/') + 1,
-    );
+    this.modelHomeDir = modelSettingPath.substring(0, modelSettingPath.lastIndexOf('/') + 1);
 
     this.modelSetting = new ModelSettingJson();
 
@@ -175,6 +153,7 @@ class LAppModel extends L2DBaseModel {
   release(gl: WebGLRenderingContext): void {
     const pm = Live2DFramework.getPlatformManager();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
     gl.deleteTexture((pm as any).texture);
   }
 
@@ -191,7 +170,7 @@ class LAppModel extends L2DBaseModel {
       const file = this.modelSetting.getMotionFile(name, i);
       if (!file) continue;
 
-      this.loadMotion(file, this.modelHomeDir + file, motion => {
+      this.loadMotion(file, this.modelHomeDir + file, (motion) => {
         if (!motion) return;
 
         motion.setFadeIn(this.modelSetting!.getMotionFadeIn(name, i));
@@ -212,10 +191,7 @@ class LAppModel extends L2DBaseModel {
 
     if (this.mainMotionManager.isFinished()) {
       if (this.modelSetting && this.modelSetting.getMotionNum(LAppDefine.MOTION_GROUP_IDLE) > 0) {
-        this.startRandomMotion(
-          LAppDefine.MOTION_GROUP_IDLE,
-          LAppDefine.PRIORITY_IDLE,
-        );
+        this.startRandomMotion(LAppDefine.MOTION_GROUP_IDLE, LAppDefine.PRIORITY_IDLE);
       }
     }
 
@@ -244,42 +220,18 @@ class LAppModel extends L2DBaseModel {
 
     this.live2DModel.addToParamFloat('PARAM_ANGLE_X', this.dragX * 30, 1);
     this.live2DModel.addToParamFloat('PARAM_ANGLE_Y', this.dragY * 30, 1);
-    this.live2DModel.addToParamFloat(
-      'PARAM_ANGLE_Z',
-      this.dragX * this.dragY * -30,
-      1,
-    );
+    this.live2DModel.addToParamFloat('PARAM_ANGLE_Z', this.dragX * this.dragY * -30, 1);
 
     this.live2DModel.addToParamFloat('PARAM_BODY_ANGLE_X', this.dragX * 10, 1);
 
     this.live2DModel.addToParamFloat('PARAM_EYE_BALL_X', this.dragX, 1);
     this.live2DModel.addToParamFloat('PARAM_EYE_BALL_Y', this.dragY, 1);
 
-    this.live2DModel.addToParamFloat(
-      'PARAM_ANGLE_X',
-      Number(15 * Math.sin(t / 6.5345)),
-      0.5,
-    );
-    this.live2DModel.addToParamFloat(
-      'PARAM_ANGLE_Y',
-      Number(8 * Math.sin(t / 3.5345)),
-      0.5,
-    );
-    this.live2DModel.addToParamFloat(
-      'PARAM_ANGLE_Z',
-      Number(10 * Math.sin(t / 5.5345)),
-      0.5,
-    );
-    this.live2DModel.addToParamFloat(
-      'PARAM_BODY_ANGLE_X',
-      Number(4 * Math.sin(t / 15.5345)),
-      0.5,
-    );
-    this.live2DModel.setParamFloat(
-      'PARAM_BREATH',
-      Number(0.5 + 0.5 * Math.sin(t / 3.2345)),
-      1,
-    );
+    this.live2DModel.addToParamFloat('PARAM_ANGLE_X', Number(15 * Math.sin(t / 6.5345)), 0.5);
+    this.live2DModel.addToParamFloat('PARAM_ANGLE_Y', Number(8 * Math.sin(t / 3.5345)), 0.5);
+    this.live2DModel.addToParamFloat('PARAM_ANGLE_Z', Number(10 * Math.sin(t / 5.5345)), 0.5);
+    this.live2DModel.addToParamFloat('PARAM_BODY_ANGLE_X', Number(4 * Math.sin(t / 15.5345)), 0.5);
+    this.live2DModel.setParamFloat('PARAM_BREATH', Number(0.5 + 0.5 * Math.sin(t / 3.2345)), 1);
 
     if (this.physics != null) {
       this.physics.updateParam(this.live2DModel);
@@ -337,10 +289,11 @@ class LAppModel extends L2DBaseModel {
       return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
     let motion: any;
 
     if (this.motions[name] == null) {
-      this.loadMotion(null, this.modelHomeDir + motionName, mtn => {
+      this.loadMotion(null, this.modelHomeDir + motionName, (mtn) => {
         motion = mtn;
 
         this.setFadeInFadeOut(name, no, priority, motion);
@@ -352,6 +305,7 @@ class LAppModel extends L2DBaseModel {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
   setFadeInFadeOut(name: string, no: number, priority: number, motion: any): void {
     if (!this.modelSetting) return;
 
@@ -417,4 +371,4 @@ class LAppModel extends L2DBaseModel {
   }
 }
 
-export default LAppModel; 
+export default LAppModel;

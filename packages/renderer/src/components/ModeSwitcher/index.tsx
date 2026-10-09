@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
 import { useCharacter3DStore } from '../../stores/character3DStore';
-import { VirtualCharacter3D } from '../VirtualCharacter3D';
-import Live2dWidget from '../Live2dWidget';
 import type { ModelConfig } from '../../types/live2d';
+import Live2dWidget from '../Live2dWidget';
+import { VirtualCharacter3D } from '../VirtualCharacter3D';
+
 import styles from './style.module.css';
 
 /**
@@ -34,19 +36,14 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
   className = '',
   style = {},
   onModeChange,
-  live2dConfig
+  live2dConfig,
 }) => {
   const [currentMode, setCurrentMode] = useState<RenderMode>(defaultMode);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [performanceMode, setPerformanceMode] = useState<'auto' | 'manual'>('auto');
   const [lastSwitchTime, setLastSwitchTime] = useState(0);
 
-  const {
-    renderQuality,
-    frameRate,
-    memoryUsage,
-    getPerformanceStats
-  } = useCharacter3DStore();
+  const { renderQuality, frameRate, memoryUsage, getPerformanceStats } = useCharacter3DStore();
 
   /**
    * 检查性能并自动切换模式
@@ -86,34 +83,39 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
   /**
    * 处理模式切换
    */
-  const handleModeSwitch = useCallback(async (newMode: RenderMode, isAutoSwitch = false) => {
-    if (isTransitioning || newMode === currentMode) return;
+  const handleModeSwitch = useCallback(
+    async (newMode: RenderMode, isAutoSwitch = false) => {
+      if (isTransitioning || newMode === currentMode) return;
 
-    console.log(`ModeSwitcher: 切换模式 ${currentMode} → ${newMode}${isAutoSwitch ? ' (自动)' : ''}`);
+      console.log(
+        `ModeSwitcher: 切换模式 ${currentMode} → ${newMode}${isAutoSwitch ? ' (自动)' : ''}`,
+      );
 
-    setIsTransitioning(true);
-    setLastSwitchTime(Date.now());
+      setIsTransitioning(true);
+      setLastSwitchTime(Date.now());
 
-    try {
-      // 淡出效果
-      await new Promise(resolve => setTimeout(resolve, 300));
+      try {
+        // 淡出效果
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // 切换模式
-      setCurrentMode(newMode);
+        // 切换模式
+        setCurrentMode(newMode);
 
-      // 触发回调
-      onModeChange?.(newMode);
+        // 触发回调
+        onModeChange?.(newMode);
 
-      // 淡入效果
-      await new Promise(resolve => setTimeout(resolve, 300));
+        // 淡入效果
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-      console.log(`ModeSwitcher: 模式切换完成 → ${newMode}`);
-    } catch (error) {
-      console.error('ModeSwitcher: 模式切换失败:', error);
-    } finally {
-      setIsTransitioning(false);
-    }
-  }, [currentMode, isTransitioning, onModeChange]);
+        console.log(`ModeSwitcher: 模式切换完成 → ${newMode}`);
+      } catch (error) {
+        console.error('ModeSwitcher: 模式切换失败:', error);
+      } finally {
+        setIsTransitioning(false);
+      }
+    },
+    [currentMode, isTransitioning, onModeChange],
+  );
 
   /**
    * 获取当前性能状态
@@ -131,7 +133,7 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
    * 切换性能模式
    */
   const togglePerformanceMode = useCallback(() => {
-    setPerformanceMode(prev => prev === 'auto' ? 'manual' : 'auto');
+    setPerformanceMode((prev) => (prev === 'auto' ? 'manual' : 'auto'));
   }, []);
 
   return (
@@ -178,24 +180,31 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
       )}
 
       {/* 角色渲染区域 */}
-      <div className={`${styles.characterContainer} ${isTransitioning ? styles.transitioning : ''}`}>
+      <div
+        className={`${styles.characterContainer} ${isTransitioning ? styles.transitioning : ''}`}
+      >
         {currentMode === 'live2d' && (
           <div className={styles.characterView}>
-            <Live2dWidget config={live2dConfig || {
-              waifuPath: '/assets/waifu-tips.json',
-              cubism2Path: '/assets/live2d.min.js',
-              tools: [
-                'switch-model',
-                'ai-chat',
-                'info',
-                'voice-settings',
-                '3d-mode',
-                'toggle-top',
-                'quit'
-              ],
-              logLevel: 'warn',
-              drag: true
-            } as ModelConfig} />
+            <Live2dWidget
+              config={
+                live2dConfig ||
+                ({
+                  waifuPath: '/assets/waifu-tips.json',
+                  cubism2Path: '/assets/live2d.min.js',
+                  tools: [
+                    'switch-model',
+                    'ai-chat',
+                    'info',
+                    'voice-settings',
+                    '3d-mode',
+                    'toggle-top',
+                    'quit',
+                  ],
+                  logLevel: 'warn',
+                  drag: true,
+                } as ModelConfig)
+              }
+            />
           </div>
         )}
 
