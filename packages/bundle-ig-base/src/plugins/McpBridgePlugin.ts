@@ -17,9 +17,11 @@ export interface McpBridgeConfig {
 }
 
 /**
- * 骨架期实现：仅登记 server 元信息、暴露 API 契约。
- * 真实 stdio/sse/websocket 连接放到 P3（Electron caps）里，
- * 因为浏览器环境不允许 stdio。
+ * Default skeleton: registers server metadata only.
+ * Production AI SDK path injects `AiSdkMcpService` (`@ai-sdk/mcp`) via
+ * AiSdkMcpPlugin before this plugin; connect() then discovers tools into
+ * ToolRegistry for ChatFacade.agent / streamText withTools.
+ * Stdio remains Node/Electron-only.
  */
 class SkeletonMcpService implements McpService {
   private readonly servers = new Map<string, McpServerInfo>();

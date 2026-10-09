@@ -12,6 +12,11 @@
  *   OLLAMA_BASE_URL  / OLLAMA_MODEL      （本地 Ollama，无需 key，始终注册）
  * 注册顺序决定"未指定 provider 时"的默认项：已配置 key 的云端 provider → ollama →
  * 未配置 key 的云端 provider（仍注册，调用时给出明确的 "API key is not configured"）。
+ *
+ * MCP（AI SDK 路径，见 defaultAiSdkPlugins / AiSdkMcpPlugin）：
+ *   MCP_SERVERS — JSON 数组，元素同 McpServerConfig
+ *     ({ id, name, transport: http|sse|stdio|websocket, url?, command?, args?, env?, headers? })
+ *   MCP_AUTO_CONNECT — "1"/"true" 时启动即 connect（默认 false）
  */
 
 import {
@@ -22,6 +27,7 @@ import {
   ToolsBuiltinPlugin,
   UserPreferenceMemoryPlugin,
   type LLMProviderEntry,
+  type McpServerConfig,
 } from '@ig-live/bundle-ig-base';
 
 import type { IgPluginEntry } from './IgPluginHost';
@@ -75,6 +81,58 @@ export function llmProvidersFromEnv(env: EnvLike = process.env): LLMProviderEntr
   return [...cloud.filter((p) => p.apiKey), ollama, ...cloud.filter((p) => !p.apiKey)];
 }
 
+/** Parse MCP_SERVERS JSON (array of McpServerConfig). Invalid JSON → []. */
+export function mcpServersFromEnv(env: EnvLike = process.env): McpServerConfig[] {
+  const raw = nonEmpty(env.MCP_SERVERS);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      console.warn('[igPlugins] MCP_SERVERS must be a JSON array');
+      return [];
+    }
+    const out: McpServerConfig[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object') continue;
+      const o = item as Record<string, unknown>;
+      const id = typeof o.id === 'string' ? o.id.trim() : '';
+      const name = typeof o.name === 'string' ? o.name.trim() : id;
+      const transport = o.transport;
+      if (
+        !id ||
+        (transport !== 'http' &&
+          transport !== 'sse' &&
+          transport !== 'stdio' &&
+          transport !== 'websocket')
+      ) {
+        continue;
+      }
+      out.push({
+        id,
+        name: name || id,
+        transport,
+        command: typeof o.command === 'string' ? o.command : undefined,
+        args: Array.isArray(o.args) ? o.args.map(String) : undefined,
+        url: typeof o.url === 'string' ? o.url : undefined,
+        env: o.env && typeof o.env === 'object' ? (o.env as Record<string, string>) : undefined,
+        headers:
+          o.headers && typeof o.headers === 'object'
+            ? (o.headers as Record<string, string>)
+            : undefined,
+      });
+    }
+    return out;
+  } catch (err) {
+    console.warn('[igPlugins] MCP_SERVERS JSON parse failed', err);
+    return [];
+  }
+}
+
+export function mcpAutoConnectFromEnv(env: EnvLike = process.env): boolean {
+  const v = nonEmpty(env.MCP_AUTO_CONNECT)?.toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
 export interface IgPluginsOptions {
   env?: EnvLike;
   /** 追加在默认清单之前的插件（例如提供 ProfileStorageKey 的文件存储） */
@@ -106,7 +164,13 @@ export function defaultIgPlugins(_profile: string, opts: IgPluginsOptions = {}):
       },
     },
     { plugin: MemoryPolicyPlugin, config: {} },
-    { plugin: McpBridgePlugin, config: { servers: [], autoConnect: false } },
+    {
+      plugin: McpBridgePlugin,
+      config: {
+        servers: mcpServersFromEnv(env),
+        autoConnect: mcpAutoConnectFromEnv(env),
+      },
+    },
     { plugin: UserPreferenceMemoryPlugin, config: { exposeAsTools: true } },
   ];
   return [...(opts.before ?? []), ...base, ...(opts.after ?? [])];

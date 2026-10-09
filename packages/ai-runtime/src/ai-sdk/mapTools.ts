@@ -6,9 +6,15 @@ import { jsonSchema, tool, type Tool } from 'ai';
 import type { ZodType } from 'zod';
 
 function toFlexibleSchema(input: unknown) {
-  // ToolDefinition.input is a zod schema in practice; fall back to permissive object JSON schema.
-  if (input && typeof input === 'object' && 'safeParse' in (input as object)) {
-    return input as ZodType;
+  // ToolDefinition.input is a zod schema, AI SDK Schema (jsonSchema()), or raw JSON Schema.
+  if (input && typeof input === 'object') {
+    const o = input as Record<string, unknown>;
+    if ('safeParse' in o || 'validate' in o || '~standard' in o) {
+      return input as ZodType;
+    }
+    if ('type' in o || 'properties' in o || '$schema' in o) {
+      return jsonSchema(input as never);
+    }
   }
   return jsonSchema({
     type: 'object',

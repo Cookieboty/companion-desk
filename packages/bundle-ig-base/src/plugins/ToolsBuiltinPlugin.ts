@@ -25,6 +25,9 @@ class InMemoryToolRegistry implements ToolRegistry {
   list(): ToolDefinition[] {
     return [...this.map.values()];
   }
+  unregister(name: string): boolean {
+    return this.map.delete(name);
+  }
 }
 
 export const ToolsBuiltinPlugin = definePlugin<ToolsBuiltinConfig>({

@@ -37,6 +37,33 @@ Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示
 例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`；Claude：`ANTHROPIC_API_KEY=sk-ant-... pnpm dev`；Gemini：`GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev`。
 AI 对话窗口默认选择 `deepseek` provider，可在模型设置中切换。
 
+### MCP 工具（`@ai-sdk/mcp`）
+
+生产路径通过 **AiSdkMcpPlugin + McpBridgePlugin** 接入 MCP：连接后把远端工具登记进与
+`ToolsBuiltin` 相同的 `ToolRegistry`，再由 `ChatFacade.agent` / `agentStream` →
+`AiSdkLlmProvider.withTools` → AI SDK `generateText` / `streamText`（`stopWhen: stepCountIs`）使用。
+
+| 变量               | 说明                                                                                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MCP_SERVERS`      | JSON 数组。元素：`{ id, name, transport, url?, command?, args?, env?, headers? }`。`transport` 为 `http`（推荐）/ `sse` / `stdio` / `websocket`（仅当 `url` 为 http(s) 时按 http 处理） |
+| `MCP_AUTO_CONNECT` | `1` / `true` / `yes` 时启动即 `connect`（默认不自动连）                                                                                                                                 |
+
+工具名默认加前缀 `` `${serverId}__${toolName}` ``，避免与内置工具或其它 MCP server 冲突。
+
+示例（HTTP）：
+
+```bash
+MCP_SERVERS='[{"id":"demo","name":"Demo","transport":"http","url":"https://example.com/mcp","headers":{"Authorization":"Bearer …"}}]' \
+MCP_AUTO_CONNECT=true pnpm dev
+```
+
+示例（本地 stdio，仅桌面/Node）：
+
+```bash
+MCP_SERVERS='[{"id":"fs","name":"Filesystem","transport":"stdio","command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","/tmp"]}]' \
+MCP_AUTO_CONNECT=true pnpm dev
+```
+
 ## 📁 项目结构
 
 ```
