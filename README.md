@@ -3,7 +3,8 @@
 > A local-first desktop AI assistant, with an optional Live2D desktop companion.
 
 Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
-[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 内核与 `@ig-live/*` 插件包提供，
+[`@ig-live/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供（可选的
+[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 仅保留给 doctor / 实验），
 可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
 Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示、换装、语音与口型同步，但不再是产品核心。
 
@@ -12,7 +13,7 @@ Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示
 - 🤖 **本地 AI 助手** - 独立的 AI 对话窗口，流式输出，支持多 provider（DeepSeek / OpenAI / Ollama / llama.cpp / Qwen / 豆包）
 - 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
 - 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
-- 🧩 **可扩展内核** - dsh profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包，MCP 桥接
+- 🧩 **可扩展宿主** - IgPluginHost profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包 + Vercel AI SDK providers，MCP 桥接
 - 🎭 **可选 Live2D 桌面伙伴** - Live2D Cubism 模型展示、动画互动、换装、TTS 口型同步
 - 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
 - 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
@@ -22,14 +23,14 @@ Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示
 
 主进程启动时从环境变量读取 LLM provider（未配置 key 的云端 provider 仍会注册，调用时给出明确报错）：
 
-| 变量                                                        | 说明                                                                                  |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                  |
-| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                               |
-| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key） |
-| `IG_AI_PROFILE`                                             | dsh profile，默认 `waifu`                                                             |
-| `IG_DSH_CORE`                                               | `auto`（默认，dsh 内核启动失败仅告警）/ `required` / `off`                            |
-| `DSH_HOME`                                                  | dsh 状态目录，默认 `<userData>/dsh`                                                   |
+| 变量                                                        | 说明                                                                                    |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                    |
+| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                                 |
+| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key）   |
+| `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                |
+| `IG_DSH_CORE`                                               | `off`（默认，生产不用 dsh）/ `auto` / `required`（需安装 optional `@deepseek-ai/dsh*`） |
+| `DSH_HOME`                                                  | 可选 dsh 状态目录，默认 `<userData>/dsh`（仅 `IG_DSH_CORE≠off` 时有意义）               |
 
 例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；使用 DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`。
 AI 对话窗口默认选择 `deepseek` provider，可在模型设置中切换。
@@ -418,11 +419,11 @@ https://www.live2d.com/eula/live2d-open-software-license-agreement_cn.html
 
 ---
 
-## 🧠 dsh 基座版本策略
+## 🧠 可选 dsh 基座（doctor / 实验）
 
-本项目以开源 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 作为 AI 基座，不再自研 kernel。为避免 developer preview 阶段的漂移，我们采取如下版本策略：
+生产路径已迁到 **IgPluginHost + Vercel AI SDK**（`createAiSdkBooter`）。`@deepseek-ai/dsh*` 改为根 `optionalDependencies`，仅 doctor / `IG_DSH_CORE=required|auto` 时使用。若仍需锁定 dsh：
 
-- **锁死主版本**：根 [package.json](package.json)`.dependencies` 中所有 `@deepseek-ai/dsh*` 均写 **exact** 版本（不带 `^` / `~`），当前锁定 `0.1.2-alpha.3`。
+- **锁死主版本**：根 [package.json](package.json)`.optionalDependencies` 中所有 `@deepseek-ai/dsh*` 均写 **exact** 版本，当前锁定 `0.2.0-rc.2`。
 - **三处同步**：升级 dsh 需同步更新 3 个地方 —— 根 [package.json](package.json)、`profiles/*/package.json`（`@deepseek-ai/dsh-base`）、`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']`。
 - **profiles/ 承载配置**：三份 profile（`waifu` / `chat-only` / `mcp-headless`）以目录形式存放在 [profiles/](profiles)，每份 = `package.json` + `cordis.patch.yml`，详细结构与 override 顺序见 [profiles/README.md](profiles/README.md)。
 - **升级 SOP**：完整 9 步升级流程记录在 [profiles/README.md](profiles/README.md#dsh-升级-sop)。
