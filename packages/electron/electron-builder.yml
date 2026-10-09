@@ -6,6 +6,11 @@
 # - 便于按 target/env 变量差分（AppImage / DMG / NSIS / notarize / sign）；
 # - 便于 [P9-9 CI 三平台 build](../../docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
 # - Notarize / Windows Sign 通过环境变量启用（默认关闭以便本地开发 & PR CI 免凭证）。
+#
+# v26 note: pnpm "node module collector" can OOM on large workspaces (~4GB heap);
+# electron-builder then falls back to manual node_modules traversal and packaging
+# still succeeds. Prefer raising NODE_OPTIONS=--max-old-space-size if you need a
+# clean collector pass; pnpm deploy staging is an alternative if traversal fails.
 
 appId: com.cookieboty.companion-desk
 productName: Companion Desk
@@ -80,4 +85,6 @@ linux:
   category: Utility
   # 可执行文件名（默认取 package.json name，会得到 '@ig-liveelectron'）
   executableName: companion-desk
+  # electron-builder 26+: derive .desktop / WM_CLASS from package.json desktopName
+  syncDesktopName: true
   icon: assets/icon.png
