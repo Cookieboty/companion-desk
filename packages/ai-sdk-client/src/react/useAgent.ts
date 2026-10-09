@@ -96,8 +96,9 @@ export function useAgent(): UseAgentResult {
     listenersRef.current.add(cb);
     return () => listenersRef.current.delete(cb);
   }, []);
-  const getSnapshot = useCallback(() => versionRef.current, []);
-  useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  // 快照即不可变状态对象本身（每次更新都替换 stateRef.current），渲染期只读快照不读 ref
+  const getSnapshot = useCallback(() => stateRef.current, []);
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const confirm = useCallback(
     (reqId: string, ok: boolean, reason?: string) => {
@@ -116,8 +117,8 @@ export function useAgent(): UseAgentResult {
   );
 
   return {
-    lastStep: stateRef.current.lastStep,
-    pendingConfirms: stateRef.current.pendingConfirms,
+    lastStep: state.lastStep,
+    pendingConfirms: state.pendingConfirms,
     confirm,
   };
 }

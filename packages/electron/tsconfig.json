@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+    "lib": ["ES2022", "DOM"],
     "module": "commonjs",
     "moduleResolution": "bundler",
     "outDir": "dist",

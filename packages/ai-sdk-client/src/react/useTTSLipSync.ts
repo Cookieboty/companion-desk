@@ -60,8 +60,7 @@ export function useTTSLipSync(opts: UseTTSLipSyncOptions = {}): number {
     listenersRef.current.add(cb);
     return () => listenersRef.current.delete(cb);
   }, []);
-  const getSnapshot = useCallback(() => versionRef.current, []);
-  useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-
-  return rmsRef.current;
+  // 快照直接返回最新 rms（number，按值比较），渲染期不读 ref
+  const getSnapshot = useCallback(() => rmsRef.current, []);
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

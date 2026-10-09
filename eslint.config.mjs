@@ -1,6 +1,7 @@
 // @ts-check
+import { fixupPluginRules } from '@eslint/compat';
 import js from '@eslint/js';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
@@ -30,6 +31,7 @@ export default tseslint.config(
       sourceType: 'module',
       globals: { ...globals.node, ...globals.es2022 },
     },
+    // eslint-plugin-import-x（eslint-plugin-import 不支持 ESLint 10）；沿用 `import/` 规则前缀
     plugins: { import: importPlugin },
     rules: {
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
@@ -63,11 +65,18 @@ export default tseslint.config(
       globals: { ...globals.browser, ...globals.es2022 },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
-    plugins: { react: reactPlugin, 'react-hooks': reactHooks },
+    // eslint-plugin-react 7.x 仍调用 ESLint 10 已移除的 context API（getFilename 等），用 compat 垫片包装
+    plugins: { react: fixupPluginRules(reactPlugin), 'react-hooks': reactHooks },
     settings: { react: { version: 'detect' } },
     rules: {
       ...reactPlugin.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
+      // react-hooks 7 新增的 React Compiler 规则：遗留组件大量命中，先以 warn 呈现、逐步治理
+      ...Object.fromEntries(
+        Object.keys(reactHooks.configs.recommended.rules)
+          .filter((r) => !['react-hooks/rules-of-hooks', 'react-hooks/exhaustive-deps'].includes(r))
+          .map((r) => [r, 'warn']),
+      ),
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
     },

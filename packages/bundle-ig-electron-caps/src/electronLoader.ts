@@ -20,6 +20,7 @@ export function loadElectron(): ElectronModule {
   } catch (err) {
     throw new Error(
       `[@ig-live/bundle-ig-electron-caps] failed to require('electron'): ${(err as Error).message}`,
+      { cause: err },
     );
   }
 }
