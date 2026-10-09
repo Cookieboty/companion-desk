@@ -189,8 +189,8 @@ export const ModeSwitcher: React.FC<ModeSwitcherProps> = ({
               config={
                 live2dConfig ||
                 ({
-                  waifuPath: '/assets/waifu-tips.json',
-                  cubism2Path: '/assets/live2d.min.js',
+                  waifuPath: './assets/waifu-tips.json',
+                  cubism2Path: './assets/live2d.min.js',
                   tools: [
                     'switch-model',
                     'ai-chat',

@@ -58,8 +58,8 @@ const App: React.FC = () => {
 
   // Live2D Widget配置
   const live2dConfig: ModelConfig = {
-    waifuPath: '/assets/waifu-tips.json', // 使用绝对路径
-    cubism2Path: '/assets/live2d.min.js', // 使用绝对路径
+    waifuPath: './assets/waifu-tips.json', // 相对路径：兼容 file:// (Electron 生产) 与 dev server
+    cubism2Path: './assets/live2d.min.js', // 相对路径：兼容 file:// (Electron 生产) 与 dev server
     tools: [
       'switch-model',
       'ai-chat',
