@@ -10,9 +10,10 @@ export interface LlamaCppProviderOptions extends Omit<OpenAICompatOptions, 'id' 
 export class LlamaCppProvider extends BaseOpenAICompat {
   constructor(opts: LlamaCppProviderOptions = {}) {
     super({
+      ...opts,
       id: 'llamacpp',
       baseURL: opts.baseURL ?? 'http://127.0.0.1:8080/v1',
-      ...opts,
+      requiresApiKey: opts.requiresApiKey ?? false,
     });
   }
 }

@@ -10,9 +10,11 @@ export interface QwenProviderOptions extends Omit<OpenAICompatOptions, 'id' | 'b
 export class QwenProvider extends BaseOpenAICompat {
   constructor(opts: QwenProviderOptions = {}) {
     super({
+      ...opts,
       id: 'qwen',
       baseURL: opts.baseURL ?? 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      ...opts,
+      defaultModel: opts.defaultModel ?? 'qwen-plus',
+      requiresApiKey: opts.requiresApiKey ?? true,
     });
   }
 }
