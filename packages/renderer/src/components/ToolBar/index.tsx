@@ -389,7 +389,7 @@ export const ToolBar: React.FC = () => {
 
   // 显示信息
   const showInfo = useCallback(() => {
-    window.open('https://github.com/Cookieboty/ai-live2d-client', '_blank');
+    window.open('https://github.com/Cookieboty/companion-desk', '_blank');
   }, []);
 
   // 关闭应用
