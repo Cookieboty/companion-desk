@@ -625,3 +625,15 @@
     animation: none;
   }
 }
+
+/* 首字母头像（供应商卡片 / 表单） */
+.pp-mono {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--cd-color-border);
+  border-radius: 8px;
+  background: var(--cd-color-surface-sunken);
+  font-weight: 600;
+}
