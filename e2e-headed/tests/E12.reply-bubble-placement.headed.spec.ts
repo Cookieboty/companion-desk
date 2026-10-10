@@ -146,7 +146,8 @@ test.describe('E12 · reply bubble + face-safe placement', () => {
     await main.screenshot(shot('01-reply-bubble.png'));
     // 「查看全文」打开 / 聚焦对话窗口（不新建第二个）
     const before = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length);
-    await more.click();
+    // 气泡随头部微动，用 DOM click 避免 actionability 的「稳定」等待
+    await more.evaluate((el) => (el as HTMLButtonElement).click());
     await main.waitForTimeout(500);
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(
       before,
