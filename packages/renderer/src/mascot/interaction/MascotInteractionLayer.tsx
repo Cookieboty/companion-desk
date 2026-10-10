@@ -8,13 +8,18 @@ import { layoutStore } from '../layoutStore';
 import { mascotRegistry } from '../MascotBackend';
 
 import { ClickClassifier, PatDetector } from './gestures';
+import { DragGate, HitHysteresis, hitRadius, inPaddedRects } from './pointerPolicy';
 import { react } from './reactions';
 import { pickRegion, type BodyRegion } from './regions';
 import { interactionSettings } from './settings';
 import { alphaSpans, rectsKey, type Rect } from './shape';
 
-const DRAG_THRESHOLD = 5;
 const ALPHA_HIT = 24; // 0..255
+/** UI（工具栏 / 气泡 / 卡片）四周这么宽的一圈也算命中：边缘不会点穿 */
+const UI_PAD = 16;
+/** 悬停需停留这么久才触发悬停反应 */
+const HOVER_DWELL_MS = 600;
+const SAMPLE = 21; // alpha 采样窗口边长（覆盖最大膨胀半径 10）
 
 function vrmBackend(): VrmBackend | null {
   const b = mascotRegistry.current() as VrmBackend | null;
@@ -33,8 +38,9 @@ const MascotInteractionLayer: FC = () => {
   const st = useRef({
     cursor: { x: -1, y: -1, inside: false, fresh: false },
     hit: null as boolean | null,
-    missStreak: 0,
     hover: null as BodyRegion | null,
+    hoverSince: 0,
+    hoverFired: false,
     down: null as {
       x: number;
       y: number;
@@ -52,7 +58,9 @@ const MascotInteractionLayer: FC = () => {
   const ray = useRef(new THREE.Raycaster());
   const ndc = useRef(new THREE.Vector2());
   const pat = useRef(new PatDetector());
-  const pixel = useRef(new Uint8Array(4 * 25));
+  const pixel = useRef(new Uint8Array(4 * SAMPLE * SAMPLE));
+  const gate = useRef(new DragGate());
+  const hyst = useRef(new HitHysteresis(120));
   const shapeBuf = useRef(new Uint8Array(0));
 
   const canvas = gl.domElement;
@@ -69,31 +77,47 @@ const MascotInteractionLayer: FC = () => {
     return pickRegion(origin, direction, b.colliders())?.region ?? null;
   };
 
-  /** 画布在 (x, y) 附近 5×5 像素内的最大 alpha */
-  const alphaAt = (x: number, y: number): number => {
+  /** 画布在 (x, y) 附近 (2·rad+1)² 像素内的最大 alpha（膨胀轮廓，抗锯齿边缘也算） */
+  const alphaAt = (x: number, y: number, rad = 2): number => {
     const r = canvas.getBoundingClientRect();
     const ctx = gl.getContext();
     const sx = canvas.width / Math.max(1, r.width);
     const sy = canvas.height / Math.max(1, r.height);
     const px = Math.round((x - r.left) * sx);
     const py = Math.round(canvas.height - (y - r.top) * sy);
-    if (px < 2 || py < 2 || px >= canvas.width - 2 || py >= canvas.height - 2) return 0;
+    const k = Math.max(0, Math.min((SAMPLE - 1) / 2, Math.round(rad * sx)));
+    const n = 2 * k + 1;
+    if (px < k || py < k || px >= canvas.width - k || py >= canvas.height - k) return 0;
     try {
-      ctx.readPixels(px - 2, py - 2, 5, 5, ctx.RGBA, ctx.UNSIGNED_BYTE, pixel.current);
+      ctx.readPixels(px - k, py - k, n, n, ctx.RGBA, ctx.UNSIGNED_BYTE, pixel.current);
     } catch {
       return 0;
     }
     let a = 0;
-    for (let i = 3; i < pixel.current.length; i += 4) a = Math.max(a, pixel.current[i]);
+    for (let i = 3; i < n * n * 4; i += 4) a = Math.max(a, pixel.current[i]);
     return a;
   };
 
-  const hitTest = (x: number, y: number): boolean => {
+  /** 可见的看板娘 UI（工具栏 / 气泡 / 卡片）矩形 */
+  const uiRects = () => {
+    const out: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+    document.querySelectorAll<HTMLElement>('[data-mascot-ui]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) return;
+      out.push(r);
+    });
+    return out;
+  };
+
+  const hitTest = (x: number, y: number, currentlyHit = false): boolean => {
     if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return false;
     const el = document.elementFromPoint(x, y);
     // 工具栏 / 气泡 / 弹窗等 UI：不是画布本身、也不是画布的祖先容器
     if (el && el !== canvas && !el.contains(canvas)) return true;
-    return alphaAt(x, y) >= ALPHA_HIT || pickAt(x, y) !== null;
+    if (inPaddedRects(x, y, uiRects(), UI_PAD)) return true;
+    return alphaAt(x, y, hitRadius(currentlyHit)) >= ALPHA_HIT || pickAt(x, y) !== null;
   };
 
   useEffect(() => {
@@ -120,20 +144,30 @@ const MascotInteractionLayer: FC = () => {
       }
     });
 
+    const endDrag = () => {
+      api?.dragEnd();
+      s.dragging = false;
+      document.documentElement.dataset.mascotDragging = '0';
+    };
     const onMove = (e: PointerEvent) => {
       s.cursor = { x: e.clientX, y: e.clientY, inside: true, fresh: true };
-      if (s.dragging) api?.dragMove(e.screenX, e.screenY);
-      if (s.down && !s.dragging) {
-        if (Math.hypot(e.clientX - s.down.x, e.clientY - s.down.y) > DRAG_THRESHOLD) {
-          s.dragging = true;
-          api?.dragStart(s.down.sx, s.down.sy);
-          document.documentElement.dataset.mascotDragging = '1';
-        }
+      if (s.dragging && e.buttons & 1) api?.dragMove(e.screenX, e.screenY);
+      const r = gate.current.move(e.clientX, e.clientY, performance.now(), e.buttons);
+      if (r === 'start' && s.down) {
+        s.dragging = true;
+        api?.dragStart(s.down.sx, s.down.sy);
+        api?.dragMove(e.screenX, e.screenY);
+        document.documentElement.dataset.mascotDragging = '1';
+      } else if (r === 'cancel' || (!gate.current.isDown && s.down)) {
+        // 按键已松开却没收到 pointerup（点击穿透切换时可能丢）：结束，不算点击
+        if (s.dragging) endDrag();
+        s.down = null;
       }
     };
     const onDown = (e: PointerEvent) => {
       if (e.button !== 0 || e.target !== canvas) return;
-      if (!hitTest(e.clientX, e.clientY)) return;
+      if (!hitTest(e.clientX, e.clientY, true)) return;
+      gate.current.press(e.clientX, e.clientY, performance.now());
       s.down = {
         x: e.clientX,
         y: e.clientY,
@@ -148,19 +182,18 @@ const MascotInteractionLayer: FC = () => {
       }
     };
     const finish = (click: boolean) => {
-      if (s.dragging) {
-        api?.dragEnd();
-        s.dragging = false;
-        document.documentElement.dataset.mascotDragging = '0';
-      } else if (click && s.down) {
-        classifier.click(s.down.region ?? 'body');
-      }
+      const r = gate.current.release();
+      if (s.dragging) endDrag();
+      else if (click && r === 'click' && s.down) classifier.click(s.down.region ?? 'body');
       s.down = null;
     };
     const onUp = (e: PointerEvent) => {
       if (e.button === 0) finish(true);
     };
-    const onCancel = () => finish(false);
+    const onCancel = () => {
+      gate.current.cancel();
+      finish(false);
+    };
     canvas.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -323,11 +356,10 @@ const MascotInteractionLayer: FC = () => {
     if (!c.fresh) return;
     c.fresh = false;
 
-    // ---- 命中测试 → 点击穿透 ----
-    const hit = s.dragging || hitTest(c.x, c.y);
-    // 命中立即生效；未命中连续两次再穿透，避免边缘抖动
-    s.missStreak = hit ? 0 : s.missStreak + 1;
-    const effective = hit || s.missStreak < 2;
+    // ---- 命中测试 → 点击穿透（膨胀轮廓 + 120ms 离开去抖；按住期间始终可交互）----
+    const nowMs = performance.now();
+    const hit = s.dragging || !!s.down || hitTest(c.x, c.y, hyst.current.value);
+    const effective = hyst.current.feed(hit, nowMs);
     if (effective !== s.hit) {
       s.hit = effective;
       api?.setHit(effective);
@@ -338,9 +370,15 @@ const MascotInteractionLayer: FC = () => {
     const region = hit && !s.dragging ? pickAt(c.x, c.y) : null;
     if (region !== s.hover) {
       s.hover = region;
+      s.hoverSince = nowMs;
+      s.hoverFired = false;
       pat.current.reset();
       document.documentElement.dataset.mascotHover = region ?? '';
-      if (region) react('hover', region, 8000);
+    }
+    // 悬停只换表情 / 说句话，从不移动她；需停留一会儿，且有较长冷却
+    if (region && !s.hoverFired && !s.down && nowMs - s.hoverSince >= HOVER_DWELL_MS) {
+      s.hoverFired = true;
+      react('hover', region, 20000);
     }
     if (region === 'head' && pat.current.feed(c.x, performance.now())) react('pat', 'head', 1500);
   });

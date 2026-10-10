@@ -108,8 +108,8 @@ export const REACTIONS: Partial<
 > = {
   hover: {
     face: { expression: 'surprised', lines: ['嗯？脸上有东西吗？', '靠、靠太近啦…'] },
-    skirt: { expression: 'angry', motion: 'shake', lines: ['喂！往哪儿看呢！', '不许乱看！'] },
-    hands: { expression: 'happy', motion: 'wave', lines: ['要击掌吗？', '嗨～'] },
+    skirt: { expression: 'angry', lines: ['喂！往哪儿看呢！', '不许乱看！'] },
+    hands: { expression: 'happy', lines: ['要击掌吗？', '嗨～'] },
   },
   pat: {
     head: {
@@ -137,7 +137,7 @@ export const REACTIONS: Partial<
     legs: { expression: 'sad', motion: 'flinch', lines: ['别踩我脚呀…', '腿好酸…'] },
   },
   double: {
-    any: { expression: 'happy', motion: 'jump', lines: ['耶！', '精神满满！'] },
+    any: { expression: 'happy', motion: 'clap', lines: ['耶！', '精神满满！'] },
     skirt: {
       expression: 'angry',
       motion: 'shake',

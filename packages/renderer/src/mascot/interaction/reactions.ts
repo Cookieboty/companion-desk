@@ -36,9 +36,11 @@ export function react(
   if (!interactionSettings.get().reactions) return false;
   const now = performance.now();
   const key = `${kind}:${region}`;
-  if (cooldownMs && now - (lastByKey.get(key) ?? -Infinity) < cooldownMs) return false;
-  // 悬停类反应之间至少隔 2.5s；点击类不受限
-  if (kind === 'hover' && now - lastAt < 2500) return false;
+  // 点击类也有最小间隔（连点不会让她抽搐）
+  const cd = Math.max(cooldownMs, kind === 'hover' ? 0 : 900);
+  if (now - (lastByKey.get(key) ?? -Infinity) < cd) return false;
+  // 悬停类反应之间至少隔 6s，且刚有任何反应时不打断
+  if (kind === 'hover' && now - lastAt < 6000) return false;
   const r = reactionFor(kind, region);
   if (!r) return false;
   lastByKey.set(key, now);
