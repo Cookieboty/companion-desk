@@ -209,6 +209,9 @@ pnpm package:debug
   只接受开源许可（CC0 / CC-BY / CC-BY-SA / MIT / Apache-2.0 / OFL）或经审核、允许商用且允许再分发的条款（VRoid AvatarSample 条款、VRM Public License 1.0；条件显示在徽章与致谢页），与 `assets-licenses.json` 一致、仅 https、单文件 ≤ 200 MB，
   模型文件只做静态解析（GLB + VRM meta），不执行任何内容。文件保存在 `userData/models/remote/`，经 `cdmodel://` 协议只读提供给渲染进程。
   目录地址可用 `COMPANION_MODEL_CATALOG_URL`（逗号分隔多个）覆盖。添加模型见 [docs/MODELS.md](docs/MODELS.md)
+- **桌面互动** - 透明区域点击穿透（逐像素；Linux 用窗口形状）、按身体区域的悬停 / 摸头 / 单击 / 双击反应（表情 + 动作 + 台词）、
+  视线与头部跟随全局鼠标（颈部限位、阻尼平滑）；按住拖动窗口时手脚乱蹬、头发裙子随惯性摆动，松手下落到任务栏 / Dock 上方、反弹撞墙、落地压扁回弹；
+  可选沿屏幕底边散步，支持多显示器。托盘 →「互动设置」可开关各项。细节与各平台限制见 [docs/MASCOT_INTERACTION.md](docs/MASCOT_INTERACTION.md)
 - **导入自己的 VRM** - 「导入 VRM」页：文件对话框或拖放 `.vrm`（0.x / 1.0，≤ 300 MB）。会读取并展示 VRM meta
   （作者、许可、允许使用者、商用、再分发），并提示：**自行导入的模型由用户自己负责，只保存在本机 `userData/models/user/`，不会上传、同步或随应用分发**。
   导入后可设置名字、缩放、偏移、镜头取景、表情映射（如 `happy=Joy`）、允许的动作；配置可导出 / 导入为 JSON；可替换 VRM 文件或删除
