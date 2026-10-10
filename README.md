@@ -124,57 +124,83 @@ companion-desk/
 
 ### 系统要求
 
-- Node.js >= 20（构建/测试）；运行时使用 Electron 44 自带的 Node 24（dsh 需要 Node >= 22）
-- pnpm 9（见 `packageManager`）
-- macOS/Windows/Linux
+- **Node.js >= 22.12**（推荐 22 LTS 或 24；仓库带 `.nvmrc`，`nvm install && nvm use` 即可）。版本过低时 `pnpm install` 会直接报错并提示如何升级。
+- **pnpm 9**（`corepack enable` 后自动使用 `packageManager` 指定的版本）
+- macOS（Apple Silicon / Intel）、Windows 10+、Linux（X11；无显示器时用 `xvfb-run`）
 
-### 安装依赖
+### 从零开始（一条命令启动）
 
 ```bash
+git clone <repo> companion-desk && cd companion-desk
+corepack enable          # 使用仓库锁定的 pnpm 版本
 pnpm install
+pnpm dev                 # 预检 → 构建 workspace 库 → 启动 Vite ×2 + Electron
 ```
 
-### 开发模式
+`pnpm dev` 做了这些事：
+
+1. `scripts/doctor.mjs --quick` 预检：Node/pnpm 版本、依赖是否安装、**Electron 二进制**（Electron 44 不再在
+   postinstall 下载，首次运行时这里会下载）、端口 3000/5175 是否空闲。
+2. turbo 先 `build` 所有 workspace 依赖（`@ig-live/ui`、`types`、`ai-sdk*`、`ai-runtime`、`bundle-ig-*`；有缓存时秒过）。
+3. 并行启动：看板娘渲染进程 Vite（`:3000`）、对话窗口 Vite（`:5175`）、`packages/electron/scripts/dev.mjs`
+   （先编译一次主进程与 preload，再 `tsc -w` + preload 监听，等两个端口就绪后以 `NODE_ENV=development` 启动 Electron）。
+
+改渲染进程 / 对话窗口代码会热更新；改主进程代码后在终端 `Ctrl+C` 再 `pnpm dev` 重启。
+改 workspace 库（如 `packages/ai-runtime`）时可另开终端跑 `pnpm dev:libs`（tsup --watch）。
+
+带 provider 启动（也可以启动后在「AI 服务商」面板里配置）：
 
 ```bash
-pnpm dev
+DEEPSEEK_API_KEY=sk-... pnpm dev
+ANTHROPIC_API_KEY=sk-ant-... pnpm dev
+GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev
+ollama pull qwen2.5:3b-instruct && pnpm dev     # 完全本地，无需 key
 ```
 
-这将同时启动：
+环境变量见上文「配置 AI 模型」表格；全部可选。
 
-- React开发服务器 (Vite)
-- Electron应用
-- TypeScript编译监听
-
-开发模式下支持热重载，修改代码后应用会自动更新。
-
-### 构建项目
+### 环境自检
 
 ```bash
-# 构建所有包
-pnpm build
-
-# 单独构建渲染器
-pnpm build:renderer
-
-# 单独构建Electron
-pnpm build:electron
+pnpm doctor        # 完整预检（含 provider key 提示）
+pnpm doctor:dsh    # 仅当使用可选 dsh 内核（IG_DSH_CORE=auto|required）时
 ```
 
-### 打包应用
+常见问题：
+
+- `Node.util.isObject is not a function`：旧版本中按键监听的 key server 没有可执行位，回退到了与 Node 24 不兼容的
+  sudo-prompt。已修复（启动前自动 `chmod +x`）；如仍遇到，`rm -rf node_modules && pnpm install`。
+- macOS 上全局按键监听需要在「系统设置 → 隐私与安全性 → 辅助功能」里允许 Electron / Companion Desk；不授权只影响按键台词。
+- 端口被占用：`lsof -i :3000` / `lsof -i :5175` 结束对应进程。
+- Electron 下载慢：设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后 `pnpm doctor`。
+
+### 构建
 
 ```bash
-# 生产环境打包
-pnpm package:prod
+pnpm build             # 构建所有包（turbo，带缓存）
+pnpm build:renderer    # 只构建看板娘渲染进程
+pnpm build:electron    # 只构建主进程
+```
 
-# macOS打包
-pnpm package:prod:mac
+### 打包
 
-# Windows打包
-pnpm package:prod:win
+```bash
+pnpm package:prod:mac      # macOS（dmg/zip，需在 macOS 上运行）
+pnpm package:prod:win      # Windows（nsis，需在 Windows 上运行）
+pnpm package:prod:linux    # Linux（AppImage x64）
+pnpm package:prod          # 当前平台
+pnpm package:debug         # 调试包（asar 关闭、DEBUG=true）
+```
 
-# 调试模式打包
-pnpm package:debug
+产物在仓库根目录 `dist/`。打包前会自动 `build`。签名/公证所需的证书环境变量
+（`CSC_LINK`、`CSC_KEY_PASSWORD`、`APPLE_ID` 等）按 electron-builder 文档设置，未设置时生成未签名包。
+
+### 测试
+
+```bash
+pnpm test              # 单元测试（所有包）
+pnpm typecheck && pnpm lint
+pnpm test:e2e:headed   # Playwright + Electron 端到端（先 pnpm build；Linux 下用 xvfb-run -a）
 ```
 
 ## ⌨️ 快捷键
@@ -288,8 +314,9 @@ pnpm package:debug
 
 ### 环境变量
 
-- `NODE_ENV` - 运行环境 (development/production)
+- `NODE_ENV` - 运行环境（`pnpm dev` 自动设为 `development`）
 - `DEBUG` - 调试模式开关
+- AI provider 相关变量见「配置 AI 模型」
 
 ### 构建配置
 
@@ -410,7 +437,7 @@ for await (const chunk of runtime.client.chat.stream({
 
 **preload**：使用 [`mkAiPreload`](packages/ai-sdk-client/src/preload/mkAiPreload.ts) 注入白名单 IPC 通道（`ai:*` 前缀）；详见 [docs/preload-usage.md](docs/preload-usage.md)。
 
-**升级说明与旧 API 弃用时间线**：[docs/plans/CHANGELOG.md](docs/plans/CHANGELOG.md)。
+**升级说明与旧 API 弃用时间线**：[docs/plans/CHANGELOG.md](docs/plans/CHANGELOG.md)、[docs/HISTORY.md](docs/HISTORY.md)。
 
 ## 🙏 致谢
 

@@ -31,6 +31,7 @@
     "format:check": "prettier --check .",
     "clean": "turbo run clean",
     "doctor": "node scripts/doctor.mjs",
+    "dev:smoke": "node scripts/dev-smoke.mjs",
     "doctor:dsh": "tsx scripts/dsh-doctor.ts",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",

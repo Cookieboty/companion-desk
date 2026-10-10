@@ -65,7 +65,9 @@ for (const { port, what } of PORTS) {
 
 const electron = require('electron'); // 首次运行会自动下载对应平台的 Electron 二进制
 log(`starting Electron (${electron})`);
-const app = start(electron, ['.'], { NODE_ENV: 'development' });
+// 额外的 Electron/Chromium 参数（例如 CI / xvfb 下的 --enable-unsafe-swiftshader、--user-data-dir=...）
+const extra = (process.env.ELECTRON_ARGS ?? '').split(/\s+/).filter(Boolean);
+const app = start(electron, ['.', ...extra], { NODE_ENV: 'development' });
 const stop = (code) => {
   for (const c of children) if (!c.killed) c.kill();
   process.exit(code ?? 0);
