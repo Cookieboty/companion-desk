@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- 遗留的宽松类型，沿用既有定义 */
 /**
  * 日志级别类型
  */
@@ -8,7 +9,7 @@ export type LogLevel = 'error' | 'warn' | 'info' | 'trace';
  */
 class Logger {
   private level: LogLevel = 'info';
-  private prefix: string = '[Live2D]';
+  private prefix: string = '[Mascot]';
 
   /**
    * 设置日志级别
@@ -32,11 +33,16 @@ class Logger {
    */
   private getLevelValue(level: LogLevel): number {
     switch (level) {
-      case 'error': return 0;
-      case 'warn': return 1;
-      case 'info': return 2;
-      case 'trace': return 3;
-      default: return 2;
+      case 'error':
+        return 0;
+      case 'warn':
+        return 1;
+      case 'info':
+        return 2;
+      case 'trace':
+        return 3;
+      default:
+        return 2;
     }
   }
 

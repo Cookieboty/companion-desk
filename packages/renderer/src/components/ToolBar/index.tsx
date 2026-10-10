@@ -4,7 +4,6 @@ import {
   fa_comment,
   fa_paper_plane,
   fa_user_circle,
-  fa_street_view,
   fa_camera_retro,
   fa_info_circle,
   fa_xmark,
@@ -31,11 +30,12 @@ const fa_tts_config =
 const fa_mode_switch =
   '<svg viewBox="0 0 24 24"><path d="M12,6V9L16,5L12,1V4A8,8 0 0,0 4,12C4,13.57 4.46,15.03 5.24,16.26L6.7,14.8C6.25,13.97 6,13 6,12A6,6 0 0,1 12,6M18.76,7.74L17.3,9.2C17.74,10.04 18,11 18,12A6,6 0 0,1 12,18V15L8,19L12,23V20A8,8 0 0,0 20,12C20,10.43 19.54,8.97 18.76,7.74Z"/></svg>';
 import { getCache, setCache } from '@/utils/cache';
-import { useLive2DModel } from '@/hooks/useLive2DModel';
 
 import styles from './style.module.css';
 
-import { useLive2D } from '@/contexts/Live2DContext';
+import { useMascot } from '@/contexts/MascotContext';
+import { nextModel } from '@/mascot/catalog';
+import { MESSAGES } from '@/mascot/tips';
 
 import { VoiceSettings } from '../VoiceSettings';
 import { VoiceService } from '../../services/VoiceService';
@@ -48,13 +48,15 @@ let globalVoiceService: VoiceService | null = null;
 export const ToolBar: React.FC = () => {
   const [isVisible, setIsVisible] = useState(process.env.NODE_ENV === 'development'); // 开发环境默认显示
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
-  const { loadNextModel, loadRandomTexture } = useLive2DModel();
   const {
     config: { tools: availableTools = [] },
-  } = useLive2D();
+    state: mascotState,
+    dispatch: mascotDispatch,
+    selectModel,
+  } = useMascot();
 
   // 模式切换状态
-  const [currentMode, setCurrentMode] = useState<RenderMode>('live2d');
+  const [currentMode, setCurrentMode] = useState<RenderMode>('3d');
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voiceService, setVoiceService] = useState<VoiceService | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false); // 语音功能状态，默认禁用
@@ -363,7 +365,7 @@ export const ToolBar: React.FC = () => {
 
   // 拍照功能
   const takeScreenshot = useCallback(() => {
-    const canvas = document.getElementById('live2d') as HTMLCanvasElement;
+    const canvas = document.querySelector('#mascot-canvas canvas') as HTMLCanvasElement | null;
     if (!canvas) {
       showMessage('找不到画布元素，无法截图');
       return;
@@ -374,7 +376,7 @@ export const ToolBar: React.FC = () => {
       const link = document.createElement('a');
       link.style.display = 'none';
       link.href = imageUrl;
-      link.download = 'live2d-photo.png';
+      link.download = 'mascot-photo.png';
 
       document.body.appendChild(link);
       link.click();
@@ -406,35 +408,24 @@ export const ToolBar: React.FC = () => {
     }
   }, [showMessage]);
 
-  // 切换模型 - 恢复完整功能
-  const switchModel = useCallback(async () => {
-    try {
-      await loadNextModel();
-      showMessage('正在切换模型...');
-    } catch (error) {
-      console.error('切换模型失败:', error);
-      showMessage('切换模型失败');
+  // 切换到下一个内置角色（右键打开角色列表）
+  const switchModel = useCallback(() => {
+    const next = nextModel(mascotState.modelList, mascotState.modelName);
+    if (!next) {
+      showMessage('没有可切换的角色');
+      return;
     }
-  }, [loadNextModel, showMessage]);
+    selectModel(next.name);
+    showMessage(MESSAGES.modelSwitched(next.displayName));
+  }, [mascotState.modelList, mascotState.modelName, selectModel, showMessage]);
 
-  // 模式切换（三态循环：Live2D → 3D → 自定义图片 → Live2D）
+  const openModelPicker = useCallback(() => {
+    mascotDispatch({ type: 'SET_PICKER_OPEN', payload: true });
+  }, [mascotDispatch]);
+
+  // 模式切换：3D 角色 ⇄ 自定义图片
   const toggleMode = useCallback(() => {
-    let newMode: RenderMode;
-
-    switch (currentMode) {
-      case 'live2d':
-        newMode = '3d';
-        break;
-      case '3d':
-        newMode = 'custom-image';
-        break;
-      case 'custom-image':
-        newMode = 'live2d';
-        break;
-      default:
-        newMode = 'live2d';
-    }
-
+    const newMode: RenderMode = currentMode === '3d' ? 'custom-image' : '3d';
     setCurrentMode(newMode);
 
     // 通知App组件切换模式
@@ -443,11 +434,7 @@ export const ToolBar: React.FC = () => {
     });
     window.dispatchEvent(customEvent);
 
-    const modeNames = {
-      live2d: 'Live2D',
-      '3d': '3D',
-      'custom-image': '自定义图片',
-    };
+    const modeNames: Record<RenderMode, string> = { '3d': '3D 角色', 'custom-image': '自定义图片' };
 
     showMessage(`已切换到${modeNames[newMode]}模式`);
   }, [currentMode, showMessage]);
@@ -488,17 +475,6 @@ export const ToolBar: React.FC = () => {
     }
   }, [showMessage, voiceService, voiceEnabled]);
 
-  // 切换纹理 - 恢复完整功能
-  const switchTexture = useCallback(async () => {
-    try {
-      await loadRandomTexture();
-      showMessage('正在切换服装...');
-    } catch (error) {
-      console.error('切换服装失败:', error);
-      showMessage('切换服装失败');
-    }
-  }, [loadRandomTexture, showMessage]);
-
   // 切换语音模式（保存到应用配置）
   const toggleVoiceMode = useCallback(async () => {
     if (!voiceService) {
@@ -537,8 +513,6 @@ export const ToolBar: React.FC = () => {
         return fa_paper_plane;
       case 'switch-model':
         return fa_user_circle;
-      case 'switch-texture':
-        return fa_street_view;
       case 'photo':
         return fa_camera_retro;
       case 'info':
@@ -569,8 +543,6 @@ export const ToolBar: React.FC = () => {
     switch (toolId) {
       case 'switch-model':
         return switchModel;
-      case 'switch-texture':
-        return switchTexture;
       case 'hitokoto':
         return loadHitokoto;
       case 'photo':
@@ -697,9 +669,7 @@ export const ToolBar: React.FC = () => {
       case 'asteroids':
         return '启动小行星游戏';
       case 'switch-model':
-        return '切换Live2D模型';
-      case 'switch-texture':
-        return '更换角色服装';
+        return '切换角色（右键：角色列表）';
       case 'photo':
         return '截图保存';
       case 'info':
@@ -719,13 +689,7 @@ export const ToolBar: React.FC = () => {
       case 'ai-chat':
         return '打开AI智能助手';
       case 'mode-switch':
-        // eslint-disable-next-line no-case-declarations -- 遗留代码
-        const nextModeNames = {
-          live2d: '3D',
-          '3d': '自定义图片',
-          'custom-image': 'Live2D',
-        };
-        return `切换到${nextModeNames[currentMode] || 'Live2D'}模式`;
+        return currentMode === '3d' ? '切换到自定义图片模式' : '切换到3D角色模式';
       case 'cursor-mcp':
         return '为Cursor IDE注入MCP配置';
       default:
@@ -810,14 +774,20 @@ export const ToolBar: React.FC = () => {
               <button
                 className={getButtonClassName(tool)}
                 onClick={createButtonHandler(getToolHandler(tool))}
+                id={`waifu-tool-${tool}`}
+                data-testid={`tool-${tool}`}
                 onContextMenu={
                   tool === 'voice-settings'
                     ? (e) => {
                         e.preventDefault();
-                        console.log('ToolBar: 语音按钮右键点击，打开设置');
                         setShowVoiceSettings(true);
                       }
-                    : undefined
+                    : tool === 'switch-model'
+                      ? (e) => {
+                          e.preventDefault();
+                          openModelPicker();
+                        }
+                      : undefined
                 }
                 onMouseDown={clearButtonFocus}
                 onMouseUp={clearButtonFocus}

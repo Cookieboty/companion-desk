@@ -26,7 +26,7 @@ export interface BubbleToolExecuted {
   error?: string;
 }
 
-export interface BubbleLive2dTouch {
+export interface BubbleMascotTouch {
   hitArea: string;
   at?: number;
 }
@@ -41,7 +41,7 @@ export type BubbleEvent =
   | { kind: 'agent:step'; payload: BubbleAgentStep }
   | { kind: 'message:complete'; payload: BubbleMessageComplete }
   | { kind: 'tool:executed'; payload: BubbleToolExecuted }
-  | { kind: 'live2d:touch'; payload: BubbleLive2dTouch };
+  | { kind: 'live2d:touch'; payload: BubbleMascotTouch };
 
 export const BUBBLE_PRIORITY = {
   agentStep: 6,

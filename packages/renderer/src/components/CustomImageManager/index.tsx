@@ -10,7 +10,7 @@ import styles from './style.module.css';
 interface CustomImageManagerProps {
   className?: string;
   style?: React.CSSProperties;
-  onModeChange?: (mode: 'live2d' | '3d' | 'custom-image') => void;
+  onModeChange?: (mode: '3d' | 'custom-image') => void;
   onImageChange?: (imageInfo: CustomImageInfo | null) => void;
 }
 
@@ -118,9 +118,9 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
         setShowDeleteConfirm(false);
         onImageChange?.(null);
 
-        // 自动切换到Live2D模式
-        await window.electronAPI.setCurrentMode('live2d');
-        onModeChange?.('live2d');
+        // 自动切换到3D角色模式
+        await window.electronAPI.setCurrentMode('3d');
+        onModeChange?.('3d');
       } else {
         setError(result.error || '删除图片失败');
       }
@@ -178,7 +178,7 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
         }
       >
         <p>确定要删除当前的自定义图片吗？</p>
-        <p className="cd-muted">删除后将自动切换到Live2D模式</p>
+        <p className="cd-muted">删除后将自动切换到3D角色模式</p>
       </Modal>
 
       {/* 主要内容区域 */}

@@ -14,7 +14,7 @@ import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
  * dist/renderer/index.html 以 file:// 加载 renderer），断言：
  * - 主窗口 preload 成功：window.electronAPI 与 window.aiIPC 均已注入
  *   （回归：preload 依赖 workspace 包时，在默认 sandbox 下会 "module not found"）
- * - Live2D Cubism2 核心库已加载（window.Live2D），且没有 preload / Cubism 加载错误
+ * - 默认 VRM 看板娘加载完成（MascotBackend = vrm，支持口型），且没有 preload / VRM 加载错误
  *
  * 前置：`pnpm build`（会生成 packages/electron/dist 与 packages/renderer/dist）。
  */
@@ -48,7 +48,7 @@ test.describe('E5 · real app · dist/main.js 生产模式冒烟', () => {
     }
   });
 
-  test('主窗口 preload 注入 electronAPI / aiIPC，Live2D 核心库加载成功', async () => {
+  test('主窗口 preload 注入 electronAPI / aiIPC，默认 VRM 看板娘加载成功', async () => {
     test.skip(
       !existsSync(mainJs) || !existsSync(rendererIndex),
       `需要先构建：${mainJs} / ${rendererIndex}`,
@@ -62,7 +62,7 @@ test.describe('E5 · real app · dist/main.js 生产模式冒烟', () => {
 
     app = await electron.launch({
       executablePath: resolveElectronExecutable(),
-      args: [electronPkgDir],
+      args: [electronPkgDir, '--enable-unsafe-swiftshader'],
       cwd: electronPkgDir,
       env,
       timeout: 30_000,
@@ -86,27 +86,48 @@ test.describe('E5 · real app · dist/main.js 生产模式冒烟', () => {
     );
 
     await page.waitForFunction(
-      () => typeof (window as unknown as { Live2D?: unknown }).Live2D !== 'undefined',
+      () => document.documentElement.dataset.mascotBackend === 'vrm',
       undefined,
-      { timeout: 20_000 },
+      { timeout: 90_000 },
     );
 
     const state = await page.evaluate(() => {
       const w = window as unknown as Record<string, unknown>;
+      const ds = document.documentElement.dataset;
       return {
         electronAPI: typeof w.electronAPI,
         aiIPC: typeof w.aiIPC,
-        live2d: typeof w.Live2D,
-        hasCanvas: !!document.querySelector('canvas#live2d'),
+        backend: ds.mascotBackend,
+        lipSync: ds.mascotLipsync,
+        expressions: (ds.mascotExpressions ?? '').split(','),
+        hasCanvas: !!document.querySelector('#mascot-canvas canvas'),
+        live2dGone: typeof (w as { Live2D?: unknown }).Live2D === 'undefined',
       };
     });
-    expect(state).toEqual({
+    expect(state).toMatchObject({
       electronAPI: 'object',
       aiIPC: 'object',
-      live2d: 'function',
+      backend: 'vrm',
+      lipSync: 'true',
       hasCanvas: true,
+      live2dGone: true,
     });
+    expect(state.expressions).toEqual(expect.arrayContaining(['aa', 'happy', 'sad', 'blink']));
 
-    expect(consoleErrors.filter((e) => /preload|Cubism库失败/.test(e))).toEqual([]);
+    // 角色选择器：右键「切换角色」→ 选 Vita → 重新加载并记住选择
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('mascot:open-picker')));
+    await page.locator('[data-testid="model-option-vita"]').click({ timeout: 10_000 });
+    await page.waitForFunction(
+      () => localStorage.getItem('companion.mascot.model') === 'vita',
+      undefined,
+      { timeout: 10_000 },
+    );
+    await page.waitForFunction(
+      () => document.documentElement.dataset.mascotBackend === 'vrm',
+      undefined,
+      { timeout: 90_000 },
+    );
+
+    expect(consoleErrors.filter((e) => /preload|VRM 加载失败/.test(e))).toEqual([]);
   });
 });

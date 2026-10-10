@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- 遗留的宽松类型，沿用既有定义 */
 // 定义IPC通信接口
 export interface IpcApi {
   quit: () => void;
@@ -42,13 +43,23 @@ export interface IpcApi {
 
   // 自定义图片相关API
   selectImageFile: () => Promise<{ success: boolean; data?: { filePath: string }; error?: string }>;
-  saveCustomImage: (sourcePath: string) => Promise<{ success: boolean; data?: { savedPath: string; imageInfo: CustomImageInfo }; error?: string }>;
-  getCustomImage: () => Promise<{ success: boolean; data?: { imagePath: string; imageInfo: CustomImageInfo }; error?: string }>;
+  saveCustomImage: (sourcePath: string) => Promise<{
+    success: boolean;
+    data?: { savedPath: string; imageInfo: CustomImageInfo };
+    error?: string;
+  }>;
+  getCustomImage: () => Promise<{
+    success: boolean;
+    data?: { imagePath: string; imageInfo: CustomImageInfo };
+    error?: string;
+  }>;
   deleteCustomImage: () => Promise<{ success: boolean; error?: string }>;
 
   // 显示模式配置相关API
   getDisplayModeConfig: () => Promise<DisplayModeConfig>;
-  saveDisplayModeConfig: (config: DisplayModeConfig) => Promise<{ success: boolean; error?: string }>;
+  saveDisplayModeConfig: (
+    config: DisplayModeConfig,
+  ) => Promise<{ success: boolean; error?: string }>;
   getCurrentMode: () => Promise<RenderMode>;
   setCurrentMode: (mode: RenderMode) => Promise<{ success: boolean; error?: string }>;
 
@@ -231,7 +242,8 @@ export interface MCPToolExecutionResult {
 /**
  * 渲染模式类型
  */
-export type RenderMode = 'live2d' | '3d' | 'custom-image';
+/** 显示模式：3D 看板娘（VRM）或用户自定义图片。旧版本的 'live2d' 已移除，读取时归一化为 '3d'。 */
+export type RenderMode = '3d' | 'custom-image';
 
 /**
  * 自定义图片信息

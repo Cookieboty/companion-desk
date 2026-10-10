@@ -1,108 +1,58 @@
-import type { RenderMode, DisplayModeConfig, CustomImageInfo } from '@ig-live/types';
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import type { CustomImageInfo, DisplayModeConfig, RenderMode } from '@ig-live/types';
+import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 
-import Live2dWidget from './components/Live2dWidget';
+import { MascotHost } from './components/Mascot';
 import { ToolBar } from './components/ToolBar';
-import { Live2DProvider } from './contexts/Live2DContext';
-import type { ModelConfig } from './types/live2d';
+import { normalizeRenderMode } from './config/renderMode';
+import { MascotProvider, type MascotConfig } from './contexts/MascotContext';
 
-// 非默认模式按需加载：three / @react-three / VRM（~900KB）只在切到 3D 时下载解析
-const VirtualCharacter3D = lazy(() => import('./components/VirtualCharacter3D'));
 const CustomImageManager = lazy(() => import('./components/CustomImageManager'));
 
+const MASCOT_CONFIG: MascotConfig = {
+  tools: [
+    'switch-model',
+    'ai-chat',
+    'info',
+    'voice-settings',
+    'voice-mode-toggle',
+    'tts-config',
+    'mode-switch',
+    'cursor-mcp',
+    'toggle-top',
+    'quit',
+  ],
+  drag: true,
+};
+
 const App: React.FC = () => {
-  const [isElectron, setIsElectron] = useState(false);
-  const [enable3D, setEnable3D] = useState(false);
-  const [currentMode, setCurrentMode] = useState<RenderMode>('live2d');
-  const [customImageInfo, setCustomImageInfo] = useState<CustomImageInfo | null>(null);
+  const [currentMode, setCurrentMode] = useState<RenderMode>('3d');
+  const [, setCustomImageInfo] = useState<CustomImageInfo | null>(null);
 
-  // 检测Electron环境和3D支持
+  // 恢复保存的显示模式（旧版本保存的 'live2d' 会被归一化为 '3d'）
   useEffect(() => {
-    // 检查window.electronAPI是否存在，确定是否在Electron环境中
-    setIsElectron(!!window.electronAPI);
-
-    // 检查WebGL支持以决定是否启用3D功能
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-
-    if (gl) {
-      setEnable3D(true);
-      console.log('App: 3D支持已启用');
-    } else {
-      console.warn('App: WebGL不支持，仅启用Live2D模式');
-    }
+    if (!window.electronAPI) return;
+    window.electronAPI
+      .getDisplayModeConfig()
+      .then((config) => {
+        if (!config?.currentMode) return;
+        const mode = normalizeRenderMode(config.currentMode);
+        setCurrentMode(mode);
+        if (mode === 'custom-image' && config.customImage) setCustomImageInfo(config.customImage);
+      })
+      .catch((error) => console.error('App: 恢复显示模式失败', error));
   }, []);
 
-  // 恢复保存的显示模式
-  useEffect(() => {
-    const restoreDisplayMode = async () => {
-      if (!window.electronAPI) return;
-
-      try {
-        const config = await window.electronAPI.getDisplayModeConfig();
-        console.log('App: 恢复显示模式配置', config);
-
-        if (config && config.currentMode) {
-          setCurrentMode(config.currentMode);
-
-          // 如果是自定义图片模式，加载图片信息
-          if (config.currentMode === 'custom-image' && config.customImage) {
-            setCustomImageInfo(config.customImage);
-          }
-        }
-      } catch (error) {
-        console.error('App: 恢复显示模式失败', error);
-      }
-    };
-
-    restoreDisplayMode();
-  }, []);
-
-  // Live2D Widget配置
-  const live2dConfig: ModelConfig = {
-    waifuPath: './assets/waifu-tips.json', // 相对路径：兼容 file:// (Electron 生产) 与 dev server
-    cubism2Path: './assets/live2d.min.js', // 相对路径：兼容 file:// (Electron 生产) 与 dev server
-    tools: [
-      'switch-model',
-      'ai-chat',
-      'info',
-      'voice-settings',
-      'voice-mode-toggle', // 添加语音模式切换按钮
-      'tts-config', // 添加TTS配置按钮
-      'mode-switch', // 模式切换工具（Live2D、3D、自定义图片）
-      'cursor-mcp', // 添加Cursor MCP注入工具
-      'toggle-top',
-      'quit',
-    ],
-    logLevel: 'warn',
-    drag: true,
-  };
-
-  // 处理模式切换
-  const handleModeChange = (mode: RenderMode) => {
-    console.log(`App: 切换到${mode}模式`);
+  const handleModeChange = useCallback((mode: RenderMode) => {
     setCurrentMode(mode);
+    window.electronAPI?.setCurrentMode(mode).catch((error) => {
+      console.error('App: 保存模式配置失败', error);
+    });
+  }, []);
 
-    // 保存到配置
-    if (window.electronAPI) {
-      window.electronAPI.setCurrentMode(mode).catch((error) => {
-        console.error('App: 保存模式配置失败', error);
-      });
-    }
-  };
-
-  // 处理自定义图片信息变化
   const handleCustomImageChange = (imageInfo: CustomImageInfo | null) => {
-    console.log('App: 自定义图片信息变化', imageInfo);
     setCustomImageInfo(imageInfo);
-
-    // 保存到配置
     if (window.electronAPI) {
-      const config: DisplayModeConfig = {
-        currentMode: currentMode,
-        customImage: imageInfo || undefined,
-      };
-
+      const config: DisplayModeConfig = { currentMode, customImage: imageInfo || undefined };
       window.electronAPI.saveDisplayModeConfig(config).catch((error) => {
         console.error('App: 保存图片配置失败', error);
       });
@@ -111,95 +61,35 @@ const App: React.FC = () => {
 
   // 监听工具栏的模式切换事件
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
-    const handleModeSwitch = (event: any) => {
-      const { mode } = event.detail;
-      if (['live2d', '3d', 'custom-image'].includes(mode)) {
-        handleModeChange(mode);
-
-        // 通知ToolBar组件模式已切换完成
-        setTimeout(() => {
-          const completeEvent = new CustomEvent('mode-switch-complete', {
-            detail: { mode },
-          });
-          window.dispatchEvent(completeEvent);
-        }, 100);
-      }
+    const onSwitch = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode: string }>).detail?.mode;
+      if (mode !== '3d' && mode !== 'custom-image') return;
+      handleModeChange(mode);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('mode-switch-complete', { detail: { mode } }));
+      }, 100);
     };
-
-    window.addEventListener('mode-switch', handleModeSwitch);
-    return () => {
-      window.removeEventListener('mode-switch', handleModeSwitch);
-    };
-  }, []); // 移除currentMode依赖，避免重复注册
+    window.addEventListener('mode-switch', onSwitch);
+    return () => window.removeEventListener('mode-switch', onSwitch);
+  }, [handleModeChange]);
 
   return (
     <div className="app" style={{ width: '100%', height: '100vh', position: 'relative' }}>
-      {/* 角色渲染 */}
-      {currentMode === 'live2d' && (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            position: 'relative',
-            /* 移除transform，在Live2D内部处理定位 */
-          }}
-        >
-          <Live2dWidget config={live2dConfig} />
-        </div>
-      )}
-
-      {currentMode === '3d' && enable3D && (
-        <Live2DProvider config={live2dConfig}>
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              position: 'relative',
-              /* 移除transform，使用内部定位 */
-            }}
-          >
-            {/* 3D角色 */}
-            <Suspense fallback={null}>
-              <VirtualCharacter3D
-                enableMCPIntegration={true}
-                enableVoiceSync={true}
-                enableControls={process.env.NODE_ENV === 'development'}
-                transparent={true}
-                onReady={() => console.log('App: 3D角色就绪')}
-                onError={(error) => console.error('App: 3D角色错误:', error)}
-                style={{
-                  transform: 'translateX(-40px)' /* 3D角色也稍微左移以配合布局 */,
-                }}
-              />
-            </Suspense>
-            {/* 独立的工具栏，在3D模式下也显示 */}
-            <ToolBar />
-          </div>
-        </Live2DProvider>
-      )}
-
-      {currentMode === 'custom-image' && (
-        <Live2DProvider config={live2dConfig}>
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              position: 'relative',
-            }}
-          >
-            {/* 自定义图片管理器 */}
+      <MascotProvider config={MASCOT_CONFIG}>
+        {currentMode === '3d' ? (
+          <MascotHost />
+        ) : (
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             <Suspense fallback={null}>
               <CustomImageManager
                 onModeChange={handleModeChange}
                 onImageChange={handleCustomImageChange}
               />
             </Suspense>
-            {/* 独立的工具栏，在自定义图片模式下也显示 */}
             <ToolBar />
           </div>
-        </Live2DProvider>
-      )}
+        )}
+      </MascotProvider>
     </div>
   );
 };

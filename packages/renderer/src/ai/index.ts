@@ -1,7 +1,7 @@
 export { default as WaifuAIRoot } from './WaifuAIRoot';
 export { default as WaifuLipSyncBridge } from './WaifuLipSyncBridge';
 export { default as WaifuAgentBubbleBridge } from './WaifuAgentBubbleBridge';
-export { default as WaifuLive2dSceneReporter } from './WaifuLive2dSceneReporter';
+export { default as WaifuMascotSceneReporter } from './WaifuMascotSceneReporter';
 export { lipSyncStore } from './lipSyncStore';
 export type { LipSyncListener } from './lipSyncStore';
 export { waifuSceneStore } from './waifuSceneStore';
@@ -19,7 +19,7 @@ export type {
   BubbleAgentStep,
   BubbleDirective,
   BubbleEvent,
-  BubbleLive2dTouch,
+  BubbleMascotTouch,
   BubbleMessage,
   BubbleMessageComplete,
   BubbleMessagePart,

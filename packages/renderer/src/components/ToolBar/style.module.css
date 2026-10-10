@@ -2,7 +2,7 @@
 .toolbar {
   position: fixed;
   top: 50%;
-  right: 10px; /* 增加右边距，避免与Live2D重叠 */
+  right: 10px; /* 增加右边距，避免与角色重叠 */
   z-index: 99999; /* 提高层级，确保在所有元素之上 */
   display: none;
   transform: translateY(-50%); /* 垂直居中 */

@@ -2,7 +2,7 @@
 
 > 版本：v2.2 · 2026-09-01
 > 状态：待评审（评审通过后进入实施）
-> 范围：**直接依赖开源 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 作为 AI 基座**（不再自研 Layer 0），新增 3 个共享包（ai-sdk / ai-runtime / ai-sdk-client）+ 3 个 dsh bundle 插件（`bundle-ig-base` / `bundle-ig-live2d` / `bundle-ig-electron-caps`）+ 3 份 profile，改造 ai-chat / renderer / electron 三个消费方
+> 范围：**直接依赖开源 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 作为 AI 基座**（不再自研 Layer 0），新增 3 个共享包（ai-sdk / ai-runtime / ai-sdk-client）+ 3 个 dsh bundle 插件（`bundle-ig-base` / `bundle-ig-mascot` / `bundle-ig-electron-caps`）+ 3 份 profile，改造 ai-chat / renderer / electron 三个消费方
 > 更新记录：
 > - v2.2：**放弃自研 mini-Cordis，改为完整使用开源 `@deepseek-ai/dsh` 作为 AI 基座**；本项目只贡献 dsh bundle + profile + seam provider；`ai-sdk/runtime/sdk-client` 三层退化为"业务门面 + Electron 桥接 + 渲染 IPC 代理"薄层
 > - v2.1：引入 `ai-kernel` 基座层（Layer 0），借鉴 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 Cordis 内核（自研版）
@@ -203,7 +203,7 @@
 | 类别 | 交付物 | 数量 | 说明 |
 |---|---|---|---|
 | **新增 Seam** | `ctx.live2d` / `ctx.screen` / `ctx.clipboard` / `ctx.mcp` 的接口 + provider | 4 | dsh 无对应 seam，我们定义接口并在对应环境提供实现 |
-| **Bundle 插件包** | `bundle-ig-base` / `bundle-ig-live2d` / `bundle-ig-electron-caps` | 3 | 每个 bundle 是一个 npm 包，`package.json` 带 `dsh.bundle` 字段 |
+| **Bundle 插件包** | `bundle-ig-base` / `bundle-ig-mascot` / `bundle-ig-electron-caps` | 3 | 每个 bundle 是一个 npm 包，`package.json` 带 `dsh.bundle` 字段 |
 | **Profile 组合** | `waifu.yml` / `chat-only.yml` / `mcp-headless.yml` | 3 | 声明 bundles 顺序 + patch 覆盖 |
 | **Runtime 桥接** | `ai-runtime` 里用 `dsh.boot(profile)` 装配 + `registerIpcHandlers(ctx)` 把 ctx 桥给渲染进程 | 1 层 | 无内核代码，只有 IPC 序列化 |
 
@@ -213,7 +213,7 @@
 
 | Seam Key | 接口 | 默认 provider 所在 bundle | 消费方 |
 |---|---|---|---|
-| `ctx.live2d` | `playMotion / setExpression / driveLipSync(rms)` | `bundle-ig-live2d`（在 renderer 环境注册） | Agent 工具、TTS 联动 |
+| `ctx.live2d` | `playMotion / setExpression / driveLipSync(rms)` | `bundle-ig-mascot`（在 renderer 环境注册） | Agent 工具、TTS 联动 |
 | `ctx.screen` | `capture(region?) → {filepath, base64}` | `bundle-ig-electron-caps`（主进程） | Vision 工具、快捷键 |
 | `ctx.clipboard` | `readImage() / readText() / watch()` | `bundle-ig-electron-caps` | 被动上下文注入 |
 | `ctx.mcp` | `listTools() / callTool(name, args)` | `bundle-ig-base`（桥接现有 MCP Server） | Agent 工具集 |
@@ -236,7 +236,7 @@
 {
   "dependencies": {
     "@deepseek-ai/dsh": "^0.1.2-alpha.2",   // 仅用类型和 seam key
-    "@ig-live/bundle-ig-live2d": "workspace:*",
+    "@ig-live/bundle-ig-mascot": "workspace:*",
     "@ig-live/ai-sdk-client": "workspace:*"
   }
 }
@@ -270,7 +270,7 @@ npx dsh doctor                            # dsh 自带健康检查
 
 **总览**：**AI 内核直接使用 npm 包 [`@deepseek-ai/dsh`](https://github.com/deepseek-ai/deepseek-harness)（Layer 0，第三方依赖，不占本仓库代码量）**。本仓库新增：
 
-- **3 个 dsh bundle 包**（Layer 0.5，业务插件）：`bundle-ig-base` / `bundle-ig-live2d` / `bundle-ig-electron-caps`
+- **3 个 dsh bundle 包**（Layer 0.5，业务插件）：`bundle-ig-base` / `bundle-ig-mascot` / `bundle-ig-electron-caps`
 - **3 个 workspace 包**（Layer 1~3，业务门面）：`ai-sdk` / `ai-runtime` / `ai-sdk-client`
 - **3 份 profile YAML**：`waifu` / `chat-only` / `mcp-headless`
 
@@ -317,10 +317,10 @@ packages/bundle-ig-base/                  ⭐ 新建 dsh bundle 包（跨环境�
 └── tests/
 ```
 
-### 3.0.2 新建 packages/bundle-ig-live2d（dsh bundle · 看板娘专用）
+### 3.0.2 新建 packages/bundle-ig-mascot（dsh bundle · 看板娘专用）
 
 ```
-packages/bundle-ig-live2d/                ⭐ 只在 renderer 环境加载
+packages/bundle-ig-mascot/                ⭐ 只在 renderer 环境加载
 ├── package.json                           "dsh": { "bundle": "./dist/patch.yml" }
 ├── src/
 │   ├── index.ts                           export default definePlugin({...})
@@ -377,7 +377,7 @@ name: waifu
 bundles:
   - dsh-base                                        # dsh 自带
   - '@ig-live/bundle-ig-base'                       # 本仓库
-  - '@ig-live/bundle-ig-live2d'                     # 本仓库
+  - '@ig-live/bundle-ig-mascot'                     # 本仓库
   - '@ig-live/bundle-ig-electron-caps'              # 本仓库
 patch:                                              # row id 覆盖
   - id: llm.default
@@ -453,7 +453,7 @@ const ctx = await boot({ profile: 'waifu', home: app.getPath('userData') + '/dsh
 └──────────────────────┬────────────────────────────────┘
                        │ 依赖
 ┌──────────────────────▼────────────────────────────────┐
-│  Layer 0.5 · bundle-ig-base / bundle-ig-live2d /      │
+│  Layer 0.5 · bundle-ig-base / bundle-ig-mascot /      │
 │              bundle-ig-electron-caps（本仓库 bundle）  │
 └──────────────────────┬────────────────────────────────┘
                        │ 依赖（peerDependency）
@@ -464,7 +464,7 @@ const ctx = await boot({ profile: 'waifu', home: app.getPath('userData') + '/dsh
 └───────────────────────────────────────────────────────┘
 ```
 
-**依赖方向**：`ai-sdk-client → ai-sdk → { bundle-ig-* } → @deepseek-ai/dsh`；`ai-runtime → { ai-sdk, bundle-ig-base, bundle-ig-electron-caps, @deepseek-ai/dsh }`；`renderer → { ai-sdk-client, bundle-ig-live2d }`。
+**依赖方向**：`ai-sdk-client → ai-sdk → { bundle-ig-* } → @deepseek-ai/dsh`；`ai-runtime → { ai-sdk, bundle-ig-base, bundle-ig-electron-caps, @deepseek-ai/dsh }`；`renderer → { ai-sdk-client, bundle-ig-mascot }`。
 
 ---
 
@@ -1678,7 +1678,7 @@ userData/
 | **P1** | L0 | dsh 基座接入 | P0 | `@deepseek-ai/dsh`（npm 依赖）+ [profiles/](../profiles) |
 | **P2** | L0.5 | Bundle 通用能力 | P1 | [bundle-ig-base](../packages/bundle-ig-base) |
 | **P3** | L0.5 | Bundle Electron 能力 | P2 | [bundle-ig-electron-caps](../packages/bundle-ig-electron-caps) |
-| **P4** | L0.5 | Bundle 看板娘能力 | P2 | [bundle-ig-live2d](../packages/bundle-ig-live2d) |
+| **P4** | L0.5 | Bundle 看板娘能力 | P2 | [bundle-ig-mascot](../packages/bundle-ig-mascot) |
 | **P5** | L1 | ai-sdk 业务门面 | P2 | [packages/ai-sdk](../packages/ai-sdk) |
 | **P6** | L2 | ai-runtime 主进程运行时 | P3 + P5 | [packages/ai-runtime](../packages/ai-runtime) |
 | **P7** | L3 | ai-sdk-client 渲染薄层 | P5 + P6 | [packages/ai-sdk-client](../packages/ai-sdk-client) |
@@ -1770,10 +1770,10 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P4-1 | 包骨架 + `patch.yml` | 可 `boot` |
-| P4-2 | [Live2dSeamPlugin](../packages/bundle-ig-live2d/src/plugins/Live2dSeamPlugin.ts)：`playMotion / setExpression / driveLipSync(rms)` + `ctx.live2d` seam | 渲染实现 |
-| P4-3 | [TouchInjectPlugin](../packages/bundle-ig-live2d/src/plugins/TouchInjectPlugin.ts)：Live2D 触摸 → `ctx.agents.inject(sensory part)` | 触摸感知 |
-| P4-4 | [TtsLipSyncPlugin](../packages/bundle-ig-live2d/src/plugins/TtsLipSyncPlugin.ts)：订阅 `tts:chunk` → 嘴型 | 联动就绪 |
-| P4-5 | [WaifuAgentPresetPlugin](../packages/bundle-ig-live2d/src/plugins/WaifuAgentPresetPlugin.ts) + [WaifuToolsPlugin](../packages/bundle-ig-live2d/src/plugins/WaifuToolsPlugin.ts)：`live2d_play_motion` / `live2d_set_expression` | 看板娘 agent + 工具 |
+| P4-2 | [Live2dSeamPlugin](../packages/bundle-ig-mascot/src/plugins/Live2dSeamPlugin.ts)：`playMotion / setExpression / driveLipSync(rms)` + `ctx.live2d` seam | 渲染实现 |
+| P4-3 | [TouchInjectPlugin](../packages/bundle-ig-mascot/src/plugins/TouchInjectPlugin.ts)：Live2D 触摸 → `ctx.agents.inject(sensory part)` | 触摸感知 |
+| P4-4 | [TtsLipSyncPlugin](../packages/bundle-ig-mascot/src/plugins/TtsLipSyncPlugin.ts)：订阅 `tts:chunk` → 嘴型 | 联动就绪 |
+| P4-5 | [WaifuAgentPresetPlugin](../packages/bundle-ig-mascot/src/plugins/WaifuAgentPresetPlugin.ts) + [WaifuToolsPlugin](../packages/bundle-ig-mascot/src/plugins/WaifuToolsPlugin.ts)：`live2d_play_motion` / `live2d_set_expression` | 看板娘 agent + 工具 |
 | P4-6 | 渲染端单测（jsdom + 假 canvas） | 覆盖率达标 |
 
 **退出准则**：`waifu.yml` 加载后 `ctx.live2d.playMotion('idle')` 有反馈；工具在 `ctx.tools.list()` 中可见。
@@ -1842,7 +1842,7 @@ userData/
 | # | 任务 | 交付物 |
 |---|---|---|
 | P8-1 | [ai-chat](../packages/ai-chat)：删除 [AIService](../packages/ai-chat/src/services/AIService.ts) 与 [AdapterFactory](../packages/ai-chat/src/services/adapters/AdapterFactory.ts)，全面切换到 `useChat / useAgent / useUserProfile` | 无历史死代码 |
-| P8-2 | [renderer](../packages/renderer)：挂载 bundle-ig-live2d，接入 `useWaifuAgent` + `useTTSLipSync` | 看板娘可发起 agent |
+| P8-2 | [renderer](../packages/renderer)：挂载 bundle-ig-mascot，接入 `useWaifuAgent` + `useTTSLipSync` | 看板娘可发起 agent |
 | P8-3 | [electron 主进程](../packages/electron)：在 `app.whenReady` 里初始化 `AIRuntimeService.boot('waifu')`；旧 [AiChatIpcHandler](../packages/electron/src/handlers/ipc/AiChatIpcHandler.ts) 迁移到 IPCTransportServer | 单入口 |
 | P8-4 | UI 补齐：ConfigPanel 增加"用户偏好"面板（读写 `ctx.userProfile`）；ProviderPicker 顶部快切 | 用户可编辑画像 |
 | P8-5 | 首次启动向导（下载本地模型、授权、测试连接） | 新用户可自助初始化 |

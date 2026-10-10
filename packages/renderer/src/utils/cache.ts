@@ -3,8 +3,9 @@
  * @module cache
  */
 
+import { type IpcApi } from '@ig-live/types';
+
 import logger from './logger';
-import { IpcApi } from '@ig-live/types';
 
 // 声明全局电子API类型
 declare global {
@@ -16,7 +17,7 @@ declare global {
 /**
  * 缓存前缀
  */
-const CACHE_PREFIX = 'live2d_';
+const CACHE_PREFIX = 'mascot_';
 
 /**
  * 从缓存获取数据，优先尝试Electron API
@@ -116,7 +117,7 @@ export async function removeCache(key: string): Promise<boolean> {
 }
 
 /**
- * 清除所有Live2D相关的缓存
+ * 清除所有看板娘相关的缓存
  * @returns 是否成功
  */
 export async function clearAllCache(): Promise<boolean> {
@@ -133,7 +134,7 @@ export async function clearAllCache(): Promise<boolean> {
     success = false;
   }
 
-  // 清除localStorage中的所有Live2D数据
+  // 清除localStorage中的所有看板娘数据
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -148,4 +149,4 @@ export async function clearAllCache(): Promise<boolean> {
   }
 
   return success;
-} 
+}

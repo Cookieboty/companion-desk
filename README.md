@@ -1,12 +1,12 @@
 # Companion Desk
 
-> A local-first desktop AI assistant, with an optional Live2D desktop companion.
+> A local-first desktop AI assistant, with an optional 3D (VRM) desktop companion.
 
 Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
 [`@ig-live/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供（可选的
 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 仅保留给 doctor / 实验），
 可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
-Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示、换装、语音与口型同步，但不再是产品核心。
+桌面伙伴（看板娘）是**可选**的形象层：开源 VRM 3D 角色、表情、语音与口型同步，但不是产品核心。
 
 ## 🚀 项目特点
 
@@ -14,7 +14,7 @@ Live2D 桌面伙伴（看板娘）是**可选**的形象层：保留模型展示
 - 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
 - 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
 - 🧩 **可扩展宿主** - IgPluginHost profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包 + Vercel AI SDK providers，MCP 桥接
-- 🎭 **可选 Live2D 桌面伙伴** - Live2D Cubism 模型展示、动画互动、换装、TTS 口型同步
+- 🎭 **可选 3D 桌面伙伴** - 开源 VRM 角色（内置 5 个 CC0 VRoid 模型，可切换）、表情、眨眼/视线、TTS 口型同步
 - 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
 - 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
 - 📦 **工程化管理** - pnpm workspace + Turborepo，Vitest / Jest / Playwright 全链路测试
@@ -108,14 +108,12 @@ companion-desk/
 │   │   │   ├── services/  # 业务服务
 │   │   │   │   └── VoiceService.ts # 语音服务核心
 │   │   │   ├── hooks/     # React Hooks
-│   │   │   └── live2d/    # Live2D相关代码
+│   │   │   └── mascot/    # 看板娘后端抽象（MascotBackend）+ VRM 实现
 │   │   └── package.json
 │   └── types/             # 共享类型定义
 │       └── index.ts       # IPC API类型定义
 ├── scripts/               # 构建和工具脚本
 ├── tasks/                 # 开发任务记录
-├── assets/                # 静态资源
-│   └── voice/             # 语音文件和配置
 ├── design/                # 设计资源
 ├── pnpm-workspace.yaml    # 工作区配置
 ├── turbo.json            # Turborepo配置
@@ -147,7 +145,6 @@ pnpm dev
 - React开发服务器 (Vite)
 - Electron应用
 - TypeScript编译监听
-- 模型列表自动生成
 
 开发模式下支持热重载，修改代码后应用会自动更新。
 
@@ -201,14 +198,13 @@ pnpm package:debug
 - **防重复播报** - 30分钟内不会重复播报相同内容
 - **整点播报** - 每小时整点时播放特殊提示音
 
-### Live2D模型系统
+### 看板娘（VRM 3D）
 
-- **模型加载** - 支持本地和远程模型加载
-- **动画播放** - 支持待机、触摸等各种动画
-- **换装系统** - 支持模型服装和配饰切换
-- **物理效果** - 支持Live2D物理引擎
-- **表情控制** - 支持表情参数调节
-- **模型互动** - 支持鼠标点击和触摸互动
+- **开源渲染栈** - three.js + @pixiv/three-vrm（MIT），通过 `MascotBackend` 抽象接入，可扩展其他开源后端
+- **内置角色** - 5 个 pixiv VRoid CC0 样例模型；工具栏「切换角色」左键切到下一个，右键打开角色列表
+- **口型同步** - TTS 音量包络驱动 VRM `aa`/`oh` 表情
+- **表情** - 聊天 / Agent / 工具事件驱动 happy / angry / sad / relaxed，并有随机眨眼、呼吸、视线跟随鼠标
+- **添加模型** - 把 `.vrm` 放进 `packages/renderer/public/assets/models/vrm/` 并在 `model-list.json` 中登记许可信息
 
 ### 窗口管理
 
@@ -226,41 +222,12 @@ pnpm package:debug
 
 ## 🎨 语音配置
 
-### 语音文件结构
+### 键盘关键词台词
 
-```
-assets/voice/
-├── contributes.json       # 语音配置文件
-├── function/             # 函数相关语音
-├── condition/            # 条件语句语音
-├── loop/                 # 循环语句语音
-├── async/                # 异步操作语音
-├── greeting/             # 问候语音
-└── time/                 # 时间播报语音
-```
-
-### 语音配置示例
-
-`contributes.json` 配置文件定义了关键词和对应的语音文件：
-
-```json
-{
-  "contributes": [
-    {
-      "keywords": ["function", "def", "func"],
-      "voices": ["function/voice1.mp3", "function/voice2.mp3"]
-    },
-    {
-      "keywords": ["if", "else", "elif"],
-      "voices": ["condition/voice1.mp3", "condition/voice2.mp3"]
-    },
-    {
-      "keywords": ["$time_morning"],
-      "voices": ["greeting/morning1.mp3", "greeting/morning2.mp3"]
-    }
-  ]
-}
-```
+「固定语音」模式下，输入代码关键词（`function` / `if` / `for` / `await` …）或到达特定时段时，
+看板娘会在气泡里说一句台词，并用系统自带语音（Web Speech API）朗读。台词是项目原创文本，
+定义在 [packages/renderer/src/mascot/tips.ts](packages/renderer/src/mascot/tips.ts)（`KEYWORD_LINES` / `TIME_GREETINGS`）。
+旧版的第三方 mp3 语音包因许可不明已移除；「TTS」模式仍可接入你自己的 TTS 服务。
 
 ### 语音设置
 
@@ -290,7 +257,7 @@ assets/voice/
 
 - 为观众提供有趣的互动元素
 - 语音反馈让直播更加生动
-- Live2D模型增加视觉吸引力
+- 3D 角色增加视觉吸引力
 
 ## 🔧 配置说明
 
@@ -315,14 +282,12 @@ assets/voice/
 
 1. 在对应的包中添加代码
 2. 更新类型定义 (`packages/types`)
-3. 更新语音配置文件（如需要）
-4. 更新文档
+3. 更新文档
 
 ### 添加新的语音关键词
 
-1. 在 `assets/voice/contributes.json` 中添加关键词配置
-2. 准备对应的语音文件
-3. 重启应用以加载新配置
+1. 在 `packages/renderer/src/mascot/tips.ts` 的 `KEYWORD_LINES` 中添加关键词与台词
+2. 重新构建 renderer
 
 ### 调试技巧
 
@@ -374,7 +339,7 @@ import { AIProvider, useChat, useTTSLipSync } from '@ig-live/ai-sdk-client';
 
 function ChatBox() {
   const { messages, send, streaming } = useChat();
-  const rms = useTTSLipSync(); // 0..1，可直接喂给 Live2D setMouthOpenY
+  const rms = useTTSLipSync(); // 0..1，可直接喂给看板娘口型（VRM `aa` 表情）
   return (
     <div>
       {messages.map((m) => (
@@ -428,7 +393,8 @@ for await (const chunk of runtime.client.chat.stream({
 
 ### 核心技术与框架
 
-- [Live2D Widget](https://github.com/stevenjoezhang/live2d-widget) - 提供了Web端Live2D模型展示的核心实现
+- [three.js](https://threejs.org/) 与 [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) - 3D 渲染与 VRM 支持（MIT）
+- [VRoid Project](https://vroid.com/) - 内置的 CC0 样例角色模型
 - [Electron](https://www.electronjs.org/) - 跨平台桌面应用开发框架
 - [React](https://reactjs.org/) - 用户界面库
 - [TypeScript](https://www.typescriptlang.org/) - 类型安全的JavaScript超集
@@ -447,29 +413,18 @@ for await (const chunk of runtime.client.chat.stream({
 
 ### 特别致谢
 
-- [stevenjoezhang (Mimi)](https://github.com/stevenjoezhang) - Live2D Widget的原作者，提供了优秀的Web端实现
-- [fghrsh](https://www.fghrsh.net/post/123.html) - 提供了最初的Live2D实现思路和API服务
 - [一言](https://hitokoto.cn) - 提供了句子API服务
-- [Live2D Inc.](https://www.live2d.com/) - 开发了Live2D技术和Cubism SDK
 
 感谢所有开源社区的贡献者，他们的工作使本项目成为可能。本项目站在巨人的肩膀上，没有这些优秀的开源项目和社区支持，将无法实现。
 
 ## 📄 许可证
 
-本仓库并不包含任何模型，用作展示的所有 Live2D 模型、图片、动作数据等版权均属于其原作者，仅供研究学习，不得用于商业用途。
+本仓库代码基于 MIT 协议开源。随应用分发的所有第三方组件与资源（依赖、VRM 模型、图标、音效）
+都使用开源许可，清单见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；资源许可登记在
+[assets-licenses.json](assets-licenses.json)，CI 通过 `pnpm check:licenses` 强制校验。
 
-本仓库的代码（不包括受 Live2D Proprietary Software License 和 Live2D Open Software License 约束的部分）基于 MIT 协议开源。
-
-Live2D 相关代码的使用请遵守对应的许可：
-
-**Live2D Cubism SDK 2.1 的许可证：**  
-[Live2D SDK License Agreement (Public)](https://docs.google.com/document/d/10tz1WrycskzGGBOhrAfGiTSsgmyFy8D9yHx9r_PsN8I/)
-
-**Live2D Cubism SDK 5 的许可证：**  
-Live2D Cubism Core は Live2D Proprietary Software License で提供しています。  
-https://www.live2d.com/eula/live2d-proprietary-software-license-agreement_cn.html  
-Live2D Cubism Components は Live2D Open Software License で提供しています。  
-https://www.live2d.com/eula/live2d-open-software-license-agreement_cn.html
+> 历史：早期版本使用 Live2D Cubism 2 专有运行时与来源不明的 Live2D 模型，已因许可原因全部移除
+> （见 [docs/plans/mascot-open-source.md](docs/plans/mascot-open-source.md)）。
 
 ---
 

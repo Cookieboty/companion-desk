@@ -3,15 +3,23 @@
  * 处理应用配置、模型配置等相关的IPC通信
  */
 
-import { app } from 'electron';
-import path from 'path';
 import fs from 'fs';
-import https from 'https';
 import http from 'http';
+import https from 'https';
+import path from 'path';
+
+import {
+  type TTSConfig,
+  type TTSTestResult,
+  type DisplayModeConfig,
+  type RenderMode,
+} from '@ig-live/types';
+import { app } from 'electron';
+
+import { type IConfigService, type VoiceSettings } from '../../services/ConfigService';
+import { type ILoggerService } from '../../services/LoggerService';
+
 import { BaseIpcHandler } from './BaseIpcHandler';
-import { ILoggerService } from '../../services/LoggerService';
-import { IConfigService, VoiceSettings } from '../../services/ConfigService';
-import { TTSConfig, TTSTestResult, DisplayModeConfig, RenderMode } from '@ig-live/types';
 
 export class ConfigIpcHandler extends BaseIpcHandler {
   private configService: IConfigService;
@@ -42,7 +50,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置更新成功', { updates });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置更新失败', { error: error instanceof Error ? error.message : String(error), updates });
+        this.logger.error('配置更新失败', {
+          error: error instanceof Error ? error.message : String(error),
+          updates,
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -66,7 +77,11 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置项更新成功', { key, value });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置项更新失败', { error: error instanceof Error ? error.message : String(error), key, value });
+        this.logger.error('配置项更新失败', {
+          error: error instanceof Error ? error.message : String(error),
+          key,
+          value,
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -78,7 +93,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置重新加载成功');
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置重新加载失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('配置重新加载失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -89,12 +106,17 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
       try {
         this.configService.set('modelName', modelName);
-        this.configService.save().catch(error => {
-          this.logger.error('保存模型配置失败', { error: error instanceof Error ? error.message : String(error) });
+        this.configService.save().catch((error) => {
+          this.logger.error('保存模型配置失败', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
         this.logger.info('模型配置已保存', { modelName });
       } catch (error) {
-        this.logger.error('保存模型配置失败', { error: error instanceof Error ? error.message : String(error), modelName });
+        this.logger.error('保存模型配置失败', {
+          error: error instanceof Error ? error.message : String(error),
+          modelName,
+        });
       }
     });
 
@@ -116,13 +138,18 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         const updatedSettings = { ...currentSettings, ...settings };
 
         this.configService.set('voiceSettings', updatedSettings);
-        this.configService.save().catch(error => {
-          this.logger.error('保存语音设置失败', { error: error instanceof Error ? error.message : String(error) });
+        this.configService.save().catch((error) => {
+          this.logger.error('保存语音设置失败', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
 
         this.logger.info('语音设置已保存', { settings: updatedSettings });
       } catch (error) {
-        this.logger.error('保存语音设置失败', { error: error instanceof Error ? error.message : String(error), settings });
+        this.logger.error('保存语音设置失败', {
+          error: error instanceof Error ? error.message : String(error),
+          settings,
+        });
       }
     });
 
@@ -132,14 +159,17 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     this.registerHandler('get-display-mode-config', async () => {
       try {
         const config = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: 'live2d' as RenderMode
+          currentMode: '3d' as RenderMode,
         });
 
         this.logger.debug('获取显示模式配置', { config });
-        return config;
+        // 旧版本保存的 'live2d'（已移除）归一化为 '3d'
+        return { ...config, currentMode: normalizeRenderMode(config.currentMode) };
       } catch (error) {
-        this.logger.error('获取显示模式配置失败', { error: error instanceof Error ? error.message : String(error) });
-        return { currentMode: 'live2d' as RenderMode };
+        this.logger.error('获取显示模式配置失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return { currentMode: '3d' as RenderMode };
       }
     });
 
@@ -149,7 +179,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
       try {
         const currentConfig = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: 'live2d' as RenderMode
+          currentMode: '3d' as RenderMode,
         });
 
         const updatedConfig = { ...currentConfig, ...config };
@@ -160,7 +190,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('显示模式配置已保存', { config: updatedConfig });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('保存显示模式配置失败', { error: error instanceof Error ? error.message : String(error), config });
+        this.logger.error('保存显示模式配置失败', {
+          error: error instanceof Error ? error.message : String(error),
+          config,
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -170,13 +203,13 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       this.validateArgs([mode], 1, ['string']);
 
       try {
-        const validModes: RenderMode[] = ['live2d', '3d', 'custom-image'];
+        const validModes: RenderMode[] = ['3d', 'custom-image'];
         if (!validModes.includes(mode)) {
           throw new Error(`无效的显示模式: ${mode}，支持的模式: ${validModes.join(', ')}`);
         }
 
         const currentConfig = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: 'live2d' as RenderMode
+          currentMode: '3d' as RenderMode,
         });
 
         const updatedConfig = { ...currentConfig, currentMode: mode };
@@ -187,7 +220,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('当前显示模式已设置', { mode });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('设置显示模式失败', { error: error instanceof Error ? error.message : String(error), mode });
+        this.logger.error('设置显示模式失败', {
+          error: error instanceof Error ? error.message : String(error),
+          mode,
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -196,14 +232,16 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     this.registerHandler('get-current-mode', async () => {
       try {
         const config = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: 'live2d' as RenderMode
+          currentMode: '3d' as RenderMode,
         });
 
         this.logger.debug('获取当前显示模式', { mode: config.currentMode });
-        return config.currentMode;
+        return normalizeRenderMode(config.currentMode);
       } catch (error) {
-        this.logger.error('获取当前显示模式失败', { error: error instanceof Error ? error.message : String(error) });
-        return 'live2d' as RenderMode;
+        this.logger.error('获取当前显示模式失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return '3d' as RenderMode;
       }
     });
 
@@ -217,7 +255,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         platform: process.platform,
         arch: process.arch,
         electronVersion: process.versions.electron,
-        nodeVersion: process.versions.node
+        nodeVersion: process.versions.node,
       };
 
       this.logger.debug('获取应用信息', { appInfo });
@@ -232,7 +270,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置已重置为默认值');
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('重置配置失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('重置配置失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -244,7 +284,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置备份成功', { backupPath });
         return this.createSuccessResponse(backupPath);
       } catch (error) {
-        this.logger.error('配置备份失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('配置备份失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -258,10 +300,12 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.debug('配置验证结果', { validation });
         return validation;
       } catch (error) {
-        this.logger.error('配置验证失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('配置验证失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return {
           isValid: false,
-          errors: [error instanceof Error ? error.message : String(error)]
+          errors: [error instanceof Error ? error.message : String(error)],
         };
       }
     });
@@ -280,13 +324,15 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         const exportData = {
           config,
           timestamp: new Date().toISOString(),
-          appVersion: app.getVersion()
+          appVersion: app.getVersion(),
         };
 
         this.logger.info('配置导出成功');
         return this.createSuccessResponse(exportData);
       } catch (error) {
-        this.logger.error('配置导出失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('配置导出失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -313,7 +359,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('配置导入成功', { timestamp: importData.timestamp });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('配置导入失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('配置导入失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -322,7 +370,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     this.initializeTTSHandlers();
 
     this.logger.info('ConfigIpcHandler 初始化完成', {
-      registeredChannels: this.getRegisteredChannels().length
+      registeredChannels: this.getRegisteredChannels().length,
     });
   }
 
@@ -344,7 +392,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.debug('TTS配置文件不存在');
         return null;
       } catch (error) {
-        this.logger.error('获取TTS配置失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('获取TTS配置失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return null;
       }
     });
@@ -363,7 +413,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         // 添加时间戳
         const configWithTimestamp = {
           ...config,
-          lastModified: Date.now()
+          lastModified: Date.now(),
         };
 
         // 保存到文件
@@ -372,7 +422,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.info('TTS配置保存成功', { config: configWithTimestamp });
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('TTS配置保存失败', { error: error instanceof Error ? error.message : String(error), config });
+        this.logger.error('TTS配置保存失败', {
+          error: error instanceof Error ? error.message : String(error),
+          config,
+        });
         return this.createErrorResponse(error);
       }
     });
@@ -388,7 +441,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
         const testResult: TTSTestResult = {
           ...result,
-          latency
+          latency,
         };
 
         this.logger.info('TTS连接测试完成', { testResult });
@@ -399,7 +452,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
         return {
           success: false,
-          message: `连接测试失败: ${errorMessage}`
+          message: `连接测试失败: ${errorMessage}`,
         } as TTSTestResult;
       }
     });
@@ -413,81 +466,84 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         }
         return this.createSuccessResponse();
       } catch (error) {
-        this.logger.error('重置TTS配置失败', { error: error instanceof Error ? error.message : String(error) });
+        this.logger.error('重置TTS配置失败', {
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createErrorResponse(error);
       }
     });
 
     // 测试TTS语音播放
-    this.registerHandler('test-tts-voice', async (_, testConfig: TTSConfig & { testText: string }) => {
-      this.validateArgs([testConfig], 1, ['object']);
-
-      try {
-        // 验证配置
-        const validation = this.validateTTSConfig(testConfig);
-        if (!validation.isValid) {
-          throw new Error(`TTS配置验证失败: ${validation.errors.join(', ')}`);
-        }
-
-        // 创建VoiceService实例进行测试
-        const { VoiceService } = await import('../../mcp/services/VoiceService');
-        const voiceService = new VoiceService();
-
-        // 临时配置TTS设置用于测试
-        const { MCPConfigManager } = await import('../../mcp/config/MCPConfig');
-        const configManager = MCPConfigManager.getInstance();
-
-        // 备份当前配置
-        const originalConfig = configManager.getVoiceConfig();
+    this.registerHandler(
+      'test-tts-voice',
+      async (_, testConfig: TTSConfig & { testText: string }) => {
+        this.validateArgs([testConfig], 1, ['object']);
 
         try {
-          // 临时设置测试配置
-          configManager.updateVoiceMode('tts');
-          if (configManager.getVoiceConfig().ttsApiConfig) {
-            configManager.updateTTSApiConfig({
-              hostname: testConfig.hostname,
-              port: testConfig.port,
-              path: testConfig.path,
-              audioUrl: testConfig.audioUrl,
-              promptText: testConfig.promptText
-            });
-          } else {
-            // 如果没有现有配置，需要设置完整配置
-            const newConfig = { ...configManager.getVoiceConfig() };
-            newConfig.ttsApiConfig = {
-              hostname: testConfig.hostname,
-              port: testConfig.port,
-              path: testConfig.path,
-              audioUrl: testConfig.audioUrl,
-              promptText: testConfig.promptText
-            };
+          // 验证配置
+          const validation = this.validateTTSConfig(testConfig);
+          if (!validation.isValid) {
+            throw new Error(`TTS配置验证失败: ${validation.errors.join(', ')}`);
+          }
+
+          // 创建VoiceService实例进行测试
+          const { VoiceService } = await import('../../mcp/services/VoiceService');
+          const voiceService = new VoiceService();
+
+          // 临时配置TTS设置用于测试
+          const { MCPConfigManager } = await import('../../mcp/config/MCPConfig');
+          const configManager = MCPConfigManager.getInstance();
+
+          // 备份当前配置
+          const originalConfig = configManager.getVoiceConfig();
+
+          try {
+            // 临时设置测试配置
             configManager.updateVoiceMode('tts');
+            if (configManager.getVoiceConfig().ttsApiConfig) {
+              configManager.updateTTSApiConfig({
+                hostname: testConfig.hostname,
+                port: testConfig.port,
+                path: testConfig.path,
+                audioUrl: testConfig.audioUrl,
+                promptText: testConfig.promptText,
+              });
+            } else {
+              // 如果没有现有配置，需要设置完整配置
+              const newConfig = { ...configManager.getVoiceConfig() };
+              newConfig.ttsApiConfig = {
+                hostname: testConfig.hostname,
+                port: testConfig.port,
+                path: testConfig.path,
+                audioUrl: testConfig.audioUrl,
+                promptText: testConfig.promptText,
+              };
+              configManager.updateVoiceMode('tts');
+            }
+
+            // 执行语音测试
+            await voiceService.playTextToSpeech(testConfig.testText);
+
+            this.logger.info('TTS语音测试成功', { testText: testConfig.testText });
+            return { success: true, message: '语音测试成功' };
+          } finally {
+            // 恢复原始配置
+            configManager.updateVoiceMode(originalConfig.voiceMode);
+            if (originalConfig.ttsApiConfig) {
+              configManager.updateTTSApiConfig(originalConfig.ttsApiConfig);
+            }
           }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.error('TTS语音测试失败', { error: errorMessage, testConfig });
 
-          // 执行语音测试
-          await voiceService.playTextToSpeech(testConfig.testText);
-
-          this.logger.info('TTS语音测试成功', { testText: testConfig.testText });
-          return { success: true, message: '语音测试成功' };
-
-        } finally {
-          // 恢复原始配置
-          configManager.updateVoiceMode(originalConfig.voiceMode);
-          if (originalConfig.ttsApiConfig) {
-            configManager.updateTTSApiConfig(originalConfig.ttsApiConfig);
-          }
+          return {
+            success: false,
+            message: `语音测试失败: ${errorMessage}`,
+          };
         }
-
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error('TTS语音测试失败', { error: errorMessage, testConfig });
-
-        return {
-          success: false,
-          message: `语音测试失败: ${errorMessage}`
-        };
-      }
-    });
+      },
+    );
   }
 
   /**
@@ -542,7 +598,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -551,13 +607,16 @@ export class ConfigIpcHandler extends BaseIpcHandler {
    */
   private async testTTSConnection(config: TTSConfig): Promise<TTSTestResult> {
     return new Promise((resolve) => {
-      const protocol = config.hostname.includes('localhost') || config.hostname.includes('127.0.0.1') ? http : https;
+      const protocol =
+        config.hostname.includes('localhost') || config.hostname.includes('127.0.0.1')
+          ? http
+          : https;
 
       // 构建测试用的请求体
       const testData = JSON.stringify({
-        text: "TTS连接测试",
+        text: 'TTS连接测试',
         ref_audio_path: config.audioUrl,
-        prompt_text: config.promptText.substring(0, 100) // 截取前100个字符作为测试
+        prompt_text: config.promptText.substring(0, 100), // 截取前100个字符作为测试
       });
 
       const options = {
@@ -568,20 +627,20 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         timeout: 10000,
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(testData)
-        }
+          'Content-Length': Buffer.byteLength(testData),
+        },
       };
 
       const req = protocol.request(options, (res) => {
         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400) {
           resolve({
             success: true,
-            message: '连接成功，TTS服务可正常访问'
+            message: '连接成功，TTS服务可正常访问',
           });
         } else {
           resolve({
             success: false,
-            message: `服务器返回状态码: ${res.statusCode}`
+            message: `服务器返回状态码: ${res.statusCode}`,
           });
         }
       });
@@ -589,7 +648,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       req.on('error', (error) => {
         resolve({
           success: false,
-          message: `连接失败: ${error.message}`
+          message: `连接失败: ${error.message}`,
         });
       });
 
@@ -597,7 +656,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         req.destroy();
         resolve({
           success: false,
-          message: '连接超时'
+          message: '连接超时',
         });
       });
 
@@ -606,4 +665,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       req.end();
     });
   }
+}
+
+/** 旧版本的 'live2d'（已移除）及未知值归一化为 '3d'。 */
+export function normalizeRenderMode(mode: unknown): RenderMode {
+  return mode === 'custom-image' ? 'custom-image' : '3d';
 }
