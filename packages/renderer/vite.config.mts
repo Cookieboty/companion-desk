@@ -3,12 +3,31 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { mascotCspString } from './src/security/csp';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig({
   // 插件配置
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      // 生产构建：给看板娘窗口注入 CSP（开发模式 HMR 需要内联脚本，不注入）
+      name: 'mascot-csp',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html: string, ctx: { filename: string }) {
+          if (!/[\\/]index\.html$/.test(ctx.filename)) return html;
+          return html.replace(
+            '<meta charset="UTF-8">',
+            `<meta charset="UTF-8">\n    <meta http-equiv="Content-Security-Policy" content="${mascotCspString()}">`,
+          );
+        },
+      },
+    },
+  ],
 
   // 基础公共路径
   base: './',

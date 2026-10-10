@@ -1,626 +1,219 @@
-/* 现代空间化工具栏 - 2025年设计趋势 */
-.toolbar {
-  position: fixed;
-  top: 50%;
-  right: 10px; /* 增加右边距，避免与角色重叠 */
-  z-index: 99999; /* 提高层级，确保在所有元素之上 */
-  display: none;
-  transform: translateY(-50%); /* 垂直居中 */
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  -webkit-app-region: no-drag;
+/*
+ * 看板娘工具栏：磨砂玻璃 + 低饱和配色，无霓虹辉光。
+ * 三套配色通过 data-palette 切换；所有颜色只在这里定义。
+ */
+.root {
+  --tb-bg: rgba(30, 38, 52, 0.62);
+  --tb-pop-bg: rgba(30, 38, 52, 0.94);
+  --tb-border: rgba(226, 232, 240, 0.1);
+  --tb-fg: #d5dde8;
+  --tb-fg-muted: #a9b4c3;
+  --tb-hover: rgba(226, 232, 240, 0.09);
+  --tb-accent: #a8c4d6;
+  --tb-active-bg: rgba(141, 180, 200, 0.18);
+  --tb-ring: rgba(168, 196, 214, 0.75);
+  --tb-danger: #e7aaa6;
+  --tb-danger-bg: rgba(231, 170, 166, 0.12);
+  --tb-shadow: 0 6px 18px rgba(8, 12, 20, 0.22), 0 1px 2px rgba(8, 12, 20, 0.18);
 
-  /* 创建弧形容器 */
-  width: 130px; /* 适应60px按钮的更大宽度 */
-  height: auto;
-  min-height: 500px;
+  font-family: var(--cd-font-sans);
+  position: fixed;
+  /* 独立图层：高于画布 / 气泡，低于弹窗（--cd-z-modal） */
+  z-index: 99990;
+  isolation: isolate;
+  -webkit-app-region: no-drag;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0s linear 0s;
 }
 
-.visible {
-  display: flex;
+.root[data-palette='light'] {
+  --tb-bg: rgba(248, 250, 252, 0.74);
+  --tb-pop-bg: rgba(255, 255, 255, 0.96);
+  --tb-border: rgba(15, 23, 42, 0.09);
+  --tb-fg: #334155;
+  --tb-fg-muted: #5b6878;
+  --tb-hover: rgba(15, 23, 42, 0.06);
+  --tb-accent: #3f6587;
+  --tb-active-bg: rgba(63, 101, 135, 0.12);
+  --tb-ring: rgba(63, 101, 135, 0.6);
+  --tb-danger: #a8443f;
+  --tb-danger-bg: rgba(168, 68, 63, 0.08);
+  --tb-shadow: 0 6px 18px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.root[data-palette='warm'] {
+  --tb-bg: rgba(60, 47, 40, 0.64);
+  --tb-pop-bg: rgba(60, 47, 40, 0.95);
+  --tb-border: rgba(255, 236, 214, 0.12);
+  --tb-fg: #eddccb;
+  --tb-fg-muted: #c9b6a4;
+  --tb-hover: rgba(255, 236, 214, 0.09);
+  --tb-accent: #e5bb94;
+  --tb-active-bg: rgba(229, 187, 148, 0.18);
+  --tb-ring: rgba(229, 187, 148, 0.7);
+  --tb-danger: #eeaa9c;
+  --tb-danger-bg: rgba(238, 170, 156, 0.12);
+}
+
+.shown {
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
-  z-index: 99999; /* 与.toolbar保持一致的超高层级 */
-
-  /* 弧形排列动画 */
-  animation: spatialReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform: none;
 }
 
 .hidden {
-  display: none;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  animation: spatialHide 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform: translateX(6px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0s linear 0.25s;
+}
+.root[data-side='left'].hidden {
+  transform: translateX(-6px);
 }
 
-/* 按钮容器 - 弧形排列 */
-.toolbar .buttonContainer {
-  position: absolute;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 两排布局 - 左排（奇数按钮） */
-.toolbar .buttonContainer:nth-child(1) {
-  top: 20%;
-  right: 50px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(3) {
-  top: 32%;
-  right: 50px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(5) {
-  top: 44%;
-  right: 50px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(7) {
-  top: 56%;
-  right: 50px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(9) {
-  top: 68%;
-  right: 50px;
-  transform: translateX(0) rotate(0deg);
-}
-
-/* 两排布局 - 右排（偶数按钮） */
-.toolbar .buttonContainer:nth-child(2) {
-  top: 20%;
-  right: 0px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(4) {
-  top: 32%;
-  right: 0px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(6) {
-  top: 44%;
-  right: 0px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(8) {
-  top: 56%;
-  right: 0px;
-  transform: translateX(0) rotate(0deg);
-}
-
-.toolbar .buttonContainer:nth-child(10) {
-  top: 68%;
-  right: 0px;
-  transform: translateX(0) rotate(0deg);
-}
-
-/* 悬停时的两排展开效果 */
-/* 左排悬停效果（奇数按钮） */
-.toolbar:hover .buttonContainer:nth-child(1) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(3) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(5) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(7) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(9) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-/* 右排悬停效果（偶数按钮） */
-.toolbar:hover .buttonContainer:nth-child(2) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(4) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(6) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(8) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-.toolbar:hover .buttonContainer:nth-child(10) {
-  transform: translateX(-6px) rotate(0deg);
-}
-
-/* 增强可见性的现代化按钮设计 */
-.button {
-  width: 60px;
-  height: 60px;
-  border: none;
-  position: relative;
-  cursor: pointer;
+.bar {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1;
-  overflow: hidden;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  pointer-events: auto;
-  isolation: isolate;
-  -webkit-app-region: no-drag;
-
-  /* 现代几何形状 - 圆角矩形 */
-  border-radius: 18px;
-
-  /* 增强可见性的玻璃态背景 */
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-
-  /* 更明显的边框发光 */
-  border: 2px solid var(--cd-color-border-strong);
-
-  /* 增强的多层阴影系统 */
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 6px 20px var(--cd-color-border),
-    0 3px 10px rgba(59, 130, 246, 0.2),
-    inset 0 2px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--tb-border);
+  border-radius: 14px;
+  background: var(--tb-bg);
+  box-shadow: var(--tb-shadow);
+  backdrop-filter: blur(12px) saturate(115%);
 }
 
-/* 增强的动态发光边框 */
-.button::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(
-    45deg,
-    rgba(59, 130, 246, 0.8) 0%,
-    rgba(139, 92, 246, 0.8) 25%,
-    rgba(6, 182, 212, 0.8) 50%,
-    rgba(34, 197, 94, 0.8) 75%,
-    rgba(59, 130, 246, 0.8) 100%
-  );
-  border-radius: 20px;
-  z-index: -1;
-  opacity: 0.7;
-  transition: opacity 0.3s ease;
-  animation: borderPulse 3s ease-in-out infinite;
-}
-
-/* 增强的磁场效应 */
-.button::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%);
-  border-radius: var(--cd-radius-full);
-  transform: translate(-50%, -50%);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: -1;
-}
-
-/* 增强的悬停状态 - 空间感知 */
-.button:hover {
-  transform: translateY(-10px) scale(1.2);
-
-  /* 更强的玻璃效果 */
-  background: rgba(30, 41, 59, 0.98);
-  backdrop-filter: blur(35px);
-  -webkit-backdrop-filter: blur(35px);
-
-  /* 强化发光 */
-  border-color: rgba(59, 130, 246, 0.9);
-  box-shadow:
-    0 20px 80px rgba(0, 0, 0, 0.6),
-    0 12px 40px rgba(59, 130, 246, 0.5),
-    0 6px 20px rgba(59, 130, 246, 0.4),
-    0 3px 10px var(--cd-color-border),
-    inset 0 3px 0 rgba(255, 255, 255, 0.25);
-}
-
-.button:hover::before {
-  opacity: 1;
-  animation: borderFlow 1.5s linear infinite;
-}
-
-.button:hover::after {
-  width: 140px;
-  height: 140px;
-}
-
-/* 激活状态 - 量子效应 */
-.button:active {
-  transform: translateY(-6px) scale(1.1);
-  box-shadow:
-    0 15px 60px rgba(0, 0, 0, 0.7),
-    0 8px 30px var(--cd-color-border-strong),
-    inset 0 3px 6px rgba(0, 0, 0, 0.4);
-}
-
-/* 增强的图标现代化 */
-.icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.icon svg {
+.btn {
+  display: grid;
+  place-items: center;
   width: 32px;
   height: 32px;
-  fill: var(--cd-color-accent-2);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.7));
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--tb-fg);
+  opacity: 0.86;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
-
-.button:hover .icon svg {
-  fill: #ffffff;
-  transform: scale(1.4);
-  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.9));
-}
-
-/* Tooltip 样式 */
-.tooltip {
-  position: absolute;
-  right: 70px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  color: #ffffff;
-  padding: 12px 16px;
-  border-radius: var(--cd-radius-lg);
-  font-size: var(--cd-font-size-md);
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1000;
-
-  /* 边框和阴影 */
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 4px 16px rgba(59, 130, 246, 0.2);
-}
-
-/* Tooltip 箭头 */
-.tooltip::after {
-  content: '';
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 6px solid transparent;
-  border-left-color: rgba(15, 23, 42, 0.95);
-  filter: drop-shadow(2px 0 4px rgba(0, 0, 0, 0.3));
-}
-
-/* 悬停时显示 tooltip */
-.buttonContainer:hover .tooltip {
+.btn:hover {
+  background: var(--tb-hover);
   opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) translateX(-8px);
+  transform: translateY(-1px);
 }
-
-/* 特殊按钮样式升级 */
-.aiChatButton {
-  background: rgba(88, 28, 135, 0.95);
-  border-color: rgba(147, 51, 234, 0.7);
+.btn:active {
+  transform: translateY(0) scale(0.96);
 }
-
-.aiChatButton::before {
-  background: linear-gradient(
-    45deg,
-    rgba(147, 51, 234, 0.8) 0%,
-    rgba(168, 85, 247, 0.8) 25%,
-    rgba(232, 121, 249, 0.8) 50%,
-    rgba(192, 132, 252, 0.8) 75%,
-    rgba(147, 51, 234, 0.8) 100%
-  );
+.btn:focus-visible,
+.menuItem:focus-visible,
+.swatch:focus-visible {
+  outline: 2px solid var(--tb-ring) !important;
+  outline-offset: 1px;
 }
-
-.aiChatButton:hover {
-  background: rgba(109, 40, 217, 0.98);
-  border-color: rgba(147, 51, 234, 0.9);
-  box-shadow:
-    0 20px 80px rgba(147, 51, 234, 0.5),
-    0 12px 40px rgba(147, 51, 234, 0.4),
-    0 6px 20px rgba(147, 51, 234, 0.3),
-    inset 0 3px 0 rgba(255, 255, 255, 0.25);
-}
-
-.aiChatButton .icon svg {
-  fill: #e879f9;
-  filter: drop-shadow(0 0 12px rgba(232, 121, 249, 0.8));
-}
-
-.closeButton {
-  background: rgba(127, 29, 29, 0.95);
-  border-color: rgba(239, 68, 68, 0.7);
-}
-
-.closeButton:hover {
-  background: rgba(153, 27, 27, 0.98);
-  border-color: rgba(239, 68, 68, 0.9);
-  box-shadow:
-    0 20px 80px rgba(239, 68, 68, 0.5),
-    0 12px 40px rgba(239, 68, 68, 0.4),
-    0 6px 20px rgba(239, 68, 68, 0.3);
-}
-
-.topButton {
-  background: rgba(21, 94, 117, 0.95);
-  border-color: rgba(34, 197, 94, 0.7);
-}
-
-.topButtonActive {
-  background: rgba(14, 116, 144, 0.98);
-  border-color: rgba(34, 197, 94, 0.8);
-  box-shadow:
-    0 15px 60px rgba(34, 197, 94, 0.4),
-    0 8px 30px rgba(34, 197, 94, 0.3),
-    0 4px 15px rgba(34, 197, 94, 0.2);
-}
-
-.photoButton {
-  background: rgba(67, 56, 202, 0.95);
-  border-color: rgba(139, 92, 246, 0.7);
-}
-
-.voiceButton {
-  background: rgba(14, 116, 144, 0.98);
-  border-color: rgba(34, 197, 94, 0.8);
-  box-shadow:
-    0 15px 60px rgba(34, 197, 94, 0.4),
-    0 8px 30px rgba(34, 197, 94, 0.3),
-    0 4px 15px rgba(34, 197, 94, 0.2);
-}
-
-.voiceButtonDisabled {
-  background: rgba(55, 65, 81, 0.95);
-  border-color: rgba(107, 114, 128, 0.5);
-}
-
-/* 语音模式切换按钮样式 */
-.voiceModeFixed {
-  background: rgba(139, 69, 19, 0.95);
-  border-color: rgba(234, 88, 12, 0.8);
-  box-shadow:
-    0 15px 60px rgba(234, 88, 12, 0.4),
-    0 8px 30px rgba(234, 88, 12, 0.3),
-    0 4px 15px rgba(234, 88, 12, 0.2);
-}
-
-.voiceModeTts {
-  background: rgba(7, 89, 133, 0.95);
-  border-color: rgba(14, 165, 233, 0.8);
-  box-shadow:
-    0 15px 60px rgba(14, 165, 233, 0.4),
-    0 8px 30px rgba(14, 165, 233, 0.3),
-    0 4px 15px rgba(14, 165, 233, 0.2);
-}
-
-/* TTS配置按钮样式 */
-.ttsConfigButton {
-  background: rgba(101, 163, 13, 0.95);
-  border-color: rgba(132, 204, 22, 0.8);
-  box-shadow:
-    0 15px 60px rgba(132, 204, 22, 0.4),
-    0 8px 30px rgba(132, 204, 22, 0.3),
-    0 4px 15px rgba(132, 204, 22, 0.2);
-}
-
-.ttsConfigButton::before {
-  background: linear-gradient(
-    45deg,
-    rgba(132, 204, 22, 0.8) 0%,
-    rgba(163, 230, 53, 0.8) 25%,
-    rgba(190, 242, 100, 0.8) 50%,
-    rgba(163, 230, 53, 0.8) 75%,
-    rgba(132, 204, 22, 0.8) 100%
-  );
-}
-
-.ttsConfigButton:hover {
-  background: rgba(118, 169, 0, 0.98);
-  border-color: rgba(132, 204, 22, 0.9);
-  box-shadow:
-    0 20px 80px rgba(132, 204, 22, 0.5),
-    0 12px 40px rgba(132, 204, 22, 0.4),
-    0 6px 20px rgba(132, 204, 22, 0.3),
-    inset 0 3px 0 rgba(255, 255, 255, 0.25);
-}
-
-.ttsConfigButton .icon svg {
-  fill: #a3e635;
-  filter: drop-shadow(0 0 12px rgba(163, 230, 53, 0.8));
-}
-
-/* 高级动画系统 */
-@keyframes spatialReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(-50%) scale(0.3) rotateY(90deg);
-  }
-  50% {
-    opacity: 0.7;
-    transform: translateY(-50%) scale(1.1) rotateY(45deg);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1) rotateY(0deg);
-  }
-}
-
-@keyframes spatialHide {
-  0% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1) rotateY(0deg);
-  }
-  50% {
-    opacity: 0.3;
-    transform: translateY(-50%) scale(0.8) rotateY(-45deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-50%) scale(0.3) rotateY(-90deg);
-  }
-}
-
-@keyframes borderFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes borderPulse {
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.02);
-  }
-}
-
-@keyframes quantumPulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 1;
-  }
-}
-
-/* 分组指示器 */
-.toolbar .groupIndicator {
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  width: 3px;
-  height: 60%;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    var(--cd-color-border-strong) 50%,
-    transparent 100%
-  );
-  border-radius: 2px;
-  transform: translateY(-50%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.toolbar:hover .groupIndicator {
+.btn[aria-pressed='true'],
+.btn[aria-expanded='true'] {
+  background: var(--tb-active-bg);
+  color: var(--tb-accent);
   opacity: 1;
 }
-
-/* 响应式适配 */
-@media (max-width: 768px) {
-  .toolbar {
-    right: 15px;
-    width: 70px;
-  }
-
-  .button {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--cd-radius-md);
-  }
-
-  .icon svg {
-    width: 28px;
-    height: 28px;
-  }
-
-  .tooltip {
-    right: 50px;
-    font-size: 13px;
-    padding: 10px 14px;
-  }
-
-  /* 移动端简化弧形 */
-  .toolbar .buttonContainer:nth-child(n) {
-    transform: translateX(0) rotate(0deg) !important;
-  }
-
-  .toolbar:hover .buttonContainer:nth-child(n) {
-    transform: translateX(-10px) rotate(-5deg) !important;
-  }
+.danger:hover {
+  background: var(--tb-danger-bg);
+  color: var(--tb-danger);
 }
 
-/* 高对比度模式支持 */
-@media (prefers-contrast: high) {
-  .button {
-    border-width: 3px;
-    border-color: #ffffff;
-    background: rgba(0, 0, 0, 0.95);
-  }
-
-  .icon svg {
-    fill: #ffffff;
-  }
-
-  .tooltip {
-    background: rgba(0, 0, 0, 0.95);
-    border-color: #ffffff;
-  }
+.sep {
+  align-self: stretch;
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--tb-border);
 }
 
-/* 减少动画模式 */
+/* 「更多」菜单：贴着工具栏，朝窗口内侧展开 */
+.menu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 188px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--tb-border);
+  border-radius: 12px;
+  background: var(--tb-pop-bg);
+  box-shadow: var(--tb-shadow);
+  backdrop-filter: blur(14px);
+  color: var(--tb-fg);
+  font-size: 12.5px;
+}
+.root[data-side='left'] .menu {
+  right: auto;
+  left: calc(100% + 8px);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.menuItem:hover {
+  background: var(--tb-hover);
+}
+.menuItem[aria-pressed='true'] {
+  color: var(--tb-accent);
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  color: var(--tb-fg-muted);
+}
+
+.swatches {
+  display: flex;
+  gap: 6px;
+}
+.swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--tb-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.swatch[aria-checked='true'] {
+  box-shadow: 0 0 0 2px var(--tb-ring);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .toolbar,
-  .button,
-  .icon svg,
-  .tooltip {
+  .root,
+  .btn {
     transition: none;
-    animation: none;
-  }
-
-  .button:hover {
-    transform: none;
   }
 }
