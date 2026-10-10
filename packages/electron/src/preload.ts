@@ -75,6 +75,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.removeListener('desktop:bubble', l);
       };
     },
+    onReminder: (cb: (p: unknown) => void) => {
+      const l = (_: unknown, p: unknown) => cb(p);
+      ipcRenderer.on('desktop:reminder', l);
+      return () => {
+        ipcRenderer.removeListener('desktop:reminder', l);
+      };
+    },
+    takeMissedReminders: () => ipcRenderer.invoke('desktop:reminders-missed'),
+    reminderAction: (id: string, action: 'dismiss' | 'snooze', minutes?: number) =>
+      ipcRenderer.send('desktop:reminder-action', id, action, minutes),
     answer: (id: string, allow: boolean, remember: boolean) =>
       ipcRenderer.send('desktop:confirm-answer', id, allow, remember),
     /** 只接受真实拖入的 File：路径由 Electron 从 File 对象解析，渲染层不能伪造任意路径字符串 */

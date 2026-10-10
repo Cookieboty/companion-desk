@@ -227,4 +227,14 @@ export interface DesktopApi {
   onBubble(cb: (p: { text: string }) => void): () => void;
   answer(id: string, allow: boolean, remember: boolean): void;
   dropFile(file: File): boolean;
+  onReminder(cb: (p: DesktopReminderEvent) => void): () => void;
+  takeMissedReminders(): Promise<DesktopReminderEvent[]>;
+  reminderAction(id: string, action: 'dismiss' | 'snooze', minutes?: number): void;
+}
+
+export interface DesktopReminderEvent {
+  id: string;
+  text: string;
+  dueAt: number;
+  missed?: boolean;
 }

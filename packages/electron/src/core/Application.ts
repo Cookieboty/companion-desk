@@ -134,6 +134,8 @@ export class Application implements IApplication {
 
       // 创建主窗口
       await this.windowManager.createMainWindow();
+      // 提醒调度：主窗口创建后开始（错过的提醒要在看板娘气泡里播报）
+      desktop.startReminders();
 
       // 托盘：一键切换 AI provider
       this.startTray();
