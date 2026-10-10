@@ -21,8 +21,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
-  color: #94a3b8;
+  font-size: var(--cd-font-size-sm);
+  color: var(--cd-color-text-muted);
   font-weight: 500;
   padding: 0 8px;
   opacity: 0.8;
@@ -38,48 +38,48 @@
 
 .role {
   font-weight: 600;
-  color: #e2e8f0;
-  text-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  color: var(--cd-color-text);
+  text-shadow: none;
 }
 
 .timestamp {
-  color: #64748b;
-  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+  font-size: var(--cd-font-size-sm);
   opacity: 0.7;
 }
 
 .model {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(var(--cd-accent-rgb), 0.2);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: #00d4ff;
+  color: var(--cd-color-accent-2);
   padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 11px;
+  border-radius: var(--cd-radius-md);
+  font-size: var(--cd-font-size-xs);
   font-weight: 500;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  border: 1px solid var(--cd-color-border);
+  box-shadow: 0 2px 8px rgba(var(--cd-accent-rgb), 0.2);
 }
 
 .messageContent {
   line-height: 1.6;
   max-width: 85%;
   position: relative;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: var(--cd-blur);
+  -webkit-backdrop-filter: var(--cd-blur);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .userMessage .messageContent {
   align-self: flex-end;
-  background: rgba(59, 130, 246, 0.9);
+  background: rgba(var(--cd-accent-rgb), 0.9);
   color: white;
   padding: 18px 24px;
   border-radius: 24px 24px 8px 24px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.3),
-    0 4px 16px rgba(59, 130, 246, 0.4),
-    0 0 24px rgba(59, 130, 246, 0.2);
+    0 4px 16px rgba(var(--cd-accent-rgb), 0.4),
+    0 0 24px rgba(var(--cd-accent-rgb), 0.2);
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
@@ -93,10 +93,11 @@
   left: -1px;
   right: -1px;
   bottom: -1px;
-  background: linear-gradient(135deg, 
+  background: linear-gradient(
+    135deg,
     rgba(255, 255, 255, 0.3) 0%,
-    rgba(59, 130, 246, 0.3) 50%,
-    rgba(139, 92, 246, 0.3) 100%
+    var(--cd-color-border) 50%,
+    rgba(var(--cd-accent-3-rgb), 0.3) 100%
   );
   border-radius: 24px 24px 8px 24px;
   z-index: -1;
@@ -106,13 +107,13 @@
 .assistantMessage .messageContent {
   align-self: flex-start;
   background: rgba(30, 41, 59, 0.8);
-  color: #e2e8f0;
+  color: var(--cd-color-text);
   padding: 18px 24px;
   border-radius: 24px 24px 24px 8px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  box-shadow: 
+  border: 1px solid var(--cd-color-border);
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
-    0 4px 16px rgba(59, 130, 246, 0.1);
+    0 4px 16px rgba(var(--cd-accent-rgb), 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -125,10 +126,11 @@
   left: -1px;
   right: -1px;
   bottom: -1px;
-  background: linear-gradient(135deg, 
-    rgba(59, 130, 246, 0.2) 0%,
-    rgba(6, 182, 212, 0.2) 50%,
-    rgba(34, 197, 94, 0.2) 100%
+  background: linear-gradient(
+    135deg,
+    rgba(var(--cd-accent-rgb), 0.2) 0%,
+    rgba(var(--cd-accent-2-rgb), 0.2) 50%,
+    rgba(var(--cd-accent-2-rgb), 0.2) 100%
   );
   border-radius: 24px 24px 24px 8px;
   z-index: -1;
@@ -138,7 +140,7 @@
 
 .contentText {
   white-space: pre-wrap;
-  font-size: 15px;
+  font-size: var(--cd-font-size-md);
   line-height: 1.6;
   margin: 0;
   position: relative;
@@ -147,24 +149,25 @@
 
 .userMessage .contentText {
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  text-shadow: none;
 }
 
 .assistantMessage .contentText {
-  color: #e2e8f0;
+  color: var(--cd-color-text);
 }
 
 .errorMessage {
   background: rgba(127, 29, 29, 0.9) !important;
   color: #fecaca !important;
   border: 1px solid rgba(239, 68, 68, 0.5) !important;
-  box-shadow: 
-    0 8px 32px rgba(127, 29, 29, 0.4) !important,
+  box-shadow:
+    0 8px 32px rgba(127, 29, 29, 0.4),
     0 4px 16px rgba(239, 68, 68, 0.3) !important;
 }
 
 .errorMessage::before {
-  background: linear-gradient(135deg, 
+  background: linear-gradient(
+    135deg,
     rgba(239, 68, 68, 0.3) 0%,
     rgba(220, 38, 38, 0.3) 100%
   ) !important;
@@ -179,8 +182,8 @@
 }
 
 .errorText::before {
-  content: "⚠️";
-  font-size: 16px;
+  content: '⚠️';
+  font-size: var(--cd-font-size-lg);
   filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
 }
 
@@ -191,10 +194,10 @@
 }
 
 .userMessage .messageContent:hover {
-  box-shadow: 
+  box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.4),
-    0 6px 24px rgba(59, 130, 246, 0.5),
-    0 0 32px rgba(59, 130, 246, 0.3);
+    0 6px 24px rgba(var(--cd-accent-rgb), 0.5),
+    0 0 32px var(--cd-color-border);
 }
 
 .userMessage .messageContent:hover::before {
@@ -202,10 +205,10 @@
 }
 
 .assistantMessage .messageContent:hover {
-  box-shadow: 
+  box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.5),
-    0 6px 24px rgba(59, 130, 246, 0.2),
-    0 0 24px rgba(59, 130, 246, 0.1);
+    0 6px 24px rgba(var(--cd-accent-rgb), 0.2),
+    0 0 24px rgba(var(--cd-accent-rgb), 0.1);
 }
 
 .assistantMessage .messageContent:hover::before {
@@ -225,7 +228,8 @@
 }
 
 @keyframes aiGlow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.4;
   }
   50% {
@@ -238,42 +242,42 @@
   .messageContainer {
     gap: 10px;
   }
-  
+
   .messageContent {
     max-width: 90%;
   }
-  
+
   .userMessage .messageContent,
   .assistantMessage .messageContent {
     padding: 16px 20px;
     border-radius: 20px 20px 8px 20px;
   }
-  
+
   .assistantMessage .messageContent {
     border-radius: 20px 20px 20px 8px;
   }
-  
+
   .userMessage .messageContent::before,
   .assistantMessage .messageContent::before {
     border-radius: 20px 20px 8px 20px;
   }
-  
+
   .assistantMessage .messageContent::before {
     border-radius: 20px 20px 20px 8px;
   }
-  
+
   .contentText {
-    font-size: 14px;
+    font-size: var(--cd-font-size-md);
   }
-  
+
   .messageHeader {
-    font-size: 12px;
+    font-size: var(--cd-font-size-sm);
     gap: 10px;
     padding: 0 6px;
   }
-  
+
   .model {
-    font-size: 10px;
+    font-size: var(--cd-font-size-xs);
     padding: 3px 8px;
   }
-} 
+}

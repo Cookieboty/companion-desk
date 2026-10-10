@@ -3,7 +3,7 @@
  * 支持LRU算法、TTL过期和自动清理
  */
 
-import { ILoggerService } from './LoggerService';
+import { type ILoggerService } from './LoggerService';
 
 export interface CacheItem<T> {
   value: T;
@@ -70,9 +70,9 @@ export class CacheService implements ICacheService {
     const item: CacheItem<T> = {
       value,
       timestamp: now,
-      ttl: ttl || this.defaultTtl,
+      ttl: typeof ttl === 'number' && ttl > 0 ? ttl : this.defaultTtl,
       accessCount: 0,
-      lastAccessed: now
+      lastAccessed: now,
     };
 
     // 如果缓存已满，删除最旧的项
@@ -212,7 +212,7 @@ export class CacheService implements ICacheService {
       missCount: this.missCount,
       hitRate,
       oldestItem: this.cache.size > 0 ? oldestItem : 0,
-      newestItem: this.cache.size > 0 ? newestItem : 0
+      newestItem: this.cache.size > 0 ? newestItem : 0,
     };
   }
 
@@ -279,20 +279,20 @@ export class CacheService implements ICacheService {
   /**
    * 获取热点数据（访问次数最多的前N项）
    */
-  getHotItems(count: number = 10): Array<{ key: string; accessCount: number; lastAccessed: number }> {
+  getHotItems(
+    count: number = 10,
+  ): Array<{ key: string; accessCount: number; lastAccessed: number }> {
     const items: Array<{ key: string; accessCount: number; lastAccessed: number }> = [];
 
     for (const [key, item] of this.cache.entries()) {
       items.push({
         key,
         accessCount: item.accessCount,
-        lastAccessed: item.lastAccessed
+        lastAccessed: item.lastAccessed,
       });
     }
 
-    return items
-      .sort((a, b) => b.accessCount - a.accessCount)
-      .slice(0, count);
+    return items.sort((a, b) => b.accessCount - a.accessCount).slice(0, count);
   }
 
   /**

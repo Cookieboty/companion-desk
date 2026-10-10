@@ -10,14 +10,16 @@ describe('CacheService', () => {
   let mockLogger: any;
 
   beforeEach(() => {
-    mockLogger = testUtils.createMockLogger();
-    cacheService = new CacheService({
-      maxSize: 5,
-      defaultTtl: 1000,
-      cleanupInterval: 100
-    }, mockLogger);
-
     jest.useFakeTimers();
+    mockLogger = testUtils.createMockLogger();
+    cacheService = new CacheService(
+      {
+        maxSize: 5,
+        defaultTtl: 1000,
+        cleanupInterval: 100,
+      },
+      mockLogger,
+    );
   });
 
   afterEach(() => {
@@ -189,7 +191,7 @@ describe('CacheService', () => {
       const items = [
         { key: 'key1', value: 'value1' },
         { key: 'key2', value: 'value2', ttl: 2000 },
-        { key: 'key3', value: 'value3' }
+        { key: 'key3', value: 'value3' },
       ];
 
       cacheService.warmup(items);
@@ -217,7 +219,7 @@ describe('CacheService', () => {
 
   describe('定期清理', () => {
     test('应该定期自动清理过期项', () => {
-      cacheService.set('key1', 'value1', 50);  // 50ms TTL
+      cacheService.set('key1', 'value1', 50); // 50ms TTL
       cacheService.set('key2', 'value2', 200); // 200ms TTL
 
       expect(cacheService.size()).toBe(2);

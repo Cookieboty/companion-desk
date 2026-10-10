@@ -1,14 +1,13 @@
 {
-  "name": "ig-live-monorepo",
+  "name": "companion-desk",
   "version": "1.0.0",
-  "description": "基于 Electron 的看板娘桌面应用",
+  "description": "Companion Desk：本地运行的桌面 AI 助手（Electron + IgPluginHost / Vercel AI SDK），可选开源 VRM 桌面伙伴",
   "private": true,
+  "type": "module",
   "scripts": {
-    "generate:models": "node scripts/generate-model-list.js",
-    "prebuild": "npm run generate:models",
-    "predev": "npm run generate:models",
-    "dev": "turbo run dev",
-    "start": "turbo run dev --parallel",
+    "dev": "node scripts/doctor.mjs --quick && turbo run dev --filter=@ig-live/electron --filter=@ig-live/renderer --filter=@ig-live/ai-chat --ui=stream --log-order=stream",
+    "dev:libs": "turbo run dev --filter=./packages/* --filter=!@ig-live/electron --filter=!@ig-live/renderer --filter=!@ig-live/ai-chat --concurrency=20",
+    "start": "pnpm run dev",
     "build": "turbo run build",
     "build:renderer": "turbo run build --filter=@ig-live/renderer",
     "build:electron": "turbo run build --filter=@ig-live/electron",
@@ -16,22 +15,85 @@
     "package:prod": "turbo run package:prod",
     "package:prod:mac": "turbo run package:prod:mac",
     "package:prod:win": "turbo run package:prod:win",
+    "package:prod:linux": "turbo run package:prod:linux",
     "package:debug": "turbo run package:debug",
     "package:debug:mac": "turbo run package:debug:mac",
     "package:debug:win": "turbo run package:debug:win",
-    "test": "turbo run test",
-    "clean": "turbo run clean"
+    "package:debug:linux": "turbo run package:debug:linux",
+    "test": "turbo run test && pnpm run test:root",
+    "test:root": "vitest run --config vitest.root.config.ts scripts/__tests__",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:e2e:pkg": "turbo run test:e2e",
+    "test:e2e:headed": "playwright test --config playwright.config.ts",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "turbo run clean",
+    "doctor": "node scripts/doctor.mjs",
+    "dev:smoke": "node scripts/dev-smoke.mjs",
+    "doctor:dsh": "tsx scripts/dsh-doctor.ts",
+    "changeset": "changeset",
+    "changeset:status": "changeset status --since=origin/main",
+    "changeset:version": "changeset version",
+    "preinstall": "node scripts/check-node.cjs",
+    "prepare": "husky",
+    "check:licenses": "node scripts/check-licenses.mjs"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "turbo": "^2.2.3",
-    "typescript": "^4.9.0",
-    "concurrently": "^9.1.2"
+    "@changesets/cli": "^3.0.3",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@eslint/compat": "^2.1.1",
+    "@eslint/js": "^10.0.1",
+    "@ig-live/ai-runtime": "workspace:*",
+    "@ig-live/ai-sdk": "workspace:*",
+    "@ig-live/ai-sdk-client": "workspace:*",
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "@ig-live/bundle-ig-electron-caps": "workspace:*",
+    "@ig-live/bundle-ig-mascot": "workspace:*",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "^5.0.3",
+    "eslint": "^10.12.0",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.9",
+    "tsup": "^8.3.5",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.7",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=22.12",
+    "pnpm": ">=9"
   },
-  "packageManager": "pnpm@8.6.0"
+  "packageManager": "pnpm@9.12.3",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "optionalDependencies": {
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-app-boot": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2"
+  }
 }

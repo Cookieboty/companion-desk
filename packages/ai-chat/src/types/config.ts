@@ -1,7 +1,7 @@
 export interface AIModelConfig {
   id: string;
   name: string;
-  provider: 'deepseek' | 'openai' | 'claude' | 'ollama' | 'custom';
+  provider: 'deepseek' | 'openai' | 'claude' | 'gemini' | 'ollama' | 'custom';
   apiKey?: string;
   apiUrl: string;
   model: string;
@@ -21,4 +21,4 @@ export interface AppConfig {
   };
   models: AIModelConfig[];
   currentModelId?: string;
-} 
+}

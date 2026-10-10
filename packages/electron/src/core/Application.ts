@@ -4,15 +4,27 @@
  */
 
 import { app, ipcMain } from 'electron';
-import { ServiceContainer, IServiceContainer } from './ServiceContainer';
-import { LoggerService, LogLevel } from '../services/LoggerService';
-import { ConfigService } from '../services/ConfigService';
-import { CacheService } from '../services/CacheService';
-import { WindowManager } from './WindowManager';
-import { GlobalErrorHandler } from '../utils/ErrorHandler';
+
+import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
+import { ClipboardGateway } from '../ai/ClipboardGateway';
+import { SafeKeyProvider } from '../ai/SafeKeyProvider';
+import { ScreenCapture } from '../ai/ScreenCapture';
+import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
+import { getDesktopService } from '../desktop/DesktopService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
+import { getModelService } from '../models/ModelService';
+import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
+import { CacheService } from '../services/CacheService';
+import { ConfigService } from '../services/ConfigService';
+import { LoggerService, LogLevel } from '../services/LoggerService';
+import { GlobalErrorHandler } from '../utils/ErrorHandler';
+import { perfMark } from '../utils/perfMarks';
+
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
+import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
+import { TrayManager } from './TrayManager';
+import { WindowManager } from './WindowManager';
 
 export interface IApplication {
   initialize(): Promise<void>;
@@ -30,6 +42,9 @@ export class Application implements IApplication {
   private errorHandler!: GlobalErrorHandler;
   private ipcRegistry!: IpcRegistry;
   private bootstrapManager!: BootstrapManager;
+  private aiRuntime?: AIRuntimeBootHandle;
+  private clipboardGateway?: ClipboardGateway;
+  private trayManager?: TrayManager;
   private isInitialized = false;
 
   constructor() {
@@ -60,7 +75,7 @@ export class Application implements IApplication {
       const metrics = await this.bootstrapManager.start();
       this.logger.info('启动任务执行完成', {
         duration: metrics.totalDuration,
-        taskCount: metrics.taskMetrics.length
+        taskCount: metrics.taskMetrics.length,
       });
 
       this.isInitialized = true;
@@ -87,10 +102,43 @@ export class Application implements IApplication {
 
       // 等待Electron app ready事件
       await app.whenReady();
+      perfMark('app-ready');
       this.logger.info('Electron应用准备就绪');
+
+      // 模型注册表 / 商店 / 用户导入（cdmodel:// 协议 + models:* IPC）
+      const models = getModelService(this.logger);
+      models.registerProtocol();
+      models.registerIpc();
+
+      // 桌面能力（文件工具的权限 / 审计 / 撤销）：先于 AI runtime，插件注册工具时要用
+      const desktop = getDesktopService(this.logger);
+      desktop.registerIpc();
+      desktop.attachWindows({
+        main: () => this.windowManager.getMainWindow(),
+        openChat: () => this.windowManager.createAiChatWindow(),
+      });
+
+      // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
+      await this.startAIRuntime();
+      if (this.aiRuntime) {
+        const rt = this.aiRuntime;
+        desktop.attachRuntime({
+          resolveProvider: (role) => rt.resolveProvider(role),
+          complete: async (messages, role, signal) => {
+            const resp = await rt.client.chat.sendMessage({ role, messages, signal });
+            return typeof resp?.content === 'string' ? resp.content : '';
+          },
+        });
+      }
+      perfMark('ai-runtime-ready');
 
       // 创建主窗口
       await this.windowManager.createMainWindow();
+      // 提醒调度：主窗口创建后开始（错过的提醒要在看板娘气泡里播报）
+      desktop.startReminders();
+
+      // 托盘：一键切换 AI provider
+      this.startTray();
 
       this.logger.info('应用启动完成');
       eventBus.emit('app:started');
@@ -102,11 +150,94 @@ export class Application implements IApplication {
   }
 
   /**
+   * 启动 AI runtime（dsh + IPC 通道 + seams）
+   *
+   * 幂等：重复调用会直接返回。失败时记录日志但不抛出——AI 功能对应用启动
+   * 不是强依赖；后续可以通过 `getAIRuntime()` 判断可用性。
+   */
+  async startAIRuntime(): Promise<void> {
+    if (this.aiRuntime) {
+      this.logger.debug('AI runtime already started');
+      return;
+    }
+    try {
+      const keyStore = new SafeKeyProvider();
+      this.clipboardGateway = new ClipboardGateway();
+      const screen = new ScreenCapture();
+      const ttsEngine = new AdvancedTTSEngine();
+      const electronNativeTts = new TtsElectronNativeProvider({ engine: ttsEngine });
+      this.aiRuntime = await startAIRuntime(this.logger, {
+        seams: {
+          keyStore,
+          clipboard: this.clipboardGateway,
+          screen,
+        },
+        ttsProviders: [electronNativeTts],
+      });
+      this.logger.info('AI runtime 启动完成', {
+        profile: this.aiRuntime.profile,
+        channelCount: this.aiRuntime.channels.business.length,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('AI runtime 启动失败', { error: errorMessage });
+    }
+  }
+
+  /** 系统托盘（provider 快速切换）；失败不影响启动。 */
+  private startTray(): void {
+    const providers = this.aiRuntime?.providers;
+    if (!providers || this.trayManager) return;
+    this.trayManager = new TrayManager({
+      providers,
+      logger: this.logger,
+      openChat: () => {
+        void this.windowManager.createAiChatWindow();
+      },
+      openProviderPanel: () => {
+        void this.windowManager.openProviderPanel();
+      },
+      openDesktopPanel: () => {
+        void this.windowManager.openProviderPanel('ai:desktop:open-panel');
+      },
+      quit: () => app.quit(),
+      models: getModelService(this.logger),
+    });
+    this.trayManager.start();
+  }
+
+  /**
+   * 停止 AI runtime；幂等。
+   */
+  async stopAIRuntime(): Promise<void> {
+    this.trayManager?.dispose();
+    this.trayManager = undefined;
+    if (!this.aiRuntime) return;
+    const handle = this.aiRuntime;
+    this.aiRuntime = undefined;
+    try {
+      await handle.dispose();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn('AI runtime 停止时出现异常', { error: errorMessage });
+    }
+    try {
+      this.clipboardGateway?.dispose();
+    } catch {
+      /* ignore */
+    }
+    this.clipboardGateway = undefined;
+  }
+
+  /**
    * 停止应用
    */
   async stop(): Promise<void> {
     try {
       this.logger.info('停止应用...');
+
+      // 停止 AI runtime（务必先于 IPC 清理，避免通道注册器空指针）
+      await this.stopAIRuntime();
 
       // 保存配置
       await this.configService.save();
@@ -176,7 +307,7 @@ export class Application implements IApplication {
         logger: this.logger,
         configService: this.configService,
         cacheService: this.cacheService,
-        windowManager: this.windowManager
+        windowManager: this.windowManager,
       });
     });
     this.ipcRegistry = this.container.get<IpcRegistry>('ipcRegistry');
@@ -198,7 +329,7 @@ export class Application implements IApplication {
       priority: 'critical',
       execute: async () => {
         await this.configService.load();
-      }
+      },
     });
 
     // 关键任务：应用事件设置
@@ -208,7 +339,7 @@ export class Application implements IApplication {
       execute: async () => {
         this.setupAppEvents();
       },
-      dependencies: ['load-config']
+      dependencies: ['load-config'],
     });
 
     // 关键任务：IPC处理器初始化
@@ -218,7 +349,7 @@ export class Application implements IApplication {
       execute: async () => {
         this.ipcRegistry.initialize();
       },
-      dependencies: ['load-config']
+      dependencies: ['load-config'],
     });
 
     // 高优先级任务：进程信号处理
@@ -227,7 +358,7 @@ export class Application implements IApplication {
       priority: 'high',
       execute: async () => {
         this.setupProcessHandlers();
-      }
+      },
     });
 
     // 中优先级任务：缓存预热
@@ -244,10 +375,10 @@ export class Application implements IApplication {
         const appInfo = {
           version: app.getVersion(),
           name: app.getName(),
-          isPackaged: app.isPackaged
+          isPackaged: app.isPackaged,
         };
         this.cacheService.set('app:info', appInfo, 60 * 60 * 1000); // 1小时缓存
-      }
+      },
     });
 
     // 低优先级任务：日志清理
@@ -262,7 +393,7 @@ export class Application implements IApplication {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.warn('清理旧日志失败', { error: errorMessage });
         }
-      }
+      },
     });
 
     // 低优先级任务：系统信息收集
@@ -276,10 +407,10 @@ export class Application implements IApplication {
           arch: process.arch,
           nodeVersion: process.version,
           electronVersion: process.versions.electron,
-          memory: process.memoryUsage()
+          memory: process.memoryUsage(),
         };
         this.logger.info('系统信息', systemInfo);
-      }
+      },
     });
   }
 
@@ -317,8 +448,6 @@ export class Application implements IApplication {
       app.quit();
     });
   }
-
-
 
   /**
    * 设置进程信号处理
@@ -384,8 +513,8 @@ export class Application implements IApplication {
       cache: this.cacheService.getStats(),
       bootstrap: {
         taskStatus: this.bootstrapManager.getTaskStatus(),
-        performanceReport: this.bootstrapManager.getPerformanceReport()
-      }
+        performanceReport: this.bootstrapManager.getPerformanceReport(),
+      },
     };
   }
 }

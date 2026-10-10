@@ -2,18 +2,17 @@
  * LoggerService单元测试
  */
 
-import { LoggerService, LogLevel } from '../../../src/services/LoggerService';
-import { testUtils } from '../../setup';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// 模拟app模块
-const mockApp = {
-  getPath: jest.fn(() => '/tmp/test-logs')
-};
+import { LoggerService, LogLevel } from '../../../src/services/LoggerService';
+import { testUtils } from '../../setup';
 
+// 模拟app模块
 jest.mock('electron', () => ({
-  app: mockApp
+  app: {
+    getPath: jest.fn(() => '/tmp/test-logs'),
+  },
 }));
 
 describe('LoggerService', () => {
@@ -22,6 +21,19 @@ describe('LoggerService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // 复位 fs mock，避免上一 test 的 mockImplementation 泄漏
+    mockFs.existsSync.mockReturnValue(true);
+    mockFs.mkdirSync.mockImplementation(() => undefined as any);
+    mockFs.appendFileSync.mockImplementation(() => undefined);
+    mockFs.renameSync.mockImplementation(() => undefined);
+    mockFs.statSync.mockReturnValue({
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024,
+      mtime: new Date(),
+      ctime: new Date(),
+      atime: new Date(),
+    } as any);
     testUtils.silenceConsole();
     loggerService = new LoggerService();
   });
@@ -113,10 +125,7 @@ describe('LoggerService', () => {
       const errorSpy = jest.spyOn(console, 'error');
       loggerService.info('test message');
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to write to log file:',
-        expect.any(Error)
-      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to write to log file:', expect.any(Error));
     });
   });
 
@@ -125,7 +134,7 @@ describe('LoggerService', () => {
       // 模拟大文件
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({
-        size: 15 * 1024 * 1024 // 15MB，超过10MB限制
+        size: 15 * 1024 * 1024, // 15MB，超过10MB限制
       } as any);
 
       loggerService.info('test message');
@@ -139,10 +148,7 @@ describe('LoggerService', () => {
 
       loggerService.info('test message');
 
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith(
-        expect.any(String),
-        { recursive: true }
-      );
+      expect(mockFs.mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
     });
   });
 
@@ -152,7 +158,7 @@ describe('LoggerService', () => {
 
       mockFs.readdirSync.mockReturnValue(['app.1.log', 'app.2.log'] as any);
       mockFs.statSync.mockReturnValue({
-        mtime: oldDate
+        mtime: oldDate,
       } as any);
 
       loggerService.cleanOldLogs(7);
@@ -165,7 +171,7 @@ describe('LoggerService', () => {
 
       mockFs.readdirSync.mockReturnValue(['app.1.log'] as any);
       mockFs.statSync.mockReturnValue({
-        mtime: newDate
+        mtime: newDate,
       } as any);
 
       loggerService.cleanOldLogs(7);
@@ -184,10 +190,7 @@ describe('LoggerService', () => {
       const errorSpy = jest.spyOn(console, 'error');
       loggerService.info('test message');
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to create log directory:',
-        expect.any(Error)
-      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to create log directory:', expect.any(Error));
     });
 
     test('应该处理轮转失败', () => {
@@ -200,10 +203,7 @@ describe('LoggerService', () => {
       const errorSpy = jest.spyOn(console, 'error');
       loggerService.info('test message');
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Failed to rotate log file:',
-        expect.any(Error)
-      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to rotate log file:', expect.any(Error));
     });
   });
 

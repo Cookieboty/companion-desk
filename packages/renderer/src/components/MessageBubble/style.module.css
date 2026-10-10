@@ -1,38 +1,122 @@
-/* 独立的消息气泡 - 完全解耦，不影响看板娘主体 */
+/* 看板娘气泡：纯文本；位置由 MessageBubble 根据头部矩形计算（.placed），否则退回顶部居中 */
 .messageBubble {
+  --tail-offset: 50%;
+  --bubble-scale: 1;
+  --bubble-bg: rgba(250, 244, 235, 0.95);
+  --bubble-border: rgba(196, 170, 136, 0.55);
+
+  box-sizing: border-box;
   position: fixed;
   top: 20px;
   left: 50%;
-  width: 200px; 
-  min-height: 70px;
-  margin-left: -100px; 
-  padding: 8px 12px;
-  border: 1px solid rgba(224, 186, 140, 0.62);
-  border-radius: 12px;
-  background-color: rgba(236, 217, 188, 0.9);
-  box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3);
-  font-size: 14px;
-  line-height: 24px;
-  word-break: break-all;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  color: #8a6e2f;
+  width: 200px;
+  margin-left: -100px;
+  border: 1px solid var(--bubble-border);
+  border-radius: var(--cd-radius-lg);
+  background-color: var(--bubble-bg);
+  box-shadow: 0 4px 14px rgba(120, 96, 64, 0.18);
+  font-family: var(--cd-font-sans);
+  font-size: calc(var(--cd-font-size-md) * var(--bubble-scale));
+  letter-spacing: var(--cd-tracking-normal);
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: #5f4a27;
   opacity: 0;
+  /* 位置不做过渡：跟随头部时必须立即到位，避免动画中途压到脸 */
   transition: opacity 0.3s ease-in-out;
-  z-index: 10000; /* 还原到原来的值 */
-  pointer-events: none; 
+  z-index: 20; /* 低于确认气泡 / 对话框（30+）与工具栏 */
+  pointer-events: none;
 }
 
-/* 添加消息气泡的小三角箭头指向看板娘 */
+/* 内层负责滚动（外层不裁剪，尾巴才能露出来） */
+.scroll {
+  max-height: var(--bubble-max-h, 200px);
+  padding: 8px 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.placed {
+  margin-left: 0;
+}
+
+.text {
+  display: block;
+}
+
+.more {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8a6430;
+  font: inherit;
+  font-size: var(--cd-font-size-xs);
+  font-weight: var(--cd-font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.more:focus-visible {
+  outline: 2px solid #8a6430 !important;
+  outline-offset: 2px;
+}
+
+/* 尾巴：指向头部（data-tail = 尾巴所在的边） */
 .messageBubble::after {
   content: '';
   position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid rgba(236, 217, 188, 0.9);
-} 
+  border: 7px solid transparent;
+  pointer-events: none;
+}
+.messageBubble[data-tail='bottom']::after {
+  top: 100%;
+  left: var(--tail-offset);
+  margin-left: -7px;
+  border-top-color: var(--bubble-bg);
+}
+.messageBubble[data-tail='top']::after {
+  bottom: 100%;
+  left: var(--tail-offset);
+  margin-left: -7px;
+  border-bottom-color: var(--bubble-bg);
+}
+.messageBubble[data-tail='left']::after {
+  right: 100%;
+  top: var(--tail-offset);
+  margin-top: -7px;
+  border-right-color: var(--bubble-bg);
+}
+.messageBubble[data-tail='right']::after {
+  left: 100%;
+  top: var(--tail-offset);
+  margin-top: -7px;
+  border-left-color: var(--bubble-bg);
+}
+
+.active {
+  opacity: 1;
+}
+/* 默认不拦截鼠标；可滚动时正文、以及「查看全文」按钮才接收 */
+.active[data-scroll] .scroll,
+.active .more {
+  pointer-events: auto;
+}
+
+.measure {
+  visibility: hidden;
+  opacity: 0;
+  left: -9999px;
+  top: 0;
+  margin: 0;
+  pointer-events: none;
+}
+.measure .scroll {
+  max-height: none;
+}

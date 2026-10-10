@@ -1,0 +1,324 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**']
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 最小权限：所有 job 只读仓库内容；需要更多权限的 job 单独声明。
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # tag 构建（发布产物）不允许被后续 push 取消
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  # dsh 需要 Node >= 22；Electron 44 内置 Node 24，CI 对齐到 24。
+  NODE_VERSION: '24'
+  TURBO_TELEMETRY_DISABLED: '1'
+
+jobs:
+  quality:
+    name: quality (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm (version from package.json#packageManager)
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Licence check (deps allow-list + asset manifest)
+        run: pnpm check:licenses
+
+      - name: Turbo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Typecheck / Lint / Test / Build
+        run: pnpm turbo run typecheck lint test build --cache-dir=.turbo/cache
+
+      - name: dsh smoke (root vitest + doctor)
+        shell: bash
+        run: |
+          pnpm run test:root
+          pnpm run doctor:dsh waifu
+          pnpm run doctor:dsh chat-only
+          pnpm run doctor:dsh mcp-headless
+
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-${{ github.sha }}
+          path: |
+            packages/**/coverage/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------
+  # E2E · headless（vitest E1..E5）+ 各包 test:e2e
+  # ---------------------------------------------------------------
+  e2e-headless:
+    name: e2e-headless (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspaces (required for test:e2e imports)
+        run: pnpm turbo run build
+
+      - name: Run headless E2E (E1..E5)
+        run: pnpm run test:e2e
+
+      - name: Run package-level E2E
+        run: pnpm run test:e2e:pkg
+
+  # ---------------------------------------------------------------
+  # E2E · headed（Playwright + 真实 Electron，xvfb 虚拟显示）
+  # ---------------------------------------------------------------
+  # Linux 用 xvfb 虚拟显示；Windows runner 自带交互桌面，可直接跑 headed Electron。
+  e2e-headed:
+    name: e2e-headed (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Electron >= 44 不再在 postinstall 下载二进制，需显式安装
+      - name: Download Electron binary
+        run: pnpm --filter @ig-live/electron exec install-electron
+
+      - name: Install xvfb
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb xdotool
+
+      # Ubuntu 24.04 默认禁止非特权 user namespace，Chromium 沙箱会启动失败
+      - name: Allow Chromium sandbox (unprivileged userns)
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Build workspaces + copy renderer bundles
+        run: |
+          pnpm turbo run build
+          pnpm --filter @ig-live/electron run copy-renderer
+
+      - name: Run headed E2E (Linux / xvfb)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm run test:e2e:headed
+
+      - name: Run headed E2E (Windows)
+        if: runner.os == 'Windows'
+        run: pnpm run test:e2e:headed
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------
+  # Changesets 校验（仅 PR）——涉及 fixed-group 三包必须附 changeset
+  # ---------------------------------------------------------------
+  # 开发模式冒烟：全新 install 后跑 `pnpm dev`，等看板娘窗口 + VRM 模型 + 对话窗口 dev server 就绪后退出，
+  # 防止开发启动链路（预构建、端口等待、preload 打包、Electron 二进制下载）再次悄悄坏掉。
+  dev-smoke:
+    name: dev-smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Clean install (no turbo cache, no prebuilt dist)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb
+
+      - name: Allow Chromium sandbox (unprivileged userns)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - name: pnpm dev → wait for mascot + chat window → stop
+        run: xvfb-run -a node scripts/dev-smoke.mjs 600
+
+  changeset:
+    name: changeset status
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # changeset status 需要与 origin/main 比较
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify changeset status against baseBranch
+        run: pnpm run changeset:status
+
+  # ---------------------------------------------------------------
+  # Electron 打包：三平台（AppImage / dmg / NSIS）每次都打，保证安装包可用；
+  # 签名/公证：仅 tag 构建注入 secret；其它事件不签名。
+  # ---------------------------------------------------------------
+  build-electron:
+    name: build-electron (${{ matrix.os }})
+    needs: [quality]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, script: 'package:prod:linux', artifact: linux }
+          - { os: macos-latest, script: 'package:prod:mac', artifact: mac }
+          - { os: windows-latest, script: 'package:prod:win', artifact: win }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # quality 作业已用相同 key 保存 turbo 缓存（needs: quality），这里直接命中，跳过重复构建
+      - name: Turbo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: electron / electron-builder download cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-dl-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-dl-${{ runner.os }}-
+
+      - name: Build workspaces
+        run: pnpm turbo run build --cache-dir=.turbo/cache
+
+      - name: electron-builder package (${{ matrix.script }})
+        env:
+          # 仅 tag 构建使用签名 / 公证凭证；其它事件显式置空
+          CSC_LINK: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_TEAM_ID || '' }}
+          # 没有证书时不要去钥匙串里自动找身份
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(github.ref, 'refs/tags/v') && 'true' || 'false' }}
+        run: pnpm run ${{ matrix.script }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installer-${{ matrix.artifact }}-${{ github.sha }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.zip
+            dist/*.blockmap
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 14 || 3 }}

@@ -1,0 +1,66 @@
+{
+  "name": "@ig-live/bundle-ig-mascot",
+  "version": "0.0.1",
+  "private": true,
+  "description": "dsh Bundle：看板娘渲染进程能力（mascot seam（协议名 live2d） / 触摸感官注入 / TTS 嘴型联动 / waifu 专属工具 + agent preset）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./patch": "./dist/patch.yml",
+    "./seams": {
+      "types": "./dist/seams/index.d.ts",
+      "import": "./dist/seams/index.js",
+      "require": "./dist/seams/index.cjs"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "import": "./dist/plugins/index.js",
+      "require": "./dist/plugins/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": "./dist/patch.yml"
+  },
+  "scripts": {
+    "build": "rimraf dist && tsup && node scripts/copy-patch.mjs",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "clean": "rimraf dist coverage .turbo"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "@ig-live/bundle-ig-electron-caps": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    },
+    "@ig-live/bundle-ig-electron-caps": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@ig-live/bundle-ig-base": "workspace:*",
+    "@ig-live/bundle-ig-electron-caps": "workspace:*",
+    "rimraf": "^6.1.3",
+    "tsup": "^8.3.5",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

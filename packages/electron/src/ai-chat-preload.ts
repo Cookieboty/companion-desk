@@ -1,4 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+
+// 为 AI 对话窗口注入 window.aiIPC（走 ai-sdk-client 的白名单桥）
+mkAiPreload({ contextBridge, ipcRenderer });
 
 // 为AI对话窗口提供的API
 const aiChatAPI = {

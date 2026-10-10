@@ -1,23 +1,68 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "tsconfig.node.json",
+    "tsconfig.dom.json",
+    "tsup.base.ts",
+    "vitest.base.ts",
+    "eslint.config.mjs",
+    ".prettierrc",
+    ".npmrc",
+    "pnpm-workspace.yaml"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["^build"],
+      "env": [],
+      "passThroughEnv": ["*"]
     },
     "clean": {
       "cache": false,
       "dependsOn": ["^clean"]
     },
     "build": {
-      "cache": false,
-      "dependsOn": ["^clean", "^build"],
-      "outputs": ["dist/**"]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "build/**", ".turbo/**"],
+      "inputs": [
+        "src/**",
+        "package.json",
+        "tsconfig.json",
+        "tsup.config.ts",
+        "vite.config.ts",
+        "vite.config.mts"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["src/**", "tsconfig*.json", "package.json"]
+    },
+    "lint": {
+      "outputs": [],
+      "inputs": [
+        "src/**",
+        "tests/**",
+        "package.json",
+        "eslint.config.mjs",
+        "../../eslint.config.mjs"
+      ]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**", "tests/**", "vitest.config.ts", "vitest.config.mts", "package.json"]
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false
     },
     "@ig-live/electron#package": {
       "cache": false,
-      "dependsOn": ["@ig-live/electron#build", "@ig-live/renderer#build"]
+      "dependsOn": ["@ig-live/electron#build", "@ig-live/renderer#build", "@ig-live/ai-chat#build"]
     },
     "@ig-live/renderer#package": {
       "cache": false,
@@ -39,6 +84,10 @@
       "cache": false,
       "dependsOn": ["build"]
     },
+    "package:prod:linux": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
     "package:debug": {
       "cache": false,
       "dependsOn": ["build"]
@@ -50,6 +99,10 @@
     "package:debug:win": {
       "cache": false,
       "dependsOn": ["build"]
+    },
+    "package:debug:linux": {
+      "cache": false,
+      "dependsOn": ["build"]
     }
   }
-} 
+}

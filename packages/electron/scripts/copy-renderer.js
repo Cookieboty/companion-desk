@@ -1,11 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
+
 const copydir = require('fs-extra').copy;
 
 // 路径设置
 const srcDir = path.join(__dirname, '../../renderer/dist');
 const destDir = path.join(__dirname, '../dist/renderer');
+// AI 对话窗口（@ig-live/ai-chat）构建产物：WindowManager 在未打包的生产模式下从 dist/ai-chat 加载
+const aiChatSrcDir = path.join(__dirname, '../../ai-chat/dist');
+const aiChatDestDir = path.join(__dirname, '../dist/ai-chat');
 
 // 确保目标目录存在
 if (!fs.existsSync(destDir)) {
@@ -25,15 +29,14 @@ async function copyRenderer() {
     await copydir(srcDir, destDir);
     console.log(`✅ 已复制渲染器构建产物到 ${destDir}`);
 
-    // 复制 tts-config.html 文件
-    const ttsConfigSrc = path.join(__dirname, '../../renderer/tts-config.html');
-    const ttsConfigDest = path.join(destDir, 'tts-config.html');
+    // tts-config.html 由 renderer 的 vite 多页面构建输出到 dist/，已随上面一起复制
 
-    if (fs.existsSync(ttsConfigSrc)) {
-      await copydir(ttsConfigSrc, ttsConfigDest);
-      console.log(`✅ 已复制 TTS 配置页面到 ${ttsConfigDest}`);
+    // 复制 AI 对话窗口构建产物
+    if (fs.existsSync(path.join(aiChatSrcDir, 'index.html'))) {
+      await copydir(aiChatSrcDir, aiChatDestDir);
+      console.log(`✅ 已复制 AI 对话窗口构建产物到 ${aiChatDestDir}`);
     } else {
-      console.warn(`⚠️  TTS 配置页面不存在: ${ttsConfigSrc}`);
+      console.warn(`⚠️  AI 对话窗口构建产物不存在: ${aiChatSrcDir}（请先构建 @ig-live/ai-chat）`);
     }
   } catch (err) {
     console.error('复制渲染器构建产物时出错:', err);
@@ -41,4 +44,4 @@ async function copyRenderer() {
   }
 }
 
-copyRenderer(); 
+copyRenderer();

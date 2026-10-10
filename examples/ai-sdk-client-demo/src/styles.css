@@ -1,0 +1,158 @@
+:root {
+  color-scheme: dark light;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #12141a;
+  color: #eaeaea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #1c2130;
+  border: 1px solid #2b3140;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: #a9c1ff;
+  text-transform: uppercase;
+}
+
+.card pre {
+  background: #0e111a;
+  padding: 8px 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+  color: #b5c5ff;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 140px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.messages .m {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.messages .user {
+  background: #223d6b;
+  align-self: flex-end;
+}
+
+.messages .assistant {
+  background: #22303f;
+  align-self: flex-start;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.input-row input {
+  flex: 1;
+  background: #0e111a;
+  border: 1px solid #2b3140;
+  color: #eaeaea;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+button {
+  background: #4c6ef5;
+  border: none;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid #4c6ef5;
+  color: #a9c1ff;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  background: #2b3140;
+  color: #b5c5ff;
+}
+
+.rms-meter {
+  height: 8px;
+  background: #0e111a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rms-meter > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4c6ef5, #66d9ef);
+  transition: width 60ms linear;
+}
+
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.confirm-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #22303f;
+}

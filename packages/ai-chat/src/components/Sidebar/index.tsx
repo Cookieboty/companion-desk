@@ -1,4 +1,5 @@
 import React from 'react';
+
 import styles from './index.module.css';
 
 interface SidebarProps {
@@ -20,13 +21,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
                 <stop offset="100%" stopColor="#8b5cf6" />
               </linearGradient>
             </defs>
-            <path fill="url(#brainGradient)" d="M12 2C8.5 2 5.7 4.6 5.2 8c-.3.1-.6.2-.9.4-1.4.8-2.3 2.3-2.3 3.9 0 1.2.5 2.3 1.3 3.1.2.2.4.4.7.5v.1c0 2.8 2.2 5 5 5h6c2.8 0 5-2.2 5-5v-.1c.3-.1.5-.3.7-.5.8-.8 1.3-1.9 1.3-3.1 0-1.6-.9-3.1-2.3-3.9-.3-.2-.6-.3-.9-.4C18.3 4.6 15.5 2 12 2z" />
+            <path
+              fill="url(#brainGradient)"
+              d="M12 2C8.5 2 5.7 4.6 5.2 8c-.3.1-.6.2-.9.4-1.4.8-2.3 2.3-2.3 3.9 0 1.2.5 2.3 1.3 3.1.2.2.4.4.7.5v.1c0 2.8 2.2 5 5 5h6c2.8 0 5-2.2 5-5v-.1c.3-.1.5-.3.7-.5.8-.8 1.3-1.9 1.3-3.1 0-1.6-.9-3.1-2.3-3.9-.3-.2-.6-.3-.9-.4C18.3 4.6 15.5 2 12 2z"
+            />
             <circle cx="9" cy="10" r="1.5" fill="white" opacity="0.9" />
             <circle cx="15" cy="10" r="1.5" fill="white" opacity="0.9" />
-            <path d="M8 14c0 2.2 1.8 4 4 4s4-1.8 4-4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.8" />
-            <path d="M7 7c1-1 2.5-1 3.5 0M13.5 7c1-1 2.5-1 3.5 0" stroke="white" strokeWidth="1" fill="none" strokeLinecap="round" opacity="0.6" />
+            <path
+              d="M8 14c0 2.2 1.8 4 4 4s4-1.8 4-4"
+              stroke="white"
+              strokeWidth="1.5"
+              fill="none"
+              strokeLinecap="round"
+              opacity="0.8"
+            />
+            <path
+              d="M7 7c1-1 2.5-1 3.5 0M13.5 7c1-1 2.5-1 3.5 0"
+              stroke="white"
+              strokeWidth="1"
+              fill="none"
+              strokeLinecap="round"
+              opacity="0.6"
+            />
           </svg>
-          {!collapsed && <span className={styles.logoText}>智能助手</span>}
+          {!collapsed && <span className={styles.logoText}>Companion Desk</span>}
         </div>
       </div>
 
@@ -37,7 +55,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
           onClick={onNewChat}
           title="开始新对话"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {!collapsed && <span>新对话</span>}
@@ -111,4 +136,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
       </div>
     </div>
   );
-}; 
+};

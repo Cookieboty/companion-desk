@@ -2,11 +2,17 @@
  * 窗口管理器 - 统一管理所有窗口的创建、销毁和状态
  */
 
-import { BrowserWindow, screen, app } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
-import { ILoggerService } from '../services/LoggerService';
-import { IConfigService } from '../services/ConfigService';
+
+import { BrowserWindow, screen, app } from 'electron';
+
+import { MascotWindowController } from '../mascot/MascotWindowController';
+import { type IConfigService } from '../services/ConfigService';
+import { type ILoggerService } from '../services/LoggerService';
+import { perfEnabled, perfMark } from '../utils/perfMarks';
+import { installPreloadGuard } from '../utils/preloadGuard';
+
 import { eventBus } from './EventBus';
 
 export interface WindowOptions {
@@ -78,7 +84,7 @@ export class WindowManager implements IWindowManager {
         resizable: false,
         alwaysOnTop: true,
         show: false,
-        preloadScript: 'preload.js'
+        preloadScript: 'preload.bundle.js',
       };
 
       this.mainWindow = await this.createWindow(windowOptions, 'main');
@@ -129,8 +135,8 @@ export class WindowManager implements IWindowManager {
         alwaysOnTop: false,
         resizable: true,
         show: false,
-        title: '智能助手',
-        preloadScript: 'ai-chat-preload.js'
+        title: 'Companion Desk',
+        preloadScript: 'ai-chat-preload.bundle.js',
       };
 
       this.aiChatWindow = await this.createWindow(windowOptions, 'aiChat');
@@ -150,6 +156,21 @@ export class WindowManager implements IWindowManager {
       this.logger.error('AI对话窗口创建失败', { error: errorMessage });
       throw error;
     }
+  }
+
+  /**
+   * 打开 AI 对话窗口并弹出 Provider 配置面板（托盘 / 菜单入口）。
+   */
+  async openProviderPanel(channel = 'ai:providers:open-panel'): Promise<void> {
+    const existed = Boolean(this.aiChatWindow);
+    const win = await this.createAiChatWindow();
+    // 新建窗口时给 React 挂载监听留一点时间
+    setTimeout(
+      () => {
+        if (!win.isDestroyed()) win.webContents.send(channel, {});
+      },
+      existed ? 0 : 400,
+    );
   }
 
   /**
@@ -182,7 +203,7 @@ export class WindowManager implements IWindowManager {
         resizable: true,
         show: false,
         title: 'TTS语音配置',
-        preloadScript: 'preload.js'
+        preloadScript: 'preload.bundle.js',
       };
 
       this.ttsConfigWindow = await this.createWindow(windowOptions, 'ttsConfig');
@@ -207,6 +228,9 @@ export class WindowManager implements IWindowManager {
   /**
    * 获取主窗口
    */
+  /** 看板娘窗口控制器（托盘 / 测试读取状态） */
+  mascotController: MascotWindowController | null = null;
+
   getMainWindow(): BrowserWindow | null {
     return this.mainWindow;
   }
@@ -282,15 +306,43 @@ export class WindowManager implements IWindowManager {
       hasShadow: false,
       backgroundColor: type === 'main' ? '#00000000' : undefined,
       webPreferences: {
-        preload: path.join(__dirname, '..', options.preloadScript || 'preload.js'),
+        preload: path.join(__dirname, '..', options.preloadScript || 'preload.bundle.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        webSecurity: false // 开发环境需要
-      }
+        webSecurity: false, // 开发环境需要
+      },
+    });
+
+    // preload 抛错或渲染进程退出时 renderer 会缺少 window.electronAPI 而表现为空白窗口；
+    // 记到主进程日志里，便于定位（例如 E6 在全新 userData 首启时偶发的空白窗口）
+    window.webContents.on('preload-error', (_event, preloadPath, error) => {
+      this.logger.error(`[${type}] preload 脚本执行失败`, {
+        preloadPath,
+        error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      });
+    });
+    if (perfEnabled) {
+      window.webContents.once('did-finish-load', () => perfMark(`${type}-did-finish-load`));
+      window.webContents.on('console-message', (e: unknown) => {
+        const m = (e as { message?: string }).message ?? '';
+        const hit = /^\[perf\] (\S+)/.exec(m);
+        if (hit) perfMark(`${type}:${hit[1]}`);
+      });
+    }
+
+    // 「页面加载完但 preload 没跑」的空白窗口：探测 + 自动恢复（见 utils/preloadGuard.ts）
+    installPreloadGuard(window.webContents, {
+      label: type,
+      globals: ['electronAPI', 'aiIPC'],
+      logger: this.logger,
+    });
+    window.webContents.on('render-process-gone', (_event, details) => {
+      this.logger.error(`[${type}] 渲染进程退出`, { ...details });
     });
 
     // 通用窗口事件
     window.once('ready-to-show', () => {
+      perfMark(`${type}-shown`);
       window.show();
 
       // 开发环境打开开发者工具
@@ -320,15 +372,25 @@ export class WindowManager implements IWindowManager {
     // 鼠标位置检查
     this.setupMousePositionTracking(window);
 
-    // 窗口移动事件
+    // 窗口移动事件：物理 / 拖拽时每秒会移动很多次，防抖后再落盘
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
     window.on('moved', () => {
-      const position = window.getPosition();
-      this.configService.set('windowPosition.x', position[0]);
-      this.configService.set('windowPosition.y', position[1]);
-      this.configService.save().catch(error => {
-        this.logger.error('保存窗口位置失败', { error: error.message });
-      });
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        if (window.isDestroyed()) return;
+        const position = window.getPosition();
+        this.configService.set('windowPosition.x', position[0]);
+        this.configService.set('windowPosition.y', position[1]);
+        this.configService.save().catch((error) => {
+          this.logger.error('保存窗口位置失败', { error: error.message });
+        });
+      }, 800);
     });
+
+    // 桌面互动：点击穿透 / 拖拽 / 重力 / 漫步 / 全局光标
+    this.mascotController?.dispose();
+    this.mascotController = new MascotWindowController(window, this.logger);
+    this.mascotController.start();
 
     // 窗口关闭事件
     window.on('close', () => {
@@ -385,7 +447,8 @@ export class WindowManager implements IWindowManager {
         const cursorPos = screen.getCursorScreenPoint();
         const windowBounds = window.getBounds();
 
-        const isInWindow = cursorPos.x >= windowBounds.x &&
+        const isInWindow =
+          cursorPos.x >= windowBounds.x &&
           cursorPos.x <= windowBounds.x + windowBounds.width &&
           cursorPos.y >= windowBounds.y &&
           cursorPos.y <= windowBounds.y + windowBounds.height;
@@ -420,7 +483,8 @@ export class WindowManager implements IWindowManager {
     } else {
       // 生产环境路径处理
       const rendererPath = this.getRendererPath();
-      startUrl = `file://${rendererPath}`;
+      // pathToFileURL：Windows 下 `file://C:\...` 会被当成主机名，必须生成 file:///C:/...
+      startUrl = url.pathToFileURL(rendererPath).href;
     }
 
     await window.loadURL(startUrl);
@@ -436,7 +500,8 @@ export class WindowManager implements IWindowManager {
       const devUrl = 'http://localhost:5175';
       await window.loadURL(devUrl);
     } else {
-      const aiChatPath = path.join(__dirname, '..', 'ai-chat', 'dist', 'index.html');
+      const aiChatPath = this.getAiChatPath();
+      this.logger.info('AI对话窗口加载路径', { path: aiChatPath });
       await window.loadFile(aiChatPath);
     }
   }
@@ -449,15 +514,16 @@ export class WindowManager implements IWindowManager {
 
     try {
       if (isDev) {
-        // 开发环境：从dist/core目录向上找到renderer目录
-        const ttsConfigPath = path.join(__dirname, '..', '..', '..', 'renderer', 'tts-config.html');
-        this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
-        await window.loadFile(ttsConfigPath);
+        // 开发环境：由 renderer 的 vite dev server 提供（多页面入口）
+        const devUrl = 'http://localhost:3000/tts-config.html';
+        this.logger.info('TTS配置窗口加载地址', { url: devUrl });
+        await window.loadURL(devUrl);
       } else {
-        // 生产环境加载打包后的TTS配置页面
-        // 在打包应用中，extraResources 会被放在 process.resourcesPath 下
-        const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
-        const ttsConfigPath = path.join(resourcesPath, 'renderer', 'tts-config.html');
+        // 生产：页面由 renderer 的 vite 构建输出（renderer/dist/tts-config.html）
+        // 打包后在 resources/renderer/ 下；未打包运行时用 copy-renderer 复制的 dist/renderer/
+        const ttsConfigPath = app.isPackaged
+          ? path.join(process.resourcesPath, 'renderer', 'tts-config.html')
+          : path.join(app.getAppPath(), 'dist', 'renderer', 'tts-config.html');
         this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
         await window.loadFile(ttsConfigPath);
       }
@@ -466,6 +532,19 @@ export class WindowManager implements IWindowManager {
       this.logger.error('TTS配置窗口加载失败', { error: errorMessage });
       throw error;
     }
+  }
+
+  /**
+   * 获取 AI 对话窗口页面路径（生产环境）
+   *
+   * - 打包后：electron-builder 的 extraResources 把 ../ai-chat/dist 放到 resources/ai-chat
+   * - 本地未打包：scripts/copy-renderer.js 把 ai-chat/dist 复制到 dist/ai-chat
+   */
+  private getAiChatPath(): string {
+    if (app.isPackaged) {
+      return path.join(process.resourcesPath, 'ai-chat', 'index.html');
+    }
+    return path.join(app.getAppPath(), 'dist', 'ai-chat', 'index.html');
   }
 
   /**

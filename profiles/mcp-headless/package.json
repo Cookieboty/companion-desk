@@ -1,0 +1,18 @@
+{
+  "name": "dsh-profile-mcp-headless",
+  "private": true,
+  "version": "0.0.0",
+  "description": "\u65e0 UI \u7684 MCP headless profile\uff1a\u4f9b IDE / MCP client \u4ee5\u5de5\u5177\u63a5\u53e3\u8bbf\u95ee dsh \u80fd\u529b",
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base"
+      ],
+      "patchReload": "startup"
+    }
+  },
+  "peerDependenciesMeta": {},
+  "optionalDependencies": {
+    "@deepseek-ai/dsh-base": "0.2.0-rc.2"
+  }
+}

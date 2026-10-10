@@ -1,0 +1,85 @@
+# bundle-ig-base 默认 patch
+# 由 dsh 加载时合入 Cordis 配置图；具体 id 与 dsh profile 中通过 `id: <patch-id>` 引用
+#
+# 说明：此文件是"骨架占位"。P1 dsh 基座接入完成后再补充真实 dsh 配置结构。
+
+apiVersion: dsh/v1
+kind: Bundle
+metadata:
+  name: bundle-ig-base
+  version: 0.0.1
+  description: 通用 AI 能力 bundle（LLM / 工具 / 护栏 / MCP / 记忆 / 用户偏好薄层）
+
+# 每一段对应一个 plugin 的默认 patch id，供 profile 通过 `id: <patch-id>` 引用
+patches:
+  - id: llm.providers.default
+    plugin: LLMProvidersPlugin
+    config:
+      providers: [] # profile 里覆盖：openai / deepseek / ollama / ...
+
+  - id: llm.distill
+    plugin: LLMProvidersPlugin
+    config:
+      # 蒸馏用的"小模型 slot"，PreferenceDistiller 引用
+      provider: ollama
+      model: qwen2.5:3b-instruct
+
+  - id: tools.builtin.default
+    plugin: ToolsBuiltinPlugin
+    config:
+      enable: [time_now, random, echo, http_get_readonly]
+      http_get_readonly:
+        allowHosts: [] # 默认全禁；profile 里追加白名单
+        maxContentLength: 1048576 # 1 MiB
+
+  - id: guardrails.default
+    plugin: GuardrailsPlugin
+    config:
+      toolWhitelist: []
+      rateLimit:
+        tokensPerMinute: 60
+        burst: 10
+      dangerTools: [write_file, delete_file, execute_shell]
+      repeatCall:
+        maxRepeat: 3
+      timeout:
+        toolMs: 15000
+
+  - id: mcp.bridge.default
+    plugin: McpBridgePlugin
+    config:
+      servers: []
+
+  - id: memory.policy.default
+    plugin: MemoryPolicyPlugin
+    config:
+      systemPromptTokenBudget: 400
+      summaryEveryNSteps: 5
+      sectionOrder: [identity, preferences, facts, summary]
+
+  - id: userProfile.store.default
+    plugin: UserProfileStorePlugin
+    config:
+      storageDriver: memory # electron caps 里会覆盖为 file
+      encrypt: false
+
+  - id: preference.extractor.default
+    plugin: PreferenceExtractor
+    config:
+      enable: true
+
+  - id: preference.distiller.default
+    plugin: PreferenceDistiller
+    config:
+      enable: false # 默认关，用户在 UI 里开
+      everyNTurns: 20
+      cooldownHours: 24
+
+  - id: preference.habit.default
+    plugin: HabitStatCollector
+    config:
+      flushIntervalMs: 60000
+
+  - id: preference.tools.default
+    plugin: PreferenceToolsPlugin
+    config: {}

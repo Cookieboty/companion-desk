@@ -3,14 +3,20 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能助手</title>
+    <title>Companion Desk</title>
   </head>
 
   <style>
-    *,
+    /* 画布 / 容器不显示焦点框；按钮保留 :focus-visible（无障碍） */
     canvas,
     div {
       outline: none !important;
+    }
+    /* 透明看板娘窗口：不要默认外边距 / 滚动条 */
+    html,
+    body {
+      margin: 0;
+      overflow: hidden;
     }
   </style>
 

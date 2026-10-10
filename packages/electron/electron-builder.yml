@@ -1,0 +1,104 @@
+# electron-builder 配置 · P9-9 Polish B
+#
+# 本文件由 [packages/electron/package.json](package.json)
+# 的 `package:*` 脚本消费。相较此前内嵌在 package.json 的 `build` 字段，独立成
+# YAML 后：
+# - 便于按 target/env 变量差分（AppImage / DMG / NSIS / notarize / sign）；
+# - 便于 [P9-9 CI 三平台 build](../../docs/plans/P9-polish-observability-release.md#p9-9-应用发布流水线) 在 workflow 里显式覆盖；
+# - Notarize / Windows Sign 通过环境变量启用（默认关闭以便本地开发 & PR CI 免凭证）。
+#
+# v26 note: pnpm "node module collector" OOMs on this monorepo (~4GB default heap).
+# electron-builder then falls back to manual node_modules traversal and packaging
+# still succeeds — do NOT raise NODE_OPTIONS to force the collector (it can hang for
+# tens of minutes on CI). pnpm deploy staging is only needed if traversal also fails.
+
+appId: com.cookieboty.companion-desk
+productName: Companion Desk
+
+files:
+  - dist/**/*
+  - assets/**/*
+  - package.json
+  # 打包后 renderer / ai-chat 从 process.resourcesPath 加载（见 extraResources），
+  # dist/ 下由 copy-renderer 生成的副本只供未打包的本地运行使用 —— 不再重复塞进 asar（~224MB）。
+  - '!dist/renderer/**'
+  - '!dist/ai-chat/**'
+  # 预加载只用 esbuild 产物 *.bundle.js
+  - '!dist/preload.js'
+  - '!dist/ai-chat-preload.js'
+  - '!**/*.map'
+  - '!**/*.{ts,mts,cts,tsx}'
+  - '!**/*.d.ts'
+  - '!**/node_modules/**/*.{md,markdown}'
+  - '!**/node_modules/**/{test,tests,__tests__,__mocks__,docs,example,examples,coverage,.github}/**'
+  - '!**/node_modules/**/{tsconfig*.json,.eslintrc*,.prettierrc*,.editorconfig,.npmignore}'
+
+# 默认 normal：maximum 对已压缩的模型纹理收益极小、但显著拖慢打包
+compression: normal
+
+asarUnpack:
+  - '**/standalone-mcp-server.js'
+  - '**/mcp/**/*'
+  # 全局按键监听的原生 key server（WinKeyServer.exe 等）不能从 asar 内启动
+  - '**/node_modules/node-global-key-listener/bin/**'
+
+extraResources:
+  - from: ../renderer/dist
+    to: renderer
+  - from: ../ai-chat/dist
+    to: ai-chat
+  - from: assets
+    to: assets
+
+directories:
+  buildResources: assets
+  output: ../../dist
+
+extraMetadata:
+  main: dist/main.js
+
+protocols:
+  - name: Companion Desk
+    schemes:
+      - companion-desk
+
+# ---------------------------------------------------------------
+# macOS · DMG（默认）；notarize 需要 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
+# APPLE_TEAM_ID 三件套齐全时才启用（缺失时静默降级，便于 CI 免凭证跑 build 冒烟）。
+# ---------------------------------------------------------------
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: assets/icon.png
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+# ---------------------------------------------------------------
+# Windows · NSIS；code sign 通过 CSC_LINK / CSC_KEY_PASSWORD 环境变量启用
+# （electron-builder 内建约定，CI 里未注入则自动跳过 sign）。
+# ---------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.png
+
+# ---------------------------------------------------------------
+# Linux · AppImage（P9-9 alpha 首发目标）
+# ---------------------------------------------------------------
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Utility
+  # 可执行文件名（默认取 package.json name，会得到 '@ig-liveelectron'）
+  executableName: companion-desk
+  # electron-builder 26+: derive .desktop / WM_CLASS from package.json desktopName
+  syncDesktopName: true
+  icon: assets/icon.png

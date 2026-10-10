@@ -1,0 +1,7 @@
+# mcp-headless profile 的用户补丁层：应用在所有 bundle 补丁层之后（顶层 YAML 数组）。
+# 每一项都是 @deepseek-ai/cordis-plugin-include 的 PatchOptions：id 定位 + config
+# 覆盖 / disable / insert。允许使用 !!js 表达式。
+#
+# 当前处于 P1 骨架期：先保持空数组，dsh-base 的默认行为已经能装配出可用的 ctx。
+# P3 完成后，这里会替换 llm.default 到 echo/mock，避免 headless 环境依赖真实凭据。
+[]

@@ -1,0 +1,72 @@
+import { useEffect, useRef } from 'react';
+
+import { useWaifuMessage } from './useWaifuMessage';
+
+import { IDLE_TIPS, MESSAGES, MOUSEOVER_TIPS, greetingFor } from '@/mascot/tips';
+
+const IDLE_AFTER_MS = 45_000;
+
+/** 注册看板娘的提示文案：问候、悬停提示、空闲提醒、复制/回到前台。 */
+export function useMascotTips(): void {
+  const { showMessage } = useWaifuMessage();
+  const showRef = useRef(showMessage);
+  showRef.current = showMessage;
+
+  useEffect(() => {
+    const say = (t: string | string[], timeout = 4000, priority = 8) =>
+      showRef.current(t, timeout, priority);
+
+    const greet = setTimeout(() => say(greetingFor(new Date().getHours()), 6000, 9), 1200);
+
+    let lastSelector: string | null = null;
+    const onOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest) return;
+      const rule = MOUSEOVER_TIPS.find((r) => target.closest(r.selector));
+      if (!rule) {
+        lastSelector = null;
+        return;
+      }
+      if (rule.selector === lastSelector) return;
+      lastSelector = rule.selector;
+      say(rule.text);
+    };
+
+    let lastActive = Date.now();
+    const onActive = () => {
+      lastActive = Date.now();
+    };
+    const idle = setInterval(() => {
+      if (Date.now() - lastActive > IDLE_AFTER_MS) {
+        say(IDLE_TIPS, 6000, 5);
+        lastActive = Date.now();
+      }
+    }, 5000);
+
+    const onCopy = () => say(MESSAGES.copy, 5000, 9);
+    const onSay = (e: Event) => {
+      const d = (e as CustomEvent<{ text?: string; ms?: number }>).detail;
+      if (d?.text) say(d.text, d.ms ?? 4000, 9);
+    };
+    const onVisible = () => {
+      if (!document.hidden) say(MESSAGES.visibility, 4000, 9);
+    };
+
+    window.addEventListener('mouseover', onOver);
+    window.addEventListener('mousemove', onActive);
+    window.addEventListener('keydown', onActive);
+    window.addEventListener('copy', onCopy);
+    window.addEventListener('mascot:say', onSay);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(greet);
+      clearInterval(idle);
+      window.removeEventListener('mouseover', onOver);
+      window.removeEventListener('mousemove', onActive);
+      window.removeEventListener('keydown', onActive);
+      window.removeEventListener('copy', onCopy);
+      window.removeEventListener('mascot:say', onSay);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+}

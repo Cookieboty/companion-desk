@@ -1,0 +1,18 @@
+# 兜底：所有变更均由默认 maintainer review
+* @Cookieboty
+
+# 工程底座
+/.github/                       @Cookieboty
+/turbo.json                     @Cookieboty
+/pnpm-workspace.yaml            @Cookieboty
+/tsconfig.*.json                @Cookieboty
+/eslint.config.mjs              @Cookieboty
+/.husky/                        @Cookieboty
+
+# 设计与计划
+/docs/                          @Cookieboty
+
+# 业务包（后续按 owner 拆分）
+/packages/electron/             @Cookieboty
+/packages/renderer/             @Cookieboty
+/packages/ai-chat/              @Cookieboty

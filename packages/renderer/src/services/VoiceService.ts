@@ -1,9 +1,31 @@
-import { VoiceConfig, VoiceSettings, KeyboardEvent, VoiceContribute } from '@ig-live/types';
+/* eslint-disable @typescript-eslint/no-explicit-any -- legacy untyped window.electronAPI bridge */
+import {
+  type VoiceConfig,
+  type VoiceSettings,
+  type KeyboardEvent,
+  type VoiceContribute,
+} from '@ig-live/types';
+
+import { HOURLY_LINES, KEYWORD_LINES } from '../mascot/tips';
+import { toFileUrl } from '../utils/fileUrl';
 
 /**
  * 语音服务类
  * 负责管理语音播放、键盘监听和定时播报功能
  */
+const TIME_KEYWORDS: Array<[string, number]> = [
+  ['$time_morning', 7],
+  ['$time_before_noon', 10],
+  ['$time_noon', 12],
+  ['$time_evening', 19],
+  ['$time_midnight', 23],
+  ['$time_each_hour', 15],
+];
+const TIME_KEYWORD_LINES = TIME_KEYWORDS.map(([keyword, hour]) => ({
+  keywords: [keyword],
+  voices: HOURLY_LINES.find((h) => hour >= h.from && hour <= h.to)?.lines ?? [],
+}));
+
 export class VoiceService {
   private voiceConfig: VoiceConfig | null = null;
   private voiceSettings: VoiceSettings | null = null;
@@ -96,42 +118,16 @@ export class VoiceService {
   }
 
   /**
-   * 加载语音配置
+   * 加载语音配置：使用内置原创台词（src/mascot/tips.ts），由系统语音朗读。
+   * （旧版的第三方 mp3 语音包许可不明，已移除）
    */
   private async loadVoiceConfig() {
-    try {
-      const electronAPI = (window as any).electronAPI;
-      if (electronAPI) {
-        // 使用相对路径，与模型加载保持一致
-        const configPath = './assets/voice/contributes.json';
-
-        try {
-          // 尝试通过Electron API加载
-          const configData = await electronAPI.readLocalFile(configPath);
-          if (configData) {
-            this.voiceConfig = JSON.parse(configData);
-            return;
-          }
-        } catch (error) {
-          console.error('VoiceService: 通过Electron API加载语音配置失败:', error);
-        }
-
-        // 回退到标准fetch（开发环境）
-        try {
-          const response = await fetch(configPath);
-          if (response.ok) {
-            this.voiceConfig = await response.json();
-            return;
-          }
-        } catch (error) {
-          console.error('VoiceService: 通过fetch加载语音配置失败:', error);
-        }
-      } else {
-        console.error('VoiceService: electronAPI 不可用，无法加载语音配置');
-      }
-    } catch (error) {
-      console.error('VoiceService: 加载语音配置失败:', error);
-    }
+    this.voiceConfig = {
+      contributes: [
+        ...KEYWORD_LINES.map((k) => ({ keywords: k.keywords, voices: k.lines })),
+        ...TIME_KEYWORD_LINES,
+      ],
+    };
   }
 
   /**
@@ -290,44 +286,20 @@ export class VoiceService {
   }
 
   /**
-   * 播放指定语音文件
+   * 朗读一句台词（Web Speech API，系统自带语音，无需音频资源）。
    */
-  private async playVoice(voiceFile: string) {
+  private async playVoice(line: string) {
     try {
-      // 构建语音文件的相对路径，与模型加载保持一致
-      const voicePath = `./assets/voice/${voiceFile}`;
-
-      // 检查是否在Electron环境中
-      const electronAPI = (window as any).electronAPI;
-
-      if (electronAPI) {
-        // 在Electron环境中，使用readLocalFile API加载音频数据
-        try {
-          const audioData = await electronAPI.readLocalFile(voicePath);
-          if (audioData) {
-            // 检查数据类型
-            if (audioData instanceof ArrayBuffer) {
-              this.playAudioFromData(audioData, this.voiceSettings?.volume || 0.8);
-            } else if (typeof audioData === 'string') {
-              // 如果是字符串，可能是base64编码的数据
-              this.playAudioFromData(audioData, this.voiceSettings?.volume || 0.8);
-            } else {
-              console.error('VoiceService: 未知的音频数据类型:', typeof audioData);
-              // 回退到URL播放
-              this.playAudioFromUrl(voicePath, this.voiceSettings?.volume || 0.8);
-            }
-            return;
-          }
-        } catch (error) {
-          console.error('VoiceService: 通过Electron API加载音频失败:', error);
-        }
-      }
-
-      // 回退到标准的音频播放方式（开发环境）
-      this.playAudioFromUrl(voicePath, this.voiceSettings?.volume || 0.8);
-
+      window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: line } }));
+      const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(line);
+      u.lang = 'zh-CN';
+      u.volume = this.voiceSettings?.volume ?? 0.8;
+      synth.speak(u);
     } catch (error) {
-      console.error('VoiceService: 播放语音失败:', error);
+      console.error('VoiceService: 朗读失败:', error);
     }
   }
 
@@ -353,7 +325,7 @@ export class VoiceService {
       });
 
       // 播放音频
-      this.currentAudio.play().catch(error => {
+      this.currentAudio.play().catch((error) => {
         console.error('VoiceService: 播放音频失败:', error);
       });
 
@@ -361,7 +333,6 @@ export class VoiceService {
       this.currentAudio.addEventListener('ended', () => {
         this.currentAudio = null;
       });
-
     } catch (error) {
       console.error('VoiceService: 播放音频失败:', error);
     }
@@ -394,7 +365,7 @@ export class VoiceService {
             console.error('VoiceService: 音频播放失败:', e);
           });
 
-          this.currentAudio.play().catch(error => {
+          this.currentAudio.play().catch((error) => {
             console.error('VoiceService: 播放data URL音频失败:', error);
           });
 
@@ -421,7 +392,10 @@ export class VoiceService {
       } else if (audioData && typeof audioData === 'object' && 'buffer' in audioData) {
         // 处理Node.js Buffer对象
         const bufferData = audioData as any;
-        buffer = bufferData.buffer.slice(bufferData.byteOffset, bufferData.byteOffset + bufferData.byteLength) as ArrayBuffer;
+        buffer = bufferData.buffer.slice(
+          bufferData.byteOffset,
+          bufferData.byteOffset + bufferData.byteLength,
+        ) as ArrayBuffer;
       } else {
         console.error('VoiceService: 不支持的音频数据类型:', typeof audioData);
         return;
@@ -443,7 +417,7 @@ export class VoiceService {
       });
 
       // 播放音频
-      this.currentAudio.play().catch(error => {
+      this.currentAudio.play().catch((error) => {
         console.error('VoiceService: 播放音频数据失败:', error);
         URL.revokeObjectURL(audioUrl); // 清理Blob URL
       });
@@ -453,7 +427,6 @@ export class VoiceService {
         URL.revokeObjectURL(audioUrl); // 清理Blob URL
         this.currentAudio = null;
       });
-
     } catch (error) {
       console.error('VoiceService: 播放音频数据失败:', error);
     }
@@ -474,14 +447,8 @@ export class VoiceService {
       this.currentAudio = new Audio();
 
       // 处理文件路径 - 在Electron中需要特殊处理
-      let audioSrc = filePath;
-      if (filePath.startsWith('/')) {
-        // 绝对路径，使用file://协议
-        audioSrc = `file://${filePath}`;
-      } else if (!filePath.startsWith('http') && !filePath.startsWith('file://')) {
-        // 相对路径，转换为绝对路径
-        audioSrc = `file://${filePath}`;
-      }
+      // 绝对路径（含 Windows 盘符 / UNC）转为 file:// URL，URL 原样使用
+      const audioSrc = toFileUrl(filePath);
 
       this.currentAudio.src = audioSrc;
       this.currentAudio.volume = Math.max(0, Math.min(1, volume));
@@ -492,14 +459,14 @@ export class VoiceService {
       });
 
       // 播放音频
-      this.currentAudio.play().catch(error => {
+      this.currentAudio.play().catch((error) => {
         console.error('VoiceService: 播放音频失败:', error);
 
         // 尝试使用不同的路径格式
         if (audioSrc.startsWith('file://')) {
           const alternativeSrc = filePath.replace(/\\/g, '/');
           this.currentAudio!.src = alternativeSrc;
-          this.currentAudio!.play().catch(err => {
+          this.currentAudio!.play().catch((err) => {
             console.error('VoiceService: 备用路径也失败:', err);
           });
         }
@@ -509,7 +476,6 @@ export class VoiceService {
       this.currentAudio.addEventListener('ended', () => {
         this.currentAudio = null;
       });
-
     } catch (error) {
       console.error('VoiceService: 播放音频文件失败:', error);
     }
@@ -567,7 +533,7 @@ export class VoiceService {
 
     if (timeKeyword) {
       const contribute = this.voiceConfig.contributes.find((c: VoiceContribute) =>
-        c.keywords.includes(timeKeyword)
+        c.keywords.includes(timeKeyword),
       );
 
       if (contribute) {
@@ -650,4 +616,4 @@ export class VoiceService {
       this.currentAudio = null;
     }
   }
-} 
+}
