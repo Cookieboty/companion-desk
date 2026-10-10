@@ -45,6 +45,8 @@ export interface AiSdkLlmProviderOptions {
   /** Max agent loop steps when tools are attached (default 5). */
   maxSteps?: number;
   fetchImpl?: typeof fetch;
+  /** Extra HTTP headers sent with every request (e.g. gateway routing / org id). */
+  headers?: Record<string, string>;
 }
 
 /** AI SDK 7+ rejects role:system in `messages`; fold them into `instructions`. */
@@ -115,10 +117,12 @@ function finishOf(raw: string | undefined): ChatResponse['finishReason'] {
 function buildModelFactory(opts: AiSdkLlmProviderOptions): (modelId: string) => LanguageModel {
   const backend = opts.backend ?? 'openai-compatible';
   const fetchImpl = opts.fetchImpl as never;
+  const headers = opts.headers && Object.keys(opts.headers).length > 0 ? opts.headers : undefined;
   if (backend === 'anthropic') {
     const provider = createAnthropic({
       apiKey: opts.apiKey,
       baseURL: opts.baseURL,
+      headers,
       fetch: fetchImpl,
     });
     return (modelId) => provider.chat(modelId);
@@ -127,6 +131,7 @@ function buildModelFactory(opts: AiSdkLlmProviderOptions): (modelId: string) => 
     const provider = createGoogleGenerativeAI({
       apiKey: opts.apiKey,
       baseURL: opts.baseURL,
+      headers,
       fetch: fetchImpl,
     });
     return (modelId) => provider.chat(modelId);
@@ -138,6 +143,7 @@ function buildModelFactory(opts: AiSdkLlmProviderOptions): (modelId: string) => 
     name: opts.id,
     baseURL: opts.baseURL.replace(/\/$/, ''),
     apiKey: opts.apiKey,
+    headers,
     fetch: fetchImpl,
     includeUsage: true,
   });
@@ -280,14 +286,14 @@ export class AiSdkLlmProvider implements LLMProvider {
   }
 }
 
-type ProviderDefaults = {
+export type ProviderDefaults = {
   backend: AiSdkBackend;
   baseURL?: string;
   model: string;
   requiresApiKey: boolean;
 };
 
-const PROVIDER_DEFAULTS: Record<string, ProviderDefaults> = {
+export const PROVIDER_DEFAULTS: Readonly<Record<string, ProviderDefaults>> = {
   deepseek: {
     backend: 'openai-compatible',
     baseURL: 'https://api.deepseek.com/v1',

@@ -1,51 +1,58 @@
 /**
  * Registers Vercel AI SDK-backed LLM providers (OpenAI-compatible + Anthropic + Google).
+ *
+ * - `providers`: 环境变量推导的静态 providers（`llmProvidersFromEnv`）。
+ * - `store`（可选）：面板配置的多 provider（ProviderStore）。提供时 registry 为
+ *   RoutedLLMRegistry：store 变化即时重建、按 active / 角色路由，并累计本地 token 用量。
  */
 import {
   LLMRegistryKey,
   definePlugin,
   type LLMProvider,
   type LLMProviderEntry,
-  type LLMRegistry,
   type PluginContext,
 } from '@ig-live/bundle-ig-base';
+
+import { RoutedLLMRegistry, type ProviderFactory } from '../providers/ProviderRouter';
+import type { ProviderStore } from '../providers/ProviderStore';
 
 import { createAiSdkProviderFromEntry } from './AiSdkLlmProvider';
 
 export interface AiSdkLLMProvidersConfig {
   providers: LLMProviderEntry[];
-}
-
-class InMemoryLLMRegistry implements LLMRegistry {
-  private readonly map = new Map<string, LLMProvider>();
-  register(provider: LLMProvider): void {
-    this.map.set(provider.id, provider);
-  }
-  get(id: string): LLMProvider | undefined {
-    return this.map.get(id);
-  }
-  list(): LLMProvider[] {
-    return [...this.map.values()];
-  }
+  store?: ProviderStore;
+  /** `COMPANION_PROVIDER`：强制使用的 provider id */
+  overrideId?: string;
+  factory?: ProviderFactory;
+  /** 拿到 registry 的回调（IPC 层用来校验 / 列出 env providers） */
+  onRegistry?: (registry: RoutedLLMRegistry) => void;
 }
 
 export const AiSdkLLMProvidersPlugin = definePlugin<AiSdkLLMProvidersConfig>({
   name: 'AiSdkLLMProvidersPlugin',
   apply(ctx: PluginContext, cfg: AiSdkLLMProvidersConfig) {
-    const registry = new InMemoryLLMRegistry();
-    ctx.provide(LLMRegistryKey, registry);
+    const envProviders: LLMProvider[] = [];
     for (const entry of cfg.providers ?? []) {
       try {
-        registry.register(createAiSdkProviderFromEntry(entry));
+        envProviders.push(createAiSdkProviderFromEntry(entry));
       } catch (err) {
         ctx.logger.error(`register provider failed: ${entry.id}`, err);
       }
     }
+    const registry = new RoutedLLMRegistry({
+      store: cfg.store,
+      envProviders,
+      factory: cfg.factory,
+      overrideId: cfg.overrideId,
+      onError: (msg, err) => ctx.logger.error(msg, err),
+    });
+    ctx.provide(LLMRegistryKey, registry);
+    cfg.onRegistry?.(registry);
     ctx.logger.info(
       `AI SDK LLM providers registered: ${registry
         .list()
         .map((p) => p.id)
-        .join(', ')}`,
+        .join(', ')}${cfg.store ? ` (store: ${cfg.store.providers().length})` : ''}`,
     );
   },
 });
