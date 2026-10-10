@@ -65,9 +65,9 @@ jobs:
         shell: bash
         run: |
           pnpm run test:root
-          pnpm run doctor waifu
-          pnpm run doctor chat-only
-          pnpm run doctor mcp-headless
+          pnpm run doctor:dsh waifu
+          pnpm run doctor:dsh chat-only
+          pnpm run doctor:dsh mcp-headless
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'

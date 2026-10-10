@@ -162,7 +162,7 @@ ollama pull qwen2.5:3b-instruct && pnpm dev     # 完全本地，无需 key
 ### 环境自检
 
 ```bash
-pnpm doctor        # 完整预检（含 provider key 提示）
+pnpm run doctor    # 完整预检（注意要写 run：`pnpm doctor` 是 pnpm 内置命令）（含 provider key 提示）
 pnpm doctor:dsh    # 仅当使用可选 dsh 内核（IG_DSH_CORE=auto|required）时
 ```
 
@@ -172,7 +172,7 @@ pnpm doctor:dsh    # 仅当使用可选 dsh 内核（IG_DSH_CORE=auto|required�
   sudo-prompt。已修复（启动前自动 `chmod +x`）；如仍遇到，`rm -rf node_modules && pnpm install`。
 - macOS 上全局按键监听需要在「系统设置 → 隐私与安全性 → 辅助功能」里允许 Electron / Companion Desk；不授权只影响按键台词。
 - 端口被占用：`lsof -i :3000` / `lsof -i :5175` 结束对应进程。
-- Electron 下载慢：设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后 `pnpm doctor`。
+- Electron 下载慢：设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后 `pnpm run doctor`。
 
 ### 构建
 
@@ -489,7 +489,7 @@ for await (const chunk of runtime.client.chat.stream({
 - **三处同步**：升级 dsh 需同步更新 3 个地方 —— 根 [package.json](package.json)、`profiles/*/package.json`（`@deepseek-ai/dsh-base`）、`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']`。
 - **profiles/ 承载配置**：三份 profile（`waifu` / `chat-only` / `mcp-headless`）以目录形式存放在 [profiles/](profiles)，每份 = `package.json` + `cordis.patch.yml`，详细结构与 override 顺序见 [profiles/README.md](profiles/README.md)。
 - **升级 SOP**：完整 9 步升级流程记录在 [profiles/README.md](profiles/README.md#dsh-升级-sop)。
-- **本地自检**：`pnpm run doctor <profile>` 装配诊断；`pnpm run test:root` 冒烟三份 profile 的 `loadProfile + composeEntries` 契约。
+- **本地自检**：`pnpm run doctor:dsh <profile>` 装配诊断；`pnpm run test:root` 冒烟三份 profile 的 `loadProfile + composeEntries` 契约。
 
 ---
 

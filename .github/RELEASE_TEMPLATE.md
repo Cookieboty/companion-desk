@@ -59,7 +59,7 @@
 ## 验收清单（发版前 checklist）
 
 - [ ] `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e` 全绿
-- [ ] `pnpm run doctor waifu && pnpm run doctor chat-only && pnpm run doctor mcp-headless` 全绿
+- [ ] `pnpm run doctor:dsh waifu && pnpm run doctor:dsh chat-only && pnpm run doctor:dsh mcp-headless` 全绿
 - [ ] `pnpm changeset status` 无未消费 changeset
 - [ ] 三平台 CI matrix build 全绿（[ci.yml · build-electron](workflows/ci.yml)）
 - [ ] 手工验收 [P9-11 E5 同意路径](../docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)（危险工具确认弹窗 → 同意 → fs 写入成功）

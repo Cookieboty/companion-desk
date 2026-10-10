@@ -46,7 +46,7 @@
 ### 1.1 预检
 
 - [ ] `pnpm --filter @ig-live/electron install`：依赖已含 `@ig-live/ai-runtime`、`@ig-live/ai-sdk`、`@deepseek-ai/dsh*`（版本三处锁死，见 [README.md#dsh-基座版本策略](../README.md#-dsh-基座版本策略)）。
-- [ ] `pnpm run doctor <profile>` 装配诊断通过（[scripts/dsh-doctor.ts](../scripts/dsh-doctor.ts)）。
+- [ ] `pnpm run doctor:dsh <profile>` 装配诊断通过（[scripts/dsh-doctor.ts](../scripts/dsh-doctor.ts)）。
 - [ ] 明确 profile：`waifu`（看板娘 + TTS + VRM） / `chat-only`（纯聊天）/ `mcp-headless`（CLI）。
 
 ### 1.2 装配 AI Runtime
@@ -168,7 +168,7 @@ userData 目录迁到 Companion Desk 目录（见 `packages/electron/src/utils/l
 ## 6. 上线自检
 
 - [ ] `pnpm typecheck && pnpm lint && pnpm test && pnpm build` 全绿。
-- [ ] `pnpm run doctor waifu && pnpm run doctor chat-only && pnpm run doctor mcp-headless`。
+- [ ] `pnpm run doctor:dsh waifu && pnpm run doctor:dsh chat-only && pnpm run doctor:dsh mcp-headless`。
 - [ ] `pnpm --filter @ig-live/electron dev` 启动，控制台无 `AIService` / `Mock` 关键字，出现 `AI runtime ready`。
 - [ ] E2E 冒烟（P8-8）：Playwright electron 用例矩阵 E1~E4；waifu 视觉断言只做数值断言。
 - [ ] 迁移脚本 dry-run 无异常，`.legacy.json` 备份齐全。
