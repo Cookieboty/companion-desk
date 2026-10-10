@@ -109,6 +109,8 @@ interface MascotContextType {
 }
 
 let lastSpokeAt = 0;
+/** 鼠标停在气泡上（在读 / 要点「查看全文」）时不收起 */
+export const bubbleHover = { on: false };
 lipSyncStore.subscribe((rms) => {
   if (rms > 0.02) lastSpokeAt = Date.now();
 });
@@ -135,7 +137,7 @@ export const MascotProvider: React.FC<{ children: ReactNode; config: MascotConfi
     if (action.type === 'SET_MESSAGE') {
       // TTS 正在说话（口型有能量）时不收起气泡，说完 1.5s 后再收
       const expire = () => {
-        if (Date.now() - lastSpokeAt < 1500) {
+        if (Date.now() - lastSpokeAt < 1500 || bubbleHover.on) {
           timerRef.current = setTimeout(expire, 400);
           return;
         }
