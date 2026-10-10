@@ -45,6 +45,7 @@ const MascotInteractionLayer: FC = () => {
     dragging: false,
     lastGeom: '',
     geomAt: 0,
+    headAt: 0,
     shapeAt: 0,
     lastShape: '',
   });
@@ -197,6 +198,37 @@ const MascotInteractionLayer: FC = () => {
         y: rect.top + ((1 - tmp.current.y) / 2) * rect.height,
       };
     };
+
+    // ---- 头部 / 脸矩形（气泡避让用，≈12Hz）----
+    if (now - s.headAt > 0.08) {
+      s.headAt = now;
+      let l = Infinity;
+      let r = -Infinity;
+      let t = Infinity;
+      let btm = -Infinity;
+      for (const c of b.colliders()) {
+        if (c.region !== 'face' && c.region !== 'head') continue;
+        const p = toScreen(c.center);
+        const edge = toScreen({ x: c.center.x + c.radius, y: c.center.y, z: c.center.z });
+        const rad = Math.abs(edge.x - p.x);
+        l = Math.min(l, p.x - rad);
+        r = Math.max(r, p.x + rad);
+        t = Math.min(t, p.y - rad);
+        btm = Math.max(btm, p.y + rad);
+      }
+      if (Number.isFinite(l)) {
+        // 外扩 8%，把发梢 / 呼吸摆动也算进去
+        const pad = (r - l) * 0.08;
+        const head = {
+          left: Math.round(l - pad),
+          right: Math.round(r + pad),
+          top: Math.round(t - pad),
+          bottom: Math.round(btm + pad),
+        };
+        layoutStore.setHead(head);
+        document.documentElement.dataset.mascotHead = `${head.left},${head.right},${head.top},${head.bottom}`;
+      }
+    }
 
     // ---- 包围盒上报（主进程物理用）----
     if (now - s.geomAt > 0.5) {

@@ -11,10 +11,21 @@ export interface Box {
 export interface LayoutSnapshot {
   box: Box | null;
   cursor: { x: number; y: number; inside: boolean } | null;
+  /** 头部（含脸）在窗口里的矩形，随动画 / 相机实时更新 */
+  head: Box | null;
+  /** 工具栏占用的槽位（无论当前是否显示） */
+  gutter: Box | null;
 }
 
 type Listener = (s: LayoutSnapshot) => void;
-let snap: LayoutSnapshot = { box: null, cursor: null };
+let snap: LayoutSnapshot = { box: null, cursor: null, head: null, gutter: null };
+const same = (a: Box | null, b: Box | null, eps = 0) =>
+  !!a &&
+  !!b &&
+  Math.abs(a.left - b.left) <= eps &&
+  Math.abs(a.right - b.right) <= eps &&
+  Math.abs(a.top - b.top) <= eps &&
+  Math.abs(a.bottom - b.bottom) <= eps;
 const listeners = new Set<Listener>();
 
 export const layoutStore = {
@@ -30,6 +41,17 @@ export const layoutStore = {
     )
       return;
     snap = { ...snap, box };
+    listeners.forEach((l) => l(snap));
+  },
+  /** 头部矩形：变化 < 3px 不广播（待机动画的微动） */
+  setHead(head: Box | null) {
+    if (head === snap.head || same(head, snap.head, 3)) return;
+    snap = { ...snap, head };
+    listeners.forEach((l) => l(snap));
+  },
+  setGutter(gutter: Box | null) {
+    if (gutter === snap.gutter || same(gutter, snap.gutter)) return;
+    snap = { ...snap, gutter };
     listeners.forEach((l) => l(snap));
   },
   setCursor(c: { x: number; y: number; inside: boolean }) {
