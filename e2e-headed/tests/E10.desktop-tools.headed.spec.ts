@@ -5,7 +5,6 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
-  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { createServer, type Server } from 'node:http';
@@ -18,6 +17,7 @@ import type { ElectronApplication, Page } from '@playwright/test';
 
 import { makePdf } from '../fixtures/docs';
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * E10 · 真实应用 · 桌面文件工具（P0 + P1）
@@ -158,8 +158,8 @@ test.describe('E10 · real app · desktop file tools', () => {
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
     await new Promise((r) => server?.close(r));
-    rmSync(userData, { recursive: true, force: true });
-    rmSync(work, { recursive: true, force: true });
+    safeRm(userData);
+    safeRm(work);
   });
 
   test('grant → summarize md/pdf → denied paths → destructive dialog → drop on mascot', async () => {
