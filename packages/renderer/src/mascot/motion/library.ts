@@ -37,7 +37,6 @@ export const MOTION_LABELS: Record<string, string> = {
   bow: '鞠躬',
   cheer: '欢呼',
   dance: '跳舞',
-  jump: '跳跃',
   stretch: '伸懒腰',
   look_around: '张望',
   interact: '伸手',

@@ -71,7 +71,6 @@ export const TRAY_MOTIONS: Array<[string, string]> = [
   ['bow', '鞠躬'],
   ['cheer', '欢呼'],
   ['dance', '跳舞'],
-  ['jump', '跳跃'],
 ];
 
 export class TrayManager {

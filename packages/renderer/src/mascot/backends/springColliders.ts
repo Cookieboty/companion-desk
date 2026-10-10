@@ -68,3 +68,69 @@ export function clampRotation(node: THREE.Object3D | null, maxAngle: number): vo
   const id = new THREE.Quaternion();
   q.copy(id.slerp(q, maxAngle / angle));
 }
+
+/** 人体关节限位（弧度，相对规范化静止姿态的最大旋转角）。规范化 T-pose：手臂水平、腿竖直。 */
+export const JOINT_LIMITS: Partial<Record<VRMHumanBoneName, number>> = {
+  leftShoulder: 0.35,
+  rightShoulder: 0.35,
+  leftUpperArm: 2.3,
+  rightUpperArm: 2.3,
+  leftLowerArm: 2.5,
+  rightLowerArm: 2.5,
+  leftHand: 1.1,
+  rightHand: 1.1,
+  leftUpperLeg: 1.5,
+  rightUpperLeg: 1.5,
+  leftLowerLeg: 2.4,
+  rightLowerLeg: 2.4,
+  leftFoot: 0.8,
+  rightFoot: 0.8,
+};
+
+/** 对给定的（规范化）骨骼应用 JOINT_LIMITS */
+export function applyJointLimits(bone: (n: VRMHumanBoneName) => THREE.Object3D | null): void {
+  for (const [name, max] of Object.entries(JOINT_LIMITS) as Array<[VRMHumanBoneName, number]>)
+    clampRotation(bone(name), max);
+}
+
+const _h = new THREE.Vector3();
+const _p = new THREE.Vector3();
+const _q = new THREE.Quaternion();
+const _e = new THREE.Euler();
+
+/**
+ * 手不穿过头发 / 帽子：头部包一个“禁区”球（头骨上方，半径约为头宽 1.3 倍）。
+ * 若手腕或手肘落进去，就把上臂绕前后轴往下 / 往外转一点，最多迭代 8 次。
+ * 返回调整的次数（0 = 无需调整）。
+ */
+export function keepHandsOutOfHead(
+  bone: (n: VRMHumanBoneName) => THREE.Object3D | null,
+  radius: number,
+): number {
+  const head = bone('head');
+  if (!head) return 0;
+  head.updateWorldMatrix(true, false);
+  head.getWorldPosition(_h);
+  _h.y += radius * 0.45; // 头顶 / 发顶 / 帽子
+  let fixes = 0;
+  for (const [side, sign] of [
+    ['left', 1],
+    ['right', -1],
+  ] as const) {
+    const upper = bone(`${side}UpperArm` as VRMHumanBoneName);
+    const lower = bone(`${side}LowerArm` as VRMHumanBoneName);
+    const hand = bone(`${side}Hand` as VRMHumanBoneName);
+    if (!upper || !hand) continue;
+    for (let i = 0; i < 8; i += 1) {
+      upper.updateWorldMatrix(true, true);
+      const dHand = hand.getWorldPosition(_p).distanceTo(_h);
+      const dElbow = lower ? lower.getWorldPosition(_p).distanceTo(_h) : Infinity;
+      if (Math.min(dHand, dElbow) >= radius) break;
+      // 规范化空间：左臂 +Z 转 = 向下，右臂 −Z 转 = 向下
+      upper.quaternion.multiply(_q.setFromEuler(_e.set(0, 0, sign * 0.12)));
+      if (lower) lower.quaternion.slerp(_q.identity(), 0.25); // 小臂伸直一些，手离头更远
+      fixes += 1;
+    }
+  }
+  return fixes;
+}
