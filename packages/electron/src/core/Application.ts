@@ -16,6 +16,7 @@ import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
 import { LoggerService, LogLevel } from '../services/LoggerService';
 import { GlobalErrorHandler } from '../utils/ErrorHandler';
+import { perfMark } from '../utils/perfMarks';
 
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
@@ -99,10 +100,12 @@ export class Application implements IApplication {
 
       // 等待Electron app ready事件
       await app.whenReady();
+      perfMark('app-ready');
       this.logger.info('Electron应用准备就绪');
 
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
+      perfMark('ai-runtime-ready');
 
       // 创建主窗口
       await this.windowManager.createMainWindow();

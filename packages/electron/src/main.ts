@@ -7,6 +7,9 @@ import { app } from 'electron';
 
 import { Application } from './core/Application';
 import { migrateLegacyUserData } from './utils/legacyUserData';
+import { perfMark } from './utils/perfMarks';
+
+perfMark('main-entry');
 
 // 品牌更名后沿用旧 userData（仅打包产物；需在 ready 之前）
 if (app.isPackaged) {
