@@ -1,0 +1,37 @@
+{
+  "$comment": "Every shipped static asset must match an entry with an allow-listed open licence. Checked by scripts/check-licenses.mjs.",
+  "roots": ["packages/renderer/public", "packages/electron/assets"],
+  "allowedLicenses": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "MIT", "Apache-2.0", "OFL-1.1"],
+  "assets": [
+    {
+      "pattern": "packages/renderer/public/assets/models/vrm/*.vrm",
+      "license": "CC0-1.0",
+      "author": "pixiv Inc. / VRoid Project",
+      "source": "https://opengameart.org/content/vroid-studio-cc0-models"
+    },
+    {
+      "pattern": "packages/renderer/public/assets/models/vrm/*-thumb.jpg",
+      "license": "CC0-1.0",
+      "author": "pixiv Inc. / VRoid Project (embedded VRM thumbnails)",
+      "source": "https://opengameart.org/content/vroid-studio-cc0-models"
+    },
+    {
+      "pattern": "packages/renderer/public/assets/models/vrm/{model-list.json,CREDITS.md}",
+      "license": "MIT",
+      "author": "Companion Desk contributors",
+      "source": "this repository"
+    },
+    {
+      "pattern": "packages/electron/assets/{icon.png,logo.jpg}",
+      "license": "CC0-1.0",
+      "author": "Derived from the CC0 VRoid sample 'Sendagaya Shibu' thumbnail (pixiv Inc.)",
+      "source": "https://opengameart.org/content/vroid-studio-cc0-models"
+    },
+    {
+      "pattern": "packages/electron/assets/completion/**",
+      "license": "CC0-1.0",
+      "author": "Companion Desk contributors (ffmpeg-synthesised chimes)",
+      "source": "this repository"
+    }
+  ]
+}

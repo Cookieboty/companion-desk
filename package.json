@@ -35,7 +35,8 @@
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",
     "changeset:version": "changeset version",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check:licenses": "node scripts/check-licenses.mjs"
   },
   "author": "",
   "license": "MIT",
