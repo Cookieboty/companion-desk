@@ -62,6 +62,13 @@ export function collectCredits(
     });
   }
   rows.push({
+    key: 'ui-icons',
+    title: '工具栏图标',
+    author: 'Lucide contributors',
+    license: 'ISC',
+    source: 'https://lucide.dev/license',
+  });
+  rows.push({
     key: 'icon',
     title: '应用图标',
     author: 'Cookieboty',

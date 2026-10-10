@@ -16,7 +16,7 @@ entry in `assets-licenses.json`.
 | Body motions (`packages/renderer/public/assets/motions/motions.json`)       | CC0-1.0 AND MIT                   | 6 clips retargeted from Quaternius _Universal Animation Library_ (Standard, CC0); 9 procedural gestures original to this project (MIT). Per-clip licences in `assets-licenses.json`. |
 | App icon (`packages/electron/assets/icon.png`, `logo.jpg`)                  | First-party — all rights reserved | Original artwork owned by Cookieboty (project owner). Not third-party; not covered by the MIT licence.                                                                               |
 | Completion chimes (`packages/electron/assets/completion/*.mp3`)             | CC0-1.0                           | Synthesised by the project with ffmpeg                                                                                                                                               |
-| Toolbar icons (`packages/renderer/src/utils/icons.ts`)                      | CC-BY-4.0                         | Font Awesome Free icons by Fonticons, Inc. — https://fontawesome.com/license/free                                                                                                    |
+| Toolbar icons (`lucide-react`)                                              | ISC                               | Lucide icons — https://lucide.dev/license (replaces the former Font Awesome Free set)                                                                                                |
 | Mascot tip / voice-line texts (`packages/renderer/src/mascot/tips.ts`)      | MIT                               | Original project text                                                                                                                                                                |
 
 Removed in this release for licensing reasons: the proprietary Live2D Cubism 2 runtime (`live2d.min.js`),
@@ -588,6 +588,7 @@ and keyword voice clips of unknown licence.
 | `lie`                                                     | 3.3.0                | MIT                       |
 | `long`                                                    | 5.3.2                | Apache-2.0                |
 | `lowercase-keys`                                          | 3.0.0                | MIT                       |
+| `lucide-react`                                            | 1.55.0               | ISC                       |
 | `maath`                                                   | 0.10.8               | MIT                       |
 | `math-intrinsics`                                         | 1.1.0                | MIT                       |
 | `media-typer`                                             | 1.1.0                | MIT                       |

@@ -76,13 +76,13 @@ test.describe('UI surfaces', () => {
     await shot(main, '02-mascot-toolbar');
 
     // 工具栏 tooltip（悬停第一个按钮）
-    const buttons = main.locator('[class*="toolbar"] button');
+    const buttons = main.locator('[data-testid="mascot-toolbar"] button');
     if ((await buttons.count()) > 0) {
       await buttons.nth(1).hover();
       await main.waitForTimeout(400);
       await shot(main, '03-toolbar-tooltip');
       // 语音设置弹层（语音按钮右键打开）
-      await main.locator('button[title^="语音功能"]').first().click({ button: 'right' });
+      await main.locator('[data-testid="tool-voice-settings"]').first().click({ button: 'right' });
       await main.waitForTimeout(800);
       await shot(main, '04-voice-settings');
       const close = main.locator('[aria-label="关闭"], button:has-text("×")');

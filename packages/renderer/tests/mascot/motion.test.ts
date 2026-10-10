@@ -211,7 +211,13 @@ describe('credits', () => {
         { source: 'Companion Desk (original, procedural)', license: 'MIT' },
       ],
     );
-    expect(rows.map((r) => r.key)).toEqual(['model-a', 'motions-ual', 'motions-own', 'icon']);
+    expect(rows.map((r) => r.key)).toEqual([
+      'model-a',
+      'motions-ual',
+      'motions-own',
+      'ui-icons',
+      'icon',
+    ]);
     expect(rows[0]).toMatchObject({ author: 'Someone', license: 'CC-BY-4.0' });
   });
 });
