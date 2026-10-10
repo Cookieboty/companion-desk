@@ -1,7 +1,10 @@
+import { type CustomImageInfo } from '@ig-live/types';
+import { Button, IconButton, Modal, Notice } from '@ig-live/ui';
 import React, { useState, useCallback, useEffect } from 'react';
-import { CustomImageInfo } from '@ig-live/types';
+
 import CustomImageUploader from '../CustomImageUploader';
 import CustomImageViewer from '../CustomImageViewer';
+
 import styles from './style.module.css';
 
 interface CustomImageManagerProps {
@@ -15,7 +18,7 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
   className = '',
   style = {},
   onModeChange,
-  onImageChange
+  onImageChange,
 }) => {
   const [hasCustomImage, setHasCustomImage] = useState(false);
   const [imageInfo, setImageInfo] = useState<CustomImageInfo | null>(null);
@@ -62,29 +65,32 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
   }, []); // 空依赖数组，只在组件挂载时执行一次
 
   // 处理图片上传成功
-  const handleImageSelect = useCallback(async (imagePath: string, newImageInfo: CustomImageInfo) => {
-    console.log('🔵 CustomImageManager: 上传成功，更新状态', newImageInfo);
+  const handleImageSelect = useCallback(
+    async (imagePath: string, newImageInfo: CustomImageInfo) => {
+      console.log('🔵 CustomImageManager: 上传成功，更新状态', newImageInfo);
 
-    setImageInfo(newImageInfo);
-    setHasCustomImage(true);
-    setError(null);
+      setImageInfo(newImageInfo);
+      setHasCustomImage(true);
+      setError(null);
 
-    console.log('🔵 CustomImageManager: 状态已更新，hasCustomImage=true');
+      console.log('🔵 CustomImageManager: 状态已更新，hasCustomImage=true');
 
-    // 保存到配置
-    try {
-      await window.electronAPI.saveDisplayModeConfig({
-        currentMode: 'custom-image',
-        customImage: newImageInfo
-      });
-      console.log('✅ CustomImageManager: 配置保存成功');
+      // 保存到配置
+      try {
+        await window.electronAPI.saveDisplayModeConfig({
+          currentMode: 'custom-image',
+          customImage: newImageInfo,
+        });
+        console.log('✅ CustomImageManager: 配置保存成功');
 
-      // 只在保存成功后才通知父组件
-      onImageChange?.(newImageInfo);
-    } catch (error) {
-      console.error('❌ CustomImageManager: 保存配置失败:', error);
-    }
-  }, [onImageChange]);
+        // 只在保存成功后才通知父组件
+        onImageChange?.(newImageInfo);
+      } catch (error) {
+        console.error('❌ CustomImageManager: 保存配置失败:', error);
+      }
+    },
+    [onImageChange],
+  );
 
   // 处理上传错误
   const handleUploadError = useCallback((errorMessage: string) => {
@@ -99,8 +105,6 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
     setImageInfo(null);
     onImageChange?.(null);
   }, [onImageChange]);
-
-
 
   // 删除自定义图片
   const handleDeleteImage = useCallback(async () => {
@@ -153,44 +157,38 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
     <div className={`${styles.manager} ${className}`} style={style}>
       {/* 错误提示 */}
       {error && (
-        <div className={styles.errorBanner}>
+        <Notice tone="danger" className={styles.errorBanner}>
           <span>{error}</span>
-          <button onClick={() => setError(null)}>×</button>
-        </div>
+          <IconButton size="sm" label="关闭错误提示" icon="×" onClick={() => setError(null)} />
+        </Notice>
       )}
-
-
 
       {/* 删除确认对话框 */}
-      {showDeleteConfirm && (
-        <div className={styles.confirmModal}>
-          <div className={styles.confirmDialog}>
-            <h3>确认删除</h3>
-            <p>确定要删除当前的自定义图片吗？</p>
-            <p className={styles.warning}>删除后将自动切换到Live2D模式</p>
-            <div className={styles.confirmActions}>
-              <button
-                className={styles.cancelButton}
-                onClick={handleCancelDelete}
-              >
-                取消
-              </button>
-              <button
-                className={styles.deleteButton}
-                onClick={handleDeleteImage}
-              >
-                确认删除
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={showDeleteConfirm}
+        onClose={handleCancelDelete}
+        title="确认删除"
+        footer={
+          <>
+            <Button onClick={handleCancelDelete}>取消</Button>
+            <Button variant="danger" onClick={handleDeleteImage}>
+              确认删除
+            </Button>
+          </>
+        }
+      >
+        <p>确定要删除当前的自定义图片吗？</p>
+        <p className="cd-muted">删除后将自动切换到Live2D模式</p>
+      </Modal>
 
       {/* 主要内容区域 */}
       {!showDeleteConfirm && (
         <>
           {(() => {
-            console.log('🔵 CustomImageManager: 渲染判断', { hasCustomImage, imageInfo: !!imageInfo });
+            console.log('🔵 CustomImageManager: 渲染判断', {
+              hasCustomImage,
+              imageInfo: !!imageInfo,
+            });
             return hasCustomImage && imageInfo;
           })() ? (
             // 显示自定义图片
@@ -213,18 +211,14 @@ export const CustomImageManager: React.FC<CustomImageManagerProps> = ({
                 </div>
 
                 <div className={styles.toolbarActions}>
-
-
-                  <button
-                    className={styles.deleteButton}
+                  <Button
+                    size="sm"
+                    variant="danger"
                     onClick={handleConfirmDelete}
                     title="删除自定义图片"
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
-                    </svg>
                     删除
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

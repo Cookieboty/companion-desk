@@ -49,14 +49,14 @@
   color: #666;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
+  border-radius: var(--cd-radius-lg);
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .loading span {
   margin-top: 12px;
-  font-size: 14px;
+  font-size: var(--cd-font-size-md);
 }
 
 /* 错误状态 */
@@ -68,7 +68,7 @@
   color: #ff6b6b;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
+  border-radius: var(--cd-radius-lg);
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   text-align: center;
@@ -98,7 +98,7 @@
 .errorText p,
 .placeholderText p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--cd-font-size-md);
   opacity: 0.8;
 }
 
@@ -111,7 +111,7 @@
   color: #999;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
+  border-radius: var(--cd-radius-lg);
   padding: 32px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   text-align: center;
@@ -123,14 +123,18 @@
   width: 32px;
   height: 32px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #007AFF;
-  border-radius: 50%;
+  border-top: 3px solid #007aff;
+  border-radius: var(--cd-radius-full);
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 图片信息覆盖层（开发模式） */
@@ -141,8 +145,8 @@
   background: rgba(0, 0, 0, 0.8);
   color: white;
   padding: 12px;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: var(--cd-radius-md);
+  font-size: var(--cd-font-size-sm);
   line-height: 1.4;
   max-width: 200px;
   opacity: 0;
@@ -182,16 +186,16 @@
     padding: 24px;
     max-width: 280px;
   }
-  
+
   .loading,
   .error {
     padding: 20px;
   }
-  
+
   .imageInfo {
     top: 8px;
     right: 8px;
-    font-size: 11px;
+    font-size: var(--cd-font-size-xs);
     padding: 8px;
     max-width: 150px;
   }
@@ -211,11 +215,11 @@
 }
 
 /* 窗口置顶时的特殊样式 */
-.viewer[data-always-on-top="true"] {
+.viewer[data-always-on-top='true'] {
   pointer-events: auto;
 }
 
-.viewer[data-always-on-top="true"] .image {
+.viewer[data-always-on-top='true'] .image {
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
