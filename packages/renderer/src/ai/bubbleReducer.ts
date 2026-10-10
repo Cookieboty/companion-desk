@@ -1,3 +1,5 @@
+import { shortReply } from '@/mascot/bubblePlacement';
+
 export interface BubbleAgentStep {
   sessionId?: string;
   step?: number;
@@ -35,6 +37,10 @@ export interface BubbleDirective {
   text: string;
   priority: number;
   timeout: number;
+  /** AI 回复被截短：气泡显示「查看全文」打开对话窗口 */
+  more?: boolean;
+  /** 来源：AI 回复（受「气泡显示 AI 回复」设置控制） */
+  reply?: boolean;
 }
 
 export type BubbleEvent =
@@ -96,10 +102,17 @@ export function deriveBubble(evt: BubbleEvent): BubbleDirective | null {
       if (!msg || msg.role !== 'assistant') return null;
       const text = extractAssistantText(msg.parts ?? []);
       if (!text) return null;
+      const short = shortReply(text);
       return {
-        text: truncateForBubble(text),
+        text: short.text,
+        more: short.truncated,
+        reply: true,
         priority: BUBBLE_PRIORITY.messageComplete,
-        timeout: BUBBLE_TIMEOUT.messageComplete,
+        // 长一点的摘要多停留一会（约 18 字 / 秒，4~12s）
+        timeout: Math.max(
+          BUBBLE_TIMEOUT.messageComplete,
+          Math.min(12000, 4000 + Array.from(short.text).length * 55),
+        ),
       };
     }
     case 'tool:executed': {

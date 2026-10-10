@@ -145,6 +145,8 @@ export interface MascotInteractionConfig {
   wander: boolean;
   reactions: boolean;
   globalLook: boolean;
+  /** 在气泡里显示 AI 回复摘要（渲染进程本地设置） */
+  bubbleReplies: boolean;
 }
 
 export interface MascotCursorEvent {
