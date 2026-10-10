@@ -81,6 +81,16 @@
           "source": "Quaternius Universal Animation Library: Hit_Head"
         },
         {
+          "name": "poke",
+          "license": "CC0-1.0",
+          "source": "Quaternius Universal Animation Library: Hit_Chest"
+        },
+        {
+          "name": "walk",
+          "license": "CC0-1.0",
+          "source": "Quaternius Universal Animation Library: Walk_Loop"
+        },
+        {
           "name": "wave",
           "license": "MIT",
           "source": "Companion Desk (original, procedural)"

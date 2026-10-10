@@ -93,7 +93,7 @@ export class MotionController {
     const clip = this.clips.get(resolved);
     if (!clip) return false;
     const data = this.meta.get(resolved);
-    if (resolved === 'idle' || resolved === 'talk') {
+    if (resolved === 'idle' || resolved === 'talk' || data?.tags.includes('locomotion')) {
       this.setBase(resolved);
       return true;
     }
