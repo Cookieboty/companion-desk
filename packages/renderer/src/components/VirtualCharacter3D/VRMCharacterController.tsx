@@ -66,7 +66,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
 
         groupRef.current?.add(vrm.scene);
         vrmRef.current = vrm;
-        const backend = createVrmBackend(vrm, scene);
+        const backend = createVrmBackend(vrm, scene, { expressionMap: modelConfig?.expressionMap });
         backendRef.current = backend;
         detach = mascotRegistry.attach(backend);
         // 动作库（CC0 Quaternius 重定向 + 原创手势）异步加载，失败时保留程序化站姿
@@ -115,7 +115,9 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     if (!vrm) return;
     const dt = Math.min(delta, 1 / 20);
     backendRef.current?.update(dt, state.clock.getElapsedTime());
-    vrm.update(dt);
+    // 弹簧骨骼固定子步长（≤1/60s）：掉帧或高速拖拽时不至于炸开
+    const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
+    for (let i = 0; i < steps; i += 1) vrm.update(dt / steps);
     onAnimationUpdate?.(vrm, dt);
     updatePerformanceMetrics({
       fps: 1 / delta,

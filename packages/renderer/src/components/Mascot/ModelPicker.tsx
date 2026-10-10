@@ -117,6 +117,14 @@ export const ModelPicker: React.FC = () => {
         >
           致谢 / Credits
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          data-testid="open-interaction"
+          onClick={() => dispatch({ type: 'SET_PANEL', payload: 'interaction' })}
+        >
+          互动设置
+        </Button>
       </div>
     </Modal>
   );

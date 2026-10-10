@@ -25,6 +25,7 @@ export const MessageBubble: React.FC = () => {
   return (
     <div
       id="waifu-tips-independent"
+      data-mascot-ui={active ? '' : undefined}
       className={`${styles.messageBubble} ${active ? styles.active : ''}`}
       dangerouslySetInnerHTML={{ __html: state.currentMessage || '' }}
     />

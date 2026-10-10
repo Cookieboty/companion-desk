@@ -32,7 +32,7 @@ export interface MascotState {
   modelName: string | null;
   pickerOpen: boolean;
   /** 其它浮层：动作菜单 / 致谢 */
-  panel: 'motions' | 'credits' | null;
+  panel: 'motions' | 'credits' | 'interaction' | null;
 }
 
 export type MascotAction =
@@ -131,8 +131,17 @@ export const MascotProvider: React.FC<{ children: ReactNode; config: MascotConfi
   // 外部（托盘 / e2e）可通过 window 事件打开角色选择器
   useEffect(() => {
     const open = () => rawDispatch({ type: 'SET_PICKER_OPEN', payload: true });
+    const openPanel = (e: Event) => {
+      const panel = (e as CustomEvent<{ panel?: string }>).detail?.panel;
+      if (panel === 'interaction' || panel === 'credits' || panel === 'motions')
+        rawDispatch({ type: 'SET_PANEL', payload: panel });
+    };
     window.addEventListener('mascot:open-picker', open);
-    return () => window.removeEventListener('mascot:open-picker', open);
+    window.addEventListener('mascot:open-panel', openPanel);
+    return () => {
+      window.removeEventListener('mascot:open-picker', open);
+      window.removeEventListener('mascot:open-panel', openPanel);
+    };
   }, []);
 
   useEffect(() => {

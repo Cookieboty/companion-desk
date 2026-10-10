@@ -724,7 +724,10 @@ export const ToolBar: React.FC = () => {
   return (
     <>
       {isVisible && (
-        <div className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}>
+        <div
+          data-mascot-ui
+          className={`${styles.toolbar} ${isVisible ? styles.visible : styles.hidden}`}
+        >
           {availableTools.map((tool, index) => (
             <div key={tool} className={styles.buttonContainer}>
               <button
