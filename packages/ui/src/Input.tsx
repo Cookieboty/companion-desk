@@ -35,35 +35,5 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   return <textarea ref={ref} className={cx('cd-textarea', className)} {...rest} />;
 });
 
-export interface SelectOption {
-  value: string;
-  label: React.ReactNode;
-  disabled?: boolean;
-}
-
-export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
-  size?: 'sm' | 'md';
-  /** 简写：传 options 则自动渲染 <option>；也可以直接写 children */
-  options?: SelectOption[];
-}
-
-/** 原生 <select> 外观统一（保留原生行为：键盘、无障碍、Playwright selectOption）。 */
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { size = 'md', options, className, children, ...rest },
-  ref,
-) {
-  return (
-    <select
-      ref={ref}
-      className={cx('cd-select', size === 'sm' && 'cd-select--sm', className)}
-      {...rest}
-    >
-      {options?.map((o) => (
-        <option key={o.value} value={o.value} disabled={o.disabled}>
-          {o.label}
-        </option>
-      ))}
-      {children}
-    </select>
-  );
-});
+export { Select } from './Select';
+export type { SelectProps, SelectOption } from './Select';
