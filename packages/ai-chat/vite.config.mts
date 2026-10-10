@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     port: 5175,
+    strictPort: true,
     cors: true,
   },
   build: {

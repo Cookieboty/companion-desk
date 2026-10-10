@@ -15,7 +15,8 @@
   "tasks": {
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["^build"]
     },
     "clean": {
       "cache": false,
@@ -69,13 +70,37 @@
       "cache": false,
       "dependsOn": ["@ig-live/types#build"]
     },
-    "package:prod": { "cache": false, "dependsOn": ["build"] },
-    "package:prod:mac": { "cache": false, "dependsOn": ["build"] },
-    "package:prod:win": { "cache": false, "dependsOn": ["build"] },
-    "package:prod:linux": { "cache": false, "dependsOn": ["build"] },
-    "package:debug": { "cache": false, "dependsOn": ["build"] },
-    "package:debug:mac": { "cache": false, "dependsOn": ["build"] },
-    "package:debug:win": { "cache": false, "dependsOn": ["build"] },
-    "package:debug:linux": { "cache": false, "dependsOn": ["build"] }
+    "package:prod": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:prod:mac": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:prod:win": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:prod:linux": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:debug": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:debug:mac": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:debug:win": {
+      "cache": false,
+      "dependsOn": ["build"]
+    },
+    "package:debug:linux": {
+      "cache": false,
+      "dependsOn": ["build"]
+    }
   }
 }
