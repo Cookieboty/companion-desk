@@ -7,6 +7,7 @@ import * as url from 'url';
 
 import { BrowserWindow, screen, app } from 'electron';
 
+import { MascotWindowController } from '../mascot/MascotWindowController';
 import { type IConfigService } from '../services/ConfigService';
 import { type ILoggerService } from '../services/LoggerService';
 import { perfEnabled, perfMark } from '../utils/perfMarks';
@@ -227,6 +228,9 @@ export class WindowManager implements IWindowManager {
   /**
    * 获取主窗口
    */
+  /** 看板娘窗口控制器（托盘 / 测试读取状态） */
+  mascotController: MascotWindowController | null = null;
+
   getMainWindow(): BrowserWindow | null {
     return this.mainWindow;
   }
@@ -368,15 +372,25 @@ export class WindowManager implements IWindowManager {
     // 鼠标位置检查
     this.setupMousePositionTracking(window);
 
-    // 窗口移动事件
+    // 窗口移动事件：物理 / 拖拽时每秒会移动很多次，防抖后再落盘
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
     window.on('moved', () => {
-      const position = window.getPosition();
-      this.configService.set('windowPosition.x', position[0]);
-      this.configService.set('windowPosition.y', position[1]);
-      this.configService.save().catch((error) => {
-        this.logger.error('保存窗口位置失败', { error: error.message });
-      });
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        if (window.isDestroyed()) return;
+        const position = window.getPosition();
+        this.configService.set('windowPosition.x', position[0]);
+        this.configService.set('windowPosition.y', position[1]);
+        this.configService.save().catch((error) => {
+          this.logger.error('保存窗口位置失败', { error: error.message });
+        });
+      }, 800);
     });
+
+    // 桌面互动：点击穿透 / 拖拽 / 重力 / 漫步 / 全局光标
+    this.mascotController?.dispose();
+    this.mascotController = new MascotWindowController(window, this.logger);
+    this.mascotController.start();
 
     // 窗口关闭事件
     window.on('close', () => {

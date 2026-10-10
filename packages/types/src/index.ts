@@ -46,6 +46,8 @@ export interface IpcApi {
 
   /** 模型注册表 / 商店 / 用户导入（主进程实现） */
   models?: import('./models').ModelsApi;
+  /** 看板娘窗口互动 */
+  mascotWindow?: import('./models').MascotWindowApi;
 
   // MCP集成相关API
   mcp: MCPApi;
