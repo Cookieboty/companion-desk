@@ -4,313 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TTS语音配置</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-      }
-
-      .container {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        max-width: 600px;
-        padding: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-      }
-
-      .header {
-        text-align: center;
-        margin-bottom: 30px;
-      }
-
-      .header h1 {
-        color: #333;
-        font-size: 28px;
-        font-weight: 700;
-        margin-bottom: 10px;
-      }
-
-      .header p {
-        color: #666;
-        font-size: 14px;
-      }
-
-      .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 25px;
-        font-size: 14px;
-        font-weight: 500;
-      }
-
-      .status-indicator.none {
-        background: rgba(108, 117, 125, 0.1);
-        color: #6c757d;
-        border: 1px solid rgba(108, 117, 125, 0.2);
-      }
-
-      .status-indicator.valid {
-        background: rgba(40, 167, 69, 0.1);
-        color: #28a745;
-        border: 1px solid rgba(40, 167, 69, 0.2);
-      }
-
-      .status-indicator.invalid {
-        background: rgba(220, 53, 69, 0.1);
-        color: #dc3545;
-        border: 1px solid rgba(220, 53, 69, 0.2);
-      }
-
-      .editor-section {
-        margin-bottom: 25px;
-      }
-
-      .editor-label {
-        display: block;
-        margin-bottom: 10px;
-        color: #333;
-        font-size: 16px;
-        font-weight: 600;
-      }
-
-      .json-editor {
-        width: 100%;
-        height: 250px;
-        padding: 15px;
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
-        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Droid Sans Mono', monospace;
-        font-size: 14px;
-        line-height: 1.5;
-        background: #f8f9fa;
-        resize: vertical;
-        transition: border-color 0.2s ease;
-      }
-
-      .json-editor:focus {
-        outline: none;
-        border-color: #007bff;
-        background: #fff;
-      }
-
-      .json-editor.error {
-        border-color: #dc3545;
-        background: rgba(220, 53, 69, 0.05);
-      }
-
-      .error-message {
-        color: #dc3545;
-        font-size: 13px;
-        margin-top: 8px;
-        padding: 8px 12px;
-        background: rgba(220, 53, 69, 0.1);
-        border-radius: 8px;
-        border-left: 3px solid #dc3545;
-      }
-
-      .buttons {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin-bottom: 15px;
-      }
-
-      .btn {
-        padding: 12px 20px;
-        border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-height: 48px;
-        justify-content: center;
-        white-space: nowrap;
-        min-width: 120px;
-      }
-
-      .btn-wide {
-        grid-column: 1 / -1;
-      }
-
-      .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      .btn-primary {
-        background: linear-gradient(135deg, #007bff, #0056b3);
-        color: white;
-      }
-
-      .btn-primary:hover:not(:disabled) {
-        background: linear-gradient(135deg, #0056b3, #004085);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
-      }
-
-      .btn-secondary {
-        background: rgba(108, 117, 125, 0.1);
-        color: #6c757d;
-        border: 1px solid rgba(108, 117, 125, 0.2);
-      }
-
-      .btn-secondary:hover:not(:disabled) {
-        background: rgba(108, 117, 125, 0.2);
-        color: #495057;
-        transform: translateY(-1px);
-      }
-
-      .btn-success {
-        background: linear-gradient(135deg, #28a745, #1e7e34);
-        color: white;
-      }
-
-      .btn-success:hover:not(:disabled) {
-        background: linear-gradient(135deg, #1e7e34, #155724);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
-      }
-
-      .btn-danger {
-        background: linear-gradient(135deg, #dc3545, #c82333);
-        color: white;
-      }
-
-      .btn-danger:hover:not(:disabled) {
-        background: linear-gradient(135deg, #c82333, #bd2130);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
-      }
-
-      .loading {
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-        border: 2px solid transparent;
-        border-top: 2px solid currentColor;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-
-      .result-message {
-        margin-top: 15px;
-        padding: 12px 15px;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 500;
-      }
-
-      .result-message.success {
-        background: rgba(40, 167, 69, 0.1);
-        color: #28a745;
-        border: 1px solid rgba(40, 167, 69, 0.2);
-      }
-
-      .result-message.error {
-        background: rgba(220, 53, 69, 0.1);
-        color: #dc3545;
-        border: 1px solid rgba(220, 53, 69, 0.2);
-      }
-
-      .help-text {
-        margin-top: 15px;
-        padding: 15px;
-        background: rgba(0, 123, 255, 0.05);
-        border-radius: 10px;
-        border-left: 3px solid #007bff;
-        font-size: 13px;
-        color: #666;
-        line-height: 1.5;
-      }
-
-      .help-text strong {
-        color: #333;
-      }
-    </style>
+    <script type="module" src="./src/tts-config/main.ts"></script>
   </head>
   <body>
-    <div class="container">
-      <div class="header">
-        <h1>🎤 TTS语音配置</h1>
-        <p>配置文本转语音服务参数，支持语音克隆功能</p>
-      </div>
+    <main class="container cd-card" data-testid="tts-config">
+      <header class="header">
+        <h1>TTS 语音配置</h1>
+        <p>配置文本转语音服务参数（支持语音克隆）。留空则使用系统语音。</p>
+      </header>
 
       <div id="status-indicator" class="status-indicator none">
-        <span>📋</span>
+        <span class="status-dot" aria-hidden="true"></span>
         <span id="status-text">未配置TTS服务，将使用系统语音</span>
       </div>
 
-      <div class="editor-section">
-        <label class="editor-label" for="config-editor">配置JSON</label>
-        <textarea 
-                id="config-editor" 
-                class="json-editor" 
-                placeholder="请输入TTS配置的JSON格式..."
-            ></textarea>
-        <div id="error-message" class="error-message" style="display: none;"></div>
+      <div class="editor-section cd-field">
+        <label class="cd-field__label" for="config-editor">配置 JSON</label>
+        <textarea
+          id="config-editor"
+          class="json-editor cd-textarea"
+          spellcheck="false"
+          placeholder="请输入TTS配置的JSON格式..."
+        ></textarea>
+        <div id="error-message" class="error-message" style="display: none"></div>
       </div>
 
       <div class="buttons">
-        <button id="load-btn" class="btn btn-secondary">
-          <span>📂</span>
+        <button id="load-btn" class="cd-btn">
           <span>加载配置</span>
         </button>
-        <button id="test-btn" class="btn btn-secondary" disabled>
+        <button id="test-btn" class="cd-btn" disabled>
           <span id="test-icon">🔗</span>
           <span id="test-text">测试连接</span>
         </button>
-        <button id="save-btn" class="btn btn-primary btn-wide" disabled>
-          <span>💾</span>
+        <button id="save-btn" class="cd-btn cd-btn--primary btn-wide" disabled>
           <span>保存配置</span>
         </button>
-        <button id="reset-btn" class="btn btn-danger btn-wide">
-          <span>🗑️</span>
+        <button id="reset-btn" class="cd-btn cd-btn--danger btn-wide">
           <span>重置配置</span>
         </button>
       </div>
 
-      <div id="result-message" style="display: none;"></div>
+      <div id="result-message" style="display: none"></div>
 
-      <div class="help-text">
-        <strong>配置说明：</strong><br>
-            • <strong>enabled</strong>: 是否启用TTS服务 (true/false)<br>
-            • <strong>hostname</strong>: TTS服务器地址<br>
-            • <strong>port</strong>: TTS服务器端口<br>
-            • <strong>path</strong>: API请求路径<br>
-            • <strong>audioUrl</strong>: 用于语音克隆的参考音频URL<br>
-            • <strong>promptText</strong>: 提示文本内容
-        </div>
-    </div>
+      <div class="help-text cd-notice">
+        <strong>配置说明</strong><br />
+        • <code>enabled</code>：是否启用 TTS 服务 (true/false)<br />
+        • <code>hostname</code>：TTS 服务器地址<br />
+        • <code>port</code>：TTS 服务器端口<br />
+        • <code>path</code>：API 请求路径<br />
+        • <code>audioUrl</code>：用于语音克隆的参考音频 URL<br />
+        • <code>promptText</code>：提示文本内容
+      </div>
+    </main>
 
     <script>
       // 获取DOM元素
@@ -464,7 +210,7 @@
         // 显示结果消息
         function showResult(message, isSuccess) {
             resultMessage.textContent = message;
-            resultMessage.className = `result-message ${isSuccess ? 'success' : 'error'}`;
+            resultMessage.className = `result-message cd-notice ${isSuccess ? 'cd-notice--success' : 'cd-notice--danger'}`;
             resultMessage.style.display = 'block';
             
             setTimeout(() => {

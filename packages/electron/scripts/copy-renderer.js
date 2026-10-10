@@ -29,16 +29,7 @@ async function copyRenderer() {
     await copydir(srcDir, destDir);
     console.log(`✅ 已复制渲染器构建产物到 ${destDir}`);
 
-    // 复制 tts-config.html 文件
-    const ttsConfigSrc = path.join(__dirname, '../../renderer/tts-config.html');
-    const ttsConfigDest = path.join(destDir, 'tts-config.html');
-
-    if (fs.existsSync(ttsConfigSrc)) {
-      await copydir(ttsConfigSrc, ttsConfigDest);
-      console.log(`✅ 已复制 TTS 配置页面到 ${ttsConfigDest}`);
-    } else {
-      console.warn(`⚠️  TTS 配置页面不存在: ${ttsConfigSrc}`);
-    }
+    // tts-config.html 由 renderer 的 vite 多页面构建输出到 dist/，已随上面一起复制
 
     // 复制 AI 对话窗口构建产物
     if (fs.existsSync(path.join(aiChatSrcDir, 'index.html'))) {
