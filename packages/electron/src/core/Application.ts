@@ -10,6 +10,7 @@ import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { SafeKeyProvider } from '../ai/SafeKeyProvider';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
+import { getDesktopService } from '../desktop/DesktopService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { getModelService } from '../models/ModelService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
@@ -109,8 +110,26 @@ export class Application implements IApplication {
       models.registerProtocol();
       models.registerIpc();
 
+      // 桌面能力（文件工具的权限 / 审计 / 撤销）：先于 AI runtime，插件注册工具时要用
+      const desktop = getDesktopService(this.logger);
+      desktop.registerIpc();
+      desktop.attachWindows({
+        main: () => this.windowManager.getMainWindow(),
+        openChat: () => this.windowManager.createAiChatWindow(),
+      });
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
+      if (this.aiRuntime) {
+        const rt = this.aiRuntime;
+        desktop.attachRuntime({
+          resolveProvider: (role) => rt.resolveProvider(role),
+          complete: async (messages, role, signal) => {
+            const resp = await rt.client.chat.sendMessage({ role, messages, signal });
+            return typeof resp?.content === 'string' ? resp.content : '';
+          },
+        });
+      }
       perfMark('ai-runtime-ready');
 
       // 创建主窗口
@@ -175,6 +194,9 @@ export class Application implements IApplication {
       },
       openProviderPanel: () => {
         void this.windowManager.openProviderPanel();
+      },
+      openDesktopPanel: () => {
+        void this.windowManager.openProviderPanel('ai:desktop:open-panel');
       },
       quit: () => app.quit(),
       models: getModelService(this.logger),

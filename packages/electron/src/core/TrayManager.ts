@@ -46,6 +46,8 @@ export interface TrayManagerOptions {
   logger: ILoggerService;
   openChat: () => void;
   openProviderPanel: () => void;
+  /** 桌面能力设置（授权文件夹 / 权限 / 操作记录） */
+  openDesktopPanel?: () => void;
   quit: () => void;
   /** 统一模型注册表（托盘「切换角色」子菜单）；可选 */
   models?: { list(): Promise<RegistryModelLite[]>; onChange(fn: () => void): () => void };
@@ -137,6 +139,7 @@ export class TrayManager {
       },
       ...providerItems,
       { label: 'Provider 设置…', click: () => this.opts.openProviderPanel() },
+      { label: '桌面能力（文件授权 / 操作记录）…', click: () => this.opts.openDesktopPanel?.() },
       { type: 'separator' },
       {
         label: '看板娘动作',

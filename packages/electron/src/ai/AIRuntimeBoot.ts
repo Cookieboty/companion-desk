@@ -38,6 +38,7 @@ import type { AIClient } from '@ig-live/ai-sdk';
 import { FileSessionStorePlugin } from '@ig-live/bundle-ig-electron-caps';
 import { app, safeStorage } from 'electron';
 
+import { desktopIgPlugins } from '../desktop/plugin';
 import type { ILoggerService } from '../services/LoggerService';
 
 import { mascotIgPlugins } from './mascotBridge';
@@ -78,6 +79,10 @@ export interface AIRuntimeBootHandle {
   profile: string;
   /** 多 provider 配置服务（面板 / 托盘切换） */
   providers: ProviderService;
+  /** 某个角色当前实际路由到的 provider（桌面工具判断本地 / 云端） */
+  resolveProvider(
+    role: 'chat' | 'agent-tools' | 'summary',
+  ): { id: string; name: string; baseURL?: string } | null;
   channels: {
     business: readonly string[];
   };
@@ -188,7 +193,7 @@ export async function startAIRuntime(
       // FileSessionStorePlugin 提供 ProfileStorageKey → 用户画像持久化到 userData/ai-chat/memory
       before: [{ plugin: FileSessionStorePlugin }],
       // 看板娘动作 / 表情工具（live2d_play_motion / live2d_set_expression）→ IPC → 渲染进程
-      after: mascotIgPlugins,
+      after: [...mascotIgPlugins, ...desktopIgPlugins],
       providers: {
         store: providerStore,
         onRegistry: (r) => {
@@ -256,6 +261,14 @@ export async function startAIRuntime(
     client,
     profile,
     providers: providerService,
+    resolveProvider(role) {
+      const p = registry?.resolve(role)?.provider;
+      if (!p) return null;
+      const st = providerService.state();
+      const v =
+        st.providers.find((x) => x.id === p.id) ?? st.envProviders.find((x) => x.id === p.id);
+      return { id: p.id, name: v?.name ?? p.id, baseURL: v?.baseURL };
+    },
     channels: {
       business: transport.channels,
     },
