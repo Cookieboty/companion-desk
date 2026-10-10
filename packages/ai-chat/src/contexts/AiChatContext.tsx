@@ -8,6 +8,7 @@ import React, {
   type ReactNode,
 } from 'react';
 
+import { desktopClient } from '../services/desktopClient';
 import { createIPCClient } from '../services/IPCClient';
 import { effectiveProviderLabel, providerClientAvailable } from '../services/providerClient';
 import { type ChatMessage, type ChatConfig } from '../types/chat';
@@ -155,6 +156,29 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ipcClient]);
+
+  // 把文件拖到看板娘身上 → 主进程总结完成后推送到对话窗口
+  useEffect(
+    () =>
+      desktopClient.onSummary((e) => {
+        const userMessage: ChatMessage = {
+          id: `desk-${e.at}`,
+          role: 'user',
+          content: `📄 总结文件：${e.name}`,
+          timestamp: e.at,
+        };
+        const aiMessage: ChatMessage = {
+          id: `desk-${e.at}-a`,
+          role: 'assistant',
+          content: e.summary,
+          timestamp: e.at + 1,
+        };
+        dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+        dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+        void ipcClient.saveMessage(userMessage).then(() => ipcClient.saveMessage(aiMessage));
+      }),
+    [ipcClient],
+  );
 
   // 发送普通消息
   const sendMessage = async (content: string) => {

@@ -13,6 +13,7 @@ interface MessageInputProps {
   disabled?: boolean;
   onConfigClick?: () => void;
   onProvidersClick?: () => void;
+  onDesktopClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -21,6 +22,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   disabled = false,
   onConfigClick,
   onProvidersClick,
+  onDesktopClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -132,6 +134,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               当前模型:{' '}
               {state.models.find((m) => m.id === state.currentModelId)?.name || 'DeepSeek Chat'}
             </span>
+          )}
+          {onDesktopClick && (
+            <button
+              className={styles.configButton}
+              onClick={onDesktopClick}
+              title="桌面能力（文件授权 / 操作记录）"
+              data-testid="open-desktop-panel"
+            >
+              📁
+            </button>
           )}
           <button className={styles.configButton} onClick={onConfigClick} title="配置模型">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
