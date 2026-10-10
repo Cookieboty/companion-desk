@@ -6,7 +6,7 @@ import {
   deriveBubble,
   shouldSuppress,
   type BubbleDirective,
-  type BubbleLive2dTouch,
+  type BubbleMascotTouch,
   type BubbleMessageComplete,
   type BubbleToolExecuted,
   type DedupeState,
@@ -69,7 +69,7 @@ const WaifuAgentBubbleBridge: FC = () => {
     emit(
       deriveBubble({
         kind: 'live2d:touch',
-        payload: payload as BubbleLive2dTouch,
+        payload: payload as BubbleMascotTouch,
       }),
     );
   });

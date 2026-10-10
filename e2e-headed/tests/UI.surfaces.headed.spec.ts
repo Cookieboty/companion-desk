@@ -11,7 +11,7 @@ import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
 /**
  * UI 巡检截图（非断言型冒烟）：只有设置了 UI_SHOTS_DIR 才运行，CI 默认跳过。
  *   UI_SHOTS_DIR=/workspace/screenshots/ui-before xvfb-run -a pnpm test:e2e:headed -g "UI surfaces"
- * 覆盖：mascot（Live2D / 3D / 自定义图片）+ 工具栏 + 语音设置弹层、AI 对话窗口、
+ * 覆盖：mascot（VRM 3D / 自定义图片）+ 工具栏 + 语音设置弹层、AI 对话窗口、
  * 配置面板、Provider 面板、Provider 切换器、TTS 配置窗口。
  */
 const shotDir = process.env.UI_SHOTS_DIR;
@@ -58,8 +58,14 @@ test.describe('UI surfaces', () => {
     const shot = (p: Page, name: string) => p.screenshot({ path: join(shotDir!, `${name}.png`) });
     const main = await app.firstWindow({ timeout: 20_000 });
     await main.waitForFunction(() => 'electronAPI' in window, undefined, { timeout: 20_000 });
-    await main.waitForTimeout(2_500);
-    await shot(main, '01-mascot-live2d');
+    await main
+      .waitForFunction(() => document.documentElement.dataset.mascotBackend === 'vrm', undefined, {
+        timeout: 60_000,
+      })
+      .catch(() => undefined);
+    await main.waitForTimeout(1_500);
+    await shot(main, '01-mascot-vrm');
+    if (process.env.VRM_SHOT) await main.screenshot({ path: process.env.VRM_SHOT });
 
     const hover = () =>
       app!.evaluate(({ BrowserWindow }) =>
@@ -110,8 +116,11 @@ test.describe('UI surfaces', () => {
     await vrmLoaded;
     await main.waitForTimeout(1_500);
     await shot(main, '06-mode-3d');
-    if (process.env.VRM_SHOT) await main.screenshot({ path: process.env.VRM_SHOT });
-    await mode('live2d');
+    // 角色选择器
+    await main.evaluate(() => window.dispatchEvent(new CustomEvent('mascot:open-picker')));
+    await main.waitForTimeout(800);
+    await shot(main, '06b-model-picker');
+    await main.keyboard.press('Escape');
 
     // TTS 配置窗口
     const ttsWin = app.waitForEvent('window', { timeout: 15_000 }).catch(() => null);

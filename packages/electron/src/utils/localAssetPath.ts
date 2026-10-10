@@ -1,7 +1,7 @@
 import * as path from 'path';
 
 /**
- * 去掉资源路径中的查询串 / 片段（部分 Live2D 模型使用 `model.moc?v=20181102` 这类缓存参数），
+ * 去掉资源路径中的查询串 / 片段（如 `model.vrm?v=2` 这类缓存参数），
  * 以及开头的 `./` 或 `/`，得到相对于 renderer 根目录的路径。
  */
 export function normalizeRendererRelativePath(filePath: string): string {

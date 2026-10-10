@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useLive2D } from '@/contexts/Live2DContext';
-import { useWaifuMessage } from '@/hooks/useWaifuMessage';
+
 import styles from './style.module.css';
 
+import { useMascot } from '@/contexts/MascotContext';
+import { useWaifuMessage } from '@/hooks/useWaifuMessage';
+
 export const MessageBubble: React.FC = () => {
-  const { state } = useLive2D();
+  const { state } = useMascot();
   const [active, setActive] = useState(false);
 
   // 当消息变化时，添加/移除活跃类
@@ -27,4 +29,4 @@ export const MessageBubble: React.FC = () => {
       dangerouslySetInnerHTML={{ __html: state.currentMessage || '' }}
     />
   );
-}; 
+};

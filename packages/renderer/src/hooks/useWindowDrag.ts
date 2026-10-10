@@ -1,57 +1,27 @@
 import { useEffect } from 'react';
-import { useLive2D } from '@/contexts/Live2DContext';
-import logger from '@/utils/logger';
 
-export function useWindowDrag(canvasElementId: string = 'live2d') {
-  const { state } = useLive2D();
+import { useMascot } from '@/contexts/MascotContext';
+
+type DragStyle = CSSStyleDeclaration & { webkitAppRegion?: string; webkitUserDrag?: string };
+
+/** 用 CSS `-webkit-app-region: drag` 让看板娘区域可以拖动窗口（无 JS 事件开销）。 */
+export function useWindowDrag(elementId: string = 'mascot-canvas') {
+  const { state } = useMascot();
 
   useEffect(() => {
-    // 如果拖拽未启用，则不设置事件监听
-    if (!state.dragEnabled) {
-      return;
-    }
-
-    logger.info('正在设置CSS拖动区域');
-
-    // 获取元素
-    const dragElement = document.getElementById(canvasElementId);
-    if (!dragElement) {
-      logger.error(`无法找到ID为${canvasElementId}的元素，拖动设置失败`);
-      return;
-    }
-
-    // 使用CSS -webkit-app-region 来实现拖拽，这是最高性能的方案
-    // 不需要任何JavaScript事件处理，直接由Electron处理
-    (dragElement.style as any).webkitAppRegion = 'drag';
-
-    // 设置用户选择为none，避免拖拽时选中文本
-    dragElement.style.userSelect = 'none';
-    dragElement.style.webkitUserSelect = 'none';
-
-    // 防止文本选择和拖拽冲突
-    (dragElement.style as any).webkitUserDrag = 'none';
-    (dragElement.style as any).userDrag = 'none';
-
-    logger.info('CSS拖动区域设置成功');
-
-    // 清理函数
+    if (!state.dragEnabled) return;
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const style = el.style as DragStyle;
+    style.webkitAppRegion = 'drag';
+    style.userSelect = 'none';
+    style.webkitUserDrag = 'none';
     return () => {
-      logger.info('正在清理CSS拖动区域');
-
-      // 移除拖拽样式
-      if (dragElement) {
-        (dragElement.style as any).webkitAppRegion = '';
-        dragElement.style.userSelect = '';
-        dragElement.style.webkitUserSelect = '';
-        (dragElement.style as any).webkitUserDrag = '';
-        (dragElement.style as any).userDrag = '';
-      }
-
-      logger.info('CSS拖动区域已清理');
+      style.webkitAppRegion = '';
+      style.userSelect = '';
+      style.webkitUserDrag = '';
     };
-  }, [state.dragEnabled, canvasElementId]);
+  }, [state.dragEnabled, elementId]);
 
-  return {
-    isDragging: false // CSS拖拽不需要状态管理
-  };
+  return { isDragging: false };
 }
