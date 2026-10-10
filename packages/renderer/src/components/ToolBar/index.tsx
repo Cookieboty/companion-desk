@@ -49,7 +49,7 @@ let globalVoiceService: VoiceService | null = null;
 
 /** 光标离角色包围盒多近（px）算“靠近” */
 const NEAR_PX = 72;
-const HIDE_DELAY_MS = 1800;
+const HIDE_DELAY_MS = 1500;
 
 export const ToolBar: React.FC = () => {
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
@@ -450,7 +450,7 @@ export const ToolBar: React.FC = () => {
             y <= box.bottom + NEAR_PX;
         const r = rootRef.current?.getBoundingClientRect();
         if (!n && r && r.width > 0)
-          n = x >= r.left - 24 && x <= r.right + 24 && y >= r.top - 24 && y <= r.bottom + 24;
+          n = x >= r.left - 32 && x <= r.right + 32 && y >= r.top - 32 && y <= r.bottom + 32;
         setNear(n);
       }),
     [],
@@ -636,7 +636,7 @@ export const ToolBar: React.FC = () => {
           onClick={() => handler()}
           onContextMenu={onContext(toolId)}
         >
-          <Icon size={17} strokeWidth={1.75} aria-hidden />
+          <Icon size={19} strokeWidth={1.75} aria-hidden />
         </button>
       </Tooltip>
     );
@@ -707,7 +707,7 @@ export const ToolBar: React.FC = () => {
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
             >
-              <Ellipsis size={17} strokeWidth={1.75} aria-hidden />
+              <Ellipsis size={19} strokeWidth={1.75} aria-hidden />
             </button>
           </Tooltip>
         </div>
