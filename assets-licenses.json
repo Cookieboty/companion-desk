@@ -2,6 +2,29 @@
   "$comment": "Every shipped static asset must match an entry with an allow-listed open licence. Checked by scripts/check-licenses.mjs. 'LicenseRef-FirstParty' = artwork owned by the project author (Cookieboty), all rights reserved; allowed only for explicitly listed files.",
   "roots": ["packages/renderer/public", "packages/electron/assets"],
   "allowedLicenses": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "MIT", "Apache-2.0", "OFL-1.1"],
+  "$reviewedLicensesComment": "Explicitly reviewed non-OSI licences: allowed only because they permit commercial use AND redistribution. Per-asset conditions are shown in the app (credits / badges). Adding one needs maintainer review.",
+  "reviewedLicenses": {
+    "LicenseRef-VRoid-AvatarSample": {
+      "name": "VRoid AvatarSample terms (pixiv)",
+      "url": "https://vroid.pixiv.help/hc/ja/articles/4402394424089",
+      "conditions": {
+        "commercialUse": true,
+        "redistribution": true,
+        "modification": true,
+        "credit": false,
+        "prohibited": ["hate speech / discrimination", "antisocial or illegal use"]
+      }
+    },
+    "LicenseRef-VRM-Public-1.0": {
+      "name": "VRM Public License 1.0",
+      "url": "https://vrm.dev/licenses/1.0/",
+      "perModelConditions": true,
+      "requires": {
+        "commercialUse": true,
+        "redistribution": true
+      }
+    }
+  },
   "assets": [
     {
       "pattern": "packages/renderer/public/assets/models/vrm/*.vrm",

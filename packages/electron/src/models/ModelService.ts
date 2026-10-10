@@ -129,6 +129,7 @@ export class ModelService {
         license: e.license,
         source: e.source,
         credit: e.credit,
+        licenseTerms: e.licenseTerms,
         version: e.version,
         vrmVersion: e.vrmVersion,
         tags: e.tags,

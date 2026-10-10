@@ -91,6 +91,7 @@ export class ModelRegistry {
         license: e.license,
         source: e.source,
         credit: e.credit,
+        licenseTerms: e.licenseTerms,
         version: r.version,
         vrmVersion: e.vrmVersion,
         tags: e.tags,

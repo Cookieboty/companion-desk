@@ -8,6 +8,7 @@ import { UserModelEditor } from './UserModelEditor';
 
 import { useMascot } from '@/contexts/MascotContext';
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
+import { conditionsText, licenseLabel } from '@/mascot/licenseTerms';
 import { MESSAGES } from '@/mascot/tips';
 
 type Tab = 'mine' | 'store' | 'import';
@@ -61,7 +62,12 @@ export const ModelPicker: React.FC = () => {
                   className={`${styles.card} ${active ? styles.active : ''}`}
                   data-testid={`model-option-${m.name}`}
                   aria-pressed={active}
-                  title={`${m.displayName} · ${m.author} · ${m.license}`}
+                  title={[
+                    `${m.displayName} · ${m.author} · ${m.license}`,
+                    conditionsText(m.licenseTerms),
+                  ]
+                    .filter(Boolean)
+                    .join('\n')}
                   onClick={() => {
                     selectModel(m.name);
                     close();
@@ -76,7 +82,7 @@ export const ModelPicker: React.FC = () => {
                   <span className={styles.name}>{m.displayName}</span>
                   <span className={styles.badges}>
                     <Badge tone={m.origin === 'user' ? 'warning' : active ? 'accent' : 'neutral'}>
-                      {m.origin === 'user' ? '自备' : m.license}
+                      {m.origin === 'user' ? '自备' : licenseLabel(m.license)}
                     </Badge>
                     {m.origin && m.origin !== 'bundled' && (
                       <Badge tone="neutral">{ORIGIN[m.origin]}</Badge>

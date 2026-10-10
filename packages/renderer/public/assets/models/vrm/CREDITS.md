@@ -14,6 +14,6 @@ Embedded VRM meta: `commercialUssageName: Allow`, `allowedUserName: Everyone`, V
 `*-thumb.jpg` are the embedded VRM thumbnails, downscaled. Credit is not required by CC0 but is given here as a courtesy.
 "Sendagaya Shibu/Shino" and other VRoid characters are pixiv's characters; CC0 covers the model files.
 
-Only the default character ships inside the app. More CC0 characters (Sendagaya Shino, Vivi, Vita, Victoria Rubin,
-Darkness Shibu, HairSample_Female) are downloadable from the in-app model store, served from
+Only the default character ships inside the app. More characters (CC0: Sendagaya Shino, Vivi, Vita, Victoria Rubin,
+Darkness Shibu, HairSample_Female; VRoid AvatarSample terms: AvatarSample_A/B) are downloadable from the in-app model store, served from
 https://github.com/Cookieboty/companion-desk-models (see its catalog.json for per-model licence and sha256).

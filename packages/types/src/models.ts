@@ -40,6 +40,19 @@ export interface VrmMetaSummary {
   expressions: string[];
 }
 
+/** 经审核的非 OSI 许可（允许商用 + 再分发）的条款与条件 */
+export interface LicenseTermsView {
+  name: string;
+  url: string;
+  conditions: {
+    commercialUse: boolean;
+    redistribution: boolean;
+    modification?: boolean;
+    credit?: boolean;
+    prohibited?: string[];
+  };
+}
+
 export interface RegistryModel {
   /** 稳定 id（选中状态按 id 持久化） */
   id: string;
@@ -54,6 +67,7 @@ export interface RegistryModel {
   license: string;
   source?: string;
   credit?: string;
+  licenseTerms?: LicenseTermsView;
   version?: string;
   vrmVersion?: string;
   tags?: string[];
@@ -70,6 +84,7 @@ export interface StoreEntryView {
   license: string;
   source: string;
   credit: string;
+  licenseTerms?: LicenseTermsView;
   version: string;
   vrmVersion: string;
   tags: string[];

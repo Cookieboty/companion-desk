@@ -9,8 +9,16 @@ Companion Desk 的角色来自三处，由主进程 `packages/electron/src/model
 | 商店 `remote`  | 远程目录 → 下载到 `userData/models/remote/<id>/`                              | 必须是允许的开源许可，客户端再校验一次                     |
 | 导入 `user`    | `userData/models/user/<id>/`                                                  | 用户自负；不上传、不同步、不分发                           |
 
-允许的许可（SPDX）：`CC0-1.0`、`CC-BY-4.0`、`CC-BY-SA-4.0`、`MIT`、`Apache-2.0`、`OFL-1.1`
-（与 `assets-licenses.json` 的 `allowedLicenses` 一致，单测会对比）。CC-BY / CC-BY-SA 模型的 `credit` 会显示在应用的「致谢」页。
+允许的许可分两类（与 `assets-licenses.json` 的 `allowedLicenses` / `reviewedLicenses` 一致，单测会对比）：
+
+- 开源许可（SPDX）：`CC0-1.0`、`CC-BY-4.0`、`CC-BY-SA-4.0`、`MIT`、`Apache-2.0`、`OFL-1.1`
+- **经审核的非 OSI 许可**：只要**允许商用且允许再分发**即可放行（版权归属不影响），逐个人工审核后列入：
+  - `LicenseRef-VRoid-AvatarSample` — pixiv VRoid AvatarSample 条款 <https://vroid.pixiv.help/hc/ja/articles/4402394424089>：
+    可商用、可再分发、可改编、无需署名；禁止用于仇恨 / 歧视言论及反社会、违法用途
+  - `LicenseRef-VRM-Public-1.0` — VRM Public License 1.0 <https://vrm.dev/licenses/1.0/>：条件因模型而异，
+    目录条目必须带 `licenseTerms.conditions`（取自 VRM meta），且 `commercialUse` 与 `redistribution` 都为 `true`，否则拒绝
+
+  这类模型在商店 / 角色列表显示黄色徽章（如「VRoid 条款」），条件摘要显示在商店条目、角色悬停提示与「致谢」页。CC-BY / CC-BY-SA 模型的 `credit` 会显示在应用的「致谢」页。
 
 ## 远程目录格式（`catalog.json`, schemaVersion 1）
 
@@ -59,8 +67,8 @@ URL 顺序即镜像优先级：GitHub Releases（无大小限制）→ jsDelivr�
 
 ## 通过 PR 向目录添加模型
 
-1. 确认模型许可在允许列表中，并能给出可核验的来源（VRM meta、作者发布页等）。**不接受**「仅限个人使用」「禁止再分发」
-   或厂商自定义条款（例如 VRoid AvatarSample_A/B/C 的 pixiv 条款）的模型
+1. 确认模型许可在允许列表或审核列表中，并能给出可核验的来源（VRM meta、作者发布页等）。**不接受**禁止商用或禁止再分发的模型；
+   新的自定义条款需先由维护者审核后加入 `allowed-licenses.json` 的 `reviewed`（及本仓库 `assets-licenses.json`）
 2. 在 companion-desk-models 仓库新建 `models/<id>/`：`model.vrm`、`thumb.jpg`（≤ 256 px）、`model.json`（id / name / author / license / source / version / vrmVersion / tags / credit）
 3. 运行 `node scripts/build-catalog.mjs` 生成 `catalog.json`，`--check` 必须通过
 4. 提交 PR；合并后维护者运行 `scripts/release.sh <id>` 发布 `<id>-v<version>` Release 资产

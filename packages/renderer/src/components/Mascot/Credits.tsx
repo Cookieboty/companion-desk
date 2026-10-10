@@ -1,9 +1,11 @@
+import type { LicenseTermsView } from '@ig-live/types';
 import { Badge, Modal } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './style.module.css';
 
 import { useMascot } from '@/contexts/MascotContext';
+import { conditionsText, licenseLabel } from '@/mascot/licenseTerms';
 import { loadMotionLibrary } from '@/mascot/motion/library';
 
 interface CreditRow {
@@ -13,6 +15,7 @@ interface CreditRow {
   license: string;
   source?: string;
   note?: string;
+  termsUrl?: string;
 }
 
 /** 署名要求（CC-BY 等）必须展示作者；CC0 也一并列出以示感谢。 */
@@ -23,6 +26,7 @@ export function collectCredits(
     author: string;
     license: string;
     source?: string;
+    licenseTerms?: LicenseTermsView;
   }>,
   motionSources: Array<{ source: string; license: string }>,
 ): CreditRow[] {
@@ -32,6 +36,8 @@ export function collectCredits(
     author: m.author,
     license: m.license,
     source: m.source,
+    note: conditionsText(m.licenseTerms),
+    termsUrl: m.licenseTerms?.url,
   }));
   const ual = motionSources.filter((s) => s.source.startsWith('Quaternius'));
   if (ual.length) {
@@ -92,13 +98,18 @@ export const Credits: React.FC = () => {
           <li key={r.key} data-testid={`credit-${r.key}`}>
             <div className={styles.creditHead}>
               <strong>{r.title}</strong>
-              <Badge tone={r.license.startsWith('CC-BY') ? 'accent' : 'neutral'}>{r.license}</Badge>
+              <Badge
+                tone={r.license.startsWith('CC-BY') ? 'accent' : r.termsUrl ? 'warning' : 'neutral'}
+              >
+                {licenseLabel(r.license)}
+              </Badge>
             </div>
             <div className={styles.creditMeta}>
               {r.author}
               {r.note ? ` · ${r.note}` : ''}
             </div>
             {r.source && <div className={styles.creditSource}>{r.source}</div>}
+            {r.termsUrl && <div className={styles.creditSource}>条款：{r.termsUrl}</div>}
           </li>
         ))}
       </ul>

@@ -1,4 +1,9 @@
-import { isAllowedLicense } from './licenses';
+import {
+  REVIEWED_MODEL_LICENSES,
+  isAllowedLicense,
+  isReviewedLicense,
+  type LicenseConditions,
+} from './licenses';
 
 /** 远程模型目录（companion-desk-models/catalog.json，schemaVersion 1） */
 export interface CatalogFile {
@@ -18,8 +23,43 @@ export interface CatalogEntry {
   vrmVersion: string;
   tags: string[];
   credit: string;
+  /** 经审核的非 OSI 许可：条款地址 + 条件（UI 在徽章 / 致谢里展示） */
+  licenseTerms?: LicenseTerms;
   vrm: CatalogFile;
   thumbnail: CatalogFile;
+}
+
+export interface LicenseTerms {
+  name: string;
+  url: string;
+  conditions: LicenseConditions;
+}
+
+/** 审核许可的条件：固定条件以客户端内置为准；按模型的条件必须同时允许商用与再分发 */
+export function resolveLicenseTerms(license: string, raw: unknown): LicenseTerms | string {
+  const r = REVIEWED_MODEL_LICENSES[license]!;
+  const t = (raw ?? {}) as { url?: unknown; conditions?: Partial<LicenseConditions> };
+  const c = r.perModelConditions ? t.conditions : r.conditions;
+  if (!c || c.commercialUse !== true || c.redistribution !== true) {
+    return `licence ${license}: commercial use and redistribution must be permitted`;
+  }
+  const url = isAllowedUrl(t.url) ? (t.url as string) : r.url;
+  return {
+    name: r.name,
+    url,
+    conditions: {
+      commercialUse: true,
+      redistribution: true,
+      modification: typeof c.modification === 'boolean' ? c.modification : undefined,
+      credit: typeof c.credit === 'boolean' ? c.credit : undefined,
+      prohibited: Array.isArray(c.prohibited)
+        ? c.prohibited
+            .filter((x): x is string => typeof x === 'string')
+            .slice(0, 10)
+            .map((x) => x.slice(0, 120))
+        : undefined,
+    },
+  };
 }
 
 export interface ModelCatalog {
@@ -101,6 +141,15 @@ export function validateCatalog(raw: unknown, policy: UrlPolicy = {}): CatalogVa
       reject(`licence not allowed: ${String(item.license)}`);
       continue;
     }
+    let licenseTerms: LicenseTerms | undefined;
+    if (isReviewedLicense(item.license)) {
+      const t = resolveLicenseTerms(item.license, item.licenseTerms);
+      if (typeof t === 'string') {
+        reject(t);
+        continue;
+      }
+      licenseTerms = t;
+    }
     const vrm = file(item.vrm, MAX_REMOTE_VRM_BYTES, policy);
     if (!vrm) {
       reject('vrm: https url + sha256 + size (<= 200MB) required');
@@ -134,6 +183,7 @@ export function validateCatalog(raw: unknown, policy: UrlPolicy = {}): CatalogVa
         ? item.tags.filter((t): t is string => typeof t === 'string').slice(0, 16)
         : [],
       credit,
+      licenseTerms,
       vrm,
       thumbnail,
     });
