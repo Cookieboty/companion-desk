@@ -95,31 +95,37 @@ test.describe('UI surfaces', () => {
       await main.mouse.click(5, 5);
     }
 
-    const mode = async (m: string) => {
+    // 身体动作（动作库异步加载后 data-mascot-motions 非空）
+    await main
+      .waitForFunction(
+        () => (document.documentElement.dataset.mascotMotions ?? '').includes('wave'),
+        undefined,
+        {
+          timeout: 30_000,
+        },
+      )
+      .catch(() => undefined);
+    for (const motion of ['wave', 'clap', 'bow']) {
       await main.evaluate(
-        (m) => window.dispatchEvent(new CustomEvent('mode-switch', { detail: { mode: m } })),
-        m,
+        (name) => window.dispatchEvent(new CustomEvent('mascot:motion', { detail: { name } })),
+        motion,
       );
-      await main.waitForTimeout(2_000);
-      await hover();
-      await main.waitForTimeout(500);
-    };
-    await mode('custom-image');
-    await shot(main, '05-mode-custom-image');
-    const vrmLoaded = main
-      .waitForEvent('console', {
-        predicate: (m) => m.text().includes('vrm-model-loaded'),
-        timeout: 60_000,
-      })
-      .catch(() => null);
-    await mode('3d');
-    await vrmLoaded;
-    await main.waitForTimeout(1_500);
-    await shot(main, '06-mode-3d');
+      await main.waitForTimeout(800);
+      await shot(main, `05-motion-${motion}`);
+      await main.waitForTimeout(1_800);
+    }
+    await main.locator('[data-testid="tool-motion"]').click({ button: 'right' });
+    await main.waitForTimeout(600);
+    await shot(main, '06-motion-menu');
+    await main.keyboard.press('Escape');
+    await main.waitForTimeout(300);
     // 角色选择器
     await main.evaluate(() => window.dispatchEvent(new CustomEvent('mascot:open-picker')));
     await main.waitForTimeout(800);
     await shot(main, '06b-model-picker');
+    await main.click('[data-testid="open-credits"]');
+    await main.waitForTimeout(800);
+    await shot(main, '06c-credits');
     await main.keyboard.press('Escape');
 
     // TTS 配置窗口
