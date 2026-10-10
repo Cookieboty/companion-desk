@@ -11,7 +11,7 @@
   max-width: 500px;
   padding: 40px;
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: var(--cd-radius-lg);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
@@ -29,7 +29,7 @@
 }
 
 .errorMessage {
-  font-size: 16px;
+  font-size: var(--cd-font-size-lg);
   color: #6c757d;
   margin: 0 0 24px 0;
   line-height: 1.5;
@@ -39,7 +39,7 @@
   margin: 20px 0;
   text-align: left;
   border: 1px solid #e9ecef;
-  border-radius: 6px;
+  border-radius: var(--cd-radius-sm);
   overflow: hidden;
 }
 
@@ -59,7 +59,7 @@
   padding: 16px;
   margin: 0;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
+  font-size: var(--cd-font-size-sm);
   line-height: 1.4;
   color: #721c24;
   background-color: #f8d7da;
@@ -75,11 +75,12 @@
   margin-top: 24px;
 }
 
-.reloadButton, .refreshButton {
+.reloadButton,
+.refreshButton {
   padding: 10px 20px;
   border: none;
-  border-radius: 6px;
-  font-size: 14px;
+  border-radius: var(--cd-radius-sm);
+  font-size: var(--cd-font-size-md);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -101,4 +102,4 @@
 
 .refreshButton:hover {
   background-color: #545b62;
-} 
+}
