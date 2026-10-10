@@ -17,13 +17,15 @@ import {
 } from '../../services/desktopClient';
 
 import styles from './index.module.css';
+import { NotesTab } from './NotesTab';
+import { RemindersTab } from './RemindersTab';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
 }
 
-type Tab = 'folders' | 'tools' | 'privacy' | 'log';
+type Tab = 'folders' | 'notes' | 'reminders' | 'tools' | 'privacy' | 'log';
 
 const DECISION_LABEL: Record<string, string> = {
   auto: '自动',
@@ -87,6 +89,8 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           onChange={(v) => setTab(v as Tab)}
           items={[
             { value: 'folders', label: '授权文件夹' },
+            { value: 'notes', label: '笔记' },
+            { value: 'reminders', label: '提醒' },
             { value: 'tools', label: '工具权限' },
             { value: 'privacy', label: '隐私' },
             { value: 'log', label: '操作记录' },
@@ -154,6 +158,8 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           </div>
         )}
 
+        {tab === 'notes' && <NotesTab onMsg={setMsg} />}
+        {tab === 'reminders' && <RemindersTab onMsg={setMsg} />}
         {tab === 'tools' && state && (
           <table className={styles.table} data-testid="desktop-tools">
             <thead>
