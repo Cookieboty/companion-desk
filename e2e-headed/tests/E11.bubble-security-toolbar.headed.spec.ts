@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -9,6 +9,7 @@ import { _electron as electron, test, expect } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * E11 · 真实应用 · 气泡安全 + 工具栏
@@ -84,7 +85,7 @@ test.describe('E11 · bubble security + toolbar', () => {
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
     await new Promise((r) => server?.close(r));
-    rmSync(userData, { recursive: true, force: true });
+    safeRm(userData);
   });
 
   test('CSP + escaped bubble + toolbar gutter / menu / flip / auto-hide', async () => {

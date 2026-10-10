@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -7,6 +7,7 @@ import { _electron as electron, test, expect } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * E9 · 看板娘桌面互动（真实应用 + 真实系统光标）
@@ -72,7 +73,7 @@ test.describe('E9 · mascot desktop interaction', () => {
       if (proc.exitCode === null) proc.kill('SIGKILL');
       app = null;
     }
-    if (userData) rmSync(userData, { recursive: true, force: true });
+    if (userData) safeRm(userData);
   });
 
   test('gravity, click-through, reactions, drag & drop, settings', async () => {
