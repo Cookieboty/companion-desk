@@ -145,28 +145,11 @@ export function Root() {
 - [x] 看板娘嘴型：`useTTSLipSync()` → 写入 [lipSyncStore](../packages/renderer/src/ai/lipSyncStore.ts) → [MascotDriver](../packages/renderer/src/mascot/MascotDriver.tsx) → `MascotBackend.setMouthOpen()`（VRM `aa`/`oh`）。
 - [ ] 看板娘场景注册器（`ctx.live2d.registerSceneProvider`，协议名沿用 live2d）与 `waifuTipsTool` 挂钩留待 P8-3 后续子任务；参考 [P8-3 尚未落地子项](plans/P8-consumer-migration.md#p8-3-看板娘接入renderer)。
 
-## 4. 迁移遗留数据 / 配置（可选）
+## 4. 迁移遗留数据 / 配置
 
-三个纯 Node 脚本，均支持 `--dry-run`：
-
-```bash
-# 1) 旧 AIModelConfig[] → dsh llm.providers[]
-pnpm exec tsx scripts/migrate-config.ts --input userData/config.json --dry-run
-
-# 2) 旧 chat_history.json → dsh 每会话 JSONL
-pnpm exec tsx scripts/migrate-history.ts --input userData/chat_history.json --dry-run
-
-# 3) 旧 chat settings → dsh UserProfile
-pnpm exec tsx scripts/migrate-user-profile.ts --input userData/settings.json --dry-run
-```
-
-产物落盘位置：
-
-- 会话：`<userData>/ai-chat/sessions/<sessionId>.jsonl`
-- Profile：`<userData>/ai-chat/memory/user_profile.json`
-- 密钥：由 Electron 侧消费 `_secretPayload` 交给 [SafeKeyProvider.set](../packages/electron/src/ai/SafeKeyProvider.ts) 写入 `<userData>/keys/<keyRef>.bin`
-
-单测：[scripts/**tests**/](../scripts/__tests__)（共 14 用例，已并入 `pnpm test`）。
+旧版（Live2D 时代）的一次性迁移脚本 `scripts/migrate-*.ts` 已移除：应用启动时会自动把旧的
+userData 目录迁到 Companion Desk 目录（见 `packages/electron/src/utils/legacyUserData.ts`），
+服务商配置改由「AI 服务商」面板管理。需要旧脚本时请从 git 历史取回，见 [HISTORY.md](HISTORY.md)。
 
 ## 5. 三 profile 能力矩阵
 
