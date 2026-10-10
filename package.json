@@ -5,8 +5,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "npm run generate:models",
-    "predev": "npm run generate:models",
     "dev": "turbo run dev",
     "start": "turbo run dev --parallel",
     "build": "turbo run build",
