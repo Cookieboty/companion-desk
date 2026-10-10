@@ -191,3 +191,28 @@ describe('AIProvider', () => {
     });
   });
 });
+
+describe('AIProvider · StrictMode', () => {
+  it('StrictMode 双挂载不会 dispose 仍在使用的 client；真正卸载后才 dispose', async () => {
+    const { StrictMode } = await import('react');
+    const { useAIClient } = await import('../src/react/AIProvider');
+    const bridge = new FakeBridge();
+    let seen: { disposed?: boolean } | undefined;
+    const Probe = () => {
+      seen = useAIClient() as unknown as { disposed?: boolean };
+      return null;
+    };
+    const { unmount } = render(
+      <StrictMode>
+        <AIProvider bridge={bridge}>
+          <Probe />
+        </AIProvider>
+      </StrictMode>,
+    );
+    await new Promise((r) => setTimeout(r, 10));
+    expect(seen?.disposed).toBe(false);
+    unmount();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(seen?.disposed).toBe(true);
+  });
+});

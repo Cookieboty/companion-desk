@@ -6,7 +6,7 @@
  * - `useAIClient` 读不到 client 时抛出可辨识错误，避免 UI 里出现 `undefined.chat` 迷惑栈。
  */
 
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
 
 import { ClientAIClient, type ClientAIClientOptions } from '../ClientAIClient';
@@ -27,10 +27,21 @@ export function AIProvider(props: PropsWithChildren<AIProviderProps>) {
     return new ClientAIClient({ bridge, bridgeName, live2dAvailable });
   }, [external, bridge, bridgeName, live2dAvailable]);
 
+  // 只有 Provider 自建的 client 才需要 dispose。
+  // dispose 推迟一个 tick：React StrictMode（dev）会「挂载 → 卸载 → 再挂载」同一个 useMemo 实例，
+  // 立即 dispose 会让之后所有请求报 AICLIENT_DISPOSED（pnpm dev 下对话 / 切换 provider 全部失效）。
+  const pendingDispose = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
+    if (pendingDispose.current) {
+      clearTimeout(pendingDispose.current);
+      pendingDispose.current = undefined;
+    }
     return () => {
-      // 只有 Provider 自建的 client 才需要 dispose
-      if (owned) void owned.dispose();
+      if (!owned) return;
+      pendingDispose.current = setTimeout(() => {
+        pendingDispose.current = undefined;
+        void owned.dispose();
+      }, 0);
     };
   }, [owned]);
 
