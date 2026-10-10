@@ -114,11 +114,11 @@ test.describe('E5 · real app · dist/main.js 生产模式冒烟', () => {
     });
     expect(state.expressions).toEqual(expect.arrayContaining(['aa', 'happy', 'sad', 'blink']));
 
-    // 角色选择器：右键「切换角色」→ 选 Vita → 重新加载并记住选择
+    // 角色选择器：内置只剩默认角色（其余在模型商店，见 E8）→ 选中并记住
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('mascot:open-picker')));
-    await page.locator('[data-testid="model-option-vita"]').click({ timeout: 10_000 });
+    await page.locator('[data-testid="model-option-default-character"]').click({ timeout: 10_000 });
     await page.waitForFunction(
-      () => localStorage.getItem('companion.mascot.model') === 'vita',
+      () => localStorage.getItem('companion.mascot.model') === 'default-character',
       undefined,
       { timeout: 10_000 },
     );

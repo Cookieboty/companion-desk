@@ -36,7 +36,7 @@ describe('catalog', () => {
     expect(nextModel([], null)).toBeUndefined();
   });
 
-  it('ships the 5 bundled CC0 models with credits', async () => {
+  it('ships only the default CC0 model (others live in the model store)', async () => {
     const fs = await import('node:fs');
     const raw = JSON.parse(
       fs.readFileSync(
@@ -45,7 +45,7 @@ describe('catalog', () => {
       ),
     );
     const list = parseCatalog(raw);
-    expect(list).toHaveLength(5);
+    expect(list).toHaveLength(1);
     expect(list[0].name).toBe('default-character');
     for (const m of list) expect(m.license).toBe('CC0-1.0');
   });
