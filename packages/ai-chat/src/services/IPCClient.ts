@@ -6,6 +6,7 @@ import { type IPCClient, type ElectronAPI } from '../types/ipc';
 
 import { ConversationStore } from './conversationStore';
 import { buildProviderMessages } from './history';
+import { providerClientAvailable } from './providerClient';
 
 declare global {
   interface Window {
@@ -143,7 +144,12 @@ export class SdkIPCClient implements IPCClient {
     return this.client.memory.userProfile as unknown as SdkUserProfileFacade;
   }
 
+  /**
+   * 主进程提供多 provider 配置（`ai:providers:*`）时，provider 由主进程路由
+   * （当前 provider / 任务路由 / 环境变量回退），渲染层不再指定。
+   */
   private currentModelId(fallback?: string): string | undefined {
+    if (providerClientAvailable()) return undefined;
     return fallback ?? readStorage<string>(LOCAL_CURRENT_MODEL_KEY);
   }
 

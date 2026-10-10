@@ -1,7 +1,9 @@
 import React, { useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
+import { providerClientAvailable } from '../../services/providerClient';
 import { ErrorHint } from '../ErrorHint';
+import { ProviderSwitcher } from '../ProviderSwitcher';
 
 import styles from './index.module.css';
 
@@ -10,6 +12,7 @@ interface MessageInputProps {
   placeholder?: string;
   disabled?: boolean;
   onConfigClick?: () => void;
+  onProvidersClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -17,6 +20,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   placeholder = '输入消息...',
   disabled = false,
   onConfigClick,
+  onProvidersClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -116,7 +120,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       <div className={styles.inputHint}>
         <span>Enter 发送，Shift+Enter 换行</span>
         <div className={styles.modelStatus}>
-          {state.models.filter((m) => m.enabled).length === 0 ? (
+          {providerClientAvailable() ? (
+            <ProviderSwitcher
+              className={styles.currentModel}
+              onManage={() => onProvidersClick?.()}
+            />
+          ) : state.models.filter((m) => m.enabled).length === 0 ? (
             <span className={styles.noModel}>❌ 没有可用的AI模型</span>
           ) : (
             <span className={styles.currentModel}>

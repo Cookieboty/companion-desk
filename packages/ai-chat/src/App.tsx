@@ -1,19 +1,25 @@
 import type { ClientAIClient } from '@ig-live/ai-sdk-client';
 import * as AISdkReact from '@ig-live/ai-sdk-client/react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { ConfigPanel } from './components/ConfigPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
+import { ProviderPanel } from './components/ProviderPanel';
 import { Sidebar } from './components/Sidebar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
+import { providerClient } from './services/providerClient';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
   const { state, actions } = useAiChat();
   const [showConfig, setShowConfig] = useState(false);
+  const [showProviders, setShowProviders] = useState(false);
+
+  // 托盘「Provider 设置…」→ 主进程通知打开面板
+  useEffect(() => providerClient.onOpenPanel(() => setShowProviders(true)), []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleNewChat = () => {
@@ -91,12 +97,16 @@ const AiChatContent: React.FC = () => {
 
         {/* 输入区域 */}
         <footer className="input-container">
-          <MessageInput onConfigClick={() => setShowConfig(true)} />
+          <MessageInput
+            onConfigClick={() => setShowConfig(true)}
+            onProvidersClick={() => setShowProviders(true)}
+          />
         </footer>
       </div>
 
       {/* 配置面板 */}
       <ConfigPanel isVisible={showConfig} onClose={() => setShowConfig(false)} />
+      <ProviderPanel isVisible={showProviders} onClose={() => setShowProviders(false)} />
     </div>
   );
 };
