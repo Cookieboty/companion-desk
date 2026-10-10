@@ -89,7 +89,7 @@ describe('mascotRegistry + applyDirective', () => {
 
 function fakeVrm() {
   const values = new Map<string, number>();
-  const names = ['aa', 'oh', 'blink', 'happy', 'angry', 'sad', 'relaxed', 'neutral'];
+  const names = ['aa', 'oh', 'blink', 'happy', 'angry', 'sad', 'relaxed', 'neutral', 'Surprised'];
   const bones = new Map<string, THREE.Object3D>();
   const vrm = {
     expressionManager: {
@@ -129,6 +129,10 @@ describe('VRM backend', () => {
     expect(values.get('angry')!).toBeLessThan(0.05);
     expect(values.get('sad')!).toBeGreaterThan(0.9);
     expect(values.get('aa')!).toBeLessThan(0.05);
+
+    b.setExpression('surprised');
+    for (let i = 0; i < 60; i++) b.update(1 / 60, 2 + i / 60);
+    expect(values.get('Surprised')!).toBeGreaterThan(0.9);
 
     b.blink();
     b.update(0.08, 3);
