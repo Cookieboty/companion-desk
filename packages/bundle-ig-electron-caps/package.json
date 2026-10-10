@@ -48,9 +48,6 @@
       "optional": true
     }
   },
-  "dependencies": {
-    "yaml": "^2.9.1"
-  },
   "devDependencies": {
     "@ig-live/bundle-ig-base": "workspace:*",
     "rimraf": "^6.1.3",

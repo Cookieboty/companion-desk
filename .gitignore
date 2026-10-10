@@ -67,3 +67,6 @@ task
 .pnpm-store/
 .pnpm-cache/
 .pnpm-state/
+
+# local agent notes (kept untracked)
+AGENTS.md

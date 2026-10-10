@@ -76,7 +76,7 @@
   - `EdgeTtsProvider.ts`
   - `OpenAiTtsProvider.ts`
   - `AzureTtsProvider.ts`
-- 每个 TTSChunk 附带 `rms` 用于 P4 [TtsLipSyncPlugin](P4-bundle-ig-live2d.md#p4-4-ttslipsyncplugin) 驱动嘴型
+- 每个 TTSChunk 附带 `rms` 用于 P4 [TtsLipSyncPlugin](../HISTORY.md) 驱动嘴型
 - 验收：4 家分别合成 5s 音频且能被浏览器播放
 
 ### P3-7 · WakeWordPlugin（Porcupine，可关）

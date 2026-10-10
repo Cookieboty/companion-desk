@@ -1,6 +1,6 @@
 # Mascot stack → 100% open-source (Phase 1: audit + spike + plan)
 
-Status: planning. Nothing deleted yet. Spike: `experiments/inochi2d-spike/` (not built, not shipped).
+Status: done — Live2D removed, VRM (three-vrm) shipped. The Inochi2D spike (`experiments/inochi2d-spike/`) was removed after evaluation; see [HISTORY.md](../HISTORY.md).
 
 ## 1. License audit
 

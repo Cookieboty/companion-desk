@@ -5,7 +5,7 @@
 | 项 | 值 |
 |---|---|
 | 层级 | L4（消费方 / 业务集成层） |
-| 依赖 Plan | [P4](P4-bundle-ig-live2d.md) + [P7](P7-ai-sdk-client.md) |
+| 依赖 Plan | [P4](../HISTORY.md) + [P7](P7-ai-sdk-client.md) |
 | 建议 Sprint | Sprint 5（1.5 周） |
 | 预估工作量 | 8~10 人日 |
 | 关联设计章节 | [§13](../AI_HARNESS_DESIGN.md#L1560-L1668) / [§14 P8](../AI_HARNESS_DESIGN.md#L1834-L1860) |
@@ -16,7 +16,7 @@
 
 ## 准入前提
 
-- [P4](P4-bundle-ig-live2d.md) 完成：看板娘 bundle（Live2dSeam / TtsLipSync / WaifuAgent）可加载
+- [P4](../HISTORY.md) 完成：看板娘 bundle（Live2dSeam / TtsLipSync / WaifuAgent）可加载
 - [P7](P7-ai-sdk-client.md) 完成：`@ig-live/ai-sdk-client` 可发布并稳定
 - 三个 profile（waifu / chat-only / mcp-headless）冒烟通过（[P1](P1-dsh-kernel-adoption.md) 退出准则）
 
@@ -137,7 +137,7 @@
   - `useChat()` 收发消息
   - `useTTSLipSync()` → 传给 Live2D `setMouthOpenY`
   - `useAgent()` → 展示当前"想干什么"（可选气泡）
-- 挂载 [WaifuTools](P4-bundle-ig-live2d.md#p4-4-waifutools-面向工具集)：
+- 挂载 [WaifuTools](../HISTORY.md)：
   - Live2D 场景注册器：`ctx.live2d.registerSceneProvider(...)`，把当前模型、可切换动作、可用表情喂给 dsh
 - 移除旧的 `waifu.tips.json` 直读逻辑，改由 `waifuTipsTool` 通过 `session:before-response` 生成
 - 验收：与看板娘对话时嘴型同步、可通过对话触发换装 / 动作
