@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 import { _electron as electron, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -19,7 +19,7 @@ const electronPkgDir = resolve(repoRoot(), 'packages', 'electron');
 
 test('ANIM capture every clip', async () => {
   test.skip(!dir || !existsSync(resolve(electronPkgDir, 'dist', 'main.js')), 'set ANIM_SHOTS_DIR');
-  test.setTimeout(600_000);
+  test.setTimeout(Number(process.env.ANIM_TIMEOUT_MS ?? 1_800_000));
   mkdirSync(dir!, { recursive: true });
   execFileSync(process.execPath, [resolve(electronPkgDir, 'scripts', 'copy-renderer.js')]);
   const userData = mkdtempSync(join(tmpdir(), 'anim-'));
@@ -40,22 +40,47 @@ test('ANIM capture every clip', async () => {
         { timeout: 60_000 },
       );
     await ready();
-    const models = ['default'];
-    if (process.env.ANIM_VRM && existsSync(process.env.ANIM_VRM)) models.push('extra');
-    for (const model of models) {
-      if (model === 'extra') {
+    // ANIM_VRMS=a.vrm,b.vrm（兼容旧的 ANIM_VRM）：逐个导入并真正切换为当前模型
+    const extras = (process.env.ANIM_VRMS ?? process.env.ANIM_VRM ?? '')
+      .split(',')
+      .map((f) => f.trim())
+      .filter((f) => f && existsSync(f));
+    const models: Array<{ tag: string; file?: string }> = [{ tag: 'default' }];
+    for (const f of extras)
+      models.push({
+        tag:
+          basename(dirname(f)) === 'models' || basename(f) !== 'model.vrm'
+            ? basename(f, '.vrm')
+            : basename(dirname(f)),
+        file: f,
+      });
+    for (const { tag: model, file } of models) {
+      if (file) {
+        const id = await main.evaluate(async (f) => {
+          const r = (await (
+            window as unknown as {
+              electronAPI: {
+                models: { importVrm(p: string): Promise<{ model?: { id: string } }> };
+              };
+            }
+          ).electronAPI.models.importVrm(f)) as { model?: { id: string } };
+          return r?.model?.id ?? '';
+        }, file);
+        if (!id) throw new Error(`import failed: ${file}`);
+        await main.waitForTimeout(800);
         await main.evaluate(
-          (f) =>
-            (
-              window as unknown as {
-                electronAPI: { models: { importVrm(p: string): Promise<unknown> } };
-              }
-            ).electronAPI.models.importVrm(f),
-          process.env.ANIM_VRM!,
+          (m) =>
+            window.dispatchEvent(new CustomEvent('mascot:select-model', { detail: { id: m } })),
+          id,
         );
-        await main.reload();
+        await main.waitForFunction((m) => document.documentElement.dataset.mascotModel === m, id, {
+          timeout: 30_000,
+        });
+        await main.waitForTimeout(1000);
         await ready();
       }
+      const loaded = await main.evaluate(() => document.documentElement.dataset.mascotModel ?? '');
+      writeFileSync(join(dir!, `${model}-MODEL.txt`), loaded);
       await main.waitForTimeout(1500);
       const clips = (
         await main.evaluate(() => document.documentElement.dataset.mascotMotions ?? '')
@@ -89,7 +114,7 @@ test('ANIM capture every clip', async () => {
             name,
           );
           for (let k = 0; k < 4; k += 1) {
-            await main.waitForTimeout(450);
+            await main.waitForTimeout(500);
             await shot(main, `${v}-${name}-${k}`);
           }
           await main.waitForTimeout(900);

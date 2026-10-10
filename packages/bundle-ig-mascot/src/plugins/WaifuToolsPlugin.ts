@@ -38,7 +38,7 @@ export function createPlayMotionTool(
     name: 'live2d_play_motion',
     description:
       '让看板娘做一个动作。group 为动作名：wave（挥手）、nod（点头）、shake（摇头）、think（思考）、' +
-      'clap（拍手）、bow（鞠躬）、cheer（欢呼）、dance（跳舞）、jump（跳跃）、stretch（伸懒腰）、' +
+      'clap（拍手）、bow（鞠躬）、cheer（欢呼）、dance（跳舞）、stretch（伸懒腰）、' +
       'look_around（张望）、interact（伸手）、flinch（受惊）、random（随机）。index 忽略。',
     input: playMotionInputSchema,
     dangerous: opts.dangerous,

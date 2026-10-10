@@ -48,18 +48,7 @@ function fakeVrm(metaVersion: '0' | '1' = '0') {
 describe('motion library', () => {
   it('ships CC0 Quaternius clips and original gestures', () => {
     const names = LIB.clips.map((c) => c.name);
-    for (const n of [
-      'idle',
-      'talk',
-      'dance',
-      'jump',
-      'wave',
-      'nod',
-      'shake',
-      'think',
-      'clap',
-      'bow',
-    ]) {
+    for (const n of ['idle', 'talk', 'dance', 'wave', 'nod', 'shake', 'think', 'clap', 'bow']) {
       expect(names).toContain(n);
     }
     for (const c of LIB.clips) {

@@ -88,7 +88,9 @@ export class MotionController {
 
   /** 播放动作；'random' = 随机一个手势。返回是否找到该动作。 */
   play(name: string): boolean {
-    const resolved = name === 'random' ? this.randomGesture() : name;
+    // 已移除 / 改名的动作：保持旧名字可用（AI 工具、托盘、旧配置）
+    const alias: Record<string, string> = { jump: 'cheer' };
+    const resolved = name === 'random' ? this.randomGesture() : (alias[name] ?? name);
     if (!resolved) return false;
     const clip = this.clips.get(resolved);
     if (!clip) return false;

@@ -13,7 +13,12 @@ import type { MascotBackend, MascotCapabilities } from '../MascotBackend';
 import { MASCOT_EXPRESSIONS } from '../MascotBackend';
 import type { MotionController } from '../motion/MotionController';
 
-import { addBodySpringColliders, clampRotation } from './springColliders';
+import {
+  addBodySpringColliders,
+  applyJointLimits,
+  clampRotation,
+  keepHandsOutOfHead,
+} from './springColliders';
 
 const EMOTIONS = MASCOT_EXPRESSIONS.filter((e) => e !== 'neutral');
 
@@ -132,6 +137,8 @@ export function createVrmBackend(
   const headY = rawBone('head')?.getWorldPosition(new THREE.Vector3()).y ?? 1.35;
   const height = Math.max(0.6, headY + 0.12);
   const removeBodyColliders = addBodySpringColliders(vrm, height);
+  // 头部禁区半径（模型空间）：头宽 + 头发 / 帽子余量
+  const headClear = 0.16 * (height / 1.5);
   const spine0 = bone('spine');
   const chest0 = bone('chest');
   const COLLIDER_BONES: HB[] = [
@@ -344,7 +351,10 @@ export function createVrmBackend(
       pitch = dampedSpring(pitch, tPitch, 5, 1, dt);
       addRot(neck, -pitch.x * 0.4, yaw.x * 0.4, 0);
       addRot(head, -pitch.x * 0.6, yaw.x * 0.6, 0);
-      // ---- 关节限位：动作 + 叠加层合成后，脊柱 / 胸 / 颈 / 头不超过人体自然范围 ----
+      // ---- 手不穿过头发 / 帽子（举手类动作、拎起姿态）----
+      keepHandsOutOfHead(bone, headClear * vrm.scene.getWorldScale(tmpV).y);
+      // ---- 关节限位：动作 + 叠加层合成后，四肢 / 脊柱 / 胸 / 颈 / 头不超过人体自然范围 ----
+      applyJointLimits(bone);
       clampRotation(spine0, 0.35);
       clampRotation(chest0, 0.3);
       clampRotation(neck, 0.5);
