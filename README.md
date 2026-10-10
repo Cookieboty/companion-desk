@@ -23,37 +23,39 @@ Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + R
 
 主进程启动时从环境变量读取 LLM provider（未配置 key 的云端 provider 仍会注册，调用时给出明确报错）：
 
-| 变量                                                        | 说明                                                                                                                                                         |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                                                                                         |
-| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                                                                                                      |
-| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key）                                                                        |
-| `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY`                      | Claude（`@ai-sdk/anthropic`）；另可选 `ANTHROPIC_BASE_URL`/`CLAUDE_BASE_URL`、`ANTHROPIC_MODEL`/`CLAUDE_MODEL`（默认 `claude-sonnet-4-5`）                   |
-| `GOOGLE_GENERATIVE_AI_API_KEY` / `GEMINI_API_KEY`           | Gemini（`@ai-sdk/google`）；另可选 `GOOGLE_GENERATIVE_AI_BASE_URL`/`GEMINI_BASE_URL`、`GOOGLE_GENERATIVE_AI_MODEL`/`GEMINI_MODEL`（默认 `gemini-2.5-flash`） |
-| `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                                                                                     |
-| `IG_DSH_CORE`                                               | `off`（默认，生产不用 dsh）/ `auto` / `required`（需安装 optional `@deepseek-ai/dsh*`）                                                                      |
-| `DSH_HOME`                                                  | 可选 dsh 状态目录，默认 `<userData>/dsh`（仅 `IG_DSH_CORE≠off` 时有意义）                                                                                    |
+| 变量                                                        | 说明                                                                                                                                                                                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                                                                                                                                             |
+| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                                                                                                                                                          |
+| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key）                                                                                                                            |
+| `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY`                      | Anthropic Messages 协议；另可选 `ANTHROPIC_BASE_URL`/`CLAUDE_BASE_URL`、`ANTHROPIC_MODEL`/`CLAUDE_MODEL`（默认 `claude-sonnet-4-5`）                                                                             |
+| `GOOGLE_GENERATIVE_AI_API_KEY` / `GEMINI_API_KEY`           | Gemini（走其 OpenAI 兼容端点 `…/v1beta/openai`，OpenAI Chat Completions 协议）；另可选 `GOOGLE_GENERATIVE_AI_BASE_URL`/`GEMINI_BASE_URL`、`GOOGLE_GENERATIVE_AI_MODEL`/`GEMINI_MODEL`（默认 `gemini-2.5-flash`） |
+| `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                                                                                                                                         |
+| `IG_DSH_CORE`                                               | `off`（默认，生产不用 dsh）/ `auto` / `required`（需安装 optional `@deepseek-ai/dsh*`）                                                                                                                          |
+| `DSH_HOME`                                                  | 可选 dsh 状态目录，默认 `<userData>/dsh`（仅 `IG_DSH_CORE≠off` 时有意义）                                                                                                                                        |
 
 例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`；Claude：`ANTHROPIC_API_KEY=sk-ant-... pnpm dev`；Gemini：`GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev`。
 
-### 多 Provider 与 Token 管理（面板）
+### 供应商与 Token 管理（面板，cc-switch 语义）
 
-AI 对话窗口底部工具栏的 **Provider 下拉框** 可一键切换当前 provider，🔑 按钮打开「AI Provider 与 Token」面板；系统托盘菜单同样可切换 / 打开面板（`IG_DISABLE_TRAY=1` 关闭托盘）。
+AI 对话窗口底部工具栏有 **供应商下拉框 + 模型下拉框**（一键切换，下一次请求立即生效），🔑 / ⚙ 打开「AI 供应商」面板；系统托盘菜单同样可切换。
 
-- **预设**：DeepSeek、OpenAI、Anthropic Claude、Google Gemini、Ollama、OpenRouter、SiliconFlow、通义千问 DashScope、Moonshot Kimi、智谱 GLM、豆包火山方舟，以及「自定义（OpenAI 兼容）」。流程：选预设 → 粘贴 key → 测试连接 → 保存 / 保存并设为当前。每个 provider 可改 Base URL、默认模型、额外 Headers、启用开关。
-- **Token 服务**：每个 provider 可有多个 key（主 + 备用）；主 key 遇到 401/403/429/额度类错误时自动切换到下一个；支持添加 / 轮换 / 设为主 / 删除 / 单独测试；界面只显示掩码（如 `sk-…abcd`）。
-- **用量**：按 provider 在本地累计 AI SDK 返回的 token 用量（请求数 / 输入 / 输出 / 失败次数），不上报。
-- **模型路由**：`chat`（对话）、`agent-tools`（带工具的 agent 循环）、`summary`（摘要类后台任务）可分别绑定 provider 与模型。
-- 切换即时生效，无需重启。
+- **供应商 = 通用配置**：名称、备注、官网链接、API Key、API 请求地址（「完整 URL」开关：打开则原样请求，不再拼路径）、**上游协议**（只有三种：OpenAI Chat Completions → `POST {base}/chat/completions`；OpenAI Responses → `POST {base}/responses`；Anthropic Messages → `POST {base}/v1/messages`）、默认模型、已启用模型、模型映射、自定义 Headers / User-Agent、思考开关。三种协议分别由 `@ai-sdk/openai-compatible`、`@ai-sdk/openai`（`.responses()`）、`@ai-sdk/anthropic` 通用实现，**没有按厂商的代码路径**。
+- **添加供应商**：搜索框 + 分类（自定义配置 / 模型厂商 / 第三方平台）。预设只是表单预填模板（名称、官网、请求地址、协议、推荐默认模型），保存后全部可改。
+- **获取模型**：OpenAI 风格 `GET {base}/models`（Bearer），Anthropic `GET {base}/v1/models`（`x-api-key` + `anthropic-version`）；勾选要启用的模型、点「设为默认」。**管理与测速**：发一个极小请求，显示延迟与实际端点。
+- **编辑正在使用的供应商**会提示「保存后立即生效」；高级选项（上游格式 / 模型映射 / 思考 / UA / Headers / Token 管理）默认折叠。
+- **Token 服务**：每个供应商可有多个 key（主 + 备用）；主 key 遇到 401/403/429/额度类错误时自动切换；界面只显示掩码。key 用 Electron `safeStorage` 加密保存在本地。
+- **任务路由**（可选）：`chat` / `agent-tools` / `summary` 可分别绑定供应商 + 模型（从该供应商已启用 / 已获取的模型里选）；默认都跟随「当前供应商」。工具栏 / 托盘一键切换会清掉 `chat` 路由，保证切换立刻作用到对话。
+- **迁移**：旧版（v1，`backend` 字段）`ai-providers.json` 首次启动自动迁移到 v2（备份为 `ai-providers.json.v1.bak`）；Gemini 原生端点改为其 OpenAI 兼容端点，旧的 chat 路由并入「当前供应商 + 模型」。
 
 **选择优先级**（请求未显式指定 provider 时）：
 
 1. `COMPANION_PROVIDER=<provider id>` 环境变量（强制覆盖，面板切换不生效）
-2. 面板中该任务的路由绑定（chat / agent-tools / summary）
-3. 面板中的「当前 provider」（可以是面板添加的，也可以是环境变量 provider）
-4. 环境变量 providers（已配 key 的云端 → Ollama → 未配 key 的）
+2. 该任务的路由绑定（chat / agent-tools / summary）
+3. 「当前供应商」及其默认模型（工具栏 / 托盘 / 面板切换的就是它）
+4. 环境变量供应商（已配 key 的云端 → Ollama）
 
-面板保存的 provider 与环境变量 provider 互不覆盖：环境变量仍作为回退来源，面板里以「环境变量」标签只读展示（不显示 key）。
+环境变量供应商映射到同一套通用配置（Claude → Anthropic Messages，其余 → OpenAI Chat Completions），在面板里只读展示（不显示 key）。
 
 ### 隐私说明
 

@@ -157,7 +157,7 @@ test.describe('UI surfaces', () => {
     await chat.fill('textarea', '你好，帮我写一段 TypeScript 示例');
     await shot(chat, '11-chat-typing');
 
-    await chat.click('[title="配置模型"]');
+    await chat.click('[data-testid="open-config"]');
     await chat.waitForTimeout(500);
     await shot(chat, '12-chat-config-panel');
     await chat.click('[aria-label="关闭"], [class*="closeButton"]');
@@ -167,7 +167,8 @@ test.describe('UI surfaces', () => {
     await expect(chat.locator('[data-testid="provider-panel"]')).toBeVisible();
     await chat.waitForTimeout(400);
     await shot(chat, '13-provider-panel');
-    await chat.selectOption('[data-testid="preset-select"]', 'deepseek');
+    await chat.click('[data-testid="add-provider-btn"]');
+    await chat.click('[data-testid="preset-deepseek"]');
     await chat.fill('[data-testid="draft-key"]', 'sk-demo-not-a-real-key-0000');
     await shot(chat, '14-provider-panel-draft');
     await chat.click('[aria-label="关闭"]');
