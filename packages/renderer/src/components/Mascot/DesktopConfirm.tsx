@@ -82,6 +82,7 @@ export const DesktopConfirm: React.FC = () => {
         data-mascot-ui
         data-testid="desktop-confirm-bubble"
         data-danger={cur.danger}
+        data-tool={cur.tool}
       >
         <div className={styles.text}>{cur.summary}</div>
         <div className={styles.meta}>
