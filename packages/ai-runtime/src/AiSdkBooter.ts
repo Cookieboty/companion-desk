@@ -17,9 +17,12 @@ import {
   llmProvidersFromEnv,
   mcpAutoConnectFromEnv,
   mcpServersFromEnv,
+  providerOverrideFromEnv,
   type IgPluginsOptions,
 } from './igPlugins';
 import { ConsoleRuntimeLogger, type RuntimeLogger } from './logger';
+import type { RoutedLLMRegistry } from './providers/ProviderRouter';
+import type { ProviderStore } from './providers/ProviderStore';
 
 export interface AiSdkBooterOptions {
   logger?: RuntimeLogger;
@@ -28,10 +31,21 @@ export interface AiSdkBooterOptions {
   env?: IgPluginsOptions['env'];
   before?: IgPluginEntry[];
   after?: IgPluginEntry[];
+  /** 多 provider 配置（面板）；省略则只用环境变量 providers */
+  providers?: AiSdkProvidersOptions;
+}
+
+export interface AiSdkProvidersOptions {
+  store?: ProviderStore;
+  onRegistry?: (registry: RoutedLLMRegistry) => void;
 }
 
 /** defaultIgPlugins with AI SDK LLM providers instead of BaseOpenAICompat. */
-export function defaultAiSdkPlugins(profile: string, opts: IgPluginsOptions = {}): IgPluginEntry[] {
+export function defaultAiSdkPlugins(
+  profile: string,
+  opts: IgPluginsOptions = {},
+  providers: AiSdkProvidersOptions = {},
+): IgPluginEntry[] {
   const env = opts.env ?? process.env;
   const servers = mcpServersFromEnv(env);
   const autoConnect = mcpAutoConnectFromEnv(env);
@@ -40,7 +54,12 @@ export function defaultAiSdkPlugins(profile: string, opts: IgPluginsOptions = {}
     if (entry.plugin.name === 'LLMProvidersPlugin') {
       mapped.push({
         plugin: AiSdkLLMProvidersPlugin,
-        config: { providers: llmProvidersFromEnv(env) },
+        config: {
+          providers: llmProvidersFromEnv(env),
+          store: providers.store,
+          overrideId: providerOverrideFromEnv(env),
+          onRegistry: providers.onRegistry,
+        },
       });
       continue;
     }
@@ -66,11 +85,15 @@ export function createAiSdkBooter(opts: AiSdkBooterOptions = {}): Booter {
   const pluginsFor =
     opts.plugins ??
     ((profile: string) =>
-      defaultAiSdkPlugins(profile, {
-        env: opts.env,
-        before: opts.before,
-        after: opts.after,
-      }));
+      defaultAiSdkPlugins(
+        profile,
+        {
+          env: opts.env,
+          before: opts.before,
+          after: opts.after,
+        },
+        opts.providers,
+      ));
 
   let host: IgPluginHost | undefined;
 

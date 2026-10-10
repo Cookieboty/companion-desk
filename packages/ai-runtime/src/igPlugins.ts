@@ -81,6 +81,14 @@ export function llmProvidersFromEnv(env: EnvLike = process.env): LLMProviderEntr
   return [...cloud.filter((p) => p.apiKey), ollama, ...cloud.filter((p) => !p.apiKey)];
 }
 
+/**
+ * `COMPANION_PROVIDER=<id>`：强制默认 provider（覆盖面板里的「当前 provider」与角色路由；
+ * 显式指定 provider 的请求不受影响）。
+ */
+export function providerOverrideFromEnv(env: EnvLike = process.env): string | undefined {
+  return nonEmpty(env.COMPANION_PROVIDER);
+}
+
 /** Parse MCP_SERVERS JSON (array of McpServerConfig). Invalid JSON → []. */
 export function mcpServersFromEnv(env: EnvLike = process.env): McpServerConfig[] {
   const raw = nonEmpty(env.MCP_SERVERS);

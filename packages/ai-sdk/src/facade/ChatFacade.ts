@@ -15,6 +15,7 @@ import {
   type ChatRequest,
   type ChatResponse,
   type LLMProvider,
+  type LLMRole,
   type ToolDefinition,
 } from '@ig-live/bundle-ig-base';
 
@@ -40,6 +41,11 @@ export interface ChatStreamOptions {
   context?: ContextBudget | false;
   /** Agent loop max steps when using AI SDK tools (default 5). */
   maxSteps?: number;
+  /**
+   * 任务角色（未显式指定 provider 时用于路由）：sendMessage/stream 默认 `chat`，
+   * agent/agentStream 默认 `agent-tools`；后台摘要等可传 `summary`。
+   */
+  role?: LLMRole;
 }
 
 interface WithTools {
@@ -63,8 +69,13 @@ export interface ChatFacade {
   regenerate(opts: ChatStreamOptions): AsyncIterable<ChatChunk>;
 }
 
+interface Picked {
+  provider: LLMProvider;
+  model?: string;
+}
+
 export function createChatFacade(ctx: SdkContext): ChatFacade {
-  const pickProvider = (id?: string): LLMProvider => {
+  const pick = (opts: ChatStreamOptions, defaultRole: LLMRole): Picked => {
     const reg = ctx.inject(LLMRegistryKey);
     if (!reg) {
       throw new AIClientError(
@@ -72,24 +83,29 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
         'ctx.llm 未注入；请确认已加载 bundle-ig-base',
       );
     }
-    const providers = reg.list();
-    if (id) {
-      const found = reg.get(id);
+    if (opts.provider) {
+      const found = reg.get(opts.provider);
       if (!found) {
-        throw new AIClientError(ErrorCodes.SEAM_NOT_INJECTED, `LLM provider '${id}' 未注册`);
+        throw new AIClientError(
+          ErrorCodes.SEAM_NOT_INJECTED,
+          `LLM provider '${opts.provider}' 未注册`,
+        );
       }
-      return found;
+      return { provider: found };
     }
+    const routed = reg.resolve?.(opts.role ?? defaultRole);
+    if (routed) return routed;
+    const providers = reg.list();
     if (providers.length === 0) {
       throw new AIClientError(ErrorCodes.SEAM_NOT_INJECTED, '没有可用的 LLM provider');
     }
-    return providers[0]!;
+    return { provider: providers[0]! };
   };
 
-  const buildRequest = (opts: ChatStreamOptions, provider: LLMProvider): ChatRequest => ({
+  const buildRequest = (opts: ChatStreamOptions, picked: Picked): ChatRequest => ({
     reqId: opts.reqId ?? cryptoRandomId(),
-    provider: provider.id,
-    model: opts.model ?? 'default',
+    provider: picked.provider.id,
+    model: opts.model ?? picked.model ?? 'default',
     messages:
       opts.context === false ? opts.messages : fitMessagesToBudget(opts.messages, opts.context),
     temperature: opts.temperature,
@@ -105,37 +121,30 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     return reg ? (reg.list() as ToolDefinition[]) : [];
   };
 
-  const runAgent = (opts: ChatStreamOptions) => {
-    const provider = pickProvider(opts.provider);
+  const runAgent = (picked: Picked) => {
     const tools = listTools();
-    if (hasWithTools(provider) && tools.length > 0) {
-      return provider.withTools(tools);
+    if (hasWithTools(picked.provider) && tools.length > 0) {
+      return picked.provider.withTools(tools);
     }
-    return provider;
+    return picked.provider;
   };
 
   return {
     async sendMessage(opts) {
-      const provider = pickProvider(opts.provider);
-      const req = buildRequest(opts, provider);
-      return provider.chat(req);
+      const picked = pick(opts, 'chat');
+      return picked.provider.chat(buildRequest(opts, picked));
     },
     stream(opts) {
-      const provider = pickProvider(opts.provider);
-      const req = { ...buildRequest(opts, provider), stream: true };
-      return provider.stream(req);
+      const picked = pick(opts, 'chat');
+      return picked.provider.stream({ ...buildRequest(opts, picked), stream: true });
     },
     async agent(opts) {
-      const runner = runAgent(opts);
-      const provider = pickProvider(opts.provider);
-      const req = buildRequest(opts, provider);
-      return runner.chat(req);
+      const picked = pick(opts, 'agent-tools');
+      return runAgent(picked).chat(buildRequest(opts, picked));
     },
     agentStream(opts) {
-      const runner = runAgent(opts);
-      const provider = pickProvider(opts.provider);
-      const req = { ...buildRequest(opts, provider), stream: true };
-      return runner.stream(req);
+      const picked = pick(opts, 'agent-tools');
+      return runAgent(picked).stream({ ...buildRequest(opts, picked), stream: true });
     },
     abort(reqId) {
       const reg = ctx.inject(LLMRegistryKey);
@@ -143,13 +152,12 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
       for (const p of reg.list()) p.abort(reqId);
     },
     regenerate(opts) {
-      const provider = pickProvider(opts.provider);
-      const req = {
-        ...buildRequest(opts, provider),
+      const picked = pick(opts, 'chat');
+      return picked.provider.stream({
+        ...buildRequest(opts, picked),
         reqId: cryptoRandomId(),
         stream: true,
-      };
-      return provider.stream(req);
+      });
     },
   };
 }
