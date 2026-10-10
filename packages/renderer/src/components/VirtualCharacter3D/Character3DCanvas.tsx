@@ -1,9 +1,12 @@
-import React, { Suspense, useRef, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+/* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
 import { OrbitControls, useProgress, Html } from '@react-three/drei';
-import { VRMCharacterController } from './VRMCharacterController';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import React, { Suspense, useRef, useEffect } from 'react';
+
 import { useCharacter3DStore } from '../../stores/character3DStore';
-import { Character3DCanvasProps } from '../../types/character3d';
+import { type Character3DCanvasProps } from '../../types/character3d';
+
+import { VRMCharacterController } from './VRMCharacterController';
 
 /**
  * 3D角色渲染画布组件
@@ -20,12 +23,7 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   ...htmlProps
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const {
-    isLoaded,
-    renderQuality,
-    isVisible,
-    setRenderQuality
-  } = useCharacter3DStore();
+  const { isLoaded, renderQuality, isVisible, setRenderQuality } = useCharacter3DStore();
 
   // 根据性能自动调整渲染质量
   useEffect(() => {
@@ -62,35 +60,35 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
           antialias: false,
           pixelRatio: Math.min(window.devicePixelRatio, 1),
           shadowMapSize: 512,
-          toneMapping: false
+          toneMapping: false,
         };
       case 'medium':
         return {
           antialias: true,
           pixelRatio: Math.min(window.devicePixelRatio, 1.5),
           shadowMapSize: 1024,
-          toneMapping: true
+          toneMapping: true,
         };
       case 'high':
         return {
           antialias: true,
           pixelRatio: window.devicePixelRatio,
           shadowMapSize: 2048,
-          toneMapping: true
+          toneMapping: true,
         };
       case 'ultra':
         return {
           antialias: true,
           pixelRatio: window.devicePixelRatio,
           shadowMapSize: 4096,
-          toneMapping: true
+          toneMapping: true,
         };
       default:
         return {
           antialias: true,
           pixelRatio: Math.min(window.devicePixelRatio, 1.5),
           shadowMapSize: 1024,
-          toneMapping: true
+          toneMapping: true,
         };
     }
   };
@@ -105,9 +103,7 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
       <Html center>
         <div className="loading-indicator">
           <div className="loading-spinner"></div>
-          <div className="loading-text">
-            加载3D模型中... {Math.round(progress)}%
-          </div>
+          <div className="loading-text">加载3D模型中... {Math.round(progress)}%</div>
         </div>
       </Html>
     );
@@ -130,8 +126,9 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
         // 如果帧率过低，自动降低质量
         if (fps < 25 && renderQuality !== 'low') {
           console.log('检测到低帧率，自动降低渲染质量');
-          setRenderQuality(renderQuality === 'ultra' ? 'high' :
-            renderQuality === 'high' ? 'medium' : 'low');
+          setRenderQuality(
+            renderQuality === 'ultra' ? 'high' : renderQuality === 'high' ? 'medium' : 'low',
+          );
         }
       }
     });
@@ -144,31 +141,31 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   }
 
   return (
-    <div
-      className={`character-3d-canvas ${className}`}
-      style={style}
-      {...htmlProps}
-    >
+    <div className={`character-3d-canvas ${className}`} style={style} {...htmlProps}>
       <Canvas
         ref={canvasRef}
         gl={{
           antialias: renderConfig.antialias,
           alpha: transparent,
           preserveDrawingBuffer: false,
-          powerPreference: 'high-performance'
+          powerPreference: 'high-performance',
         }}
         dpr={renderConfig.pixelRatio}
         camera={{
-          position: [0, 1.6, 3],
-          fov: 50,
+          // 全身取景：VRoid 模型约 1.5m 高，原点在脚底
+          position: [0, 0.82, 3.2],
+          fov: 35,
           near: 0.1,
-          far: 1000
+          far: 1000,
+        }}
+        onCreated={({ camera }) => {
+          camera.lookAt(0, 0.8, 0);
         }}
         shadows={renderQuality !== 'low'}
         style={{
           background: transparent ? 'transparent' : '#f0f0f0',
           width: '100%',
-          height: '100%'
+          height: '100%',
         }}
       >
         {/* 环境光 */}
