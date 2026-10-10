@@ -499,6 +499,7 @@ export const ToolBar: React.FC = () => {
           availWidth: window.screen.availWidth,
         },
       });
+      layoutStore.setGutter({ left: p.x, right: p.x + bw, top: p.y, bottom: p.y + bh });
       setPlace((prev) =>
         prev && prev.side === p.side && Math.abs(prev.x - p.x) < 6 && Math.abs(prev.y - p.y) < 6
           ? prev
