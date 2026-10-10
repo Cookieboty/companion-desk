@@ -15,7 +15,9 @@
   border-radius: var(--cd-radius-lg);
   background-color: var(--bubble-bg);
   box-shadow: 0 4px 14px rgba(120, 96, 64, 0.18);
-  font-size: calc(13.5px * var(--bubble-scale));
+  font-family: var(--cd-font-sans);
+  font-size: calc(var(--cd-font-size-md) * var(--bubble-scale));
+  letter-spacing: var(--cd-tracking-normal);
   line-height: 1.6;
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -53,7 +55,8 @@
   background: none;
   color: #8a6430;
   font: inherit;
-  font-size: 0.9em;
+  font-size: var(--cd-font-size-xs);
+  font-weight: var(--cd-font-weight-medium);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;

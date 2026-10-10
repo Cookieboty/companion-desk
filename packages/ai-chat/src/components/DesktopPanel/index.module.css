@@ -38,7 +38,7 @@
 
 .code {
   font-family: var(--cd-font-mono, monospace);
-  font-size: 11px;
+  font-size: var(--cd-font-size-xs);
   color: var(--cd-color-text-muted, #9aa3b2);
   word-break: break-all;
 }

@@ -51,7 +51,7 @@
   gap: 12px;
   color: #ffffff;
   font-weight: 600;
-  font-size: 18px;
+  font-size: var(--cd-font-size-xl);
   text-shadow: none;
 }
 
@@ -448,7 +448,7 @@
 
   .newChatBtn {
     height: 40px;
-    font-size: 13px;
+    font-size: var(--cd-font-size-sm);
   }
 
   .chatHistory {

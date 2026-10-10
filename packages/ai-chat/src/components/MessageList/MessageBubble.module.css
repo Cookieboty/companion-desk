@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: var(--cd-font-size-sm);
   color: var(--cd-color-text-muted);
   font-weight: 500;
   padding: 0 8px;
@@ -140,7 +140,7 @@
 
 .contentText {
   white-space: pre-wrap;
-  font-size: 15px;
+  font-size: var(--cd-font-size-md);
   line-height: 1.6;
   margin: 0;
   position: relative;
@@ -277,7 +277,7 @@
   }
 
   .model {
-    font-size: 10px;
+    font-size: var(--cd-font-size-xs);
     padding: 3px 8px;
   }
 }

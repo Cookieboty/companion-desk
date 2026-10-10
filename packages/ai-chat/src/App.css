@@ -111,8 +111,8 @@ body {
 }
 
 .welcome-title {
-  font-size: 36px;
-  font-weight: 700;
+  font: var(--cd-text-display);
+  letter-spacing: var(--cd-tracking-tight);
   color: #ffffff;
   margin-bottom: 16px;
   text-shadow: none;
@@ -123,9 +123,9 @@ body {
 }
 
 .welcome-subtitle {
-  font-size: 18px;
+  font-size: var(--cd-font-size-md);
   color: #cbd5e1;
-  margin-bottom: 48px;
+  margin-bottom: 32px;
   line-height: 1.6;
   opacity: 0.9;
 }
@@ -273,11 +273,11 @@ body {
   }
 
   .welcome-title {
-    font-size: 28px;
+    font-size: var(--cd-font-size-2xl);
   }
 
   .welcome-subtitle {
-    font-size: var(--cd-font-size-lg);
+    font-size: var(--cd-font-size-md);
   }
 
   .welcome-content {

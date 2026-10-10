@@ -158,7 +158,9 @@
   box-shadow: var(--tb-shadow);
   backdrop-filter: blur(14px);
   color: var(--tb-fg);
-  font-size: 12.5px;
+  font-size: var(--cd-font-size-xs);
+  line-height: var(--cd-line-height-xs);
+  letter-spacing: var(--cd-tracking-wide);
 }
 .root[data-side='left'] .menu {
   right: auto;

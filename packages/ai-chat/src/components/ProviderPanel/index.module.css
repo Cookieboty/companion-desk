@@ -41,7 +41,7 @@
   padding: 2px 10px;
   border: 1px solid var(--cd-color-border);
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--cd-font-size-xs);
 }
 .keys {
   display: flex;
@@ -97,7 +97,7 @@
 }
 .catTitle {
   margin: 0 0 var(--cd-space-2);
-  font-size: 13px;
+  font-size: var(--cd-font-size-sm);
   font-weight: 600;
   opacity: 0.75;
 }
@@ -152,13 +152,13 @@
 }
 .editorHead h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--cd-font-size-xl);
 }
 .back {
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 22px;
+  font-size: var(--cd-font-size-2xl);
   line-height: 1;
   cursor: pointer;
 }
@@ -200,14 +200,14 @@
 }
 .modelId {
   font-family: var(--cd-font-mono, ui-monospace, monospace);
-  font-size: 12px;
+  font-size: var(--cd-font-size-xs);
 }
 .linkBtn {
   border: 0;
   background: transparent;
   color: var(--cd-color-accent);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--cd-font-size-xs);
   cursor: pointer;
 }
 .advanced {
@@ -236,4 +236,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--cd-space-2);
+}
+.modelSkeleton {
+  margin-top: var(--cd-space-2);
 }

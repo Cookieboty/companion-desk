@@ -139,7 +139,7 @@
   background: rgba(0, 0, 0, 0.45);
   color: var(--cd-text, #eee);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--cd-font-size-xs);
 }
 
 .badges {
