@@ -50,6 +50,7 @@ export const MascotHost: React.FC = () => {
           <Suspense fallback={null}>
             <VirtualCharacter3D
               modelPath={currentModel.path}
+              modelConfig={currentModel.config}
               enableMCPIntegration
               enableVoiceSync
               enableControls={false}

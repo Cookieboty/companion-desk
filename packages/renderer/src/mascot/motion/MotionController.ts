@@ -9,6 +9,8 @@ export interface MotionControllerOptions {
   /** 随机待机小动作的间隔（秒）[min, max] */
   idleVarietyEvery?: [number, number];
   random?: () => number;
+  /** 动作白名单（缺省 = 全部；idle / talk 总是保留） */
+  allow?: string[];
 }
 
 /**
@@ -42,7 +44,9 @@ export class MotionController {
     this.nextIdleVariety = this.pickIdleDelay();
     this.mixer = new THREE.AnimationMixer(vrm.scene);
     const idle = lib.clips.find((c) => c.name === 'idle');
+    const allow = opts.allow?.length ? new Set([...opts.allow, 'idle', 'talk']) : null;
     for (const c of lib.clips) {
+      if (allow && !allow.has(c.name)) continue;
       this.meta.set(c.name, c);
       this.clips.set(c.name, buildClip(vrm, c, idle));
     }

@@ -76,6 +76,9 @@ export function mascotReducer(state: MascotState, action: MascotAction): MascotS
         modelName: pickModel(action.payload, state.modelName)?.name ?? null,
       };
     case 'SET_MODEL':
+      // 未知 id（例如托盘里已被删除的模型）忽略
+      if (state.modelList.length && !state.modelList.some((m) => m.name === action.payload))
+        return state;
       return { ...state, modelName: action.payload };
     case 'SET_PICKER_OPEN':
       return { ...state, pickerOpen: action.payload, panel: action.payload ? null : state.panel };
@@ -134,11 +137,26 @@ export const MascotProvider: React.FC<{ children: ReactNode; config: MascotConfi
 
   useEffect(() => {
     let alive = true;
-    void loadCatalog().then((models) => {
-      if (alive) rawDispatch({ type: 'SET_MODEL_LIST', payload: models });
-    });
+    const reload = (force: boolean) =>
+      void loadCatalog(fetch, force).then((models) => {
+        if (alive) rawDispatch({ type: 'SET_MODEL_LIST', payload: models });
+      });
+    reload(false);
+    // 商店安装 / 删除、用户导入后，主进程广播 models:changed
+    const off = window.electronAPI?.models?.onChanged(() => reload(true));
+    // 托盘 / AI 工具切换角色
+    const onSelect = (e: Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      if (typeof id === 'string') {
+        writeSelectedModel(id);
+        rawDispatch({ type: 'SET_MODEL', payload: id });
+      }
+    };
+    window.addEventListener('mascot:select-model', onSelect);
     return () => {
       alive = false;
+      off?.();
+      window.removeEventListener('mascot:select-model', onSelect);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);

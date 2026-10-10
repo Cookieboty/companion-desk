@@ -1,4 +1,5 @@
-import { VRM } from '@pixiv/three-vrm';
+import type { ModelConfig as MascotModelConfig } from '@ig-live/types';
+import { type VRM } from '@pixiv/three-vrm';
 
 /**
  * 3D角色相关类型定义
@@ -15,39 +16,64 @@ export type RenderQuality = 'low' | 'medium' | 'high' | 'ultra';
  * 动画类型
  */
 export type AnimationType =
-  | 'idle'           // 待机
-  | 'walking'        // 行走
-  | 'running'        // 跑步
-  | 'waving'         // 挥手
-  | 'nodding'        // 点头
-  | 'talking'        // 说话
-  | 'thinking'       // 思考
-  | 'surprised'      // 惊讶
-  | 'happy'          // 开心
-  | 'sad'            // 伤心
-  | 'angry'          // 生气
-  | 'custom';        // 自定义
+  | 'idle' // 待机
+  | 'walking' // 行走
+  | 'running' // 跑步
+  | 'waving' // 挥手
+  | 'nodding' // 点头
+  | 'talking' // 说话
+  | 'thinking' // 思考
+  | 'surprised' // 惊讶
+  | 'happy' // 开心
+  | 'sad' // 伤心
+  | 'angry' // 生气
+  | 'custom'; // 自定义
 
 /**
  * 表情类型
  */
 export type ExpressionType =
-  | 'neutral'        // 中性
-  | 'happy'          // 开心
-  | 'sad'            // 伤心
-  | 'angry'          // 生气
-  | 'surprised'      // 惊讶
-  | 'disgusted'      // 厌恶
-  | 'fearful'        // 恐惧
-  | 'contempt'       // 轻蔑
-  | 'custom';        // 自定义
+  | 'neutral' // 中性
+  | 'happy' // 开心
+  | 'sad' // 伤心
+  | 'angry' // 生气
+  | 'surprised' // 惊讶
+  | 'disgusted' // 厌恶
+  | 'fearful' // 恐惧
+  | 'contempt' // 轻蔑
+  | 'custom'; // 自定义
 
 /**
  * Viseme类型（用于唇形同步）
  */
 export type VisemeType =
-  | 'SIL' | 'A' | 'E' | 'I' | 'O' | 'U'
-  | 'B' | 'C' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'M' | 'N' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'V' | 'W' | 'X' | 'Y' | 'Z';
+  | 'SIL'
+  | 'A'
+  | 'E'
+  | 'I'
+  | 'O'
+  | 'U'
+  | 'B'
+  | 'C'
+  | 'D'
+  | 'F'
+  | 'G'
+  | 'H'
+  | 'J'
+  | 'K'
+  | 'L'
+  | 'M'
+  | 'N'
+  | 'P'
+  | 'Q'
+  | 'R'
+  | 'S'
+  | 'T'
+  | 'V'
+  | 'W'
+  | 'X'
+  | 'Y'
+  | 'Z';
 
 // ==================== 状态接口 ====================
 
@@ -134,6 +160,8 @@ export interface Character3DActions {
  * 3D画布组件Props
  */
 export interface Character3DCanvasProps {
+  /** 模型呈现配置（缩放 / 偏移 / 取景 / 表情映射 / 动作白名单） */
+  modelConfig?: MascotModelConfig;
   modelPath?: string;
   enableControls?: boolean;
   transparent?: boolean;
@@ -147,6 +175,8 @@ export interface Character3DCanvasProps {
  * VRM角色控制器Props
  */
 export interface VRMCharacterControllerProps {
+  /** 模型呈现配置（缩放 / 偏移 / 取景 / 表情映射 / 动作白名单） */
+  modelConfig?: MascotModelConfig;
   modelPath: string;
   enablePhysics?: boolean;
   enableExpressions?: boolean;
@@ -162,6 +192,8 @@ export interface VRMCharacterControllerProps {
  * 3D虚拟角色主组件Props
  */
 export interface VirtualCharacter3DProps {
+  /** 模型呈现配置（缩放 / 偏移 / 取景 / 表情映射 / 动作白名单） */
+  modelConfig?: MascotModelConfig;
   modelPath?: string;
   enableMCPIntegration?: boolean;
   enableVoiceSync?: boolean;

@@ -12,6 +12,7 @@ import { Character3DCanvas } from './Character3DCanvas';
  */
 export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   modelPath = DEFAULT_VRM_MODEL_PATH,
+  modelConfig,
   enableMCPIntegration = true,
   enableVoiceSync = true,
   enableControls = false,
@@ -171,6 +172,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
     >
       <Character3DCanvas
         modelPath={modelPath}
+        modelConfig={modelConfig}
         enableControls={enableControls}
         transparent={transparent}
         onModelLoaded={handleModelLoaded}
