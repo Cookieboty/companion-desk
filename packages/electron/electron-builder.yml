@@ -19,6 +19,22 @@ files:
   - dist/**/*
   - assets/**/*
   - package.json
+  # 打包后 renderer / ai-chat 从 process.resourcesPath 加载（见 extraResources），
+  # dist/ 下由 copy-renderer 生成的副本只供未打包的本地运行使用 —— 不再重复塞进 asar（~224MB）。
+  - '!dist/renderer/**'
+  - '!dist/ai-chat/**'
+  # 预加载只用 esbuild 产物 *.bundle.js
+  - '!dist/preload.js'
+  - '!dist/ai-chat-preload.js'
+  - '!**/*.map'
+  - '!**/*.{ts,mts,cts,tsx}'
+  - '!**/*.d.ts'
+  - '!**/node_modules/**/*.{md,markdown}'
+  - '!**/node_modules/**/{test,tests,__tests__,__mocks__,docs,example,examples,coverage,.github}/**'
+  - '!**/node_modules/**/{tsconfig*.json,.eslintrc*,.prettierrc*,.editorconfig,.npmignore}'
+
+# 默认 normal：maximum 对已压缩的模型纹理收益极小、但显著拖慢打包
+compression: normal
 
 asarUnpack:
   - '**/standalone-mcp-server.js'
