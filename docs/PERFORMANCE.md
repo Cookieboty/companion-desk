@@ -43,7 +43,7 @@ xvfb-run -a node scripts/measure-startup.mjs 9 --json /tmp/startup.json   # Linu
   但 `files: dist/**/*` 又把 `copy-renderer` 生成的同一份 224 MB 副本（主要是 Live2D 模型）打进了 asar。现在把它排除了，
   同时排除 `*.map`、`*.ts`/`*.d.ts`、node_modules 里的 markdown/测试/文档/示例目录，以及没有打包的 preload 源文件。
   保留了 LICENSE 文件；**没有删掉任何对用户可见的模型**。
-- **renderer**：3D 模式（three、@react-three、VRM）和自定义图片模式改用 `React.lazy` 按需加载；
+- **renderer**：3D 模式（three、@react-three、VRM）改用 `React.lazy` 按需加载（自定义图片模式已于 Phase 3 移除）；
   拆出 `vendor-react` / `vendor-three` 两个 chunk，保证缓存命中稳定。
 - **依赖清理**：ai-chat 里没有用到的 `marked`、`highlight.js` 已删除。
 - **CI**：`build-electron` 直接复用 quality 作业的 turbo 缓存（同一个 key），并缓存 electron / electron-builder 的下载内容。

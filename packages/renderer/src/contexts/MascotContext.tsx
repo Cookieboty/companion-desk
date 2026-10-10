@@ -31,6 +31,8 @@ export interface MascotState {
   /** 当前模型 name（model-list.json 中的 name） */
   modelName: string | null;
   pickerOpen: boolean;
+  /** 其它浮层：动作菜单 / 致谢 */
+  panel: 'motions' | 'credits' | null;
 }
 
 export type MascotAction =
@@ -39,7 +41,8 @@ export type MascotAction =
   | { type: 'TOGGLE_DRAG'; payload: boolean }
   | { type: 'SET_MODEL_LIST'; payload: MascotModel[] }
   | { type: 'SET_MODEL'; payload: string }
-  | { type: 'SET_PICKER_OPEN'; payload: boolean };
+  | { type: 'SET_PICKER_OPEN'; payload: boolean }
+  | { type: 'SET_PANEL'; payload: MascotState['panel'] };
 
 const initialState: MascotState = {
   currentMessage: null,
@@ -48,6 +51,7 @@ const initialState: MascotState = {
   modelList: [],
   modelName: null,
   pickerOpen: false,
+  panel: null,
 };
 
 export function mascotReducer(state: MascotState, action: MascotAction): MascotState {
@@ -74,7 +78,13 @@ export function mascotReducer(state: MascotState, action: MascotAction): MascotS
     case 'SET_MODEL':
       return { ...state, modelName: action.payload };
     case 'SET_PICKER_OPEN':
-      return { ...state, pickerOpen: action.payload };
+      return { ...state, pickerOpen: action.payload, panel: action.payload ? null : state.panel };
+    case 'SET_PANEL':
+      return {
+        ...state,
+        panel: action.payload,
+        pickerOpen: action.payload ? false : state.pickerOpen,
+      };
     default:
       return state;
   }

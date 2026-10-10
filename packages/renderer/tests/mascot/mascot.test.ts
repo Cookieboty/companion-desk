@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { normalizeRenderMode } from '../../src/config/renderMode';
 import { mascotReducer, type MascotState } from '../../src/contexts/MascotContext';
 import { createVrmBackend } from '../../src/mascot/backends/vrm';
 import { nextModel, parseCatalog, pickModel, type MascotModel } from '../../src/mascot/catalog';
@@ -155,6 +154,7 @@ describe('MascotContext reducer', () => {
     modelList: [],
     modelName: 'b',
     pickerOpen: false,
+    panel: null,
   };
 
   it('keeps a valid saved model and respects message priority', () => {
@@ -172,12 +172,6 @@ describe('MascotContext reducer', () => {
 });
 
 describe('misc', () => {
-  it('normalizes legacy live2d render mode', () => {
-    expect(normalizeRenderMode('live2d')).toBe('3d');
-    expect(normalizeRenderMode('custom-image')).toBe('custom-image');
-    expect(normalizeRenderMode(undefined)).toBe('3d');
-  });
-
   it('has original tips without Live2D selectors', () => {
     expect(greetingFor(8)).toMatch(/早上好/);
     expect(MOUSEOVER_TIPS.some((t) => t.selector.includes('live2d'))).toBe(false);

@@ -500,17 +500,16 @@ export class WindowManager implements IWindowManager {
 
     try {
       if (isDev) {
-        // 开发环境：从dist/core目录向上找到renderer目录
-        const ttsConfigPath = path.join(__dirname, '..', '..', '..', 'renderer', 'tts-config.html');
-        this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
-        await window.loadFile(ttsConfigPath);
+        // 开发环境：由 renderer 的 vite dev server 提供（多页面入口）
+        const devUrl = 'http://localhost:3000/tts-config.html';
+        this.logger.info('TTS配置窗口加载地址', { url: devUrl });
+        await window.loadURL(devUrl);
       } else {
-        // 生产环境加载打包后的TTS配置页面
-        // 在打包应用中，extraResources 会被放在 process.resourcesPath 下
-        // 未打包的 prod 运行（e2e / 本地 dist）没有 extraResources，回落到源码里的页面
+        // 生产：页面由 renderer 的 vite 构建输出（renderer/dist/tts-config.html）
+        // 打包后在 resources/renderer/ 下；未打包运行时用 copy-renderer 复制的 dist/renderer/
         const ttsConfigPath = app.isPackaged
           ? path.join(process.resourcesPath, 'renderer', 'tts-config.html')
-          : path.join(__dirname, '..', '..', '..', 'renderer', 'tts-config.html');
+          : path.join(app.getAppPath(), 'dist', 'renderer', 'tts-config.html');
         this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
         await window.loadFile(ttsConfigPath);
       }
