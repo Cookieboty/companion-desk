@@ -39,7 +39,7 @@
 .role {
   font-weight: 600;
   color: var(--cd-color-text);
-  text-shadow: 0 0 8px var(--cd-color-border);
+  text-shadow: none;
 }
 
 .timestamp {
@@ -49,7 +49,7 @@
 }
 
 .model {
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(var(--cd-accent-rgb), 0.2);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: var(--cd-color-accent-2);
@@ -58,7 +58,7 @@
   font-size: var(--cd-font-size-xs);
   font-weight: 500;
   border: 1px solid var(--cd-color-border);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 8px rgba(var(--cd-accent-rgb), 0.2);
 }
 
 .messageContent {
@@ -72,14 +72,14 @@
 
 .userMessage .messageContent {
   align-self: flex-end;
-  background: rgba(59, 130, 246, 0.9);
+  background: rgba(var(--cd-accent-rgb), 0.9);
   color: white;
   padding: 18px 24px;
   border-radius: 24px 24px 8px 24px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.3),
-    0 4px 16px rgba(59, 130, 246, 0.4),
-    0 0 24px rgba(59, 130, 246, 0.2);
+    0 4px 16px rgba(var(--cd-accent-rgb), 0.4),
+    0 0 24px rgba(var(--cd-accent-rgb), 0.2);
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
@@ -97,7 +97,7 @@
     135deg,
     rgba(255, 255, 255, 0.3) 0%,
     var(--cd-color-border) 50%,
-    rgba(139, 92, 246, 0.3) 100%
+    rgba(var(--cd-accent-3-rgb), 0.3) 100%
   );
   border-radius: 24px 24px 8px 24px;
   z-index: -1;
@@ -113,7 +113,7 @@
   border: 1px solid var(--cd-color-border);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
-    0 4px 16px rgba(59, 130, 246, 0.1);
+    0 4px 16px rgba(var(--cd-accent-rgb), 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -128,9 +128,9 @@
   bottom: -1px;
   background: linear-gradient(
     135deg,
-    rgba(59, 130, 246, 0.2) 0%,
-    rgba(6, 182, 212, 0.2) 50%,
-    rgba(34, 197, 94, 0.2) 100%
+    rgba(var(--cd-accent-rgb), 0.2) 0%,
+    rgba(var(--cd-accent-2-rgb), 0.2) 50%,
+    rgba(var(--cd-accent-2-rgb), 0.2) 100%
   );
   border-radius: 24px 24px 24px 8px;
   z-index: -1;
@@ -149,7 +149,7 @@
 
 .userMessage .contentText {
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  text-shadow: none;
 }
 
 .assistantMessage .contentText {
@@ -196,7 +196,7 @@
 .userMessage .messageContent:hover {
   box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.4),
-    0 6px 24px rgba(59, 130, 246, 0.5),
+    0 6px 24px rgba(var(--cd-accent-rgb), 0.5),
     0 0 32px var(--cd-color-border);
 }
 
@@ -207,8 +207,8 @@
 .assistantMessage .messageContent:hover {
   box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.5),
-    0 6px 24px rgba(59, 130, 246, 0.2),
-    0 0 24px rgba(59, 130, 246, 0.1);
+    0 6px 24px rgba(var(--cd-accent-rgb), 0.2),
+    0 0 24px rgba(var(--cd-accent-rgb), 0.1);
 }
 
 .assistantMessage .messageContent:hover::before {

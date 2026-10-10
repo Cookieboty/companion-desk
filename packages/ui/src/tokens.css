@@ -1,6 +1,6 @@
 /*
  * Companion Desk design tokens.
- * 默认暗色（与 AI 对话窗口的深海军蓝 + 玻璃拟态 + 蓝/青强调色一致）；
+ * 默认暗色：深石板蓝 + 磨砂玻璃 + 柔和低饱和强调色（无霓虹辉光）；
  * `[data-theme='light']` 提供浅色覆盖（目前应用未启用，预留）。
  */
 :root {
@@ -10,17 +10,21 @@
   --cd-color-surface: rgba(15, 23, 42, 0.86);
   --cd-color-surface-raised: rgba(24, 34, 54, 0.98);
   --cd-color-surface-sunken: rgba(2, 6, 23, 0.55);
-  --cd-color-border: rgba(59, 130, 246, 0.28);
-  --cd-color-border-strong: rgba(59, 130, 246, 0.6);
+  --cd-color-border: rgba(148, 163, 184, 0.18);
+  --cd-color-border-strong: rgba(141, 180, 200, 0.45);
   --cd-color-text: #e2e8f0;
   --cd-color-text-muted: #94a3b8;
   --cd-color-text-subtle: #64748b;
   --cd-color-text-on-accent: #ffffff;
-  --cd-color-accent: #3b82f6;
-  --cd-color-accent-hover: #2563eb;
-  --cd-color-accent-2: #00d4ff;
-  --cd-color-accent-3: #8b5cf6;
-  --cd-color-accent-soft: rgba(59, 130, 246, 0.16);
+  /* 柔和、低饱和的强调色（白字对比 4.7:1，AA）；不再使用霓虹蓝 / 青 / 紫 */
+  --cd-accent-rgb: 85, 117, 159;
+  --cd-accent-2-rgb: 141, 180, 200;
+  --cd-accent-3-rgb: 165, 151, 201;
+  --cd-color-accent: #55759f;
+  --cd-color-accent-hover: #4a6a96;
+  --cd-color-accent-2: #8db4c8;
+  --cd-color-accent-3: #a597c9;
+  --cd-color-accent-soft: rgba(var(--cd-accent-rgb), 0.18);
   --cd-color-success: #22c55e;
   --cd-color-success-soft: rgba(34, 197, 94, 0.16);
   --cd-color-warning: #f59e0b;
@@ -64,12 +68,12 @@
   --cd-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
   --cd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
   --cd-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.45);
-  --cd-shadow-glow: 0 0 20px rgba(59, 130, 246, 0.25);
+  --cd-shadow-glow: 0 0 0 1px rgba(148, 163, 184, 0.1), 0 6px 16px rgba(0, 0, 0, 0.22);
   --cd-blur: blur(12px);
 
   /* motion */
   --cd-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --cd-focus-ring: 0 0 0 2px rgba(0, 212, 255, 0.45);
+  --cd-focus-ring: 0 0 0 2px rgba(var(--cd-accent-2-rgb), 0.6);
 
   /* layers */
   --cd-z-tooltip: 100100;
@@ -84,7 +88,7 @@
   --cd-color-surface-raised: #ffffff;
   --cd-color-surface-sunken: #f1f5f9;
   --cd-color-border: rgba(15, 23, 42, 0.12);
-  --cd-color-border-strong: rgba(59, 130, 246, 0.55);
+  --cd-color-border-strong: rgba(var(--cd-accent-rgb), 0.5);
   --cd-color-text: #0f172a;
   --cd-color-text-muted: #475569;
   --cd-color-text-subtle: #94a3b8;
