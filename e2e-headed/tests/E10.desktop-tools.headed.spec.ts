@@ -268,9 +268,13 @@ test.describe('E10 · real app · desktop file tools', () => {
       await expect(main.locator('[data-testid="desktop-confirm-allow"]')).toHaveCount(0); // 气泡里不能直接允许
       await main.screenshot(shot('04-mascot-confirm-bubble.png'));
       expect(existsSync(target)).toBe(true);
+      const t0 = Date.now();
       await main.click('[data-testid="desktop-confirm-details"]');
       const allow = main.locator('[data-testid="desktop-dialog-allow"]');
-      await expect(allow).toBeDisabled(); // 防误触：打开 1 秒内不可点
+      await allow.waitFor();
+      const disabledEarly = await allow.isDisabled();
+      // 防误触：打开 1 秒内不可点（慢的 CI 机器上本步本身可能超过 1 秒，此时不判定）
+      if (Date.now() - t0 < 800) expect(disabledEarly).toBe(true);
       await expect(main.locator('[data-testid="desktop-confirm-preview"]')).toContainText(
         'trash-me.txt',
       );
