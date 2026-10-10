@@ -22,6 +22,8 @@ const LOCAL_CURRENT_MODEL_KEY = 'ai-chat:currentModel';
 type SdkChatFacade = {
   sendMessage: (opts: SdkChatOptions) => Promise<{ content?: string } & Record<string, unknown>>;
   stream: (opts: SdkChatOptions) => AsyncIterable<SdkChatChunk>;
+  /** 工具循环（桌面文件工具 / 看板娘工具）；旧主进程没有该通道时退回 stream */
+  agentStream?: (opts: SdkChatOptions & { role?: string }) => AsyncIterable<SdkChatChunk>;
   abort: (reqId: string) => void;
 };
 
@@ -179,10 +181,15 @@ export class SdkIPCClient implements IPCClient {
     history?: ChatMessage[],
   ): Promise<void> {
     try {
-      const iterable = this.chat.stream({
+      const opts = {
         provider: this.currentModelId(modelId),
         messages: await this.buildMessages(message, history),
-      });
+      };
+      // 对话走工具循环（role 仍是 chat，按 chat 路由选 provider）
+      const iterable =
+        typeof this.chat.agentStream === 'function'
+          ? this.chat.agentStream({ ...opts, role: 'chat' })
+          : this.chat.stream(opts);
       for await (const chunk of iterable) {
         if (!chunk || typeof chunk !== 'object') continue;
         const c = chunk as SdkChatChunk;

@@ -17,6 +17,7 @@ describe('IPC channel snapshot lock', () => {
         "ai:asr:list",
         "ai:asr:transcribe",
         "ai:chat:abort",
+        "ai:chat:agentStream",
         "ai:chat:regenerate",
         "ai:chat:sendMessage",
         "ai:chat:stream",

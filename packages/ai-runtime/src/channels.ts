@@ -36,6 +36,8 @@ export const IPC_METHODS: readonly IpcMethodSpec[] = Object.freeze([
   { facade: 'chat', method: 'stream', kind: 'stream' },
   { facade: 'chat', method: 'abort', kind: 'sync-return' },
   { facade: 'chat', method: 'regenerate', kind: 'stream' },
+  // 工具循环（AI SDK withTools）：对话窗口用它让模型调用桌面 / 看板娘工具
+  { facade: 'chat', method: 'agentStream', kind: 'stream' },
 
   // sessions
   { facade: 'sessions', method: 'list', kind: 'sync-return' },
