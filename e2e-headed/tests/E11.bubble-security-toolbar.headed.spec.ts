@@ -173,6 +173,13 @@ test.describe('E11 · bubble security + toolbar', () => {
     // 对话窗口同样按文本渲染（不生成 onerror 图片）
     expect(await chat.locator('img[src="x"]').count()).toBe(0);
     await chat.close().catch(() => undefined);
+    // 对话回复也会进气泡（短版）；等它出现后清掉，避免和下面的摘要抢气泡
+    await expect(bubble).toContainText('XSSMARK', { timeout: 20_000 });
+    expect(await bubble.locator('img, script, b').count()).toBe(0);
+    await main.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: '·', ms: 50 } })),
+    );
+    await expect(bubble).not.toContainText('XSSMARK', { timeout: 10_000 });
 
     // ---- 2c. 模型输出 → 气泡的真实路由：把文件拖到看板娘身上，摘要（mock 返回 HTML）显示在气泡 ----
     await main.evaluate(() => {
