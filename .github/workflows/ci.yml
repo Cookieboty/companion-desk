@@ -149,7 +149,7 @@ jobs:
 
       - name: Install xvfb
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb xdotool
 
       # Ubuntu 24.04 默认禁止非特权 user namespace，Chromium 沙箱会启动失败
       - name: Allow Chromium sandbox (unprivileged userns)
