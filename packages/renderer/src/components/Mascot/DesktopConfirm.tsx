@@ -4,13 +4,6 @@ import React, { useEffect, useState } from 'react';
 
 import styles from './DesktopConfirm.module.css';
 
-/** 气泡用 innerHTML 渲染；摘要来自模型（源自不可信的文件内容），必须转义 */
-const escapeHtml = (s: string): string =>
-  s.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-  );
-
 const DANGER: Record<
   DesktopConfirmRequest['danger'],
   { label: string; tone: 'neutral' | 'warning' | 'danger' }
@@ -47,9 +40,7 @@ export const DesktopConfirm: React.FC = () => {
     );
     const off2 = api.onConfirmCancel((id) => setQueue((q) => q.filter((x) => x.id !== id)));
     const off3 = api.onBubble((p) =>
-      window.dispatchEvent(
-        new CustomEvent('mascot:say', { detail: { text: escapeHtml(p.text), ms: 9000 } }),
-      ),
+      window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: p.text, ms: 9000 } })),
     );
     return () => {
       off1();

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import styles from './style.module.css';
 
 import { useMascot } from '@/contexts/MascotContext';
-import { useWaifuMessage } from '@/hooks/useWaifuMessage';
+import { toBubbleText } from '@/security/bubbleText';
 
 export const MessageBubble: React.FC = () => {
   const { state } = useMascot();
@@ -26,8 +26,13 @@ export const MessageBubble: React.FC = () => {
     <div
       id="waifu-tips-independent"
       data-mascot-ui={active ? '' : undefined}
+      data-testid="mascot-bubble"
+      role="status"
+      aria-live="polite"
       className={`${styles.messageBubble} ${active ? styles.active : ''}`}
-      dangerouslySetInnerHTML={{ __html: state.currentMessage || '' }}
-    />
+    >
+      {/* 纯文本渲染：React 会转义，HTML / 脚本按字面显示（见 security/bubbleText） */}
+      {toBubbleText(state.currentMessage)}
+    </div>
   );
 };

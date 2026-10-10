@@ -1,5 +1,6 @@
 /* 独立的消息气泡 - 完全解耦，不影响看板娘主体 */
 .messageBubble {
+  white-space: pre-line;
   position: fixed;
   top: 20px;
   left: 50%;
