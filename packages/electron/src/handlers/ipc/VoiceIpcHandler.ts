@@ -7,7 +7,11 @@ import * as path from 'path';
 
 import { type IConfigService } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
-import { getKeyServerConfig, type KeyServerConfig } from '../../utils/keyServerPaths';
+import {
+  ensureKeyServerExecutable,
+  getKeyServerConfig,
+  type KeyServerConfig,
+} from '../../utils/keyServerPaths';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -45,6 +49,8 @@ export class VoiceIpcHandler extends BaseIpcHandler {
       // 打包后 key server 可执行文件位于 app.asar.unpacked（见 electron-builder asarUnpack）
       const packageDir = path.dirname(require.resolve('node-global-key-listener/package.json'));
       this.keyServerConfig = getKeyServerConfig(packageDir);
+      if (!ensureKeyServerExecutable(this.keyServerConfig))
+        this.logger.warn('key server 不可执行，全局按键监听可能不可用');
       this.globalKeyboardListener = GlobalKeyboardListener;
       this.logger.info('全局键盘监听器初始化成功');
     } catch (error) {
@@ -103,7 +109,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
       try {
         this.keyboardListener = new this.globalKeyboardListener(this.keyServerConfig);
 
-        this.keyboardListener.addListener((e: any, down: any) => {
+        const started = this.keyboardListener.addListener((e: any, down: any) => {
           const keyEvent: KeyboardEvent = {
             key: e.name,
             timestamp: Date.now(),
@@ -112,6 +118,14 @@ export class VoiceIpcHandler extends BaseIpcHandler {
 
           this.logger.debug('键盘事件', { keyEvent });
           this.sendKeyboardEvent(keyEvent);
+        });
+        // 原生 key server 启动失败（无权限 / macOS 未授予辅助功能权限）是异步拒绝，不能变成未处理的 rejection
+        Promise.resolve(started).catch((error: unknown) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn('全局键盘监听不可用', { error: errorMessage });
+          this.isKeyboardListening = false;
+          this.keyboardListener = null;
+          this.sendKeyboardListenerError(errorMessage);
         });
 
         this.isKeyboardListening = true;

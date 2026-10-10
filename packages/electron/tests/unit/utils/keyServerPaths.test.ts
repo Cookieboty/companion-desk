@@ -3,7 +3,11 @@ jest.unmock('path');
 
 import * as path from 'path';
 
-import { getKeyServerConfig, toAsarUnpackedPath } from '../../../src/utils/keyServerPaths';
+import {
+  ensureKeyServerExecutable,
+  getKeyServerConfig,
+  toAsarUnpackedPath,
+} from '../../../src/utils/keyServerPaths';
 
 describe('keyServerPaths', () => {
   it('maps app.asar to app.asar.unpacked (Windows and POSIX separators)', () => {
@@ -35,5 +39,28 @@ describe('keyServerPaths', () => {
     );
     expect(cfg.mac.serverPath.endsWith(path.join('bin', 'MacKeyServer'))).toBe(true);
     expect(cfg.x11.serverPath.endsWith(path.join('bin', 'X11KeyServer'))).toBe(true);
+  });
+
+  describe('ensureKeyServerExecutable', () => {
+    const cfg = getKeyServerConfig('/pkg');
+    it('chmods a non-executable mac server instead of falling back to sudo-prompt', () => {
+      const chmod = jest.fn();
+      expect(ensureKeyServerExecutable(cfg, 'darwin', chmod, () => ({ mode: 0o100644 }))).toBe(
+        true,
+      );
+      expect(chmod).toHaveBeenCalledWith(cfg.mac.serverPath, 0o755);
+    });
+    it('leaves an executable server alone and skips windows', () => {
+      const chmod = jest.fn();
+      expect(ensureKeyServerExecutable(cfg, 'linux', chmod, () => ({ mode: 0o100755 }))).toBe(true);
+      expect(ensureKeyServerExecutable(cfg, 'win32', chmod, () => ({ mode: 0 }))).toBe(true);
+      expect(chmod).not.toHaveBeenCalled();
+    });
+    it('reports false when chmod fails', () => {
+      const chmod = () => {
+        throw new Error('EPERM');
+      };
+      expect(ensureKeyServerExecutable(cfg, 'darwin', chmod, () => ({ mode: 0o644 }))).toBe(false);
+    });
   });
 });
