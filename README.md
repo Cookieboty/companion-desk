@@ -203,7 +203,14 @@ pnpm package:debug
 - **开源渲染栈** - three.js + @pixiv/three-vrm（MIT），通过 `MascotBackend` 抽象接入，可扩展其他开源后端
 - **内置角色** - 5 个 pixiv VRoid CC0 样例模型；工具栏「切换角色」左键切到下一个，右键打开角色列表
 - **口型同步** - TTS 音量包络驱动 VRM `aa`/`oh` 表情
-- **表情** - 聊天 / Agent / 工具事件驱动 happy / angry / sad / relaxed，并有随机眨眼、呼吸、视线跟随鼠标
+- **表情** - 聊天 / Agent / 工具事件驱动 happy / angry / sad / relaxed，并有随机眨眼、视线跟随鼠标
+- **身体动作** - 动画管理器（交叉淡入淡出、idle 循环 + 随机待机小动作、说话时切换说话姿态）。
+  动作库 `public/assets/motions/motions.json` 由 `packages/renderer/scripts/build-motions.mjs` 生成：
+  6 个片段重定向自 Quaternius _Universal Animation Library_（CC0：idle / talk / dance / jump / interact / flinch），
+  9 个原创程序化手势（MIT：挥手 / 点头 / 摇头 / 思考 / 拍手 / 鞠躬 / 欢呼 / 伸懒腰 / 张望）。
+  触发方式：聊天事件自动触发（6s 冷却）、工具栏「动作」（左键随机、右键列表）、托盘「看板娘动作」、
+  AI 工具 `live2d_play_motion` / `live2d_set_expression`（名字沿用旧协议，经 IPC `mascot:command` 转发到渲染进程）
+- **致谢 / Credits** - 工具栏「信息」或角色列表底部打开，列出每个角色 / 动作 / 图标的作者与许可（CC-BY 素材必须在此署名）
 - **添加模型** - 把 `.vrm` 放进 `packages/renderer/public/assets/models/vrm/` 并在 `model-list.json` 中登记许可信息
 
 ### 窗口管理
@@ -395,6 +402,7 @@ for await (const chunk of runtime.client.chat.stream({
 
 - [three.js](https://threejs.org/) 与 [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) - 3D 渲染与 VRM 支持（MIT）
 - [VRoid Project](https://vroid.com/) - 内置的 CC0 样例角色模型
+- [Quaternius](https://quaternius.com/) - Universal Animation Library（CC0），重定向为看板娘身体动作
 - [Electron](https://www.electronjs.org/) - 跨平台桌面应用开发框架
 - [React](https://reactjs.org/) - 用户界面库
 - [TypeScript](https://www.typescriptlang.org/) - 类型安全的JavaScript超集

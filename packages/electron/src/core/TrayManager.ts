@@ -9,6 +9,7 @@ import * as path from 'path';
 import type { ProviderService, ProviderState } from '@ig-live/ai-runtime';
 import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron';
 
+import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { ILoggerService } from '../services/LoggerService';
 
 export interface ProviderMenuEntry {
@@ -47,6 +48,19 @@ export interface TrayManagerOptions {
   openProviderPanel: () => void;
   quit: () => void;
 }
+
+/** 托盘「看板娘动作」菜单项 */
+export const TRAY_MOTIONS: Array<[string, string]> = [
+  ['wave', '挥手'],
+  ['nod', '点头'],
+  ['shake', '摇头'],
+  ['think', '思考'],
+  ['clap', '拍手'],
+  ['bow', '鞠躬'],
+  ['cheer', '欢呼'],
+  ['dance', '跳舞'],
+  ['jump', '跳跃'],
+];
 
 export class TrayManager {
   private tray: Tray | null = null;
@@ -99,6 +113,15 @@ export class TrayManager {
       },
       ...providerItems,
       { label: 'Provider 设置…', click: () => this.opts.openProviderPanel() },
+      { type: 'separator' },
+      {
+        label: '看板娘动作',
+        submenu: TRAY_MOTIONS.map(([name, label]) => ({
+          label,
+          click: () => broadcastMascotCommand({ type: 'motion', name }),
+        })),
+      },
+      { label: '选择角色…', click: () => broadcastMascotCommand({ type: 'open-picker' }) },
       { type: 'separator' },
       { label: '退出', click: () => this.opts.quit() },
     ];

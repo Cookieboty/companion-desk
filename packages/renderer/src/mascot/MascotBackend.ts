@@ -27,6 +27,8 @@ export interface MascotCapabilities {
   lipSync: boolean;
   lookAt: boolean;
   blink: boolean;
+  /** 可播放的身体动作（空 = 不支持） */
+  motions: string[];
 }
 
 export interface MascotBackend {
@@ -39,6 +41,10 @@ export interface MascotBackend {
   lookAt(x: number, y: number): void;
   /** 立即眨一次眼（后端自身也会随机眨眼）。 */
   blink(): void;
+  /** 播放身体动作（'random' = 随机手势）；返回是否找到该动作。 */
+  playMotion(name: string): boolean;
+  /** 说话中（TTS 播放）：基础循环切到说话姿态。 */
+  setTalking(talking: boolean): void;
   capabilities(): MascotCapabilities;
   dispose(): void;
 }
@@ -72,6 +78,11 @@ class MascotRegistry {
     };
   }
 
+  /** 后端能力变化（例如动作库异步加载完成）时重新广播 */
+  refresh(): void {
+    this.emit();
+  }
+
   private emit(): void {
     // 供 e2e / 调试观察：<html data-mascot-backend="vrm" data-mascot-lipsync="true">
     if (typeof document !== 'undefined') {
@@ -80,6 +91,7 @@ class MascotRegistry {
       ds.mascotBackend = this.backend?.kind ?? 'none';
       ds.mascotLipsync = String(!!caps?.lipSync);
       ds.mascotExpressions = caps?.expressions.join(',') ?? '';
+      ds.mascotMotions = caps?.motions.join(',') ?? '';
     }
     for (const l of this.listeners) {
       try {

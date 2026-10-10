@@ -7,6 +7,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DEFAULT_VRM_MODEL_PATH } from '../../config/vrm';
 import { createVrmBackend, type VrmBackend } from '../../mascot/backends/vrm';
 import { mascotRegistry } from '../../mascot/MascotBackend';
+import { loadMotionLibrary } from '../../mascot/motion/library';
+import { MotionController } from '../../mascot/motion/MotionController';
 import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type VRMCharacterControllerProps } from '../../types/character3d';
 
@@ -65,6 +67,15 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
         const backend = createVrmBackend(vrm, scene);
         backendRef.current = backend;
         detach = mascotRegistry.attach(backend);
+        // 动作库（CC0 Quaternius 重定向 + 原创手势）异步加载，失败时保留程序化站姿
+        loadMotionLibrary()
+          .then((lib) => {
+            if (cancelled || backendRef.current !== backend) return;
+            backend.attachMotions(new MotionController(vrm, lib));
+            mascotRegistry.refresh();
+            console.info('[perf] mascot-motions-loaded');
+          })
+          .catch((err) => console.warn('VRMCharacterController: 动作库加载失败', err));
         setIsLoaded(true);
         onModelLoaded?.(vrm);
         console.info('[perf] mascot-model-loaded');

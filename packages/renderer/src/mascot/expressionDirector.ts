@@ -25,6 +25,29 @@ export function expressionForText(text: string | null | undefined): MascotExpres
   return 'happy';
 }
 
+/** 文本 → 配合的身体动作（可无） */
+const MOTION_RULES: Array<{ motion: string; re: RegExp }> = [
+  { motion: 'wave', re: /(你好|您好|嗨|早上好|晚上好|再见|拜拜|\bhello\b|\bhi\b|\bbye\b|👋)/i },
+  { motion: 'bow', re: /(抱歉|对不起|不好意思|谢谢|感谢|sorry|thank you|thanks)/i },
+  { motion: 'cheer', re: /(太好了|恭喜|成功了|耶|hooray|congrat|🎉)/i },
+  { motion: 'think', re: /(让我想想|我想想|思考|嗯…|hmm|let me think)/i },
+];
+
+const EXPRESSION_MOTION: Partial<Record<MascotExpression, string>> = {
+  happy: 'nod',
+  angry: 'shake',
+  sad: 'shake',
+  surprised: 'flinch',
+};
+
+export function motionForText(text: string | null | undefined): string | undefined {
+  if (!text) return undefined;
+  for (const { motion, re } of MOTION_RULES) {
+    if (re.test(text)) return motion;
+  }
+  return EXPRESSION_MOTION[expressionForText(text)];
+}
+
 export type MascotEvent =
   | { kind: 'agent:step' }
   | { kind: 'message:delta' }
@@ -37,19 +60,28 @@ export interface ExpressionDirective {
   expression: MascotExpression;
   /** 持续时间（ms）；到期回到 neutral。0 = 保持。 */
   holdMs: number;
+  /** 可选的身体动作（由 mood.applyDirective 节流播放） */
+  motion?: string;
 }
 
 export function directiveForEvent(evt: MascotEvent): ExpressionDirective | null {
   switch (evt.kind) {
     case 'agent:step':
+      return { expression: 'relaxed', holdMs: 4000, motion: 'think' };
     case 'message:delta':
       return { expression: 'relaxed', holdMs: 4000 };
     case 'message:complete':
-      return { expression: expressionForText(evt.text), holdMs: 3500 };
+      return {
+        expression: expressionForText(evt.text),
+        holdMs: 3500,
+        motion: motionForText(evt.text),
+      };
     case 'tool:executed':
-      return evt.ok ? { expression: 'happy', holdMs: 1500 } : { expression: 'sad', holdMs: 3000 };
+      return evt.ok
+        ? { expression: 'happy', holdMs: 1500, motion: 'nod' }
+        : { expression: 'sad', holdMs: 3000, motion: 'shake' };
     case 'error':
-      return { expression: 'sad', holdMs: 3500 };
+      return { expression: 'sad', holdMs: 3500, motion: 'shake' };
     case 'tts:end':
       return null;
     default:
