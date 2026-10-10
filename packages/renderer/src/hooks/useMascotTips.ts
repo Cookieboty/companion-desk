@@ -45,8 +45,8 @@ export function useMascotTips(): void {
 
     const onCopy = () => say(MESSAGES.copy, 5000, 9);
     const onSay = (e: Event) => {
-      const text = (e as CustomEvent<{ text?: string }>).detail?.text;
-      if (text) say(text, 4000, 9);
+      const d = (e as CustomEvent<{ text?: string; ms?: number }>).detail;
+      if (d?.text) say(d.text, d.ms ?? 4000, 9);
     };
     const onVisible = () => {
       if (!document.hidden) say(MESSAGES.visibility, 4000, 9);

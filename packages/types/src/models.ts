@@ -203,3 +203,26 @@ export interface MascotWindowApi {
   onBody(cb: (p: MascotBodyEvent) => void): () => void;
   onPhysicsEvent(cb: (p: MascotPhysicsEvent) => void): () => void;
 }
+
+/** 桌面能力确认请求（主进程 PermissionBroker → 看板娘窗口） */
+export interface DesktopConfirmRequest {
+  id: string;
+  tool: string;
+  danger: 'read' | 'write' | 'destructive';
+  summary: string;
+  argsJson: string;
+  preview?: string;
+  /** 必须在详情对话框中确认 */
+  dialog: boolean;
+  rememberable: boolean;
+  reason: string;
+  expiresAt: number;
+}
+
+export interface DesktopApi {
+  onConfirmRequest(cb: (req: DesktopConfirmRequest) => void): () => void;
+  onConfirmCancel(cb: (id: string) => void): () => void;
+  onBubble(cb: (p: { text: string }) => void): () => void;
+  answer(id: string, allow: boolean, remember: boolean): void;
+  dropFile(file: File): boolean;
+}
