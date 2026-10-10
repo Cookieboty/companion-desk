@@ -14,6 +14,11 @@ export const DEFAULT_POLICY: Record<Danger, Policy> = {
   destructive: 'ask',
 };
 
+/** 个别工具的默认策略（覆盖按危险级别的默认）：剪贴板常有密码等敏感内容 → 每次运行首次读取要确认 */
+export const TOOL_DEFAULT_POLICY: Record<string, Policy> = {
+  clipboard_read: 'session',
+};
+
 export function sanitizePolicy(danger: Danger, p: unknown): Policy {
   if (p !== 'always' && p !== 'session' && p !== 'ask') return DEFAULT_POLICY[danger];
   if (danger === 'destructive') return 'ask';

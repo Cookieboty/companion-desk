@@ -2,17 +2,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { ToolDefinition } from '@ig-live/bundle-ig-base';
-import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  Notification,
+  type IpcMainInvokeEvent,
+} from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 
 import { AppTrash } from './AppTrash';
 import { AuditLog } from './AuditLog';
 import { isLocalBaseURL, sanitizePolicy, type Policy } from './consent';
+import { NotesStore } from './notes/NotesStore';
 import { isSupported } from './parse/extract';
 import { parseFile } from './parse/runParse';
 import { guardPath } from './pathGuard';
 import { PermissionBroker, type ConfirmRequest } from './PermissionBroker';
+import { ReminderStore, resolveDue, type Reminder } from './reminders/ReminderStore';
 import { createDesktopTools, summarizeText, TOOL_DANGER, type ProviderInfo } from './tools';
 import { UndoJournal } from './UndoJournal';
 
@@ -38,6 +48,7 @@ export interface DesktopWindows {
 export const DESKTOP_CHANGED = 'ai:desktop:changed';
 export const DESKTOP_SUMMARY = 'ai:desktop:summary';
 export const DESKTOP_OPEN_PANEL = 'ai:desktop:open-panel';
+export const DESKTOP_P2_CHANGED = 'ai:desktop:p2-changed';
 
 /**
  * 桌面能力服务（主进程）：组装权限中枢 / 审计 / 撤销 / 回收站 / 解析子进程，
@@ -48,6 +59,9 @@ export class DesktopService {
   readonly audit: AuditLog;
   readonly trash: AppTrash;
   readonly journal: UndoJournal;
+  readonly notes: NotesStore;
+  readonly reminders: ReminderStore;
+  private remindersStarted = false;
   private runtime: DesktopRuntimeHooks | null = null;
   private windows: DesktopWindows | null = null;
   private toolDefs: ToolDefinition[] | null = null;
@@ -67,6 +81,10 @@ export class DesktopService {
     this.audit = new AuditLog(path.join(root, 'audit'));
     this.trash = new AppTrash(path.join(root, 'trash'));
     this.journal = new UndoJournal(path.join(root, 'journal.jsonl'), this.trash);
+    this.notes = new NotesStore(path.join(root, 'notes'));
+    this.reminders = new ReminderStore(path.join(root, 'reminders.json'));
+    this.reminders.onFire = (r) => this.fireReminder(r);
+    this.reminders.onChange(() => this.broadcast(DESKTOP_P2_CHANGED, { kind: 'reminders' }));
     try {
       this.trash.purge(30);
       this.audit.rotate();
@@ -109,6 +127,61 @@ export class DesktopService {
       type: 'expression',
       name: req.danger === 'destructive' ? 'surprised' : 'relaxed',
     });
+  }
+
+  private say(text: string): void {
+    this.main()?.webContents.send('desktop:bubble', { text });
+  }
+
+  /** 到点：看板娘挥手 + 提醒卡片（气泡）+ 系统通知 */
+  private fireReminder(r: Reminder): void {
+    const w = this.main();
+    this.logger.info('提醒触发', { id: r.id, hasWindow: !!w });
+    if (w) {
+      if (!w.isVisible()) w.showInactive();
+      w.webContents.send('desktop:reminder', {
+        id: r.id,
+        text: r.text,
+        dueAt: r.dueAt,
+        missed: false,
+      });
+    }
+    broadcastMascotCommand({ type: 'motion', name: 'wave' });
+    broadcastMascotCommand({ type: 'expression', name: 'happy' });
+    try {
+      if (Notification.isSupported())
+        new Notification({ title: '提醒', body: r.text, silent: false }).show();
+    } catch (e) {
+      this.logger.warn('系统通知失败', { error: String(e) });
+    }
+    this.audit.append({
+      tool: 'reminder_fire',
+      args: { id: r.id, text: r.text },
+      decision: 'auto',
+      result: 'ok',
+      source: 'scheduler',
+    });
+  }
+
+  private missedQueue: Reminder[] = [];
+
+  /** 开始调度；关闭期间错过的提醒由看板娘窗口挂载后拉取并播报一次 */
+  startReminders(): void {
+    if (this.remindersStarted) return;
+    this.remindersStarted = true;
+    this.missedQueue = this.reminders.start();
+  }
+
+  /** 看板娘窗口拉取错过的提醒（拉取即视为已播报） */
+  takeMissed(): Array<{ id: string; text: string; dueAt: number }> {
+    this.startReminders(); // 窗口可能比 startReminders 先就绪
+    const items = this.missedQueue;
+    this.missedQueue = [];
+    if (items.length) {
+      this.reminders.markAnnounced(items.map((r) => r.id));
+      broadcastMascotCommand({ type: 'motion', name: 'wave' });
+    }
+    return items.map((r) => ({ id: r.id, text: r.text, dueAt: r.dueAt }));
   }
 
   providerFor(role: Role): ProviderInfo | null {
@@ -159,6 +232,16 @@ export class DesktopService {
       summarize: (t, i, s) => this.summarize(t, i, s),
       providerFor: (r) => this.providerFor(r),
       pickFolder: (s) => this.pickFolder(s),
+      p2: {
+        notes: this.notes,
+        reminders: this.reminders,
+        trashNote: (f) => this.trash.trash(f),
+        clipboard: {
+          readText: () => clipboard.readText(),
+          writeText: (t) => clipboard.writeText(t),
+        },
+        say: (t) => this.say(t),
+      },
     });
     return this.toolDefs;
   }
@@ -343,6 +426,113 @@ export class DesktopService {
       this.broker.resetAll();
       this.audit.clear();
       return true;
+    });
+
+    // ---- 笔记 / 提醒面板（用户在设置面板里直接操作：不需要再确认，但记审计、可撤销）----
+    const userAudit = (tool: string, args: Record<string, unknown>, result = 'ok') =>
+      this.audit.append({ tool, args, decision: 'user', result, source: 'settings' });
+    const notesChanged = () => this.broadcast(DESKTOP_P2_CHANGED, { kind: 'notes' });
+    const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
+    handle('ai:desktop:notes-list', (_e, q) =>
+      typeof q === 'string' && q.trim()
+        ? this.notes.search(q, 50)
+        : this.notes.list({ limit: 200 }),
+    );
+    handle('ai:desktop:notes-read', (_e, id) =>
+      typeof id === 'string' ? this.notes.get(id) : null,
+    );
+    handle('ai:desktop:notes-save', (_e, raw) => {
+      const o = (raw ?? {}) as { id?: string; title?: unknown; body?: unknown; tags?: unknown };
+      const title = str(o.title, 200).trim() || '无标题';
+      const body = str(o.body, 200_000);
+      const tags = Array.isArray(o.tags) ? (o.tags as string[]) : undefined;
+      if (o.id) {
+        const { before, after } = this.notes.update(o.id, { title, body, tags });
+        this.journal.record('note_update', `修改笔记「${after.title}」`, [
+          { op: 'custom', kind: 'note-restore', payload: before },
+        ]);
+        userAudit('note_update', { id: after.id, title: after.title });
+        notesChanged();
+        return after;
+      }
+      const n = this.notes.create({ title, body, tags });
+      this.journal.record('note_create', `新建笔记「${n.title}」`, [
+        { op: 'trash', path: this.notes.fileOf(n.id) },
+        { op: 'custom', kind: 'note-forget', payload: n.id },
+      ]);
+      userAudit('note_create', { id: n.id, title: n.title });
+      notesChanged();
+      return n;
+    });
+    handle('ai:desktop:notes-trash', async (_e, id) => {
+      const n = typeof id === 'string' ? this.notes.get(id) : null;
+      if (!n) return false;
+      const rec = await this.trash.trash(this.notes.fileOf(n.id));
+      this.notes.forget(n.id);
+      this.journal.record('note_trash', `删除笔记「${n.title}」`, [
+        { op: 'restore', stored: rec.stored, original: rec.original },
+        { op: 'custom', kind: 'note-forget', payload: n.id },
+      ]);
+      userAudit('note_trash', { id: n.id, title: n.title });
+      notesChanged();
+      return true;
+    });
+    handle('ai:desktop:reminders-list', (_e, all) =>
+      this.reminders.list({ includeEnded: all === true, limit: 200 }),
+    );
+    handle('ai:desktop:reminders-create', (_e, raw) => {
+      const o = (raw ?? {}) as { text?: unknown; at?: unknown; inMinutes?: unknown };
+      const text = str(o.text, 500).trim();
+      const due = resolveDue(
+        {
+          at: typeof o.at === 'string' ? o.at : undefined,
+          inMinutes: typeof o.inMinutes === 'number' ? o.inMinutes : undefined,
+        },
+        Date.now(),
+      );
+      if (!text || due === null || due < Date.now() - 1000) return null;
+      const r = this.reminders.create(text, due);
+      userAudit('reminder_create', { id: r.id, text: r.text });
+      return r;
+    });
+    handle('ai:desktop:reminders-cancel', (_e, id) => {
+      try {
+        const { before } = this.reminders.cancel(String(id));
+        this.journal.record('reminder_cancel', `取消提醒「${before.text}」`, [
+          { op: 'custom', kind: 'reminder-restore', payload: before },
+        ]);
+        userAudit('reminder_cancel', { id: before.id });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    handle('ai:desktop:reminders-snooze', (_e, id, minutes) => {
+      try {
+        this.reminders.snooze(String(id), typeof minutes === 'number' ? minutes : 10);
+        userAudit('reminder_snooze', { id: String(id) });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    ipcMain.removeHandler('desktop:reminders-missed');
+    ipcMain.handle('desktop:reminders-missed', (e) =>
+      e.sender === this.main()?.webContents ? this.takeMissed() : [],
+    );
+    // 提醒卡片（看板娘窗口）：好的 / 稍后
+    ipcMain.on('desktop:reminder-action', (e, id, action, minutes) => {
+      if (e.sender !== this.main()?.webContents || typeof id !== 'string') return;
+      try {
+        if (action === 'snooze')
+          this.reminders.snooze(
+            id,
+            typeof minutes === 'number' ? Math.min(1440, Math.max(1, minutes)) : 10,
+          );
+        else this.reminders.dismiss(id);
+      } catch {
+        /* 已不存在 */
+      }
     });
 
     // 确认答复：只接受看板娘窗口（确认气泡 / 对话框所在处）；不走 ai:* 通道，模型与对话窗口都无法伪造

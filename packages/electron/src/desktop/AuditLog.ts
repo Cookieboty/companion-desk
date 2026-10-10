@@ -11,7 +11,7 @@ export interface AuditEntry {
   result: string; // 'ok' | 错误码
   ms?: number;
   provider?: string;
-  source?: 'agent' | 'drop' | 'settings' | 'undo';
+  source?: 'agent' | 'drop' | 'settings' | 'undo' | 'scheduler';
 }
 
 const TEXT_KEYS = new Set(['text', 'content', 'body', 'notes']);
