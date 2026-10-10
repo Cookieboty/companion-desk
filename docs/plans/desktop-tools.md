@@ -1,6 +1,6 @@
 # Desktop tools: letting the LLM operate the computer (design)
 
-> Status: **P0 (foundations) and P1 (read & summarize) are implemented**. See [../DESKTOP_TOOLS.md](../DESKTOP_TOOLS.md). P2+ are still design only.
+> Status: **P0 (foundations), P1 (read & summarize) and P2 (notes, reminders, clipboard) are implemented**. See [../DESKTOP_TOOLS.md](../DESKTOP_TOOLS.md). P3+ are still design only.
 > P1 differences from this design: PDFs are parsed with `unpdf` (pdf.js) and docx with `fflate` instead of mammoth; minimal `fs_write_text` / `fs_trash` / `undo_last` landed early to exercise consent, journal and trash; there is no feature flag yet.
 > Owner: Companion Desk. Last updated: 2026-10-10.
 
