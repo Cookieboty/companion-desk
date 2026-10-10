@@ -2,6 +2,7 @@
 import { OrbitControls, useProgress, Html } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import React, { Suspense, useRef, useEffect } from 'react';
+import type * as THREE from 'three';
 
 import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type Character3DCanvasProps } from '../../types/character3d';
@@ -12,8 +13,26 @@ import { VRMCharacterController } from './VRMCharacterController';
  * 3D角色渲染画布组件
  * 基于React Three Fiber实现的高性能3D渲染
  */
+/** 按模型配置调整取景（默认：全身，相机高 0.82m、距离 3.2m、fov 35°） */
+const CameraRig: React.FC<{ camera?: { height?: number; distance?: number; fov?: number } }> = ({
+  camera,
+}) => {
+  const { camera: cam } = useThree();
+  useEffect(() => {
+    const height = camera?.height ?? 0.82;
+    cam.position.set(0, height, camera?.distance ?? 3.2);
+    if ('fov' in cam) {
+      (cam as THREE.PerspectiveCamera).fov = camera?.fov ?? 35;
+      (cam as THREE.PerspectiveCamera).updateProjectionMatrix();
+    }
+    cam.lookAt(0, height - 0.02, 0);
+  }, [cam, camera?.height, camera?.distance, camera?.fov]);
+  return null;
+};
+
 export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   modelPath,
+  modelConfig,
   enableControls = false,
   transparent = true,
   className = '',
@@ -182,6 +201,8 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
         <pointLight position={[-10, 0, -20]} args={[0xffffff, 0.5]} />
         <pointLight position={[0, -10, 0]} args={[0xffffff, 0.3]} />
 
+        <CameraRig camera={modelConfig?.camera} />
+
         {/* 性能监控 */}
         <PerformanceMonitor />
 
@@ -190,6 +211,7 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
           <Suspense fallback={<LoadingIndicator />}>
             <VRMCharacterController
               modelPath={modelPath}
+              modelConfig={modelConfig}
               enablePhysics={renderQuality !== 'low'}
               enableExpressions={true}
               enableLookAt={true}

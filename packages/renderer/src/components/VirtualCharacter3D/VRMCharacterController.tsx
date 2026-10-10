@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
 import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useState } from 'react';
@@ -19,6 +20,7 @@ import VRMModelFallback from './VRMModelFallback';
  */
 export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   modelPath,
+  modelConfig,
 
   scale = 1,
   position = [0, 0, 0],
@@ -71,7 +73,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
         loadMotionLibrary()
           .then((lib) => {
             if (cancelled || backendRef.current !== backend) return;
-            backend.attachMotions(new MotionController(vrm, lib));
+            backend.attachMotions(new MotionController(vrm, lib, { allow: modelConfig?.motions }));
             mascotRegistry.refresh();
             console.info('[perf] mascot-motions-loaded');
           })
@@ -128,7 +130,13 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   if (useFallback) {
     return <VRMModelFallback scale={scale} position={position} />;
   }
-  return <group ref={groupRef} />;
+  return (
+    <group
+      ref={groupRef}
+      scale={modelConfig?.scale ?? 1}
+      position={modelConfig?.offset ?? [0, 0, 0]}
+    />
+  );
 };
 
 export default VRMCharacterController;

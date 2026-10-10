@@ -27,12 +27,23 @@ export interface VrmBackend extends MascotBackend {
  * - 身体：有动作库时由 MotionController 驱动（idle 循环 / 手势），否则程序化站姿 + 呼吸
  * - 头部轻微摆动叠加在动画之上；视线跟随 lookAt 目标
  */
-export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
+export interface VrmBackendOptions {
+  /** 通用表情名 → 模型表情名（用户导入模型的映射，如 happy → Joy） */
+  expressionMap?: Record<string, string>;
+}
+
+export function createVrmBackend(
+  vrm: VRM,
+  scene: THREE.Object3D,
+  opts: VrmBackendOptions = {},
+): VrmBackend {
   const em = vrm.expressionManager;
   // VRoid 0.x 模型的自定义表情名大小写不统一（如 'Surprised'）：按不区分大小写解析
   const keys = em ? Object.keys(em.expressionMap) : [];
-  const resolve = (name: string) =>
-    keys.find((k) => k.toLowerCase() === name.toLowerCase()) ?? name;
+  const resolve = (name: string) => {
+    const mapped = opts.expressionMap?.[name] ?? name;
+    return keys.find((k) => k.toLowerCase() === mapped.toLowerCase()) ?? mapped;
+  };
   const has = (name: string) => !!em?.getExpression(resolve(name));
 
   const weights = new Map<string, number>();

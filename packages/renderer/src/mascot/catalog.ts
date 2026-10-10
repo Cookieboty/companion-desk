@@ -1,5 +1,8 @@
+import type { ModelConfig, ModelOrigin, RegistryModel, VrmMetaSummary } from '@ig-live/types';
+
 /**
- * 内置看板娘模型目录。每个条目都必须带开源许可信息（CI 的 assets 许可检查会校验 model-list.json）。
+ * 看板娘模型（统一注册表：内置 + 商店已安装 + 用户导入）。
+ * Electron 下由主进程 `models:list` 提供；纯浏览器 / 测试回落到内置 model-list.json。
  */
 export interface MascotModel {
   name: string;
@@ -12,6 +15,31 @@ export interface MascotModel {
   source: string;
   vrmVersion?: string;
   tags?: string[];
+  origin?: ModelOrigin;
+  credit?: string;
+  version?: string;
+  config?: ModelConfig;
+  meta?: VrmMetaSummary;
+}
+
+export function fromRegistry(m: RegistryModel): MascotModel {
+  return {
+    name: m.id,
+    displayName: m.name,
+    description: m.description,
+    path: m.path,
+    thumbnail: m.thumbnail,
+    author: m.author,
+    license: m.license,
+    source: m.source ?? '',
+    vrmVersion: m.vrmVersion,
+    tags: m.tags,
+    origin: m.origin,
+    credit: m.credit,
+    version: m.version,
+    config: m.config,
+    meta: m.meta,
+  };
 }
 
 export interface MascotCatalog {
@@ -36,11 +64,25 @@ export function parseCatalog(raw: unknown): MascotModel[] {
 
 let cache: Promise<MascotModel[]> | null = null;
 
-export function loadCatalog(fetchImpl: typeof fetch = fetch): Promise<MascotModel[]> {
+export function loadCatalog(
+  fetchImpl: typeof fetch = fetch,
+  force = false,
+): Promise<MascotModel[]> {
+  if (force) cache = null;
+  const api = typeof window !== 'undefined' ? window.electronAPI?.models : undefined;
+  if (!cache && api) {
+    cache = api
+      .list()
+      .then((list) => list.map(fromRegistry))
+      .catch(() => {
+        cache = null;
+        return [];
+      });
+  }
   if (!cache) {
     cache = fetchImpl(MODEL_LIST_URL)
       .then((r) => (r.ok ? r.json() : null))
-      .then(parseCatalog)
+      .then((raw) => parseCatalog(raw).map((m) => ({ ...m, origin: 'bundled' as const })))
       .catch(() => {
         cache = null;
         return [];
