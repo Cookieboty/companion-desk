@@ -5,6 +5,19 @@
  *   角色路由表（chat / agent-tools / summary → provider + 模型）。
  * key 只单向提交给主进程；提交后清空输入框，界面只显示掩码。
  */
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  FormField,
+  Input,
+  Modal,
+  Notice,
+  Select,
+  Switch,
+  Textarea,
+} from '@ig-live/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -48,15 +61,15 @@ function parseHeaders(text: string): Record<string, string> | undefined {
 
 const TestBadge: React.FC<{ r?: TestResult | 'pending' }> = ({ r }) => {
   if (!r) return null;
-  if (r === 'pending') return <span className={styles.pending}>测试中…</span>;
+  if (r === 'pending') return <Badge tone="neutral">测试中…</Badge>;
   return r.ok ? (
-    <span className={styles.ok} data-testid="test-ok">
+    <Badge tone="success" data-testid="test-ok">
       ✓ 连通 {r.latencyMs}ms
-    </span>
+    </Badge>
   ) : (
-    <span className={styles.fail} data-testid="test-fail" title={r.error}>
+    <Badge tone="danger" data-testid="test-fail" title={r.error}>
       ✗ {r.error?.slice(0, 80)}
-    </span>
+    </Badge>
   );
 };
 
@@ -80,89 +93,114 @@ const ProviderCard: React.FC<{
     });
 
   return (
-    <div
-      className={`${styles.card} ${effective ? styles.cardActive : ''}`}
+    <Card
+      active={effective}
+      className={styles.card}
       data-testid={`provider-card-${p.id}`}
-    >
-      <div className={styles.cardHead}>
-        <div>
-          <strong>{p.name}</strong>
-          {effective && <span className={styles.activeTag}>当前</span>}
-          <div className={styles.sub}>
-            {p.baseURL} · {p.defaultModel}
-          </div>
-        </div>
-        <div className={styles.cardActions}>
-          <label className={styles.switch} title="启用">
-            <input
-              type="checkbox"
-              checked={p.enabled}
-              onChange={run(() => providerClient.upsert({ id: p.id, enabled: !p.enabled }))}
-            />
-            启用
-          </label>
+      title={
+        <>
+          {p.name} {effective && <Badge>当前</Badge>}
+        </>
+      }
+      subtitle={`${p.baseURL} · ${p.defaultModel}`}
+      actions={
+        <>
+          <Switch
+            checked={p.enabled}
+            label="启用"
+            title="启用"
+            onChange={run(() => providerClient.upsert({ id: p.id, enabled: !p.enabled }))}
+          />
           {!effective && (
-            <button
-              className={styles.primary}
+            <Button
+              size="sm"
+              variant="primary"
               data-testid={`activate-${p.id}`}
               onClick={run(() => providerClient.setActive(p.id))}
             >
               设为当前
-            </button>
+            </Button>
           )}
-          <button onClick={test()}>测试</button>
-          <button
-            className={styles.danger}
+          <Button size="sm" onClick={test()}>
+            测试
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
             onClick={run(async () => {
               if (window.confirm(`删除 provider「${p.name}」及其所有 Token？`))
                 await providerClient.remove(p.id);
             })}
           >
             删除
-          </button>
-        </div>
-      </div>
+          </Button>
+        </>
+      }
+    >
       <TestBadge r={tests._} />
 
       <div className={styles.keys}>
-        {p.keys.length === 0 && <div className={styles.sub}>未配置 Token</div>}
+        {p.keys.length === 0 && <div className="cd-muted">未配置 Token</div>}
         {p.keys.map((k, i) => (
           <div key={k.id} className={styles.keyRow}>
-            <code data-testid="masked-key">{k.masked}</code>
-            <span className={styles.sub}>
-              {i === 0 ? '主' : `备用 ${i}`}
-              {k.label ? ` · ${k.label}` : ''}
-              {k.encryption === 'none' ? ' · ⚠️ 未加密' : ' · 🔒'}
-            </span>
-            {k.lastError && (
-              <span className={styles.fail} title={k.lastError}>
-                上次失败
+            <code className="cd-code" data-testid="masked-key">
+              {k.masked}
+            </code>
+            <Badge tone={i === 0 ? 'accent' : 'neutral'}>{i === 0 ? '主' : `备用 ${i}`}</Badge>
+            {k.label && <span className="cd-muted">{k.label}</span>}
+            {k.encryption === 'none' ? (
+              <Badge tone="warning">⚠️ 未加密</Badge>
+            ) : (
+              <span className="cd-muted" title="safeStorage 加密">
+                🔒
               </span>
             )}
-            <span className={styles.spacer} />
-            {i > 0 && (
-              <button onClick={run(() => providerClient.promoteKey(p.id, k.id))}>设为主</button>
+            {k.lastError && (
+              <Badge tone="danger" title={k.lastError}>
+                上次失败
+              </Badge>
             )}
-            <button onClick={() => setRotating(rotating === k.id ? null : k.id)}>轮换</button>
-            <button onClick={test(k.id)}>测试</button>
-            <button
-              className={styles.danger}
+            <span className="cd-spacer" />
+            {i > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={run(() => providerClient.promoteKey(p.id, k.id))}
+              >
+                设为主
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setRotating(rotating === k.id ? null : k.id)}
+            >
+              轮换
+            </Button>
+            <Button size="sm" variant="ghost" onClick={test(k.id)}>
+              测试
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
               onClick={run(() => providerClient.removeKey(p.id, k.id))}
             >
               删除
-            </button>
+            </Button>
             <TestBadge r={tests[k.id]} />
             {rotating === k.id && (
               <div className={styles.inline}>
-                <input
+                <Input
+                  size="sm"
                   type="password"
                   placeholder="新的 Token"
                   value={rotateValue}
                   autoComplete="off"
                   onChange={(e) => setRotateValue(e.target.value)}
                 />
-                <button
-                  className={styles.primary}
+                <Button
+                  size="sm"
+                  variant="primary"
                   disabled={!rotateValue.trim()}
                   onClick={run(async () => {
                     await providerClient.rotateKey(p.id, k.id, rotateValue);
@@ -171,20 +209,22 @@ const ProviderCard: React.FC<{
                   })}
                 >
                   保存
-                </button>
+                </Button>
               </div>
             )}
           </div>
         ))}
         <div className={styles.inline}>
-          <input
+          <Input
+            size="sm"
             type="password"
             placeholder="添加备用 Token（主 Token 失败时自动切换）"
             value={newKey}
             autoComplete="off"
             onChange={(e) => setNewKey(e.target.value)}
           />
-          <button
+          <Button
+            size="sm"
             disabled={!newKey.trim()}
             onClick={run(async () => {
               await providerClient.addKey(p.id, newKey);
@@ -192,14 +232,14 @@ const ProviderCard: React.FC<{
             })}
           >
             添加
-          </button>
+          </Button>
         </div>
       </div>
-      <div className={styles.usage} data-testid={`usage-${p.id}`}>
+      <div className="cd-muted" data-testid={`usage-${p.id}`}>
         用量（本地统计）：{p.usage.requests} 次请求 · 输入 {fmt(p.usage.inputTokens)} · 输出{' '}
         {fmt(p.usage.outputTokens)} tokens{p.usage.errors ? ` · ${p.usage.errors} 次失败` : ''}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -268,22 +308,18 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
   };
 
   const options = state ? selectableProviders(state) : [];
+  const total = (state?.providers.length ?? 0) + (state?.envProviders.length ?? 0);
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div
-        className={styles.panel}
-        onClick={(e) => e.stopPropagation()}
-        data-testid="provider-panel"
-      >
-        <div className={styles.header}>
-          <h2>AI Provider 与 Token</h2>
-          <button className={styles.close} onClick={onClose} aria-label="关闭">
-            ✕
-          </button>
-        </div>
-
-        <div className={styles.notice} data-testid="local-only-notice">
+    <Modal
+      open
+      onClose={onClose}
+      title="AI Provider 与 Token"
+      size="lg"
+      data-testid="provider-panel"
+    >
+      <div className={styles.stack}>
+        <Notice data-testid="local-only-notice">
           🔒 {LOCAL_ONLY_NOTICE}
           {state?.encryption === 'none' && (
             <div className={styles.warn} data-testid="encryption-warning">
@@ -296,80 +332,68 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
               环境变量 COMPANION_PROVIDER={state.overrideId} 已锁定默认 provider，此处切换不会生效。
             </div>
           )}
-        </div>
+        </Notice>
 
         {error && (
-          <div className={styles.error} onClick={() => setError(null)}>
+          <Notice tone="danger" onClick={() => setError(null)} title="点击关闭">
             {error}
-          </div>
+          </Notice>
         )}
 
-        <div className={styles.body}>
-          <section>
-            <h3>快速切换</h3>
-            <select
-              data-testid="active-select"
-              value={state?.effectiveProviderId ?? ''}
-              onChange={(e) => void providerClient.setActive(e.target.value || null).catch(onError)}
-            >
-              {options.map((o) => (
-                <option key={o.id} value={o.id} disabled={o.disabled}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </section>
+        <section>
+          <h3 className="cd-section-title">快速切换</h3>
+          <Select
+            data-testid="active-select"
+            value={state?.effectiveProviderId ?? ''}
+            onChange={(e) => void providerClient.setActive(e.target.value || null).catch(onError)}
+            options={options.map((o) => ({ value: o.id, label: o.label, disabled: o.disabled }))}
+          />
+        </section>
 
-          <section>
-            <h3>添加 Provider</h3>
+        <section>
+          <h3 className="cd-section-title">添加 Provider</h3>
+          <Card flat>
             <div className={styles.form}>
-              <label>
-                预设
-                <select
+              <FormField label="预设">
+                <Select
                   data-testid="preset-select"
                   value={presetId}
                   onChange={(e) => setPresetId(e.target.value)}
-                >
-                  {presets.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                名称
-                <input
+                  options={presets.map((p) => ({ value: p.id, label: p.name }))}
+                />
+              </FormField>
+              <FormField label="名称">
+                <Input
                   data-testid="draft-name"
                   value={draft.name ?? ''}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 />
-              </label>
-              <label>
-                Base URL
-                <input
+              </FormField>
+              <FormField label="Base URL">
+                <Input
                   data-testid="draft-baseurl"
                   value={draft.baseURL ?? ''}
                   onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })}
                 />
-              </label>
-              <label>
-                默认模型
-                <input
+              </FormField>
+              <FormField label="默认模型">
+                <Input
                   data-testid="draft-model"
                   list="preset-models"
                   value={draft.defaultModel ?? ''}
                   onChange={(e) => setDraft({ ...draft, defaultModel: e.target.value })}
                 />
-                <datalist id="preset-models">
-                  {preset?.models.map((m) => (
-                    <option key={m} value={m} />
-                  ))}
-                </datalist>
-              </label>
-              <label>
-                API Key
-                <input
+              </FormField>
+              <datalist id="preset-models">
+                {preset?.models.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <FormField
+                label="API Key"
+                hint={preset?.apiKeyUrl ? `获取：${preset.apiKeyUrl}` : undefined}
+              >
+                <Input
                   data-testid="draft-key"
                   type="password"
                   autoComplete="off"
@@ -377,19 +401,20 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                 />
-                {preset?.apiKeyUrl && <span className={styles.sub}>获取：{preset.apiKeyUrl}</span>}
-              </label>
-              <label>
-                额外 Headers（可选，每行 Name: value 或 JSON）
-                <textarea
+              </FormField>
+              <FormField
+                label="额外 Headers（可选，每行 Name: value 或 JSON）"
+                className={styles.full}
+              >
+                <Textarea
                   data-testid="draft-headers"
                   rows={2}
                   value={headersText}
                   onChange={(e) => setHeadersText(e.target.value)}
                 />
-              </label>
-              <div className={styles.inline}>
-                <button
+              </FormField>
+              <div className={`cd-row ${styles.full}`}>
+                <Button
                   data-testid="draft-test"
                   onClick={() => {
                     setDraftTest('pending');
@@ -403,133 +428,138 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   }}
                 >
                   测试连接
-                </button>
-                <button data-testid="draft-save" onClick={() => void save(false)}>
+                </Button>
+                <Button data-testid="draft-save" onClick={() => void save(false)}>
                   保存
-                </button>
-                <button
-                  className={styles.primary}
+                </Button>
+                <Button
+                  variant="primary"
                   data-testid="draft-save-activate"
                   onClick={() => void save(true)}
                 >
                   保存并设为当前
-                </button>
+                </Button>
                 <TestBadge r={draftTest} />
               </div>
             </div>
-          </section>
+          </Card>
+        </section>
 
-          <section>
-            <h3>已配置（{state?.providers.length ?? 0}）</h3>
-            {state?.providers.map((p) => (
-              <ProviderCard
-                key={p.id}
-                p={p}
-                effective={state.effectiveProviderId === p.id}
-                onError={onError}
-              />
-            ))}
-            {state?.envProviders.map((e) => (
-              <div
-                key={e.id}
-                className={`${styles.card} ${styles.envCard} ${
-                  state.effectiveProviderId === e.id ? styles.cardActive : ''
-                }`}
-              >
-                <div className={styles.cardHead}>
-                  <div>
-                    <strong>{e.name}</strong>
-                    <span className={styles.envTag}>环境变量</span>
-                    {state.effectiveProviderId === e.id && (
-                      <span className={styles.activeTag}>当前</span>
-                    )}
-                    <div className={styles.sub}>
-                      {e.baseURL} · {e.defaultModel} ·{' '}
-                      {e.keyless
-                        ? '本地服务，无需 key'
-                        : e.hasKey
-                          ? 'key 已由环境变量提供'
-                          : '未设置 key'}
-                    </div>
-                  </div>
-                  {state.effectiveProviderId !== e.id && e.hasKey && (
-                    <button onClick={() => void providerClient.setActive(e.id).catch(onError)}>
-                      设为当前
-                    </button>
-                  )}
-                </div>
-                <div className={styles.usage}>
-                  用量：{e.usage.requests} 次 · 输入 {fmt(e.usage.inputTokens)} · 输出{' '}
-                  {fmt(e.usage.outputTokens)} tokens
-                </div>
+        <section className={styles.stack}>
+          <h3 className="cd-section-title">已配置（{state?.providers.length ?? 0}）</h3>
+          {state && total === 0 && (
+            <EmptyState
+              icon="🔌"
+              title="还没有 provider"
+              description="从上方选择预设，粘贴 Token 即可开始"
+            />
+          )}
+          {state?.providers.map((p) => (
+            <ProviderCard
+              key={p.id}
+              p={p}
+              effective={state.effectiveProviderId === p.id}
+              onError={onError}
+            />
+          ))}
+          {state?.envProviders.map((e) => (
+            <Card
+              key={e.id}
+              flat
+              active={state.effectiveProviderId === e.id}
+              title={
+                <>
+                  {e.name} <Badge tone="neutral">环境变量</Badge>
+                  {state.effectiveProviderId === e.id && <Badge>当前</Badge>}
+                </>
+              }
+              subtitle={`${e.baseURL} · ${e.defaultModel} · ${
+                e.keyless ? '本地服务，无需 key' : e.hasKey ? 'key 已由环境变量提供' : '未设置 key'
+              }`}
+              actions={
+                state.effectiveProviderId !== e.id && e.hasKey ? (
+                  <Button
+                    size="sm"
+                    onClick={() => void providerClient.setActive(e.id).catch(onError)}
+                  >
+                    设为当前
+                  </Button>
+                ) : undefined
+              }
+            >
+              <div className="cd-muted">
+                用量：{e.usage.requests} 次 · 输入 {fmt(e.usage.inputTokens)} · 输出{' '}
+                {fmt(e.usage.outputTokens)} tokens
               </div>
-            ))}
-          </section>
+            </Card>
+          ))}
+        </section>
 
-          <section>
-            <h3>模型路由（按任务绑定 provider）</h3>
-            <table className={styles.routes} data-testid="routes-table">
-              <thead>
-                <tr>
-                  <th>任务</th>
-                  <th>Provider</th>
-                  <th>模型（留空用默认）</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(state?.roles ?? []).map((role) => {
-                  const r = state?.routes[role];
-                  return (
-                    <tr key={role}>
-                      <td>{ROLE_LABELS[role]}</td>
-                      <td>
-                        <select
-                          data-testid={`route-${role}`}
-                          value={r?.providerId ?? ''}
-                          onChange={(e) =>
-                            void providerClient
-                              .setRoute(
-                                role,
-                                e.target.value
-                                  ? { providerId: e.target.value, model: r?.model }
-                                  : null,
-                              )
-                              .catch(onError)
-                          }
-                        >
-                          <option value="">跟随当前</option>
-                          {options.map((o) => (
-                            <option key={o.id} value={o.id} disabled={o.disabled}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          defaultValue={r?.model ?? ''}
-                          disabled={!r}
-                          placeholder="default"
-                          onBlur={(e) =>
-                            r &&
-                            void providerClient
-                              .setRoute(role, { providerId: r.providerId, model: e.target.value })
-                              .catch(onError)
-                          }
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <p className={styles.sub}>
-              优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前 provider &gt; 环境变量
-              provider。
-            </p>
-          </section>
-        </div>
+        <section>
+          <h3 className="cd-section-title">模型路由（按任务绑定 provider）</h3>
+          <table className="cd-table" data-testid="routes-table">
+            <thead>
+              <tr>
+                <th>任务</th>
+                <th>Provider</th>
+                <th>模型（留空用默认）</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(state?.roles ?? []).map((role) => {
+                const r = state?.routes[role];
+                return (
+                  <tr key={role}>
+                    <td>{ROLE_LABELS[role]}</td>
+                    <td>
+                      <Select
+                        size="sm"
+                        data-testid={`route-${role}`}
+                        value={r?.providerId ?? ''}
+                        onChange={(e) =>
+                          void providerClient
+                            .setRoute(
+                              role,
+                              e.target.value
+                                ? { providerId: e.target.value, model: r?.model }
+                                : null,
+                            )
+                            .catch(onError)
+                        }
+                      >
+                        <option value="">跟随当前</option>
+                        {options.map((o) => (
+                          <option key={o.id} value={o.id} disabled={o.disabled}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </td>
+                    <td>
+                      <Input
+                        size="sm"
+                        defaultValue={r?.model ?? ''}
+                        disabled={!r}
+                        placeholder="default"
+                        onBlur={(e) =>
+                          r &&
+                          void providerClient
+                            .setRoute(role, { providerId: r.providerId, model: e.target.value })
+                            .catch(onError)
+                        }
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="cd-muted">
+            优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前 provider &gt; 环境变量
+            provider。
+          </p>
+        </section>
       </div>
-    </div>
+    </Modal>
   );
 };

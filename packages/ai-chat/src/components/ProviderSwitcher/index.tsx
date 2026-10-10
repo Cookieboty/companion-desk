@@ -1,6 +1,7 @@
 /**
  * 工具栏上的 provider 一键切换（与托盘菜单、面板共享主进程状态，实时同步）。
  */
+import { IconButton, Select } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -9,6 +10,12 @@ import {
   selectableProviders,
   type ProviderState,
 } from '../../services/providerClient';
+
+const SWITCHER_STYLE: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--cd-space-1)',
+};
 
 export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: string }> = ({
   onManage,
@@ -29,9 +36,11 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
   if (!available || !state) return null;
   const options = selectableProviders(state);
   return (
-    <span className={className} data-testid="provider-switcher">
-      Provider:{' '}
-      <select
+    <span className={className} data-testid="provider-switcher" style={SWITCHER_STYLE}>
+      Provider:
+      <Select
+        size="sm"
+        style={{ width: 'auto', maxWidth: 220 }}
         data-testid="provider-switch"
         value={state.effectiveProviderId ?? ''}
         disabled={Boolean(state.overrideId)}
@@ -46,15 +55,14 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
             {o.label}
           </option>
         ))}
-      </select>{' '}
-      <button
-        type="button"
+      </Select>
+      <IconButton
+        size="sm"
         data-testid="open-provider-panel"
         onClick={onManage}
-        title="Provider 与 Token 管理"
-      >
-        🔑
-      </button>
+        label="Provider 与 Token 管理"
+        icon="🔑"
+      />
     </span>
   );
 };

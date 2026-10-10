@@ -1,6 +1,8 @@
+import { AIProvider } from '@ig-live/ai-sdk-client/react';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+
+import '@ig-live/ui/styles.css';
 import App from './App';
 
 const hasAiIpc = typeof window !== 'undefined' && Boolean((window as { aiIPC?: unknown }).aiIPC);
