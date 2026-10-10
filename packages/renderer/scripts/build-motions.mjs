@@ -8,6 +8,7 @@
  * 2. 追加原创的程序化手势（挥手 / 点头 / 摇头 / 思考 / 拍手 / 鞠躬 / 欢呼 / 伸懒腰 / 张望），MIT。
  *
  * 用法：node scripts/build-motions.mjs <AnimationLibrary_Godot_Standard.gltf>
+ *      node scripts/build-motions.mjs --keep-ual   只重新生成程序化手势，沿用现有 JSON 里的 UAL 片段
  * 源文件：https://quaternius.com/packs/universalanimationlibrary.html
  *        （CC0 镜像：https://github.com/J-Ponzo/gltf-universal-animation-library）
  */
@@ -64,7 +65,7 @@ const UAL_CLIPS = [
   { src: ['Idle_Loop'], name: 'idle', loop: true, tags: ['idle'] },
   { src: ['Idle_Talking_Loop'], name: 'talk', loop: true, tags: ['talk'] },
   { src: ['Dance_Loop'], name: 'dance', loop: true, tags: ['happy'] },
-  { src: ['Jump_Start', 'Jump_Loop', 'Jump_Land'], name: 'jump', loop: false, tags: ['happy'] },
+  // jump（Jump_Start+Loop+Land）已移除：起跳姿态双腿大幅外展、裙子穿模，且 5s 太长
   { src: ['Interact'], name: 'interact', loop: false, tags: ['gesture'] },
   { src: ['Hit_Head'], name: 'flinch', loop: false, tags: ['surprised'] },
   { src: ['Hit_Chest'], name: 'poke', loop: false, tags: ['surprised'] },
@@ -409,11 +410,12 @@ function proceduralGestures() {
       ],
     ),
   );
+  // 欢呼：双臂向前上方斜举（V 字），手在头的两侧前方，不穿过头发 / 帽子
   const up = {
-    leftUpperArm: V(0.4, 0.95, 0.1),
-    rightUpperArm: V(-0.4, 0.95, 0.1),
-    leftLowerArm: V(0.25, 1, 0.1),
-    rightLowerArm: V(-0.25, 1, 0.1),
+    leftUpperArm: V(0.8, 0.55, 0.3),
+    rightUpperArm: V(-0.8, 0.55, 0.3),
+    leftLowerArm: V(0.45, 0.85, 0.3),
+    rightLowerArm: V(-0.45, 0.85, 0.3),
   };
   out.push(
     gesture(
@@ -421,20 +423,21 @@ function proceduralGestures() {
       ['happy'],
       [
         { t: 0 },
-        { t: 0.3, arms: up, hipsY: -0.04 },
-        { t: 0.55, arms: up, hipsY: 0.07 },
-        { t: 0.8, arms: up, hipsY: -0.02 },
-        { t: 1.05, arms: up, hipsY: 0.07 },
-        { t: 1.3, arms: up, hipsY: 0 },
+        { t: 0.35, arms: up, hipsY: -0.02 },
+        { t: 0.6, arms: up, hipsY: 0.03 },
+        { t: 0.85, arms: up, hipsY: -0.01 },
+        { t: 1.1, arms: up, hipsY: 0.03 },
+        { t: 1.35, arms: up, hipsY: 0 },
         { t: 1.7 },
       ],
     ),
   );
+  // 伸懒腰：双臂向两侧斜上方伸展（手在头外侧，不压进头发），胸口微挺
   const stretch = {
-    leftUpperArm: V(0.25, 1, -0.05),
-    rightUpperArm: V(-0.25, 1, -0.05),
-    leftLowerArm: V(-0.1, 1, 0),
-    rightLowerArm: V(0.1, 1, 0),
+    leftUpperArm: V(0.75, 0.65, -0.05),
+    rightUpperArm: V(-0.75, 0.65, -0.05),
+    leftLowerArm: V(0.55, 0.8, 0),
+    rightLowerArm: V(-0.55, 0.8, 0),
   };
   out.push(
     gesture(
@@ -442,11 +445,11 @@ function proceduralGestures() {
       ['idle'],
       [
         { t: 0 },
-        { t: 0.8, arms: stretch, bones: { chest: euler(-0.12, 0, 0), head: euler(-0.15, 0, 0) } },
+        { t: 0.8, arms: stretch, bones: { chest: euler(-0.08, 0, 0), head: euler(-0.1, 0, 0) } },
         {
           t: 1.8,
           arms: stretch,
-          bones: { chest: euler(-0.15, 0, 0.05), head: euler(-0.18, 0, 0) },
+          bones: { chest: euler(-0.1, 0, 0.04), head: euler(-0.12, 0, 0) },
         },
         { t: 2.6, bones: { chest: euler(0, 0, 0), head: euler(0, 0, 0) } },
       ],
@@ -471,10 +474,17 @@ function proceduralGestures() {
 
 const src = process.argv[2];
 if (!src) {
-  console.error('usage: node scripts/build-motions.mjs <AnimationLibrary_Godot_Standard.gltf>');
+  console.error(
+    'usage: node scripts/build-motions.mjs <AnimationLibrary_Godot_Standard.gltf> | --keep-ual',
+  );
   process.exit(1);
 }
-const clips = [...retargetUal(src), ...proceduralGestures()];
+const ualNames = new Set(UAL_CLIPS.map((c) => c.name));
+const ual =
+  src === '--keep-ual'
+    ? JSON.parse(fs.readFileSync(OUT, 'utf8')).clips.filter((c) => ualNames.has(c.name))
+    : retargetUal(src);
+const clips = [...ual, ...proceduralGestures()];
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify({ version: 1, space: 'vrm1-normalized', fps: FPS, clips }));
 console.info(
