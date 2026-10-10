@@ -99,6 +99,10 @@
 
 .active {
   opacity: 1;
+}
+/* 默认不拦截鼠标；可滚动时正文、以及「查看全文」按钮才接收 */
+.active[data-scroll] .scroll,
+.active .more {
   pointer-events: auto;
 }
 

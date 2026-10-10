@@ -27,6 +27,8 @@ export const MessageBubble: React.FC = () => {
   const [place, setPlace] = useState<BubblePlacement | null>(null);
   const [scale, setScale] = useState(1);
   const measureRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = useState(false);
   const text = toBubbleText(state.currentMessage);
   const more = state.messageMore === true;
 
@@ -96,6 +98,12 @@ export const MessageBubble: React.FC = () => {
     };
   }, [compute]);
 
+  // 只有内容溢出（需要滚轮）时才让气泡正文接收鼠标；否则点击穿过气泡落到角色身上
+  useLayoutEffect(() => {
+    const sc = bubbleRef.current?.firstElementChild as HTMLElement | null;
+    setScrolls(!!sc && sc.scrollHeight > sc.clientHeight + 1);
+  }, [place, text, more]);
+
   useEffect(() => {
     document.documentElement.dataset.bubbleCandidate = place?.candidate ?? 'fixed';
   }, [place]);
@@ -135,8 +143,10 @@ export const MessageBubble: React.FC = () => {
   return (
     <>
       <div
+        ref={bubbleRef}
         id="waifu-tips-independent"
-        data-mascot-ui={active ? '' : undefined}
+        data-mascot-ui={active && (scrolls || more) ? '' : undefined}
+        data-scroll={scrolls ? '' : undefined}
         data-testid="mascot-bubble"
         data-tail={place?.tail ?? 'bottom'}
         role="status"
