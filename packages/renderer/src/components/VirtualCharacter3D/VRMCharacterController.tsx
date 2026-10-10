@@ -2,13 +2,12 @@ import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-import { isDefaultVrmModelPath } from '../../config/vrm';
+import { DEFAULT_VRM_MODEL_PATH } from '../../config/vrm';
 import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type VRMCharacterControllerProps } from '../../types/character3d';
 
-import CuteCharacter3D from './CuteCharacter3D';
-import DefaultCharacter3D from './DefaultCharacter3D';
 import VRMModelFallback from './VRMModelFallback';
 
 /**
@@ -29,9 +28,8 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   const groupRef = useRef<THREE.Group>(null);
   const vrmRef = useRef<VRM | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const clockRef = useRef(new THREE.Clock());
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
 
@@ -39,105 +37,80 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   const { currentAnimation, currentExpression, isLoaded, setIsLoaded, updatePerformanceMetrics } =
     useCharacter3DStore();
 
-  // 暂时禁用VRM加载，直接使用fallback
-  // const gltf = useGLTF(modelPath || DEFAULT_VRM_MODEL_PATH, true, true, (loader) => {
-  //   loader.register((parser: any) => new VRMLoaderPlugin(parser) as any);
-  // });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
-  const gltf: any = { scene: null, userData: null };
-
-  // 初始化VRM模型
+  // 初始化VRM模型：GLTFLoader + VRMLoaderPlugin；加载失败才回退到程序化角色
   useEffect(() => {
-    const initializeVRM = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // 检查是否应该使用回退模型
-        // 默认 VRM 文件尚未随仓库提供：直接走回退角色，不发起网络请求
-        const shouldUseFallback = isDefaultVrmModelPath(modelPath) || !gltf.userData?.vrm;
-
-        if (shouldUseFallback) {
-          console.log('VRMCharacterController: 使用回退模型');
-          setUseFallback(true);
-          setIsLoaded(true);
-          setIsLoading(false);
-          onModelLoaded?.(null);
+    let cancelled = false;
+    const url = modelPath || DEFAULT_VRM_MODEL_PATH;
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+    setIsLoading(true);
+    setError(null);
+    setUseFallback(false);
+    loader
+      .loadAsync(url)
+      .then((gltf) => {
+        const vrm = gltf.userData.vrm as VRM | undefined;
+        if (cancelled) {
+          if (vrm) VRMUtils.deepDispose(vrm.scene);
           return;
         }
+        if (!vrm) throw new Error('文件不包含 VRM 扩展');
 
-        // 从GLTF中提取VRM
-        const vrm = gltf.userData.vrm as VRM;
-        if (!vrm) {
-          console.log('VRMCharacterController: VRM数据无效，使用回退模型');
-          setUseFallback(true);
-          setIsLoaded(true);
-          setIsLoading(false);
-          onModelLoaded?.(null);
-          return;
-        }
-
-        // 应用VRM修正
-        VRMUtils.removeUnnecessaryJoints(gltf.scene);
         VRMUtils.removeUnnecessaryVertices(gltf.scene);
-
-        // 设置模型变换
+        VRMUtils.combineSkeletons(gltf.scene);
+        // VRM 0.x 模型面向 -Z，统一转成 VRM 1.0 的朝向
+        VRMUtils.rotateVRM0(vrm);
+        vrm.scene.traverse((o) => {
+          o.frustumCulled = false;
+        });
         vrm.scene.scale.setScalar(scale);
         vrm.scene.position.set(...position);
+        mixerRef.current = new THREE.AnimationMixer(vrm.scene);
 
-        // 初始化动画混合器
-        if (!mixerRef.current) {
-          mixerRef.current = new THREE.AnimationMixer(vrm.scene);
-        }
-
-        // 启用表情系统
         if (enableExpressions && vrm.expressionManager) {
-          // 设置默认表情
           vrm.expressionManager.setValue('neutral', 1.0);
         }
-
-        // 启用LookAt系统
         if (enableLookAt && vrm.lookAt) {
-          vrm.lookAt.target = new THREE.Object3D();
-          vrm.lookAt.target.position.set(0, 1.6, 5);
-          scene.add(vrm.lookAt.target);
+          const target = new THREE.Object3D();
+          target.position.set(0, 1.4, 5);
+          scene.add(target);
+          vrm.lookAt.target = target;
         }
+        // 自然站姿：放下 T-pose 的手臂
+        const l = vrm.humanoid?.getNormalizedBoneNode('leftUpperArm');
+        const r = vrm.humanoid?.getNormalizedBoneNode('rightUpperArm');
+        if (l) l.rotation.z = 1.2;
+        if (r) r.rotation.z = -1.2;
 
-        // 将VRM添加到场景
-        if (groupRef.current) {
-          groupRef.current.add(vrm.scene);
-        }
-
+        groupRef.current?.add(vrm.scene);
         vrmRef.current = vrm;
         setIsLoaded(true);
         setIsLoading(false);
-
-        // 触发回调
         onModelLoaded?.(vrm);
-
-        console.log('VRM模型加载成功:', vrm);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : '未知错误';
-        setError(errorMessage);
+        console.info('[perf] vrm-model-loaded');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn('VRMCharacterController: VRM 加载失败，使用回退角色', err);
+        setUseFallback(true);
+        setIsLoaded(true);
         setIsLoading(false);
-        onError?.(errorMessage);
-        console.error('VRM模型加载失败:', err);
+        onError?.(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+      const vrm = vrmRef.current;
+      if (vrm) {
+        if (vrm.lookAt?.target) scene.remove(vrm.lookAt.target);
+        groupRef.current?.remove(vrm.scene);
+        VRMUtils.deepDispose(vrm.scene);
+        vrmRef.current = null;
       }
+      mixerRef.current?.stopAllAction();
+      mixerRef.current = null;
     };
-
-    initializeVRM();
-  }, [
-    gltf,
-    modelPath,
-    scale,
-    position,
-    enableExpressions,
-    enableLookAt,
-    scene,
-    setIsLoaded,
-    onModelLoaded,
-    onError,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在模型路径变化时重新加载
+  }, [modelPath]);
 
   // 播放动画
   useEffect(() => {
@@ -263,22 +236,6 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     return null;
   };
 
-  // 清理资源
-  useEffect(() => {
-    return () => {
-      if (vrmRef.current) {
-        // 清理VRM资源
-        VRMUtils.deepDispose(vrmRef.current.scene);
-        vrmRef.current = null;
-      }
-
-      if (mixerRef.current) {
-        mixerRef.current.stopAllAction();
-        mixerRef.current = null;
-      }
-    };
-  }, []);
-
   if (error) {
     return (
       <mesh>
@@ -289,24 +246,12 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     );
   }
 
-  // 如果使用回退模型，显示超萌角色
+  // 仅在 VRM 加载失败时显示占位角色
   if (useFallback) {
-    return (
-      <CuteCharacter3D
-        scale={scale}
-        position={position}
-        onReady={() => {
-          console.log('VRMCharacterController: 超萌角色就绪');
-          onModelLoaded?.(null);
-        }}
-      />
-    );
+    return <VRMModelFallback scale={scale} position={position} />;
   }
 
   return <group ref={groupRef} />;
 };
-
-// 注意：不要对 DEFAULT_VRM_MODEL_PATH 调用 useGLTF.preload —— 该文件目前不存在，
-// 预加载会在每次启动时产生 404。真正提供 VRM 文件后再按需预加载。
 
 export default VRMCharacterController;

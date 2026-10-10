@@ -100,8 +100,17 @@ test.describe('UI surfaces', () => {
     };
     await mode('custom-image');
     await shot(main, '05-mode-custom-image');
+    const vrmLoaded = main
+      .waitForEvent('console', {
+        predicate: (m) => m.text().includes('vrm-model-loaded'),
+        timeout: 60_000,
+      })
+      .catch(() => null);
     await mode('3d');
+    await vrmLoaded;
+    await main.waitForTimeout(1_500);
     await shot(main, '06-mode-3d');
+    if (process.env.VRM_SHOT) await main.screenshot({ path: process.env.VRM_SHOT });
     await mode('live2d');
 
     // TTS 配置窗口
