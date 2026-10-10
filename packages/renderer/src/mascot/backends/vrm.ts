@@ -13,6 +13,8 @@ import type { MascotBackend, MascotCapabilities } from '../MascotBackend';
 import { MASCOT_EXPRESSIONS } from '../MascotBackend';
 import type { MotionController } from '../motion/MotionController';
 
+import { addBodySpringColliders, clampRotation } from './springColliders';
+
 const EMOTIONS = MASCOT_EXPRESSIONS.filter((e) => e !== 'neutral');
 
 /** 指数平滑：每秒向目标逼近 rate 倍。 */
@@ -129,6 +131,9 @@ export function createVrmBackend(
   vrm.scene.updateMatrixWorld?.(true);
   const headY = rawBone('head')?.getWorldPosition(new THREE.Vector3()).y ?? 1.35;
   const height = Math.max(0.6, headY + 0.12);
+  const removeBodyColliders = addBodySpringColliders(vrm, height);
+  const spine0 = bone('spine');
+  const chest0 = bone('chest');
   const COLLIDER_BONES: HB[] = [
     'head',
     'neck',
@@ -200,6 +205,8 @@ export function createVrmBackend(
     setBodyMotion(m) {
       const prev = body.mode;
       body = m;
+      // 拎起 / 着陆是“瞬移”式的状态切换：重置弹簧骨骼，避免头发裙子被甩穿身体
+      if (prev !== m.mode && (m.mode === 'held' || prev === 'held')) vrm.springBoneManager?.reset();
       if (prev !== m.mode && (prev === 'walking' || m.mode === 'walking'))
         motions?.setBase(wantBase());
     },
@@ -251,6 +258,7 @@ export function createVrmBackend(
       vrm.scene.rotation.y = baseRotY;
       motions?.dispose();
       motions = null;
+      removeBodyColliders();
       scene.remove(lookTarget);
     },
     update(dt, t) {
@@ -299,41 +307,48 @@ export function createVrmBackend(
         if (rUpper) rUpper.rotation.z = -1.2 - breath * 0.015;
       }
       // ---- 悬空 / 被拎起姿态（叠加层，权重平滑淡入淡出）----
+      // 以 VRM 规范化静止姿态（T-pose，手臂水平）为基准：手臂放到肩下约 30°、微微前伸，
+      // 小臂轻弯；双腿自然下垂、轻轻摆动；身体只做很小的惯性倾斜，头不下垂。
+      // 被拎起的姿态只在真正拖拽时完整出现；下落只有轻微悬空感
+      const dangleGoal = body.mode === 'held' ? 1 : body.mode === 'falling' ? 0.3 : 0;
+      dangle = lowpass(dangle, dangleGoal, dangleGoal > dangle ? 5 : 3.5, dt);
+      lean = lowpass(lean, Math.max(-1, Math.min(1, body.vx / 2400)), 4, dt);
       const airborne = body.mode === 'held' || body.mode === 'falling';
-      dangle = lowpass(dangle, airborne ? 1 : 0, airborne ? 8 : 5, dt);
-      lean = lowpass(lean, Math.max(-1, Math.min(1, body.vx / 1800)), 6, dt);
       if (dangle > 0.001) {
-        const kick = body.mode === 'held' ? 1 : 0.5;
-        const sw = Math.sin(t * 9) * 0.35 * kick;
-        // 手臂上举（像被人从腋下抱起），腿乱蹬
-        blendTo(lUpper, 0, 0, -0.35 + Math.sin(t * 7) * 0.15, dangle);
-        blendTo(rUpper, 0, 0, 0.35 - Math.sin(t * 7 + 1) * 0.15, dangle);
-        blendTo(lFore, 0, 0, -0.3, dangle);
-        blendTo(rFore, 0, 0, 0.3, dangle);
-        blendTo(lLeg, -0.15 + sw - lean * 0.2, 0, 0.05, dangle);
-        blendTo(rLeg, -0.15 - sw - lean * 0.2, 0, -0.05, dangle);
-        blendTo(lKnee, 0.45 + Math.max(0, sw), 0, 0, dangle);
-        blendTo(rKnee, 0.45 + Math.max(0, -sw), 0, 0, dangle);
-        // 身体逆着运动方向倾斜（惯性）
+        const sw = Math.sin(t * 3.2) * 0.12;
+        blendTo(lUpper, 0, -0.25, 0.55 + Math.sin(t * 2.1) * 0.04, dangle);
+        blendTo(rUpper, 0, 0.25, -0.55 - Math.sin(t * 2.1 + 1) * 0.04, dangle);
+        blendTo(lFore, 0, -0.35, 0, dangle);
+        blendTo(rFore, 0, 0.35, 0, dangle);
+        blendTo(lLeg, -0.08 + sw - lean * 0.08, 0, 0.03, dangle);
+        blendTo(rLeg, -0.08 - sw - lean * 0.08, 0, -0.03, dangle);
+        blendTo(lKnee, 0.22 + Math.max(0, sw), 0, 0, dangle);
+        blendTo(rKnee, 0.22 + Math.max(0, -sw), 0, 0, dangle);
         addRot(
           spine,
-          Math.max(-0.3, Math.min(0.3, -body.vy / 6000)) * dangle,
+          Math.max(-0.06, Math.min(0.06, -body.vy / 20000)) * dangle,
           0,
-          -lean * 0.35 * dangle,
+          -lean * 0.08 * dangle,
         );
-        addRot(head, 0, 0, Math.sin(t * 5) * 0.08 * dangle * kick);
       }
       // ---- 漫步：朝行进方向侧身 ----
       const walkDir = body.mode === 'walking' ? Math.sign(body.vx) : 0;
       facing = lowpass(facing, walkDir * 0.9, 5, dt);
-      vrm.scene.rotation.y = baseRotY + facing;
+      // 调试 / 动画巡检：window.__mascotDebugYaw 旋转模型（侧视图）
+      const debugYaw = (globalThis as { __mascotDebugYaw?: number }).__mascotDebugYaw ?? 0;
+      vrm.scene.rotation.y = baseRotY + facing + debugYaw;
       // ---- 头部跟随视线（阻尼弹簧 + 颈部限位），叠加在动作之上 ----
       const tYaw = lookNorm.x * NECK_LIMITS.yaw * (1 - dangle * 0.6);
       const tPitch = (lookNorm.y > 0 ? NECK_LIMITS.pitchUp : NECK_LIMITS.pitchDown) * lookNorm.y;
-      yaw = dampedSpring(yaw, tYaw - facing * 0.5, 9, 0.9, dt);
-      pitch = dampedSpring(pitch, tPitch, 9, 0.9, dt);
+      yaw = dampedSpring(yaw, tYaw - facing * 0.5, 5, 1, dt);
+      pitch = dampedSpring(pitch, tPitch, 5, 1, dt);
       addRot(neck, -pitch.x * 0.4, yaw.x * 0.4, 0);
       addRot(head, -pitch.x * 0.6, yaw.x * 0.6, 0);
+      // ---- 关节限位：动作 + 叠加层合成后，脊柱 / 胸 / 颈 / 头不超过人体自然范围 ----
+      clampRotation(spine0, 0.35);
+      clampRotation(chest0, 0.3);
+      clampRotation(neck, 0.5);
+      clampRotation(head, 0.55);
       // ---- 落地压扁回弹（以脚底为原点缩放）----
       if (squashT >= 0) {
         squashT += dt;
@@ -345,8 +360,8 @@ export function createVrmBackend(
         }
       }
       // ---- 弹簧骨骼惯性：窗口加速度 → 等效重力（低通 + 限幅，防止高速拖拽时炸开）----
-      accX = lowpass(accX, Math.max(-20000, Math.min(20000, body.ax)), 12, dt);
-      accY = lowpass(accY, Math.max(-20000, Math.min(20000, body.ay)), 12, dt);
+      accX = lowpass(accX, Math.max(-6000, Math.min(6000, body.ax)), 8, dt);
+      accY = lowpass(accY, Math.max(-6000, Math.min(6000, body.ay)), 8, dt);
       if (!airborne && body.mode !== 'walking') {
         accX = lowpass(accX, 0, 6, dt);
         accY = lowpass(accY, 0, 6, dt);
