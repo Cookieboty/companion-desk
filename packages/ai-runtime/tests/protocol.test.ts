@@ -211,3 +211,15 @@ describe('store: switching', () => {
     expect(vb.models).toEqual(['b1', 'b2']);
   });
 });
+
+describe('preset verification metadata', () => {
+  it('every vendor / platform preset links its official docs and is verified', async () => {
+    const { PROVIDER_PRESETS, PRESETS_CHECKED_AT } = await import('../src/providers');
+    expect(PRESETS_CHECKED_AT).toBe('2026-10-11');
+    for (const p of PROVIDER_PRESETS.filter((x) => x.category !== 'custom')) {
+      expect(p.docsUrl, p.id).toMatch(/^https:\/\//);
+      expect(p.verified, p.id).toBe(true);
+      expect(p.icon, p.id).toBeTruthy();
+    }
+  });
+});

@@ -108,7 +108,7 @@ describe('ProviderStore', () => {
     const store = new ProviderStore({ filePath: file, cipher: fakeCipher });
     const v = store.upsert({ presetId: 'deepseek', apiKey: 'sk-secret-AAAA1111' });
     expect(v.id).toMatch(/^p-deepseek-/);
-    expect(v.baseURL).toBe('https://api.deepseek.com/v1');
+    expect(v.baseURL).toBe('https://api.deepseek.com');
     expect(v.keys).toHaveLength(1);
     expect(v.keys[0]!.masked).toBe('sk-…1111');
     expect(JSON.stringify(store.list())).not.toContain('sk-secret-AAAA1111');
