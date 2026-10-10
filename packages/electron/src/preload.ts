@@ -52,6 +52,40 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('get-cursor-position');
   },
   // 监听窗口鼠标事件
+  /** 桌面互动：点击穿透 / 拖拽 / 物理 / 全局光标 */
+  mascotWindow: {
+    platform: process.platform,
+    setShape: (rects: unknown) => ipcRenderer.send('mascot:shape', rects),
+    setHit: (hit: boolean) => ipcRenderer.send('mascot:hit', hit),
+    setGeometry: (box: unknown) => ipcRenderer.send('mascot:geometry', box),
+    dragStart: (sx?: number, sy?: number) => ipcRenderer.send('mascot:drag-start', sx, sy),
+    dragMove: (sx: number, sy: number) => ipcRenderer.send('mascot:drag-move', sx, sy),
+    dragEnd: () => ipcRenderer.send('mascot:drag-end'),
+    setConfig: (cfg: unknown) => ipcRenderer.send('mascot:interaction-config', cfg),
+    wanderNow: () => ipcRenderer.send('mascot:wander-now'),
+    snapshot: () => ipcRenderer.invoke('mascot:debug-snapshot'),
+    onCursor: (cb: (p: unknown) => void) => {
+      const l = (_: unknown, p: unknown) => cb(p);
+      ipcRenderer.on('mascot:cursor', l);
+      return () => {
+        ipcRenderer.removeListener('mascot:cursor', l);
+      };
+    },
+    onBody: (cb: (p: unknown) => void) => {
+      const l = (_: unknown, p: unknown) => cb(p);
+      ipcRenderer.on('mascot:body', l);
+      return () => {
+        ipcRenderer.removeListener('mascot:body', l);
+      };
+    },
+    onPhysicsEvent: (cb: (p: unknown) => void) => {
+      const l = (_: unknown, p: unknown) => cb(p);
+      ipcRenderer.on('mascot:physics-event', l);
+      return () => {
+        ipcRenderer.removeListener('mascot:physics-event', l);
+      };
+    },
+  },
   /** 模型注册表 / 商店 / 用户导入 */
   models: {
     list: () => ipcRenderer.invoke('models:list'),

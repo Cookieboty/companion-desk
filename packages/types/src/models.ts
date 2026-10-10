@@ -137,3 +137,69 @@ export interface ModelsApi {
   onProgress(cb: (p: ModelDownloadProgress) => void): () => void;
   onChanged(cb: () => void): () => void;
 }
+
+/** 看板娘窗口互动（主进程 MascotWindowController ⇄ 渲染进程） */
+export interface MascotInteractionConfig {
+  clickThrough: boolean;
+  gravity: boolean;
+  wander: boolean;
+  reactions: boolean;
+  globalLook: boolean;
+}
+
+export interface MascotCursorEvent {
+  /** 相对窗口左上角的像素坐标（可能在窗口外） */
+  x: number;
+  y: number;
+  inside: boolean;
+}
+
+export interface MascotBodyEvent {
+  mode: 'idle' | 'held' | 'falling' | 'walking';
+  vx: number;
+  vy: number;
+  ax: number;
+  ay: number;
+  dir: number;
+}
+
+export type MascotPhysicsEvent =
+  | { type: 'grab' }
+  | { type: 'release'; vx: number; vy: number }
+  | { type: 'land'; speed: number }
+  | { type: 'bounce'; speed: number }
+  | { type: 'wall'; side: 'left' | 'right'; speed: number }
+  | { type: 'arrive' };
+
+export interface ShapeRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface MascotWindowApi {
+  /** process.platform（Linux 用窗口形状实现点击穿透） */
+  platform: string;
+  /** Linux：可交互区域（窗口像素）；空数组 = 整个窗口 */
+  setShape(rects: ShapeRect[]): void;
+  setHit(hit: boolean): void;
+  setGeometry(box: { left: number; right: number; top: number; bottom: number }): void;
+  /** 屏幕坐标（screenX/Y）；省略时主进程读取系统光标 */
+  dragStart(screenX?: number, screenY?: number): void;
+  dragMove(screenX: number, screenY: number): void;
+  dragEnd(): void;
+  setConfig(cfg: Partial<MascotInteractionConfig>): void;
+  wanderNow(): void;
+  snapshot(): Promise<{
+    body: { x: number; y: number; vx: number; vy: number; mode: string };
+    ignoring: boolean;
+    shapeRects: number;
+    clickThroughMode: 'ignore' | 'shape';
+    box: { left: number; right: number; top: number; bottom: number } | null;
+    cfg: MascotInteractionConfig;
+  }>;
+  onCursor(cb: (p: MascotCursorEvent) => void): () => void;
+  onBody(cb: (p: MascotBodyEvent) => void): () => void;
+  onPhysicsEvent(cb: (p: MascotPhysicsEvent) => void): () => void;
+}
