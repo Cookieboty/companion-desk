@@ -14,7 +14,7 @@ Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + R
 - 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
 - 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
 - 🧩 **可扩展宿主** - IgPluginHost profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包 + Vercel AI SDK providers，MCP 桥接
-- 🎭 **可选 3D 桌面伙伴** - 开源 VRM 角色（内置 5 个 CC0 VRoid 模型，可切换）、表情、眨眼/视线、TTS 口型同步
+- 🎭 **可选 3D 桌面伙伴** - 开源 VRM 角色（内置 1 个 + 模型商店 6 个 CC0 VRoid 模型，支持导入自己的 .vrm）、表情、眨眼/视线、TTS 口型同步
 - 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
 - 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
 - 📦 **工程化管理** - pnpm workspace + Turborepo，Vitest / Jest / Playwright 全链路测试
@@ -201,7 +201,19 @@ pnpm package:debug
 ### 看板娘（VRM 3D）
 
 - **开源渲染栈** - three.js + @pixiv/three-vrm（MIT），通过 `MascotBackend` 抽象接入，可扩展其他开源后端
-- **内置角色** - 5 个 pixiv VRoid CC0 样例模型；工具栏「切换角色」左键切到下一个，右键打开角色列表
+- **内置角色** - 安装包只带默认角色（千駄ヶ谷 渋，CC0）；工具栏「切换角色」左键切到下一个，右键打开角色列表
+- **模型商店** - 角色列表的「模型商店」页读取远程目录
+  [Cookieboty/companion-desk-models](https://github.com/Cookieboty/companion-desk-models)（目前 7 个 CC0 VRoid 角色），
+  显示缩略图与许可徽章，下载带进度、断点续传、多镜像重试（GitHub Releases → jsDelivr → raw），**sha256 必须匹配**才会安装；
+  可更新（版本号变化时提示）/ 删除；目录用 ETag 缓存，离线时显示缓存目录，已下载 / 内置模型照常可用。
+  只接受开源许可（CC0 / CC-BY / CC-BY-SA / MIT / Apache-2.0 / OFL，与 `assets-licenses.json` 一致）、仅 https、单文件 ≤ 200 MB，
+  模型文件只做静态解析（GLB + VRM meta），不执行任何内容。文件保存在 `userData/models/remote/`，经 `cdmodel://` 协议只读提供给渲染进程。
+  目录地址可用 `COMPANION_MODEL_CATALOG_URL`（逗号分隔多个）覆盖。添加模型见 [docs/MODELS.md](docs/MODELS.md)
+- **导入自己的 VRM** - 「导入 VRM」页：文件对话框或拖放 `.vrm`（0.x / 1.0，≤ 300 MB）。会读取并展示 VRM meta
+  （作者、许可、允许使用者、商用、再分发），并提示：**自行导入的模型由用户自己负责，只保存在本机 `userData/models/user/`，不会上传、同步或随应用分发**。
+  导入后可设置名字、缩放、偏移、镜头取景、表情映射（如 `happy=Joy`）、允许的动作；配置可导出 / 导入为 JSON；可替换 VRM 文件或删除
+- **统一模型注册表** - 内置 + 商店 + 导入的模型由主进程 `ModelRegistry` 统一提供，角色列表、托盘「切换角色」、
+  AI 工具 `mascot_list_models` / `mascot_select_model` 都用同一份列表
 - **口型同步** - TTS 音量包络驱动 VRM `aa`/`oh` 表情
 - **表情** - 聊天 / Agent / 工具事件驱动 happy / angry / sad / relaxed，并有随机眨眼、视线跟随鼠标
 - **身体动作** - 动画管理器（交叉淡入淡出、idle 循环 + 随机待机小动作、说话时切换说话姿态）。
@@ -211,7 +223,7 @@ pnpm package:debug
   触发方式：聊天事件自动触发（6s 冷却）、工具栏「动作」（左键随机、右键列表）、托盘「看板娘动作」、
   AI 工具 `live2d_play_motion` / `live2d_set_expression`（名字沿用旧协议，经 IPC `mascot:command` 转发到渲染进程）
 - **致谢 / Credits** - 工具栏「信息」或角色列表底部打开，列出每个角色 / 动作 / 图标的作者与许可（CC-BY 素材必须在此署名）
-- **添加模型** - 把 `.vrm` 放进 `packages/renderer/public/assets/models/vrm/` 并在 `model-list.json` 中登记许可信息
+- **添加模型** - 新角色优先加到远程目录（见 [docs/MODELS.md](docs/MODELS.md)）；内置模型需放进 `packages/renderer/public/assets/models/vrm/` 并在 `model-list.json` 登记许可
 
 ### 窗口管理
 
