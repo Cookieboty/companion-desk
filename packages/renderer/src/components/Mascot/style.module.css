@@ -57,3 +57,60 @@
   font-size: var(--cd-font-size-xs, 11px);
   color: var(--cd-text-muted, #999);
 }
+
+.motionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--cd-space-2, 8px);
+}
+
+.credits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cd-space-2, 8px);
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.credits li {
+  padding: var(--cd-space-2, 8px);
+  border: 1px solid var(--cd-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--cd-radius-md, 8px);
+  background: var(--cd-surface-2, rgba(255, 255, 255, 0.04));
+}
+
+.creditHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cd-space-2, 8px);
+  font-size: var(--cd-font-size-sm, 12px);
+}
+
+.creditMeta {
+  margin-top: 2px;
+  font-size: var(--cd-font-size-xs, 11px);
+  color: var(--cd-text-muted, #999);
+}
+
+.creditSource {
+  margin-top: 2px;
+  font-size: var(--cd-font-size-xs, 11px);
+  color: var(--cd-text-muted, #999);
+  word-break: break-all;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cd-space-2, 8px);
+  margin-top: var(--cd-space-3, 12px);
+}
+
+.footer .credit {
+  margin: 0;
+}

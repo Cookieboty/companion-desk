@@ -40,6 +40,7 @@ import { app, safeStorage } from 'electron';
 
 import type { ILoggerService } from '../services/LoggerService';
 
+import { mascotIgPlugins } from './mascotBridge';
 import type { TtsProvider } from './TtsElectronNativeProvider';
 
 export interface AIRuntimeBootSeams {
@@ -186,6 +187,8 @@ export async function startAIRuntime(
       logger: runtimeLogger,
       // FileSessionStorePlugin 提供 ProfileStorageKey → 用户画像持久化到 userData/ai-chat/memory
       before: [{ plugin: FileSessionStorePlugin }],
+      // 看板娘动作 / 表情工具（live2d_play_motion / live2d_set_expression）→ IPC → 渲染进程
+      after: mascotIgPlugins,
       providers: {
         store: providerStore,
         onRegistry: (r) => {

@@ -125,10 +125,27 @@ function checkAssets() {
     const isFirstParty = a.license === firstParty && a.firstParty === true && !!a.owner;
     if (a.license === firstParty && !isFirstParty)
       errors.push(`assets: ${a.pattern} uses ${firstParty} but lacks firstParty:true / owner`);
-    if (!isFirstParty && !allow.has(a.license))
+    // 组合许可（如 "CC0-1.0 AND MIT"）：每一项都必须在白名单内
+    const parts = String(a.license).split(/\s+AND\s+/);
+    if (!isFirstParty && !parts.every((l) => allow.has(l)))
       errors.push(`assets: manifest entry ${a.pattern} uses non-allowed licence ${a.license}`);
     if (!a.author || !a.source)
       errors.push(`assets: manifest entry ${a.pattern} needs author and source`);
+  }
+  // 动作库：每个片段都要在清单里登记许可，并与 motions.json 一致
+  const motionsRel = 'packages/renderer/public/assets/motions/motions.json';
+  const motionsEntry = entries.find((a) => a.re.test(motionsRel));
+  if (fs.existsSync(path.join(ROOT, motionsRel))) {
+    const lib = JSON.parse(fs.readFileSync(path.join(ROOT, motionsRel), 'utf8'));
+    const declared = new Map((motionsEntry?.clips ?? []).map((c) => [c.name, c]));
+    for (const c of lib.clips ?? []) {
+      const d = declared.get(c.name);
+      if (!d) errors.push(`assets: motion clip "${c.name}" is not listed in assets-licenses.json`);
+      else if (d.license !== c.license || !allow.has(d.license))
+        errors.push(
+          `assets: motion clip "${c.name}" licence mismatch / not allowed (${c.license})`,
+        );
+    }
   }
   let files = 0;
   for (const root of manifest.roots) {

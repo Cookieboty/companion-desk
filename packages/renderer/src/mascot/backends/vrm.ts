@@ -3,6 +3,7 @@ import * as THREE from 'three';
 
 import type { MascotBackend, MascotCapabilities } from '../MascotBackend';
 import { MASCOT_EXPRESSIONS } from '../MascotBackend';
+import type { MotionController } from '../motion/MotionController';
 
 const EMOTIONS = MASCOT_EXPRESSIONS.filter((e) => e !== 'neutral');
 
@@ -14,6 +15,8 @@ function approach(current: number, target: number, rate: number, dt: number): nu
 export interface VrmBackend extends MascotBackend {
   /** 每帧由 VRMCharacterController 的 useFrame 调用 */
   update(dt: number, elapsed: number): void;
+  /** 动作库加载完成后挂上动画管理器（之前用程序化站姿兜底） */
+  attachMotions(motions: MotionController): void;
 }
 
 /**
@@ -21,7 +24,8 @@ export interface VrmBackend extends MascotBackend {
  * - 口型：`aa` 主导 + `oh` 随时间轻微混合，避免机械开合
  * - 表情：目标权重平滑过渡，情绪表情互斥
  * - 眨眼：2.5~6s 随机间隔；情绪 happy（闭眼笑）时不再叠加眨眼
- * - 待机：呼吸（胸/脊柱微幅旋转）+ 头部轻微摆动；视线跟随 lookAt 目标
+ * - 身体：有动作库时由 MotionController 驱动（idle 循环 / 手势），否则程序化站姿 + 呼吸
+ * - 头部轻微摆动叠加在动画之上；视线跟随 lookAt 目标
  */
 export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
   const em = vrm.expressionManager;
@@ -55,6 +59,10 @@ export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
   if (lUpper) lUpper.rotation.z = 1.2;
   if (rUpper) rUpper.rotation.z = -1.2;
 
+  let motions: MotionController | null = null;
+  const sway = new THREE.Quaternion();
+  const swayEuler = new THREE.Euler();
+
   const set = (name: string, v: number) => {
     if (em && has(name)) em.setValue(resolve(name), v);
   };
@@ -74,15 +82,28 @@ export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
     blink() {
       blinkT = 0;
     },
+    playMotion(name) {
+      return motions?.play(name) ?? false;
+    },
+    setTalking(talking) {
+      motions?.setBase(talking ? 'talk' : 'idle');
+    },
+    attachMotions(m) {
+      motions?.dispose();
+      motions = m;
+    },
     capabilities(): MascotCapabilities {
       return {
         expressions: em ? Object.keys(em.expressionMap) : [],
         lipSync: has('aa'),
         lookAt: !!vrm.lookAt,
         blink: has('blink'),
+        motions: motions?.names() ?? [],
       };
     },
     dispose() {
+      motions?.dispose();
+      motions = null;
       scene.remove(lookTarget);
     },
     update(dt, t) {
@@ -111,16 +132,25 @@ export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
           nextBlinkAt = t + 2.5 + Math.random() * 3.5;
         }
       }
-      // 待机呼吸 + 头部微动
-      const breath = Math.sin(t * 1.6);
-      if (spine) spine.rotation.x = breath * 0.012;
-      if (chest) chest.rotation.x = breath * 0.018;
-      if (neck) {
-        neck.rotation.y = Math.sin(t * 0.37) * 0.05;
-        neck.rotation.z = Math.sin(t * 0.23) * 0.025;
+      if (motions) {
+        motions.update(dt);
+        // 头部微动叠加在动画之上
+        if (neck) {
+          swayEuler.set(0, Math.sin(t * 0.37) * 0.04, Math.sin(t * 0.23) * 0.02);
+          neck.quaternion.multiply(sway.setFromEuler(swayEuler));
+        }
+      } else {
+        // 无动作库：程序化站姿 + 呼吸
+        const breath = Math.sin(t * 1.6);
+        if (spine) spine.rotation.x = breath * 0.012;
+        if (chest) chest.rotation.x = breath * 0.018;
+        if (neck) {
+          neck.rotation.y = Math.sin(t * 0.37) * 0.05;
+          neck.rotation.z = Math.sin(t * 0.23) * 0.025;
+        }
+        if (lUpper) lUpper.rotation.z = 1.2 + breath * 0.015;
+        if (rUpper) rUpper.rotation.z = -1.2 - breath * 0.015;
       }
-      if (lUpper) lUpper.rotation.z = 1.2 + breath * 0.015;
-      if (rUpper) rUpper.rotation.z = -1.2 - breath * 0.015;
       // 视线
       lookTarget.position.lerp(lookGoal, 1 - Math.exp(-4 * dt));
     },

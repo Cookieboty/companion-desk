@@ -3,7 +3,9 @@ import React, { Suspense, lazy, useMemo } from 'react';
 import { MessageBubble } from '../MessageBubble/MessageBubble';
 import { ToolBar } from '../ToolBar';
 
+import { Credits } from './Credits';
 import { ModelPicker } from './ModelPicker';
+import { MotionMenu } from './MotionMenu';
 import styles from './style.module.css';
 
 import { isAiIpcReady } from '@/ai/env';
@@ -41,6 +43,8 @@ export const MascotHost: React.FC = () => {
       <MessageBubble />
       <ToolBar />
       <ModelPicker />
+      <MotionMenu />
+      <Credits />
       <div id="mascot-canvas" className={styles.stage} data-testid="mascot-canvas">
         {currentModel && (
           <Suspense fallback={null}>

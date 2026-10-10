@@ -1,0 +1,48 @@
+import { Button, Modal } from '@ig-live/ui';
+import React, { useEffect, useState } from 'react';
+
+import styles from './style.module.css';
+
+import { useMascot } from '@/contexts/MascotContext';
+import { mascotRegistry } from '@/mascot/MascotBackend';
+import { playMotionNow } from '@/mascot/mood';
+import { MOTION_LABELS } from '@/mascot/motion/library';
+
+/** 动作菜单：列出当前模型可播放的动作（工具栏右键 / 托盘同源）。 */
+export const MotionMenu: React.FC = () => {
+  const { state, dispatch } = useMascot();
+  const [motions, setMotions] = useState<string[]>(
+    () => mascotRegistry.current()?.capabilities().motions ?? [],
+  );
+  useEffect(() => mascotRegistry.subscribe((b) => setMotions(b?.capabilities().motions ?? [])), []);
+  if (state.panel !== 'motions') return null;
+  const close = () => dispatch({ type: 'SET_PANEL', payload: null });
+  const list = motions.filter((m) => m !== 'idle' && m !== 'talk');
+
+  return (
+    <Modal open onClose={close} title="动作" data-testid="motion-menu">
+      {list.length === 0 ? (
+        <p className={styles.credit}>动作库尚未加载。</p>
+      ) : (
+        <div className={styles.motionGrid}>
+          {list.map((m) => (
+            <Button
+              key={m}
+              size="sm"
+              variant="secondary"
+              data-testid={`motion-option-${m}`}
+              onClick={() => {
+                playMotionNow(m);
+                close();
+              }}
+            >
+              {MOTION_LABELS[m] ?? m}
+            </Button>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+export default MotionMenu;

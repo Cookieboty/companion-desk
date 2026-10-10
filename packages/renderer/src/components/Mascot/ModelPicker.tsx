@@ -1,4 +1,4 @@
-import { Badge, Modal } from '@ig-live/ui';
+import { Badge, Button, Modal } from '@ig-live/ui';
 import React from 'react';
 
 import styles from './style.module.css';
@@ -45,7 +45,17 @@ export const ModelPicker: React.FC = () => {
           );
         })}
       </div>
-      <p className={styles.credit}>内置角色均来自 pixiv VRoid 项目的 CC0 样例模型。</p>
+      <div className={styles.footer}>
+        <p className={styles.credit}>每个角色的作者与许可见「致谢」。</p>
+        <Button
+          size="sm"
+          variant="ghost"
+          data-testid="open-credits"
+          onClick={() => dispatch({ type: 'SET_PANEL', payload: 'credits' })}
+        >
+          致谢 / Credits
+        </Button>
+      </div>
     </Modal>
   );
 };

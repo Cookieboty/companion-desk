@@ -17,6 +17,11 @@
       "types": "./dist/seams/index.d.ts",
       "import": "./dist/seams/index.js",
       "require": "./dist/seams/index.cjs"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "import": "./dist/plugins/index.js",
+      "require": "./dist/plugins/index.cjs"
     }
   },
   "files": [

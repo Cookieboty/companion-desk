@@ -35,7 +35,8 @@ export default defineConfig([
     external: [...externals, 'react', 'react-dom'],
   },
   {
-    entry: { 'seams/index': 'src/seams/index.ts' },
+    // 主进程（Electron main / ai-runtime）装载的插件：不含渲染进程守卫
+    entry: { 'seams/index': 'src/seams/index.ts', 'plugins/index': 'src/plugins/index.ts' },
     format: ['esm', 'cjs'],
     platform: 'node',
     dts,
