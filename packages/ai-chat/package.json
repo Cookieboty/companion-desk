@@ -16,8 +16,6 @@
   "license": "MIT",
   "dependencies": {
     "@ig-live/ai-sdk-client": "workspace:*",
-    "highlight.js": "^11.12.0",
-    "marked": "^18.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-window": "^2.3.3"

@@ -25,6 +25,17 @@ export default defineConfig({
     emptyOutDir: true,
     assetsDir: 'assets',
     minify: 'terser',
+    rollupOptions: {
+      output: {
+        // 稳定的 vendor 拆分：react 常驻；three/VRM 仅 3D 模式懒加载时请求
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/[\\/](three|@pixiv|@react-three|three-stdlib|troika-[^\\/]+|maath|camera-controls)[\\/]/.test(id)) return 'vendor-three';
+          if (/[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
   },
 
   // CSS配置

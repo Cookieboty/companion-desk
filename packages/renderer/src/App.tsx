@@ -1,12 +1,14 @@
 import type { RenderMode, DisplayModeConfig, CustomImageInfo } from '@ig-live/types';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 
-import CustomImageManager from './components/CustomImageManager';
 import Live2dWidget from './components/Live2dWidget';
 import { ToolBar } from './components/ToolBar';
-import VirtualCharacter3D from './components/VirtualCharacter3D';
 import { Live2DProvider } from './contexts/Live2DContext';
 import type { ModelConfig } from './types/live2d';
+
+// 非默认模式按需加载：three / @react-three / VRM（~900KB）只在切到 3D 时下载解析
+const VirtualCharacter3D = lazy(() => import('./components/VirtualCharacter3D'));
+const CustomImageManager = lazy(() => import('./components/CustomImageManager'));
 
 const App: React.FC = () => {
   const [isElectron, setIsElectron] = useState(false);
@@ -158,17 +160,19 @@ const App: React.FC = () => {
             }}
           >
             {/* 3D角色 */}
-            <VirtualCharacter3D
-              enableMCPIntegration={true}
-              enableVoiceSync={true}
-              enableControls={process.env.NODE_ENV === 'development'}
-              transparent={true}
-              onReady={() => console.log('App: 3D角色就绪')}
-              onError={(error) => console.error('App: 3D角色错误:', error)}
-              style={{
-                transform: 'translateX(-40px)' /* 3D角色也稍微左移以配合布局 */,
-              }}
-            />
+            <Suspense fallback={null}>
+              <VirtualCharacter3D
+                enableMCPIntegration={true}
+                enableVoiceSync={true}
+                enableControls={process.env.NODE_ENV === 'development'}
+                transparent={true}
+                onReady={() => console.log('App: 3D角色就绪')}
+                onError={(error) => console.error('App: 3D角色错误:', error)}
+                style={{
+                  transform: 'translateX(-40px)' /* 3D角色也稍微左移以配合布局 */,
+                }}
+              />
+            </Suspense>
             {/* 独立的工具栏，在3D模式下也显示 */}
             <ToolBar />
           </div>
@@ -185,10 +189,12 @@ const App: React.FC = () => {
             }}
           >
             {/* 自定义图片管理器 */}
-            <CustomImageManager
-              onModeChange={handleModeChange}
-              onImageChange={handleCustomImageChange}
-            />
+            <Suspense fallback={null}>
+              <CustomImageManager
+                onModeChange={handleModeChange}
+                onImageChange={handleCustomImageChange}
+              />
+            </Suspense>
             {/* 独立的工具栏，在自定义图片模式下也显示 */}
             <ToolBar />
           </div>
