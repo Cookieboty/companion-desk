@@ -1,0 +1,48 @@
+# bundle-ig-mascot 默认 patch
+# 由 dsh 加载时合入 Cordis 配置图。仅在需要看板娘的 profile（waifu）中启用。
+#
+# 说明：本 bundle 依赖渲染进程 DOM（用于口型驱动/触摸事件桥接）；主进程 profile
+# （如 mcp-headless）请**不要**引用本 bundle。
+
+apiVersion: dsh/v1
+kind: Bundle
+metadata:
+  name: bundle-ig-mascot
+  version: 0.0.1
+  description: 看板娘渲染进程能力（Live2d seam / 触摸感官注入 / TTS 嘴型联动 / waifu 工具 & agent preset）
+
+patches:
+  - id: live2d.seam.default
+    plugin: Live2dSeamPlugin
+    config: {}
+
+  - id: live2d.touchInject.default
+    plugin: TouchInjectPlugin
+    config:
+      cooldownMs: 5000
+      channel: touch
+      # 若为 null，不做区域白名单
+      hitAreaWhitelist: null
+
+  - id: live2d.ttsLipSync.default
+    plugin: TtsLipSyncPlugin
+    config:
+      targetFps: 20
+      # 播放结束后自动归零 & 回到 idle
+      resetOnEnd: true
+      idleMotionGroup: idle
+
+  - id: live2d.waifu.tools.default
+    plugin: WaifuToolsPlugin
+    config:
+      # 自动确认（进护栏白名单），不弹用户确认框
+      autoConfirm: true
+
+  - id: live2d.waifu.preset.default
+    plugin: WaifuAgentPresetPlugin
+    config:
+      presetName: waifu
+      # 除 waifu 专属工具外，暴露的 P2 内置工具
+      builtinTools: [time_now, random, echo]
+      # 明确要断掉的能力
+      disable: [mcp, http_get_readonly]

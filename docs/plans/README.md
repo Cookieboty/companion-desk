@@ -49,7 +49,7 @@ L5                   ▼
 | P1 | L0 | dsh 基座接入 | [P1-dsh-kernel-adoption.md](P1-dsh-kernel-adoption.md) | P0 |
 | P2 | L0.5 | Bundle 通用能力 | [P2-bundle-ig-base.md](P2-bundle-ig-base.md) | P1 |
 | P3 | L0.5 | Bundle Electron 能力 | [P3-bundle-ig-electron-caps.md](P3-bundle-ig-electron-caps.md) | P2 |
-| P4 | L0.5 | Bundle 看板娘能力 | [P4-bundle-ig-live2d.md](P4-bundle-ig-live2d.md) | P2 |
+| P4 | L0.5 | Bundle 看板娘能力 | [P4-bundle-ig-live2d.md](P4-bundle-ig-live2d.md)（现为 bundle-ig-mascot） | P2 |
 | P5 | L1 | ai-sdk 业务门面 | [P5-ai-sdk-facade.md](P5-ai-sdk-facade.md) | P2 |
 | P6 | L2 | ai-runtime 主进程运行时 | [P6-ai-runtime.md](P6-ai-runtime.md) | P3 + P5 |
 | P7 | L3 | ai-sdk-client 渲染薄层 | [P7-ai-sdk-client.md](P7-ai-sdk-client.md) | P5 + P6 |

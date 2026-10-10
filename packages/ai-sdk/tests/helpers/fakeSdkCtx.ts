@@ -1,7 +1,7 @@
 /**
  * fakeSdkCtx —— 单测用的最小 SdkContext。
  *
- * 兼容与 [`fakeCtx`](file:///../../../bundle-ig-live2d/tests/helpers/fakeCtx.ts) 一致的风格：
+ * 兼容与 [`fakeCtx`](file:///../../../bundle-ig-mascot/tests/helpers/fakeCtx.ts) 一致的风格：
  * - `provide` / `inject`：内存 Map，按 ServiceKey.key 定位
  * - `on` / `emit`：内部维护 handler set，`triggerEvent(evt, payload)` 同步串行触发
  */

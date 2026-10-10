@@ -5,7 +5,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate:models": "node scripts/generate-costume-model-list.cjs",
     "prebuild": "npm run generate:models",
     "predev": "npm run generate:models",
     "dev": "turbo run dev",
@@ -52,7 +51,7 @@
     "@ig-live/ai-sdk-client": "workspace:*",
     "@ig-live/bundle-ig-base": "workspace:*",
     "@ig-live/bundle-ig-electron-caps": "workspace:*",
-    "@ig-live/bundle-ig-live2d": "workspace:*",
+    "@ig-live/bundle-ig-mascot": "workspace:*",
     "@playwright/test": "^1.64.0",
     "@types/node": "^24.13.3",
     "@typescript-eslint/eslint-plugin": "^8.71.1",

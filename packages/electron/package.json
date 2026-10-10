@@ -45,7 +45,7 @@
     "@ig-live/ai-sdk-client": "workspace:*",
     "@ig-live/bundle-ig-base": "workspace:*",
     "@ig-live/bundle-ig-electron-caps": "workspace:*",
-    "@ig-live/bundle-ig-live2d": "workspace:*",
+    "@ig-live/bundle-ig-mascot": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "ai": "^7.0.136",
     "node-global-key-listener": "^0.3.0"

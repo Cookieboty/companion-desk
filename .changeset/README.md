@@ -23,7 +23,7 @@
 - `@ig-live/types`
 - `@ig-live/bundle-ig-base`
 - `@ig-live/bundle-ig-electron-caps`
-- `@ig-live/bundle-ig-live2d`
+- `@ig-live/bundle-ig-mascot`
 
 ## 日常流程
 
