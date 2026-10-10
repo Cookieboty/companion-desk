@@ -79,7 +79,7 @@ const free = (port) =>
   new Promise((resolve) => {
     const s = net.createServer();
     s.once('error', () => resolve(false));
-    s.listen(port, '127.0.0.1', () => s.close(() => resolve(true)));
+    s.listen(port, () => s.close(() => resolve(true))); // 双栈（:: 同时覆盖 IPv4/IPv6）
   });
 for (const [port, what] of [
   [3000, 'mascot renderer dev server'],

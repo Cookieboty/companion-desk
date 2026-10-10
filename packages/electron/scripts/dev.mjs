@@ -40,12 +40,14 @@ const start = (cmd, args, env) => {
 start(node, [tsc, '-w', '-p', 'tsconfig.json', '--preserveWatchOutput']);
 start(node, [path.join(root, 'scripts/bundle-preload.mjs'), '--watch']);
 
-const portOpen = (port) =>
+// Vite 监听 `localhost`，在 Node >= 17 / macOS 上可能只绑定 ::1，所以 IPv4 与 IPv6 都要探测
+const probe = (port, host) =>
   new Promise((resolve) => {
-    const s = net.connect({ port, host: '127.0.0.1' });
+    const s = net.connect({ port, host });
     s.once('connect', () => (s.destroy(), resolve(true)));
     s.once('error', () => resolve(false));
   });
+const portOpen = async (port) => (await probe(port, '127.0.0.1')) || (await probe(port, '::1'));
 for (const { port, what } of PORTS) {
   const t0 = Date.now();
   while (!(await portOpen(port))) {
