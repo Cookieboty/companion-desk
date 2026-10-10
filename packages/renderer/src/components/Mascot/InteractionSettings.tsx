@@ -21,6 +21,11 @@ const ITEMS: Array<{ key: keyof MascotInteractionConfig; label: string; hint: st
   { key: 'wander', label: '偶尔散步', hint: '闲着时沿屏幕底边走一走（约每 20~60 秒一次）。' },
   { key: 'reactions', label: '触摸反应', hint: '摸头、戳脸、点击、双击时的表情、动作与台词。' },
   { key: 'globalLook', label: '视线跟随全局鼠标', hint: '鼠标在窗口外时也看向它。' },
+  {
+    key: 'bubbleReplies',
+    label: '气泡显示 AI 回复',
+    hint: '对话回复完成后在气泡里显示前一两句，点「查看全文」打开对话窗口。',
+  },
 ];
 
 /** 互动设置面板（托盘 / 角色选择器 → 互动设置） */

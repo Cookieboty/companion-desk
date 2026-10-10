@@ -8,6 +8,7 @@ export const DEFAULT_INTERACTION: MascotInteractionConfig = {
   wander: false,
   reactions: true,
   globalLook: true,
+  bubbleReplies: true,
 };
 
 type Listener = (cfg: MascotInteractionConfig) => void;

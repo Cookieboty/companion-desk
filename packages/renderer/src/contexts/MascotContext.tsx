@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import type { ReactNode } from 'react';
 
+import { lipSyncStore } from '@/ai/lipSyncStore';
 import {
   loadCatalog,
   pickModel,
@@ -26,6 +27,8 @@ export interface MascotConfig {
 export interface MascotState {
   currentMessage: string | null;
   messagePriority: number;
+  /** 气泡里显示「查看全文」（AI 回复被截短时） */
+  messageMore?: boolean;
   dragEnabled: boolean;
   modelList: MascotModel[];
   /** 当前模型 name（model-list.json 中的 name） */
@@ -36,7 +39,10 @@ export interface MascotState {
 }
 
 export type MascotAction =
-  | { type: 'SET_MESSAGE'; payload: { text: string; priority: number; timeout?: number } }
+  | {
+      type: 'SET_MESSAGE';
+      payload: { text: string; priority: number; timeout?: number; more?: boolean };
+    }
   | { type: 'CLEAR_MESSAGE' }
   | { type: 'TOGGLE_DRAG'; payload: boolean }
   | { type: 'SET_MODEL_LIST'; payload: MascotModel[] }
@@ -62,11 +68,12 @@ export function mascotReducer(state: MascotState, action: MascotAction): MascotS
           ...state,
           currentMessage: action.payload.text,
           messagePriority: action.payload.priority,
+          messageMore: action.payload.more === true,
         };
       }
       return state;
     case 'CLEAR_MESSAGE':
-      return { ...state, currentMessage: null, messagePriority: 0 };
+      return { ...state, currentMessage: null, messagePriority: 0, messageMore: false };
     case 'TOGGLE_DRAG':
       return { ...state, dragEnabled: action.payload };
     case 'SET_MODEL_LIST':
@@ -101,6 +108,11 @@ interface MascotContextType {
   selectModel: (name: string) => void;
 }
 
+let lastSpokeAt = 0;
+lipSyncStore.subscribe((rms) => {
+  if (rms > 0.02) lastSpokeAt = Date.now();
+});
+
 const MascotContext = createContext<MascotContextType | undefined>(undefined);
 
 export const MascotProvider: React.FC<{ children: ReactNode; config: MascotConfig }> = ({
@@ -121,12 +133,22 @@ export const MascotProvider: React.FC<{ children: ReactNode; config: MascotConfi
     }
     rawDispatch(action);
     if (action.type === 'SET_MESSAGE') {
-      timerRef.current = setTimeout(
-        () => rawDispatch({ type: 'CLEAR_MESSAGE' }),
-        action.payload.timeout || 3000,
-      );
+      // TTS 正在说话（口型有能量）时不收起气泡，说完 1.5s 后再收
+      const expire = () => {
+        if (Date.now() - lastSpokeAt < 1500) {
+          timerRef.current = setTimeout(expire, 400);
+          return;
+        }
+        rawDispatch({ type: 'CLEAR_MESSAGE' });
+      };
+      timerRef.current = setTimeout(expire, action.payload.timeout || 3000);
     }
   }, []);
+
+  // e2e / 调试：当前模型名
+  useEffect(() => {
+    document.documentElement.dataset.mascotModel = state.modelName ?? '';
+  }, [state.modelName]);
 
   // 外部（托盘 / e2e）可通过 window 事件打开角色选择器
   useEffect(() => {

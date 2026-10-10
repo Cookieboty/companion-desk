@@ -13,6 +13,7 @@ import {
 } from './bubbleReducer';
 
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
+import { interactionSettings } from '@/mascot/interaction/settings';
 
 const WaifuAgentBubbleBridge: FC = () => {
   const { lastStep } = useAgent();
@@ -23,10 +24,13 @@ const WaifuAgentBubbleBridge: FC = () => {
   const emit = useCallback(
     (directive: BubbleDirective | null) => {
       if (!directive) return;
+      if (directive.reply && !interactionSettings.get().bubbleReplies) return;
       const now = Date.now();
       if (shouldSuppress(directive, dedupeRef.current, now)) return;
       dedupeRef.current = { lastText: directive.text, lastAt: now };
-      showMessage(directive.text, directive.timeout, directive.priority);
+      showMessage(directive.text, directive.timeout, directive.priority, false, {
+        more: directive.more,
+      });
     },
     [showMessage],
   );
