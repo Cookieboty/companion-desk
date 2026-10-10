@@ -242,8 +242,13 @@ test.describe('E9 · mascot desktop interaction', () => {
     xdo('mousemove', String(wx + 200), String(wy + 200)); // 面板是 UI → 命中
     await page.screenshot({ path: shots ? join(shots, '06-settings.png') : undefined });
     await page.locator('[data-testid="interaction-wander"]').click();
-    await page.locator('[data-testid="interaction-wander-now"]').click();
-    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 5_000 }).toBe('walking');
+    // 「立即走一走」在角色还没落稳（下落 / 弹跳）时会被忽略；慢 CI 上重试点击直到开始行走
+    await expect(async () => {
+      await page.locator('[data-testid="interaction-wander-now"]').click();
+      await expect
+        .poll(async () => (await snap(page)).body.mode, { timeout: 2_500, intervals: [100] })
+        .toBe('walking');
+    }).toPass({ timeout: 20_000 });
     await page.keyboard.press('Escape');
     for (let i = 0; i < 6; i += 1) {
       grabScreen(`07-walk-${i}`, screenSize.width, screenSize.height);
