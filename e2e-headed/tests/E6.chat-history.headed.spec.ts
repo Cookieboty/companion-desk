@@ -109,25 +109,17 @@ test.describe('E6 · real app · AI chat history', () => {
     main.on('console', (m) => diag.push(`[console:${m.type()}] ${m.text()}`));
     main.on('pageerror', (e) => diag.push(`[pageerror] ${e.message}`));
     main.on('crash', () => diag.push('[crash] renderer crashed'));
-    const hasPreload = () =>
-      main.waitForFunction(
+    // 首启偶发「页面加载了但 preload 未执行」由应用内 preloadGuard 自动恢复（reload），
+    // 这里只需给足等待时间；失败时打印主进程日志便于定位
+    try {
+      await main.waitForFunction(
         () => typeof (window as unknown as { electronAPI?: unknown }).electronAPI !== 'undefined',
         undefined,
         { timeout: 20_000 },
       );
-    try {
-      await hasPreload();
-    } catch {
-      // CI（xvfb）上偶发：紧接 E5 启动时首个渲染进程空白、preload 未注入；记录现场后重载一次
-      const state = await main
-        .evaluate(
-          () =>
-            `${document.readyState} ${location.href} aiIPC=${typeof (window as unknown as { aiIPC?: unknown }).aiIPC}`,
-        )
-        .catch((e: unknown) => `evaluate failed: ${String(e)}`);
-      console.warn(`[E6] electronAPI missing (${state}); reloading once\n${diag.join('\n')}`);
-      await main.reload();
-      await hasPreload();
+    } catch (e) {
+      console.warn(`[E6] electronAPI missing\n${diag.join('\n')}`);
+      throw e;
     }
 
     const chatWindow = app.waitForEvent('window', { timeout: 20_000 });
