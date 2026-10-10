@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 import type { MotionClipData, MotionLibrary } from './library';
 
-const FADE = 0.35;
+const FADE = 0.5;
 
 export interface MotionControllerOptions {
   /** 随机待机小动作的间隔（秒）[min, max] */
