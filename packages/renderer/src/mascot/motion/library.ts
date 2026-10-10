@@ -42,6 +42,8 @@ export const MOTION_LABELS: Record<string, string> = {
   look_around: '张望',
   interact: '伸手',
   flinch: '受惊',
+  poke: '被戳',
+  walk: '散步',
 };
 
 export function parseMotionLibrary(raw: unknown): MotionLibrary {

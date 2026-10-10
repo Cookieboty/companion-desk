@@ -67,6 +67,9 @@ const UAL_CLIPS = [
   { src: ['Jump_Start', 'Jump_Loop', 'Jump_Land'], name: 'jump', loop: false, tags: ['happy'] },
   { src: ['Interact'], name: 'interact', loop: false, tags: ['gesture'] },
   { src: ['Hit_Head'], name: 'flinch', loop: false, tags: ['surprised'] },
+  { src: ['Hit_Chest'], name: 'poke', loop: false, tags: ['surprised'] },
+  // 桌面漫步：原地循环（去掉根运动，窗口本身在主进程里移动）
+  { src: ['Walk_Loop'], name: 'walk', loop: true, tags: ['locomotion'], inPlace: true },
 ];
 
 // ---------------- glTF 读取 ----------------
@@ -204,6 +207,10 @@ function retargetUal(gltfFile) {
         if (flip) {
           p.x = -p.x;
           p.z = -p.z;
+        }
+        if (spec.inPlace) {
+          p.x = 0;
+          p.z = 0;
         }
         hipsPos.push(r4(p.x), r4(p.y), r4(p.z));
       }
