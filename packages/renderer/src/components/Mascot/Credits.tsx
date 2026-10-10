@@ -16,6 +16,7 @@ interface CreditRow {
   source?: string;
   note?: string;
   termsUrl?: string;
+  licenseFileUrl?: string;
 }
 
 /** 署名要求（CC-BY 等）必须展示作者；CC0 也一并列出以示感谢。 */
@@ -27,6 +28,7 @@ export function collectCredits(
     license: string;
     source?: string;
     licenseTerms?: LicenseTermsView;
+    licenseFileUrl?: string;
   }>,
   motionSources: Array<{ source: string; license: string }>,
 ): CreditRow[] {
@@ -38,6 +40,7 @@ export function collectCredits(
     source: m.source,
     note: conditionsText(m.licenseTerms),
     termsUrl: m.licenseTerms?.url,
+    licenseFileUrl: m.licenseFileUrl,
   }));
   const ual = motionSources.filter((s) => s.source.startsWith('Quaternius'));
   if (ual.length) {
@@ -110,6 +113,9 @@ export const Credits: React.FC = () => {
             </div>
             {r.source && <div className={styles.creditSource}>{r.source}</div>}
             {r.termsUrl && <div className={styles.creditSource}>条款：{r.termsUrl}</div>}
+            {r.licenseFileUrl && (
+              <div className={styles.creditSource}>许可文件：{r.licenseFileUrl}</div>
+            )}
           </li>
         ))}
       </ul>

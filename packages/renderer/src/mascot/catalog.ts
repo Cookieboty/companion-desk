@@ -24,6 +24,7 @@ export interface MascotModel {
   origin?: ModelOrigin;
   credit?: string;
   licenseTerms?: LicenseTermsView;
+  licenseFileUrl?: string;
   version?: string;
   config?: ModelConfig;
   meta?: VrmMetaSummary;
@@ -44,6 +45,7 @@ export function fromRegistry(m: RegistryModel): MascotModel {
     origin: m.origin,
     credit: m.credit,
     licenseTerms: m.licenseTerms,
+    licenseFileUrl: m.licenseFileUrl,
     version: m.version,
     config: m.config,
     meta: m.meta,

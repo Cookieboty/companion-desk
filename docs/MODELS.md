@@ -38,6 +38,7 @@ Companion Desk 的角色来自三处，由主进程 `packages/electron/src/model
       "version": "1.0.0", // semver，变大时客户端提示「更新」
       "vrmVersion": "0.x",
       "tags": ["vroid"],
+      // 可选 "licenseFileUrl": 作者原始许可文件（如 Shapell 的 LICENSE.txt），显示在「致谢」页
       "credit": "Darkness Shibu — VRoid Studio sample model by pixiv …",
       "vrm": {
         "urls": [

@@ -68,6 +68,7 @@ export interface RegistryModel {
   source?: string;
   credit?: string;
   licenseTerms?: LicenseTermsView;
+  licenseFileUrl?: string;
   version?: string;
   vrmVersion?: string;
   tags?: string[];
@@ -85,6 +86,7 @@ export interface StoreEntryView {
   source: string;
   credit: string;
   licenseTerms?: LicenseTermsView;
+  licenseFileUrl?: string;
   version: string;
   vrmVersion: string;
   tags: string[];
