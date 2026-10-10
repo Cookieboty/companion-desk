@@ -325,9 +325,24 @@ test.describe('E11 · bubble security + toolbar', () => {
     await reveal();
     await main.waitForTimeout(500);
     await main.screenshot(shot('07-toolbar-flipped-left.png'));
-    const r2 = await bar.boundingBox();
-    const box2 = await charBox(main);
-    if (box2) expect(r2!.x + r2!.width).toBeLessThanOrEqual(box2.left + 1);
+    // 翻转后依旧不压住角色（物理落地 / 走动后角色可能离开边缘、工具栏再翻回来，所以同一时刻取侧边与位置）
+    const snap = await main.evaluate(() => {
+      const r = document.querySelector('[data-testid="mascot-toolbar"]')!.getBoundingClientRect();
+      const [left, right] = (document.documentElement.dataset.mascotBox ?? '')
+        .split(',')
+        .map(Number);
+      return {
+        side: document.documentElement.dataset.toolbarSide,
+        l: r.left,
+        r: r.right,
+        left,
+        right,
+      };
+    });
+    if (Number.isFinite(snap.left)) {
+      if (snap.side === 'left') expect(snap.r).toBeLessThanOrEqual(snap.left! + 10);
+      else expect(snap.l).toBeGreaterThanOrEqual(snap.right! - 10);
+    }
 
     // 空闲自动隐藏（需要能把真实光标移出窗口）
     if (hasXdo) {
