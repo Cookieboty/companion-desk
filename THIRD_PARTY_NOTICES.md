@@ -23,6 +23,13 @@ Removed in this release for licensing reasons: the proprietary Live2D Cubism 2 r
 the Cubism 2 framework code, ~58 Live2D models of unverified provenance, the GPL-3.0 `waifu-tips.json`
 and keyword voice clips of unknown licence.
 
+## Desktop file tools
+
+| Component | Licence | Notes                                                                                   |
+| --------- | ------- | --------------------------------------------------------------------------------------- |
+| `unpdf`   | MIT     | PDF text extraction in a sandboxed utility process; bundles Mozilla pdf.js (Apache-2.0) |
+| `fflate`  | MIT     | Unzips `.docx` to read `word/document.xml`                                              |
+
 ## Reviewed weak-copyleft dependencies
 
 | Package                               | Licence           | Usage                                                                            |
@@ -692,6 +699,7 @@ and keyword voice clips of unknown licence.
 | `unicode-properties`                                      | 1.4.1                | MIT                       |
 | `unicode-trie`                                            | 2.0.0                | MIT                       |
 | `unicorn-magic`                                           | 0.3.0                | MIT                       |
+| `unpdf`                                                   | 1.8.1                | MIT                       |
 | `unpipe`                                                  | 1.0.0                | MIT                       |
 | `use-sync-external-store`                                 | 1.5.0                | MIT                       |
 | `utility-types`                                           | 3.11.0               | MIT                       |
