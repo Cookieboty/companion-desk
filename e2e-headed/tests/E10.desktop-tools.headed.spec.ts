@@ -260,7 +260,9 @@ test.describe('E10 · real app · desktop file tools', () => {
 
       // ---- 4. 破坏性操作必须在对话框里确认 ----
       const target = join(docs, 'trash-me.txt');
-      await chat.fill('textarea', `CALL fs_trash ${JSON.stringify({ path: target })}`);
+      await chat.fill('textarea', `CALL fs_trash ${JSON.stringify({ path: target })}`, {
+        timeout: 60_000, // 上一轮回复在慢机器上可能还没结束（输入框暂时不可编辑）
+      });
       await chat.press('textarea', 'Enter');
       const bubble = main.locator('[data-testid="desktop-confirm-bubble"]');
       await expect(bubble).toBeVisible({ timeout: 15_000 });
