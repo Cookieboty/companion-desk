@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import {
   providerClient,
   providerClientAvailable,
+  selectableModels,
   selectableProviders,
   type ProviderState,
 } from '../../services/providerClient';
@@ -35,16 +36,19 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
 
   if (!available || !state) return null;
   const options = selectableProviders(state);
+  const current = state.effectiveProviderId;
+  const models = selectableModels(state, current);
+  const model = state.effectiveModel ?? models[0] ?? '';
   return (
     <span className={className} data-testid="provider-switcher" style={SWITCHER_STYLE}>
-      Provider:
       <Select
         size="sm"
-        style={{ width: 'auto', maxWidth: 220 }}
+        style={{ width: 'auto', maxWidth: 200 }}
         data-testid="provider-switch"
-        value={state.effectiveProviderId ?? ''}
+        aria-label="供应商"
+        value={current ?? ''}
         disabled={Boolean(state.overrideId)}
-        title={state.overrideId ? '已被 COMPANION_PROVIDER 锁定' : '切换 AI provider'}
+        title={state.overrideId ? '已被 COMPANION_PROVIDER 锁定' : '切换供应商（立即生效）'}
         onChange={(e) =>
           void providerClient.setActive(e.target.value || null).catch(() => undefined)
         }
@@ -56,11 +60,30 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
           </option>
         ))}
       </Select>
+      <Select
+        size="sm"
+        style={{ width: 'auto', maxWidth: 220 }}
+        data-testid="model-switch"
+        aria-label="模型"
+        title="切换模型（立即生效）"
+        value={model}
+        disabled={!current || Boolean(state.overrideId) || models.length === 0}
+        onChange={(e) =>
+          current && void providerClient.setActive(current, e.target.value).catch(() => undefined)
+        }
+      >
+        {models.length === 0 && <option value="">（默认）</option>}
+        {models.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </Select>
       <IconButton
         size="sm"
         data-testid="open-provider-panel"
         onClick={onManage}
-        label="Provider 与 Token 管理"
+        label="供应商与 Token 管理"
         icon="🔑"
       />
     </span>

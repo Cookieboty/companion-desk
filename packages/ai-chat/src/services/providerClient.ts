@@ -4,21 +4,63 @@
  * 安全：主进程只回传掩码视图；明文 key 只在 upsert / addKey / rotateKey / testDraft
  * 的参数里单向发出，组件提交后立即清空输入框，不写 localStorage。
  */
-export type Backend = 'openai-compatible' | 'anthropic' | 'google';
+export type Protocol = 'openai-chat' | 'openai-responses' | 'anthropic';
 export type ProviderRole = 'chat' | 'agent-tools' | 'summary';
+export type PresetCategory = 'custom' | 'vendor' | 'platform';
+
+export const PROTOCOL_LABELS: Record<Protocol, string> = {
+  'openai-chat': 'OpenAI Chat Completions',
+  'openai-responses': 'OpenAI Responses',
+  anthropic: 'Anthropic Messages',
+};
+
+export const CATEGORY_LABELS: Record<PresetCategory, string> = {
+  custom: '自定义配置',
+  vendor: '模型厂商',
+  platform: '第三方平台',
+};
 
 export interface ProviderPreset {
   id: string;
   name: string;
-  backend: Backend;
+  category: PresetCategory;
+  protocol: Protocol;
   baseURL: string;
   defaultModel: string;
   models: string[];
   requiresApiKey: boolean;
   websiteUrl?: string;
   apiKeyUrl?: string;
-  envKey?: string;
-  category: string;
+  keywords?: string[];
+  hint?: string;
+}
+
+export interface FetchedModel {
+  id: string;
+  name?: string;
+  ownedBy?: string;
+}
+
+export interface ModelMapping {
+  from: string;
+  to: string;
+}
+
+export interface ProviderConfig {
+  name: string;
+  note?: string;
+  websiteUrl?: string;
+  protocol: Protocol;
+  baseURL: string;
+  fullUrl: boolean;
+  defaultModel: string;
+  models: string[];
+  fetchedModels?: FetchedModel[];
+  fetchedAt?: number;
+  modelMap?: ModelMapping[];
+  headers?: Record<string, string>;
+  userAgent?: string;
+  thinking?: boolean;
 }
 
 export interface ProviderUsage {
@@ -40,14 +82,9 @@ export interface KeyView {
   lastError?: string;
 }
 
-export interface ProviderView {
+export interface ProviderView extends ProviderConfig {
   id: string;
   presetId: string;
-  name: string;
-  backend: Backend;
-  baseURL: string;
-  defaultModel: string;
-  headers?: Record<string, string>;
   enabled: boolean;
   active: boolean;
   keys: KeyView[];
@@ -58,6 +95,7 @@ export interface ProviderView {
 export interface EnvProviderView {
   id: string;
   name: string;
+  protocol: Protocol;
   baseURL?: string;
   defaultModel?: string;
   hasKey: boolean;
@@ -72,25 +110,30 @@ export interface ProviderState {
   envProviders: EnvProviderView[];
   activeProviderId?: string;
   effectiveProviderId?: string;
+  effectiveModel?: string;
   routes: Partial<Record<ProviderRole, { providerId: string; model?: string }>>;
   roles: ProviderRole[];
   encryption: 'safeStorage' | 'none';
   overrideId?: string;
 }
 
-export interface ProviderInput {
+export interface ProviderInput extends Partial<ProviderConfig> {
   id?: string;
   presetId?: string;
-  name?: string;
-  backend?: Backend;
-  baseURL?: string;
-  defaultModel?: string;
-  headers?: Record<string, string>;
   enabled?: boolean;
   apiKey?: string;
 }
 
+export interface FetchModelsResult {
+  ok: boolean;
+  latencyMs: number;
+  url: string;
+  models: FetchedModel[];
+  error?: string;
+}
+
 export interface TestResult {
+  endpoint?: string;
   ok: boolean;
   latencyMs: number;
   model?: string;
@@ -137,11 +180,11 @@ export function effectiveProviderLabel(): string | undefined {
   const s = lastState;
   if (!s?.effectiveProviderId) return undefined;
   const id = s.effectiveProviderId;
-  return (
+  const name =
     s.providers.find((p) => p.id === id)?.name ??
     s.envProviders.find((e) => e.id === id)?.name ??
-    id
-  );
+    id;
+  return s.effectiveModel ? `${name} · ${s.effectiveModel}` : name;
 }
 
 export const providerClient = {
@@ -149,7 +192,11 @@ export const providerClient = {
   state: () => call<ProviderState>('state').then(remember),
   upsert: (input: ProviderInput) => call<ProviderView>('upsert', input),
   remove: (id: string) => call<void>('remove', id),
-  setActive: (id: string | null) => call<ProviderState>('setActive', id).then(remember),
+  setActive: (id: string | null, model?: string) =>
+    call<ProviderState>('setActive', id, model).then(remember),
+  fetchModels: (id: string) => call<FetchModelsResult>('fetchModels', id),
+  fetchModelsDraft: (input: ProviderInput) => call<FetchModelsResult>('fetchModelsDraft', input),
+  setModels: (id: string, models: string[]) => call<ProviderView>('setModels', id, models),
   setRoute: (role: ProviderRole, binding: { providerId: string; model?: string } | null) =>
     call<ProviderState>('setRoute', role, binding),
   addKey: (id: string, key: string, label?: string) => call<ProviderView>('addKey', id, key, label),
@@ -182,10 +229,30 @@ export function selectableProviders(
     ...s.providers
       .filter((p) => p.enabled)
       .map((p) => ({ id: p.id, label: p.name, disabled: false })),
-    ...s.envProviders.map((e) => ({
-      id: e.id,
-      label: `${e.name}（环境变量${e.hasKey ? '' : '，无 key'}）`,
-      disabled: !e.hasKey,
-    })),
+    // 没配 key 的环境变量 provider 不可用，不在选择器里占位
+    ...s.envProviders
+      .filter((e) => e.hasKey)
+      .map((e) => ({ id: e.id, label: e.name, disabled: false })),
   ];
+}
+
+/** 某 provider 在模型选择器里可选的模型：已启用的 → 否则拉取到的 → 否则默认模型。 */
+export function selectableModels(s: ProviderState, providerId: string | undefined): string[] {
+  if (!providerId) return [];
+  const p = s.providers.find((x) => x.id === providerId);
+  if (p) {
+    const list = p.models.length ? p.models : (p.fetchedModels ?? []).map((m) => m.id);
+    return [...new Set([p.defaultModel, ...list].filter(Boolean))];
+  }
+  const e = s.envProviders.find((x) => x.id === providerId);
+  return e?.defaultModel ? [e.defaultModel] : [];
+}
+
+/** 端点预览（与主进程 protocol.ts 保持一致） */
+export function endpointPreview(protocol: Protocol, baseURL: string, fullUrl: boolean): string {
+  const base = baseURL.trim().replace(/\/+$/, '');
+  if (!base) return '';
+  if (fullUrl) return base;
+  if (protocol === 'anthropic') return `${/\/v1$/i.test(base) ? base : `${base}/v1`}/messages`;
+  return `${base}${protocol === 'openai-responses' ? '/responses' : '/chat/completions'}`;
 }
