@@ -42,10 +42,10 @@ dsh 的每次启动都会按下面顺序把补丁层"依次叠加"到空的 entr
 
 ## 本地使用
 
-- **诊断**：`pnpm run doctor waifu` / `pnpm run doctor chat-only` / `pnpm run doctor mcp-headless`
+- **诊断**：`pnpm run doctor:dsh waifu` / `pnpm run doctor:dsh chat-only` / `pnpm run doctor:dsh mcp-headless`
   - 打印装配后的 entry list（YAML dump）、skipped-patch 警告
   - 退出码非零表示装配失败（缺 bundle、patch 引用不存在的 id 等）
-  - > 注意：不要写成 `pnpm doctor <name>`，pnpm 会把它当成 `pnpm doctor` 内置命令；必须显式 `pnpm run doctor <name>` 或直接 `npx tsx scripts/dsh-doctor.ts <name>`。
+  - > 注意：不要写成 `pnpm doctor:dsh <name>`，pnpm 会把它当成 `pnpm doctor` 内置命令；必须显式 `pnpm run doctor:dsh <name>` 或直接 `npx tsx scripts/dsh-doctor.ts <name>`。
 - **冒烟**：`pnpm run test:root`
   - 用三份 profile 分别走一遍 `loadProfile → composeEntries`，断言 `entries.length > 50` 且关键 id（`llm` / `session` / `agent` / `tools` / `system-prompt` / `agent-loop`）存在
   - 同时验证 `loadProfile('does-not-exist')` 会抛带 `dsh-smoke: profile ... does not exist` 前缀的错
@@ -59,7 +59,7 @@ dsh 的每次启动都会按下面顺序把补丁层"依次叠加"到空的 entr
 3. **同步 profile package.json**：本目录下三份 `package.json` 里的 `@deepseek-ai/dsh-base` 版本也要同步
 4. **同步 bundle peer**：`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']` 同步
 5. **重装依赖**：`pnpm install`（会重新生成 `pnpm-lock.yaml`）
-6. **本地冒烟**：`pnpm run doctor waifu && pnpm run doctor chat-only && pnpm run doctor mcp-headless && pnpm typecheck && pnpm run test:root`（若三份 profile 都 `86+ entries composed, no warnings` 即通过）
+6. **本地冒烟**：`pnpm run doctor:dsh waifu && pnpm run doctor:dsh chat-only && pnpm run doctor:dsh mcp-headless && pnpm typecheck && pnpm run test:root`（若三份 profile 都 `86+ entries composed, no warnings` 即通过）
 7. **对照 CHANGELOG**：查看 [deepseek-harness releases](https://github.com/deepseek-ai/deepseek-harness/releases)，判断本目录三份 `cordis.patch.yml` 是否需要迁移（id/schema 是否有 break）
 8. **端到端**：等 P9 到位后跑 `pnpm test:e2e`
 9. **合入 main**：合入后打 tag `deps/dsh@<new-version>` 便于回退

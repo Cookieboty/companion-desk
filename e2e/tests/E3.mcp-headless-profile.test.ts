@@ -5,7 +5,7 @@
  * - 复用 dsh-app-boot 的 `loadProfile` + `composeEntries` 对三个 profile
  *   （waifu / chat-only / mcp-headless）各跑一遍装配；
  * - 断言 entries 数量合理、必备 entry 存在、无 skipped warnings；
- * - 对 `mcp-headless` 增加 stdout 校验：`pnpm doctor mcp-headless` 输出 YAML 段落
+ * - 对 `mcp-headless` 增加 stdout 校验：`pnpm doctor:dsh mcp-headless` 输出 YAML 段落
  *   合法，且末尾出现 `ok: N entries composed, no warnings`。
  *
  * 与 scripts/__tests__/dsh-smoke.test.ts 的差异：本用例站在"E2E 冒烟"视角，
@@ -50,7 +50,7 @@ describe('E3 · 三 profile headless 装配 + mcp-headless doctor 输出', () =>
   }
 
   it('mcp-headless · pnpm doctor 输出合法 entries 段落，且以 "ok" 收尾', () => {
-    const stdout = execFileSync('pnpm', ['run', 'doctor', 'mcp-headless'], {
+    const stdout = execFileSync('pnpm', ['run', 'doctor:dsh', 'mcp-headless'], {
       cwd: projectRoot,
       encoding: 'utf8',
       env: { ...process.env, FORCE_COLOR: '0' },

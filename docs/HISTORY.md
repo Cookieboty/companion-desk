@@ -20,7 +20,7 @@ still in git history (`git log --diff-filter=D --stat -- <path>`).
 ## dsh harness → Vercel AI SDK
 
 - The AI runtime moved from the dsh kernel to the Vercel AI SDK. dsh is now an **optional**
-  dependency (`optionalDependencies`, `pnpm doctor:dsh`); profiles under `profiles/` remain for it.
+  dependency (`optionalDependencies`, `pnpm run doctor:dsh`); profiles under `profiles/` remain for it.
 - `scripts/migrate-config.ts`, `migrate-history.ts`, `migrate-user-profile.ts` (+ `scripts/lib/migrate`)
   — one-shot converters from the old app's config/history to dsh formats. Obsolete: the app migrates
   legacy userData itself on first launch, and providers are managed in the provider panel.
