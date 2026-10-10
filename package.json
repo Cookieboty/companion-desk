@@ -5,8 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "turbo run dev",
-    "start": "turbo run dev --parallel",
+    "dev": "node scripts/doctor.mjs --quick && turbo run dev --filter=@ig-live/electron --filter=@ig-live/renderer --filter=@ig-live/ai-chat --ui=stream",
+    "dev:libs": "turbo run dev --filter=./packages/* --filter=!@ig-live/electron --filter=!@ig-live/renderer --filter=!@ig-live/ai-chat --concurrency=20",
+    "start": "pnpm run dev",
     "build": "turbo run build",
     "build:renderer": "turbo run build --filter=@ig-live/renderer",
     "build:electron": "turbo run build --filter=@ig-live/electron",
@@ -29,10 +30,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "turbo run clean",
-    "doctor": "tsx scripts/dsh-doctor.ts",
+    "doctor": "node scripts/doctor.mjs",
+    "doctor:dsh": "tsx scripts/dsh-doctor.ts",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",
     "changeset:version": "changeset version",
+    "preinstall": "node scripts/check-node.cjs",
     "prepare": "husky",
     "check:licenses": "node scripts/check-licenses.mjs"
   },
@@ -73,7 +76,7 @@
     "vitest": "^5.0.3"
   },
   "engines": {
-    "node": ">=20.11",
+    "node": ">=22.12",
     "pnpm": ">=9"
   },
   "packageManager": "pnpm@9.12.3",
