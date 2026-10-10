@@ -4,6 +4,7 @@ import type { FC } from 'react';
 import * as THREE from 'three';
 
 import type { VrmBackend } from '../backends/vrm';
+import { layoutStore } from '../layoutStore';
 import { mascotRegistry } from '../MascotBackend';
 
 import { ClickClassifier, PatDetector } from './gestures';
@@ -102,6 +103,7 @@ const MascotInteractionLayer: FC = () => {
 
     const offCursor = api?.onCursor((p) => {
       s.cursor = { x: p.x, y: p.y, inside: p.inside, fresh: true };
+      layoutStore.setCursor({ x: p.x, y: p.y, inside: p.inside });
     });
     const offBody = api?.onBody((m) => vrmBackend()?.setBodyMotion(m));
     const offEvt = api?.onPhysicsEvent((e) => {
@@ -220,6 +222,7 @@ const MascotInteractionLayer: FC = () => {
           top: Math.round(Math.max(0, t)),
           bottom: Math.round(Math.min(window.innerHeight, btm)),
         };
+        layoutStore.setBox(box);
         const key = `${box.left},${box.right},${box.top},${box.bottom}`;
         // 滞回：待机动画会让包围盒每帧微动，只有变化 ≥ 8px 才上报，避免窗口跟着抖
         const prev = s.lastGeom ? s.lastGeom.split(',').map(Number) : null;
