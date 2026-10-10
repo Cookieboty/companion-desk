@@ -9,6 +9,7 @@ import { DesktopConfirm } from './DesktopConfirm';
 import { InteractionSettings } from './InteractionSettings';
 import { ModelPicker } from './ModelPicker';
 import { MotionMenu } from './MotionMenu';
+import { ReminderCard } from './ReminderCard';
 import styles from './style.module.css';
 
 import { isAiIpcReady } from '@/ai/env';
@@ -50,6 +51,7 @@ export const MascotHost: React.FC = () => {
       <Credits />
       <InteractionSettings />
       <DesktopConfirm />
+      <ReminderCard />
       <div id="mascot-canvas" className={styles.stage} data-testid="mascot-canvas">
         {currentModel && (
           <CanvasBoundary>

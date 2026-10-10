@@ -74,3 +74,16 @@
   align-items: center;
   font-size: var(--cd-font-size-sm, 13px);
 }
+
+/* 提醒卡片：窗口底部 */
+.reminder {
+  top: auto;
+  bottom: 10px;
+  z-index: 31;
+}
+.more {
+  margin-right: auto;
+  align-self: center;
+  font-size: var(--cd-font-size-xs, 12px);
+  color: var(--cd-color-text-muted, #9aa3b2);
+}
