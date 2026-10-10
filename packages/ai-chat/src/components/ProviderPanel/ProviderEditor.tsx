@@ -4,7 +4,17 @@
  *   · 默认模型（获取模型列表 → 勾选启用）· 高级选项（上游格式 / 模型映射 / 思考 / UA / Headers）
  * 编辑正在使用的供应商时提示「保存后立即生效」。
  */
-import { Badge, Button, FormField, Input, Notice, Select, Switch, Textarea } from '@ig-live/ui';
+import {
+  Badge,
+  Button,
+  FormField,
+  Input,
+  Notice,
+  Select,
+  Switch,
+  Textarea,
+  SkeletonList,
+} from '@ig-live/ui';
 import React, { useMemo, useState } from 'react';
 
 import {
@@ -175,7 +185,7 @@ export const ProviderEditor: React.FC<{
           >
             {({ id }) => (
               <div className={styles.inline}>
-                <Monogram name={name || preset?.name || '?'} size={36} />
+                <Monogram name={name || preset?.name || '?'} brand={preset?.id} size={36} />
                 <Input
                   id={id}
                   data-testid="draft-name"
@@ -194,7 +204,18 @@ export const ProviderEditor: React.FC<{
               onChange={(e) => setNote(e.target.value)}
             />
           </FormField>
-          <FormField label="官网链接" className={styles.full}>
+          <FormField
+            label="官网链接"
+            className={styles.full}
+            hint={
+              preset?.docsUrl ? (
+                <span data-testid="preset-docs">
+                  官方 API 文档：<span className="cd-code">{preset.docsUrl}</span>
+                  {preset.verified && ' · 预设已按文档核对（2026-10-11）'}
+                </span>
+              ) : undefined
+            }
+          >
             <Input
               data-testid="draft-website"
               value={websiteUrl}
@@ -370,6 +391,9 @@ export const ProviderEditor: React.FC<{
                 </>
               )}
             </div>
+            {fetchRes === 'pending' && fetched.length === 0 && (
+              <SkeletonList rows={4} className={styles.modelSkeleton} />
+            )}
             {fetched.length > 0 && (
               <div className={styles.modelList} data-testid="model-list">
                 {visible.map((m) => (

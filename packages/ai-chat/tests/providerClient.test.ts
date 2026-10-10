@@ -43,8 +43,13 @@ describe('providerClient', () => {
       ],
     } as unknown as ProviderState;
     expect(selectableProviders(s)).toEqual([
-      { id: 'p-1', label: 'A', disabled: false },
-      { id: 'ollama', label: 'Ollama（环境变量）', disabled: false },
+      expect.objectContaining({ id: 'p-1', label: 'A', disabled: false, group: '我的供应商' }),
+      expect.objectContaining({
+        id: 'ollama',
+        label: 'Ollama（环境变量）',
+        group: '环境变量',
+        brand: 'ollama',
+      }),
     ]);
   });
 

@@ -11,6 +11,7 @@ import {
   selectableProviders,
   type ProviderState,
 } from '../../services/providerClient';
+import { Monogram } from '../ProviderPanel/shared';
 
 const SWITCHER_STYLE: React.CSSProperties = {
   display: 'inline-flex',
@@ -39,6 +40,7 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
   const current = state.effectiveProviderId;
   const models = selectableModels(state, current);
   const model = state.effectiveModel ?? models[0] ?? '';
+  const defaultModel = state.providers.find((p) => p.id === current)?.defaultModel;
   return (
     <span className={className} data-testid="provider-switcher" style={SWITCHER_STYLE}>
       <Select
@@ -52,14 +54,16 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
         onChange={(e) =>
           void providerClient.setActive(e.target.value || null).catch(() => undefined)
         }
-      >
-        {options.length === 0 && <option value="">（未配置）</option>}
-        {options.map((o) => (
-          <option key={o.id} value={o.id} disabled={o.disabled}>
-            {o.label}
-          </option>
-        ))}
-      </Select>
+        placeholder="（未配置）"
+        menuMinWidth={220}
+        options={options.map((o) => ({
+          value: o.id,
+          label: o.label,
+          disabled: o.disabled,
+          group: o.group,
+          icon: <Monogram name={o.label} brand={o.brand} size={18} />,
+        }))}
+      />
       <Select
         size="sm"
         style={{ width: 'auto', maxWidth: 220 }}
@@ -71,14 +75,14 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
         onChange={(e) =>
           current && void providerClient.setActive(current, e.target.value).catch(() => undefined)
         }
-      >
-        {models.length === 0 && <option value="">（默认）</option>}
-        {models.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </Select>
+        placeholder="（默认）"
+        menuMinWidth={240}
+        options={models.map((m) => ({
+          value: m,
+          label: m,
+          description: m === defaultModel ? '默认' : undefined,
+        }))}
+      />
       <IconButton
         size="sm"
         data-testid="open-provider-panel"

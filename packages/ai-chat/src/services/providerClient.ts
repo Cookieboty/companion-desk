@@ -33,6 +33,10 @@ export interface ProviderPreset {
   apiKeyUrl?: string;
   keywords?: string[];
   hint?: string;
+  docsUrl?: string;
+  modelsEndpoint?: boolean | null;
+  verified?: boolean;
+  icon?: string;
 }
 
 export interface FetchedModel {
@@ -224,15 +228,21 @@ export const LOCAL_ONLY_NOTICE = '此 Token 仅保存在本地设备，不会上
 /** 所有可选 provider（面板 / 切换器共用）：store 中启用的 + 环境变量的 */
 export function selectableProviders(
   s: ProviderState,
-): Array<{ id: string; label: string; disabled: boolean }> {
+): Array<{ id: string; label: string; disabled: boolean; group: string; brand: string }> {
   return [
     ...s.providers
       .filter((p) => p.enabled)
-      .map((p) => ({ id: p.id, label: p.name, disabled: false })),
+      .map((p) => ({
+        id: p.id,
+        label: p.name,
+        disabled: false,
+        group: '我的供应商',
+        brand: p.presetId,
+      })),
     // 没配 key 的环境变量 provider 不可用，不在选择器里占位
     ...s.envProviders
       .filter((e) => e.hasKey)
-      .map((e) => ({ id: e.id, label: e.name, disabled: false })),
+      .map((e) => ({ id: e.id, label: e.name, disabled: false, group: '环境变量', brand: e.id })),
   ];
 }
 

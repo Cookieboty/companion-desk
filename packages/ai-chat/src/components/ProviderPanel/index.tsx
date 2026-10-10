@@ -54,7 +54,7 @@ const ProviderRow: React.FC<{
       data-testid={`provider-card-${p.id}`}
       title={
         <span className={styles.inline}>
-          <Monogram name={p.name} size={28} />
+          <Monogram name={p.name} brand={p.presetId} size={28} />
           <span>{p.name}</span>
           {current && <Badge data-testid="current-badge">当前</Badge>}
           {!p.enabled && <Badge tone="neutral">已停用</Badge>}
@@ -153,14 +153,18 @@ const RoutesTable: React.FC<{ state: ProviderState; onError: (e: unknown) => voi
                       .setRoute(role, e.target.value ? { providerId: e.target.value } : null)
                       .catch(onError)
                   }
-                >
-                  <option value="">跟随当前</option>
-                  {options.map((o) => (
-                    <option key={o.id} value={o.id} disabled={o.disabled}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                  menuMinWidth={220}
+                  options={[
+                    { value: '', label: '跟随当前' },
+                    ...options.map((o) => ({
+                      value: o.id,
+                      label: o.label,
+                      disabled: o.disabled,
+                      group: o.group,
+                      icon: <Monogram name={o.label} brand={o.brand} size={18} />,
+                    })),
+                  ]}
+                />
               </td>
               <td>
                 <Select
@@ -177,14 +181,12 @@ const RoutesTable: React.FC<{ state: ProviderState; onError: (e: unknown) => voi
                       })
                       .catch(onError)
                   }
-                >
-                  <option value="">默认模型</option>
-                  {models.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </Select>
+                  menuMinWidth={220}
+                  options={[
+                    { value: '', label: '默认模型' },
+                    ...models.map((m) => ({ value: m, label: m })),
+                  ]}
+                />
               </td>
             </tr>
           );
@@ -344,7 +346,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   active={current === e.id}
                   title={
                     <span className={styles.inline}>
-                      <Monogram name={e.name} size={28} />
+                      <Monogram name={e.name} brand={e.id} size={28} />
                       {e.name}
                       {current === e.id && <Badge>当前</Badge>}
                     </span>

@@ -306,6 +306,24 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
           else expect(last.auth).toBe(`Bearer ${spec.key}`);
         }
         if (i === 1) await chat.screenshot({ path: join(shotDir, '08-toolbar-switch.png') });
+        if (i === 1) {
+          // 自绘下拉框：分组 + 品牌图标 + 选中勾选，键盘 Esc 关闭
+          const combos = chat.locator('[data-testid="provider-switcher"] [role="combobox"]');
+          await combos.nth(0).click();
+          const listbox = chat.locator('[role="listbox"]');
+          await expect(listbox).toBeVisible();
+          await expect(listbox.locator('[role="option"][aria-selected="true"]')).toHaveCount(1);
+          await expect(listbox.locator('.cd-dropdown__group').first()).toBeVisible();
+          await chat.waitForTimeout(250);
+          await chat.screenshot({ path: join(shotDir, '09-provider-dropdown.png') });
+          await chat.keyboard.press('Escape');
+          await expect(listbox).toHaveCount(0);
+          await combos.nth(1).click();
+          await expect(listbox).toBeVisible();
+          await chat.waitForTimeout(250);
+          await chat.screenshot({ path: join(shotDir, '10-model-dropdown.png') });
+          await chat.keyboard.press('Escape');
+        }
       }
       const s2 = await state();
       expect(s2.effectiveProviderId).toBe(ids[2]);
