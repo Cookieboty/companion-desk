@@ -1,0 +1,94 @@
+/*
+ * Companion Desk design tokens.
+ * 默认暗色（与 AI 对话窗口的深海军蓝 + 玻璃拟态 + 蓝/青强调色一致）；
+ * `[data-theme='light']` 提供浅色覆盖（目前应用未启用，预留）。
+ */
+:root {
+  /* palette */
+  --cd-color-bg: #0f172a;
+  --cd-color-bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  --cd-color-surface: rgba(15, 23, 42, 0.86);
+  --cd-color-surface-raised: rgba(30, 41, 59, 0.92);
+  --cd-color-surface-sunken: rgba(2, 6, 23, 0.55);
+  --cd-color-border: rgba(59, 130, 246, 0.28);
+  --cd-color-border-strong: rgba(59, 130, 246, 0.6);
+  --cd-color-text: #e2e8f0;
+  --cd-color-text-muted: #94a3b8;
+  --cd-color-text-subtle: #64748b;
+  --cd-color-text-on-accent: #ffffff;
+  --cd-color-accent: #3b82f6;
+  --cd-color-accent-hover: #2563eb;
+  --cd-color-accent-2: #00d4ff;
+  --cd-color-accent-3: #8b5cf6;
+  --cd-color-accent-soft: rgba(59, 130, 246, 0.16);
+  --cd-color-success: #22c55e;
+  --cd-color-success-soft: rgba(34, 197, 94, 0.16);
+  --cd-color-warning: #f59e0b;
+  --cd-color-warning-soft: rgba(245, 158, 11, 0.16);
+  --cd-color-danger: #ef4444;
+  --cd-color-danger-soft: rgba(239, 68, 68, 0.16);
+  --cd-color-overlay: rgba(2, 6, 23, 0.6);
+
+  /* radius */
+  --cd-radius-xs: 4px;
+  --cd-radius-sm: 6px;
+  --cd-radius-md: 8px;
+  --cd-radius-lg: 12px;
+  --cd-radius-xl: 16px;
+  --cd-radius-full: 9999px;
+
+  /* spacing (4px grid) */
+  --cd-space-1: 4px;
+  --cd-space-2: 8px;
+  --cd-space-3: 12px;
+  --cd-space-4: 16px;
+  --cd-space-5: 20px;
+  --cd-space-6: 24px;
+  --cd-space-8: 32px;
+
+  /* typography */
+  --cd-font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Roboto',
+    'Ubuntu', 'Helvetica Neue', sans-serif;
+  --cd-font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  --cd-font-size-xs: 11px;
+  --cd-font-size-sm: 12px;
+  --cd-font-size-md: 14px;
+  --cd-font-size-lg: 16px;
+  --cd-font-size-xl: 20px;
+  --cd-font-weight-medium: 500;
+  --cd-font-weight-bold: 600;
+  --cd-line-height: 1.5;
+
+  /* elevation */
+  --cd-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --cd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --cd-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.45);
+  --cd-shadow-glow: 0 0 20px rgba(59, 130, 246, 0.25);
+  --cd-blur: blur(12px);
+
+  /* motion */
+  --cd-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --cd-focus-ring: 0 0 0 2px rgba(0, 212, 255, 0.45);
+
+  /* layers */
+  --cd-z-tooltip: 1100;
+  --cd-z-modal: 1000;
+  --cd-z-toast: 1200;
+}
+
+[data-theme='light'] {
+  --cd-color-bg: #f8fafc;
+  --cd-color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+  --cd-color-surface: rgba(255, 255, 255, 0.92);
+  --cd-color-surface-raised: #ffffff;
+  --cd-color-surface-sunken: #f1f5f9;
+  --cd-color-border: rgba(15, 23, 42, 0.12);
+  --cd-color-border-strong: rgba(59, 130, 246, 0.55);
+  --cd-color-text: #0f172a;
+  --cd-color-text-muted: #475569;
+  --cd-color-text-subtle: #94a3b8;
+  --cd-color-overlay: rgba(15, 23, 42, 0.35);
+  --cd-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --cd-shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.15);
+}
