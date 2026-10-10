@@ -42,16 +42,19 @@ export interface PhysicsConfig {
   /** 落地速度超过此值才反弹，否则直接停稳 */
   bounceThreshold: number;
   walkSpeed: number; // px/s
+  /** 站立 / 行走时脚下空出超过这么多才开始下落（包围盒随动画轻微变化不会让她“再掉一次”） */
+  fallGap: number;
 }
 
 export const DEFAULT_PHYSICS: PhysicsConfig = {
-  gravity: 2400,
-  restitution: 0.32,
+  gravity: 1800,
+  restitution: 0.25,
   groundFriction: 9,
   airDrag: 0.35,
   maxSpeed: 4200,
   bounceThreshold: 280,
   walkSpeed: 70,
+  fallGap: 24,
 };
 
 export interface PhysicsEnv {
@@ -145,7 +148,7 @@ export function step(
 
   // 脚下没有地面了（走到更低 / 更高的显示器、被拖出后松手、工作区变化）
   if (s.mode === 'idle' || s.mode === 'walking') {
-    if (feet() < floor() - 1) {
+    if (feet() < floor() - cfg.fallGap) {
       if (env.gravity) {
         s.mode = 'falling';
       } else {
@@ -154,7 +157,8 @@ export function step(
         s.x += s.vx * dt;
         s.y += s.vy * dt;
       }
-    } else if (feet() > floor()) {
+    } else if (feet() > floor() || (s.mode === 'idle' && feet() < floor())) {
+      // 小间隙：贴回地面（不触发下落）
       s.y = floor() - env.box.bottom;
     }
     if (s.mode === 'idle' && env.gravity) {
@@ -289,4 +293,31 @@ export function pickWanderTarget(
   let t = s.x + dir * dist;
   if (t < lo || t > hi) t = s.x - dir * dist;
   return clamp(t, lo, hi);
+}
+
+/**
+ * 渲染进程上报的新包围盒（动画 / 换模型 / 缩放导致）：站在地上时保持脚底贴地，
+ * 而不是让她因为“脚底抬高了几像素”重新掉落。空中 / 被拎着时不处理。
+ */
+export function anchorOnBoxChange(
+  s: BodyState,
+  prev: CharacterBox | null,
+  next: CharacterBox,
+  workAreas: Rect[],
+): BodyState {
+  if (!prev || (s.mode !== 'idle' && s.mode !== 'walking')) return s;
+  const cxPrev = s.x + (prev.left + prev.right) / 2;
+  const floorPrev = floorFor(workAreas, cxPrev);
+  const grounded = Math.abs(s.y + prev.bottom - floorPrev) <= 2;
+  if (!grounded) return s;
+  const cx = s.x + (next.left + next.right) / 2;
+  return { ...s, y: floorFor(workAreas, cx) - next.bottom, vy: 0 };
+}
+
+/** 启动 / 首次拿到包围盒时：只有明显悬空（> fallGap）才自然下落 */
+export function shouldFallAtStart(s: BodyState, env: PhysicsEnv): boolean {
+  if (!env.gravity || s.mode !== 'idle') return false;
+  const cfg = env.cfg ?? DEFAULT_PHYSICS;
+  const cx = s.x + (env.box.left + env.box.right) / 2;
+  return floorFor(env.workAreas, cx) - (s.y + env.box.bottom) > cfg.fallGap;
 }

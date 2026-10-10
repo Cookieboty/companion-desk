@@ -2,8 +2,10 @@ import { type BrowserWindow, ipcMain, screen } from 'electron';
 
 import {
   advance,
+  anchorOnBoxChange,
   clampToWorld,
   pickWanderTarget,
+  shouldFallAtStart,
   VelocityTracker,
   type BodyState,
   type CharacterBox,
@@ -168,11 +170,15 @@ export class MascotWindowController {
       bottom: Math.max(0, Math.min(h, b.bottom!)),
     };
     if (box.right - box.left < 10 || box.bottom - box.top < 10) return;
-    const first = !this.box;
+    const prev = this.box;
     this.box = box;
-    if (first && this.cfg.gravity && this.body.mode === 'idle') {
-      // 启动时若悬空则自然落到地面
-      this.body = { ...this.body, mode: 'falling' };
+    if (!prev) {
+      // 启动时明显悬空才自然落到地面；贴近地面的直接站稳
+      const env = this.env();
+      if (env && shouldFallAtStart(this.body, env)) this.body = { ...this.body, mode: 'falling' };
+    } else if (!this.drag) {
+      // 动画让包围盒变化：站着的她保持脚底贴地，不会“再掉一次”
+      this.body = anchorOnBoxChange(this.body, prev, box, this.workAreas);
     }
   }
 
@@ -239,6 +245,7 @@ export class MascotWindowController {
 
   private dragEnd(): void {
     if (!this.drag) return;
+    // 重力只在真正拖拽松手后生效
     this.drag = null;
     const v = this.tracker.release(performance.now());
     this.body = { ...this.body, vx: v.vx, vy: v.vy, mode: this.cfg.gravity ? 'falling' : 'idle' };
