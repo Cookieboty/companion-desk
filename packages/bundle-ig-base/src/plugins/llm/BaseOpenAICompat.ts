@@ -59,7 +59,7 @@ function normalizeFinishReason(raw: string | null | undefined): FinishReason {
  * OpenAI 兼容层 —— `POST ${baseURL}/chat/completions`，归一非流响应、SSE 流式解析、
  * tool_call 结构映射与 usage 字段。OpenAI / DeepSeek / Ollama / llama.cpp / Qwen / Doubao 共用。
  */
-export abstract class BaseOpenAICompat implements LLMProvider {
+export class BaseOpenAICompat implements LLMProvider {
   readonly id: string;
   protected readonly opts: OpenAICompatOptions;
   protected readonly aborts = new Map<string, AbortController>();

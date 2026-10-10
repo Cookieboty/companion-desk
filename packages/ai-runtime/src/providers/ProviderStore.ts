@@ -9,9 +9,14 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import type { AiSdkBackend } from '../ai-sdk/AiSdkLlmProvider';
-
 import { findPreset } from './presets';
+import {
+  isProtocol,
+  trimBase,
+  type FetchedModel,
+  type ModelMapping,
+  type Protocol,
+} from './protocol';
 import { maskSecret, type SecretCipher } from './secretCipher';
 
 export const PROVIDER_ROLES = ['chat', 'agent-tools', 'summary'] as const;
@@ -30,14 +35,31 @@ export interface StoredKey {
   lastError?: string;
 }
 
-export interface StoredProvider {
+/** 通用 provider（schema v2）：协议 + 地址 + key + 模型，无厂商专属字段。 */
+export interface ProviderConfig {
+  name: string;
+  note?: string;
+  websiteUrl?: string;
+  protocol: Protocol;
+  /** API 请求地址 */
+  baseURL: string;
+  /** true：baseURL 原样作为最终端点；false：按协议拼路径 */
+  fullUrl: boolean;
+  defaultModel: string;
+  /** 已启用的模型（聊天窗口模型选择器 / 路由下拉里列出） */
+  models: string[];
+  /** 最近一次「获取模型」的结果 */
+  fetchedModels?: FetchedModel[];
+  fetchedAt?: number;
+  modelMap?: ModelMapping[];
+  headers?: Record<string, string>;
+  userAgent?: string;
+  thinking?: boolean;
+}
+
+export interface StoredProvider extends ProviderConfig {
   id: string;
   presetId: string;
-  name: string;
-  backend: AiSdkBackend;
-  baseURL: string;
-  defaultModel: string;
-  headers?: Record<string, string>;
   enabled: boolean;
   /** 顺序即 fallback 顺序：第一个为主 key */
   keys: StoredKey[];
@@ -60,7 +82,7 @@ export interface ProviderUsage {
 }
 
 export interface ProviderStoreData {
-  version: 1;
+  version: 2;
   providers: StoredProvider[];
   activeProviderId?: string;
   routes: Partial<Record<ProviderRole, RouteBinding>>;
@@ -68,14 +90,9 @@ export interface ProviderStoreData {
 }
 
 /** 渲染进程可见的视图（无明文、无密文） */
-export interface ProviderView {
+export interface ProviderView extends ProviderConfig {
   id: string;
   presetId: string;
-  name: string;
-  backend: AiSdkBackend;
-  baseURL: string;
-  defaultModel: string;
-  headers?: Record<string, string>;
   enabled: boolean;
   active: boolean;
   keys: Array<{
@@ -91,14 +108,9 @@ export interface ProviderView {
   source: 'store';
 }
 
-export interface ProviderInput {
+export interface ProviderInput extends Partial<ProviderConfig> {
   id?: string;
   presetId?: string;
-  name?: string;
-  backend?: AiSdkBackend;
-  baseURL?: string;
-  defaultModel?: string;
-  headers?: Record<string, string>;
   enabled?: boolean;
   /** 新建时可直接带 key（明文，仅此一次经 IPC 进入主进程） */
   apiKey?: string;
@@ -121,8 +133,6 @@ const emptyUsage = (): ProviderUsage => ({
   totalTokens: 0,
 });
 
-const BACKENDS: readonly AiSdkBackend[] = ['openai-compatible', 'anthropic', 'google'];
-
 function sanitizeHeaders(h: unknown): Record<string, string> | undefined {
   if (!h || typeof h !== 'object') return undefined;
   const out: Record<string, string> = {};
@@ -136,7 +146,7 @@ function sanitizeHeaders(h: unknown): Record<string, string> | undefined {
 }
 
 function normalizeBaseURL(u: string): string {
-  const s = u.trim().replace(/\/+$/, '');
+  const s = trimBase(u);
   if (!/^https?:\/\//i.test(s)) throw new Error(`baseURL 必须以 http(s):// 开头: ${u}`);
   return s;
 }
@@ -158,18 +168,23 @@ export class ProviderStore {
 
   // ---------------------------------------------------------------- persistence
   private load(): ProviderStoreData {
-    const empty: ProviderStoreData = { version: 1, providers: [], routes: {}, usage: {} };
+    const empty: ProviderStoreData = { version: 2, providers: [], routes: {}, usage: {} };
     const file = this.opts.filePath;
     if (!file || !fs.existsSync(file)) return empty;
     try {
-      const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<ProviderStoreData>;
-      return {
-        version: 1,
-        providers: Array.isArray(raw.providers) ? raw.providers : [],
-        activeProviderId: raw.activeProviderId,
-        routes: raw.routes && typeof raw.routes === 'object' ? raw.routes : {},
-        usage: raw.usage && typeof raw.usage === 'object' ? raw.usage : {},
-      };
+      const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+      const { data, migrated } = migrateStoreData(raw);
+      if (migrated) {
+        // 保留迁移前的副本，方便回滚
+        try {
+          fs.copyFileSync(file, `${file}.v${String(raw.version ?? 1)}.bak`);
+        } catch {
+          /* ignore */
+        }
+        this.data = data;
+        this.persist();
+      }
+      return data;
     } catch {
       // 损坏的文件挪到一边，不覆盖用户数据
       try {
@@ -271,10 +286,19 @@ export class ProviderStore {
       id: p.id,
       presetId: p.presetId,
       name: p.name,
-      backend: p.backend,
+      note: p.note,
+      websiteUrl: p.websiteUrl,
+      protocol: p.protocol,
       baseURL: p.baseURL,
+      fullUrl: p.fullUrl,
       defaultModel: p.defaultModel,
+      models: [...p.models],
+      fetchedModels: p.fetchedModels?.map((m) => ({ ...m })),
+      fetchedAt: p.fetchedAt,
+      modelMap: p.modelMap?.map((m) => ({ ...m })),
       headers: p.headers ? { ...p.headers } : undefined,
+      userAgent: p.userAgent,
+      thinking: p.thinking,
       enabled: p.enabled,
       active: this.data.activeProviderId === p.id,
       keys: p.keys.map((k) => ({
@@ -300,15 +324,7 @@ export class ProviderStore {
     const ts = this.now();
     const existing = input.id ? this.data.providers.find((p) => p.id === input.id) : undefined;
     if (existing) {
-      if (input.name !== undefined) existing.name = input.name.trim() || existing.name;
-      if (input.backend !== undefined) {
-        if (!BACKENDS.includes(input.backend)) throw new Error(`未知 backend: ${input.backend}`);
-        existing.backend = input.backend;
-      }
-      if (input.baseURL !== undefined) existing.baseURL = normalizeBaseURL(input.baseURL);
-      if (input.defaultModel !== undefined)
-        existing.defaultModel = input.defaultModel.trim() || existing.defaultModel;
-      if (input.headers !== undefined) existing.headers = sanitizeHeaders(input.headers);
+      applyConfig(existing, input);
       if (input.enabled !== undefined) existing.enabled = Boolean(input.enabled);
       if (input.apiKey?.trim()) existing.keys.unshift(this.makeKey(input.apiKey));
       existing.updatedAt = ts;
@@ -316,24 +332,43 @@ export class ProviderStore {
       return this.view(existing);
     }
     const preset = findPreset(input.presetId) ?? findPreset('custom')!;
-    const backend = input.backend ?? preset.backend;
-    if (!BACKENDS.includes(backend)) throw new Error(`未知 backend: ${backend}`);
+    const baseURL = input.baseURL ?? preset.baseURL;
+    if (!baseURL.trim()) throw new Error('请填写 API 请求地址');
+    const defaultModel = input.defaultModel?.trim() || preset.defaultModel || 'default';
     const created: StoredProvider = {
       id: `p-${preset.id}-${randomUUID().slice(0, 8)}`,
       presetId: preset.id,
       name: input.name?.trim() || preset.name,
-      backend,
-      baseURL: normalizeBaseURL(input.baseURL ?? preset.baseURL),
-      defaultModel: input.defaultModel?.trim() || preset.defaultModel,
-      headers: sanitizeHeaders(input.headers),
+      protocol: preset.protocol,
+      baseURL: normalizeBaseURL(baseURL),
+      fullUrl: false,
+      defaultModel,
+      models: [],
+      websiteUrl: preset.websiteUrl,
       enabled: input.enabled ?? true,
       keys: input.apiKey?.trim() ? [this.makeKey(input.apiKey)] : [],
       createdAt: ts,
       updatedAt: ts,
     };
+    applyConfig(created, { ...input, baseURL });
+    if (created.models.length === 0) created.models = [created.defaultModel];
     this.data.providers.push(created);
     this.commit();
     return this.view(created);
+  }
+
+  /** 「获取模型」结果 + 启用的模型列表。 */
+  setModels(id: string, patch: { fetched?: FetchedModel[]; enabled?: string[] }): ProviderView {
+    const p = this.mustGet(id);
+    if (patch.fetched) {
+      p.fetchedModels = patch.fetched.map((m) => ({ ...m }));
+      p.fetchedAt = this.now();
+    }
+    if (patch.enabled) p.models = uniq(patch.enabled);
+    if (!p.models.includes(p.defaultModel)) p.models.unshift(p.defaultModel);
+    p.updatedAt = this.now();
+    this.commit();
+    return this.view(p);
   }
 
   remove(id: string): void {
@@ -351,10 +386,17 @@ export class ProviderStore {
    * 设为当前 provider；`undefined` 表示回到环境变量默认。
    * id 也可以是环境变量 provider（如 `deepseek`）——合法性由调用方（IPC 层 / registry）校验。
    */
-  setActive(id: string | undefined): void {
+  setActive(id: string | undefined, model?: string): void {
     const p = id !== undefined ? this.data.providers.find((x) => x.id === id) : undefined;
     if (p && !p.enabled) p.enabled = true;
+    if (p && model?.trim()) {
+      p.defaultModel = model.trim();
+      if (!p.models.includes(p.defaultModel)) p.models.push(p.defaultModel);
+    }
     this.data.activeProviderId = id;
+    // 一键切换（工具栏 / 托盘 / 面板）= 对话立刻改用它：清掉把 chat 钉在别处的路由。
+    // 之前 chat 路由优先于「当前 provider」，导致切换后请求仍发往旧 provider（切换无效 bug）。
+    delete this.data.routes.chat;
     this.commit();
   }
 
@@ -470,4 +512,123 @@ export class ProviderStore {
     }, this.opts.usageFlushMs ?? 2000);
     (this.usageTimer as { unref?: () => void }).unref?.();
   }
+}
+
+// ---------------------------------------------------------------- helpers
+
+const uniq = (xs: string[]): string[] => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
+
+function sanitizeMap(v: unknown): ModelMapping[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .map((m) => ({
+      from: String((m as ModelMapping)?.from ?? '').trim(),
+      to: String((m as ModelMapping)?.to ?? '').trim(),
+    }))
+    .filter((m) => m.from && m.to);
+  return out.length > 0 ? out : undefined;
+}
+
+/** 把表单输入（部分字段）校验后写进 provider。 */
+function applyConfig(p: StoredProvider, input: ProviderInput): void {
+  if (input.name !== undefined) p.name = input.name.trim() || p.name;
+  if (input.note !== undefined) p.note = input.note.trim() || undefined;
+  if (input.websiteUrl !== undefined) {
+    const w = input.websiteUrl.trim();
+    if (w && !/^https?:\/\//i.test(w)) throw new Error(`官网链接必须以 http(s):// 开头: ${w}`);
+    p.websiteUrl = w || undefined;
+  }
+  if (input.protocol !== undefined) {
+    if (!isProtocol(input.protocol)) throw new Error(`未知上游协议: ${String(input.protocol)}`);
+    p.protocol = input.protocol;
+  }
+  if (input.baseURL !== undefined) p.baseURL = normalizeBaseURL(input.baseURL);
+  if (input.fullUrl !== undefined) p.fullUrl = Boolean(input.fullUrl);
+  if (input.defaultModel !== undefined)
+    p.defaultModel = input.defaultModel.trim() || p.defaultModel;
+  if (input.models !== undefined) p.models = uniq(input.models);
+  if (input.modelMap !== undefined) p.modelMap = sanitizeMap(input.modelMap);
+  if (Array.isArray(input.fetchedModels)) {
+    p.fetchedModels = input.fetchedModels
+      .filter((m) => m && typeof m.id === 'string' && m.id.trim())
+      .map((m) => ({ id: m.id.trim(), ...(m.name ? { name: String(m.name) } : {}) }));
+    p.fetchedAt = Date.now();
+  }
+  if (input.headers !== undefined) p.headers = sanitizeHeaders(input.headers);
+  if (input.userAgent !== undefined) p.userAgent = input.userAgent.trim() || undefined;
+  if (input.thinking !== undefined) p.thinking = Boolean(input.thinking) || undefined;
+  if (p.defaultModel && !p.models.includes(p.defaultModel)) p.models.unshift(p.defaultModel);
+}
+
+/** v1 `backend` → v2 `protocol`（Gemini 原生 API 改走其 OpenAI 兼容端点）。 */
+function migrateProvider(raw: Record<string, unknown>): StoredProvider {
+  const backend = String(raw.backend ?? 'openai-compatible');
+  let protocol: Protocol = isProtocol(raw.protocol)
+    ? raw.protocol
+    : backend === 'anthropic'
+      ? 'anthropic'
+      : 'openai-chat';
+  let baseURL = String(raw.baseURL ?? '');
+  if (!isProtocol(raw.protocol) && backend === 'google') {
+    protocol = 'openai-chat';
+    baseURL = /\/openai$/.test(trimBase(baseURL)) ? baseURL : `${trimBase(baseURL)}/openai`;
+  }
+  const presetId = String(raw.presetId ?? 'custom');
+  const renamed: Record<string, string> = { claude: 'anthropic', moonshot: 'kimi' };
+  const defaultModel = String(raw.defaultModel ?? 'default');
+  const models = Array.isArray(raw.models) ? uniq(raw.models.map(String)) : [defaultModel];
+  const { backend: _drop, ...rest } = raw;
+  void _drop;
+  return {
+    ...(rest as unknown as StoredProvider),
+    presetId: renamed[presetId] ?? presetId,
+    protocol,
+    baseURL: trimBase(baseURL),
+    fullUrl: Boolean(raw.fullUrl),
+    defaultModel,
+    models: models.includes(defaultModel) ? models : [defaultModel, ...models],
+    websiteUrl:
+      (raw.websiteUrl as string | undefined) ??
+      findPreset(renamed[presetId] ?? presetId)?.websiteUrl,
+    keys: Array.isArray(raw.keys) ? (raw.keys as StoredKey[]) : [],
+    enabled: raw.enabled !== false,
+  };
+}
+
+/** 读入任意版本的 ai-providers.json → v2。 */
+export function migrateStoreData(raw: Record<string, unknown>): {
+  data: ProviderStoreData;
+  migrated: boolean;
+} {
+  const version = Number(raw.version ?? 1);
+  const providers = (Array.isArray(raw.providers) ? raw.providers : []).map((p) =>
+    migrateProvider(p as Record<string, unknown>),
+  );
+  const routes = (
+    raw.routes && typeof raw.routes === 'object' ? raw.routes : {}
+  ) as ProviderStoreData['routes'];
+  let activeProviderId = raw.activeProviderId as string | undefined;
+  if (version < 2 && routes.chat) {
+    // v1：chat 路由优先于「当前」——迁移时把它并成「当前 provider + 模型」，切换从此只有一个入口
+    const chat = routes.chat;
+    activeProviderId = chat.providerId;
+    const p = providers.find((x) => x.id === chat.providerId);
+    if (p && chat.model) {
+      p.defaultModel = chat.model;
+      if (!p.models.includes(chat.model)) p.models.unshift(chat.model);
+    }
+    delete routes.chat;
+  }
+  return {
+    data: {
+      version: 2,
+      providers,
+      activeProviderId,
+      routes,
+      usage: (raw.usage && typeof raw.usage === 'object'
+        ? raw.usage
+        : {}) as ProviderStoreData['usage'],
+    },
+    migrated: version < 2,
+  };
 }

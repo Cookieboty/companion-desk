@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { DeepSeekProvider, OllamaProvider } from '../../src/plugins/llm';
+import type { OpenAICompatOptions } from '../../src/plugins/llm';
+import { createProvider } from '../../src/plugins/LLMProvidersPlugin';
 import type { ChatChunk, ChatRequest } from '../../src/types/common';
+
+type Opts = Partial<OpenAICompatOptions>;
+/** 旧的按厂商类已移除：deepseek / ollama 只是通用 OpenAI 兼容端点的预填默认值 */
+const deepseek = (o: Opts = {}) => createProvider({ id: 'deepseek' }, o);
+const ollama = (o: Opts = {}) => createProvider({ id: 'ollama' }, o);
 
 function req(over: Partial<ChatRequest> = {}): ChatRequest {
   return {
@@ -40,7 +46,7 @@ describe('BaseOpenAICompat', () => {
         usage: { prompt_tokens: 3, completion_tokens: 2 },
       }),
     );
-    const p = new DeepSeekProvider({ apiKey: 'sk-test', fetchImpl: fetchImpl as typeof fetch });
+    const p = deepseek({ apiKey: 'sk-test', fetchImpl: fetchImpl as typeof fetch });
     const res = await p.chat(req());
 
     expect(res).toMatchObject({
@@ -62,7 +68,7 @@ describe('BaseOpenAICompat', () => {
   });
 
   it('explicit baseURL: undefined keeps provider default (spread order)', () => {
-    const p = new OllamaProvider({ baseURL: undefined });
+    const p = ollama({ baseURL: undefined });
     expect((p as unknown as { opts: { baseURL: string } }).opts.baseURL).toBe(
       'http://127.0.0.1:11434/v1',
     );
@@ -70,14 +76,14 @@ describe('BaseOpenAICompat', () => {
 
   it('chat(): missing API key on cloud provider fails fast without network', async () => {
     const fetchImpl = vi.fn();
-    const p = new DeepSeekProvider({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    const p = deepseek({ fetchImpl: fetchImpl as unknown as typeof fetch });
     await expect(p.chat(req())).rejects.toThrow(/API key is not configured/);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('chat(): HTTP error surfaces status and body', async () => {
     const fetchImpl = vi.fn(async () => new Response('bad key', { status: 401 }));
-    const p = new DeepSeekProvider({ apiKey: 'x', fetchImpl: fetchImpl as typeof fetch });
+    const p = deepseek({ apiKey: 'x', fetchImpl: fetchImpl as typeof fetch });
     await expect(p.chat(req())).rejects.toThrow(/HTTP 401: bad key/);
   });
 
@@ -92,7 +98,7 @@ describe('BaseOpenAICompat', () => {
         '[DONE]',
       ]),
     );
-    const p = new OllamaProvider({ fetchImpl: fetchImpl as typeof fetch });
+    const p = ollama({ fetchImpl: fetchImpl as typeof fetch });
     const chunks = await collect(p.stream(req({ provider: 'ollama', stream: true })));
     expect(chunks).toEqual([
       { type: 'delta', content: 'hel' },
@@ -113,7 +119,7 @@ describe('BaseOpenAICompat', () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error('ECONNREFUSED');
     });
-    const p = new OllamaProvider({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    const p = ollama({ fetchImpl: fetchImpl as unknown as typeof fetch });
     const chunks = await collect(p.stream(req()));
     expect(chunks).toEqual([{ type: 'error', error: 'ECONNREFUSED' }]);
   });

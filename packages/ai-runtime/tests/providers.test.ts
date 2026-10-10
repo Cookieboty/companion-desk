@@ -169,13 +169,13 @@ describe('ProviderStore', () => {
     for (const id of [
       'deepseek',
       'openai',
-      'claude',
+      'anthropic',
       'gemini',
       'ollama',
       'openrouter',
       'siliconflow',
       'qwen',
-      'moonshot',
+      'kimi',
       'zhipu',
       'doubao',
       'custom',
@@ -316,7 +316,7 @@ describe('RoutedLLMRegistry routing', () => {
     expect(mine.map((o) => o.apiKey)).toEqual(['or-key-1111111', 'or-key-2222222']);
     expect(mine[0]).toMatchObject({
       baseURL: 'https://openrouter.ai/api/v1',
-      backend: 'openai-compatible',
+      protocol: 'openai-chat',
       headers: { 'HTTP-Referer': 'https://companion.desk' },
     });
   });
@@ -369,7 +369,7 @@ describe('ProviderService', () => {
           fail: o.apiKey === 'bad-key-0000' ? '401 bad sk-abcdefabcdefabcdef' : undefined,
         }),
     });
-    const v = svc.upsert({ presetId: 'moonshot', apiKey: 'ms-very-secret-1' });
+    const v = svc.upsert({ presetId: 'kimi', apiKey: 'ms-very-secret-1' });
     const state = svc.state();
     const json = JSON.stringify(state);
     expect(json).not.toContain('ms-very-secret-1');

@@ -26,14 +26,14 @@ export function providerMenuEntries(state: ProviderState): ProviderMenuEntry[] {
     .filter((p) => p.enabled)
     .map((p) => ({
       id: p.id,
-      label: `${p.name}${p.keys.length === 0 && p.presetId !== 'ollama' && p.presetId !== 'custom' ? '（未配置 key）' : ''}`,
+      label: `${p.name} · ${p.defaultModel}${p.keys.length === 0 && !['ollama', 'lmstudio', 'custom'].includes(p.presetId) ? '（未配置 key）' : ''}`,
       checked: p.id === current,
       enabled: true,
     }));
   for (const e of state.envProviders) {
     entries.push({
       id: e.id,
-      label: `${e.name} · 环境变量${e.hasKey ? '' : '（无 key）'}`,
+      label: `${e.name}${e.hasKey ? '' : '（无 key）'}`,
       checked: e.id === current,
       enabled: e.hasKey,
     });

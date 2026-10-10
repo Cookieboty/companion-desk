@@ -10,7 +10,9 @@ describe('providerMenuEntries', () => {
           id: 'p-a',
           presetId: 'openai',
           name: 'Work OpenAI',
-          backend: 'openai-compatible',
+          protocol: 'openai-chat',
+          fullUrl: false,
+          models: [],
           baseURL: 'https://api.openai.com/v1',
           defaultModel: 'gpt-4o-mini',
           enabled: true,
@@ -23,7 +25,9 @@ describe('providerMenuEntries', () => {
           id: 'p-b',
           presetId: 'zhipu',
           name: 'Disabled',
-          backend: 'openai-compatible',
+          protocol: 'openai-chat',
+          fullUrl: false,
+          models: [],
           baseURL: 'https://x/v1',
           defaultModel: 'm',
           enabled: false,
@@ -36,7 +40,8 @@ describe('providerMenuEntries', () => {
       envProviders: [
         {
           id: 'deepseek',
-          name: 'DeepSeek',
+          name: 'DeepSeek（环境变量）',
+          protocol: 'openai-chat',
           hasKey: false,
           keyless: false,
           active: false,
@@ -51,8 +56,8 @@ describe('providerMenuEntries', () => {
       encryption: 'safeStorage',
     });
     expect(entries).toEqual([
-      { id: 'p-a', label: 'Work OpenAI', checked: true, enabled: true },
-      { id: 'deepseek', label: 'DeepSeek · 环境变量（无 key）', checked: false, enabled: false },
+      { id: 'p-a', label: 'Work OpenAI · gpt-4o-mini', checked: true, enabled: true },
+      { id: 'deepseek', label: 'DeepSeek（环境变量）（无 key）', checked: false, enabled: false },
     ]);
   });
 });

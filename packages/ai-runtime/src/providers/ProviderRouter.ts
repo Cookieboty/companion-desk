@@ -170,9 +170,13 @@ export function buildStoredProvider(
 ): TrackedProvider {
   const base: AiSdkLlmProviderOptions = {
     id: p.id,
-    backend: p.backend,
+    protocol: p.protocol,
     baseURL: p.baseURL,
+    fullUrl: p.fullUrl,
     defaultModel: p.defaultModel,
+    modelMap: p.modelMap,
+    thinking: p.thinking,
+    userAgent: p.userAgent,
     headers: p.headers,
     requiresApiKey: true,
   };
