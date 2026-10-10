@@ -109,9 +109,11 @@ export function deriveBubble(evt: BubbleEvent): BubbleDirective | null {
         reply: true,
         priority: BUBBLE_PRIORITY.messageComplete,
         // 长一点的摘要多停留一会（约 18 字 / 秒，4~12s）
+        // 有「查看全文」时多留一会儿，方便去点
         timeout: Math.max(
           BUBBLE_TIMEOUT.messageComplete,
           Math.min(12000, 4000 + Array.from(short.text).length * 55),
+          short.truncated ? 12000 : 0,
         ),
       };
     }
