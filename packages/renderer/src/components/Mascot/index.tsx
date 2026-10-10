@@ -3,7 +3,9 @@ import React, { Suspense, lazy, useMemo } from 'react';
 import { MessageBubble } from '../MessageBubble/MessageBubble';
 import { ToolBar } from '../ToolBar';
 
+import { CanvasBoundary } from './CanvasBoundary';
 import { Credits } from './Credits';
+import { DesktopConfirm } from './DesktopConfirm';
 import { InteractionSettings } from './InteractionSettings';
 import { ModelPicker } from './ModelPicker';
 import { MotionMenu } from './MotionMenu';
@@ -13,6 +15,7 @@ import { isAiIpcReady } from '@/ai/env';
 import WaifuAgentBubbleBridge from '@/ai/WaifuAgentBubbleBridge';
 import WaifuMascotSceneReporter from '@/ai/WaifuMascotSceneReporter';
 import { useMascot } from '@/contexts/MascotContext';
+import { useFileDropSummarize } from '@/hooks/useFileDropSummarize';
 import { useMascotTips } from '@/hooks/useMascotTips';
 import MascotDriver from '@/mascot/MascotDriver';
 
@@ -28,6 +31,7 @@ export const MascotHost: React.FC = () => {
   const { currentModel } = useMascot();
   const aiReady = useMemo(() => isAiIpcReady(), []);
   useMascotTips();
+  useFileDropSummarize('mascot-canvas');
 
   return (
     <div className={styles.root}>
@@ -45,19 +49,22 @@ export const MascotHost: React.FC = () => {
       <MotionMenu />
       <Credits />
       <InteractionSettings />
+      <DesktopConfirm />
       <div id="mascot-canvas" className={styles.stage} data-testid="mascot-canvas">
         {currentModel && (
-          <Suspense fallback={null}>
-            <VirtualCharacter3D
-              modelPath={currentModel.path}
-              modelConfig={currentModel.config}
-              enableMCPIntegration
-              enableVoiceSync
-              enableControls={false}
-              transparent
-              style={{ transform: 'translateX(-40px)' }}
-            />
-          </Suspense>
+          <CanvasBoundary>
+            <Suspense fallback={null}>
+              <VirtualCharacter3D
+                modelPath={currentModel.path}
+                modelConfig={currentModel.config}
+                enableMCPIntegration
+                enableVoiceSync
+                enableControls={false}
+                transparent
+                style={{ transform: 'translateX(-40px)' }}
+              />
+            </Suspense>
+          </CanvasBoundary>
         )}
       </div>
     </div>

@@ -48,6 +48,8 @@ export interface IpcApi {
   models?: import('./models').ModelsApi;
   /** 看板娘窗口互动 */
   mascotWindow?: import('./models').MascotWindowApi;
+  /** 桌面能力（确认 / 拖文件总结） */
+  desktop?: import('./models').DesktopApi;
 
   // MCP集成相关API
   mcp: MCPApi;

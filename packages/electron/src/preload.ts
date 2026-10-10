@@ -52,6 +52,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('get-cursor-position');
   },
   // 监听窗口鼠标事件
+  /** 桌面能力：确认气泡 / 对话框、拖文件到看板娘 */
+  desktop: {
+    onConfirmRequest: (cb: (req: unknown) => void) => {
+      const l = (_: unknown, r: unknown) => cb(r);
+      ipcRenderer.on('desktop:confirm-request', l);
+      return () => {
+        ipcRenderer.removeListener('desktop:confirm-request', l);
+      };
+    },
+    onConfirmCancel: (cb: (id: string) => void) => {
+      const l = (_: unknown, id: string) => cb(id);
+      ipcRenderer.on('desktop:confirm-cancel', l);
+      return () => {
+        ipcRenderer.removeListener('desktop:confirm-cancel', l);
+      };
+    },
+    onBubble: (cb: (p: { text: string }) => void) => {
+      const l = (_: unknown, p: { text: string }) => cb(p);
+      ipcRenderer.on('desktop:bubble', l);
+      return () => {
+        ipcRenderer.removeListener('desktop:bubble', l);
+      };
+    },
+    answer: (id: string, allow: boolean, remember: boolean) =>
+      ipcRenderer.send('desktop:confirm-answer', id, allow, remember),
+    /** 只接受真实拖入的 File：路径由 Electron 从 File 对象解析，渲染层不能伪造任意路径字符串 */
+    dropFile: (file: File) => {
+      const p = webUtils.getPathForFile(file);
+      if (p) ipcRenderer.send('desktop:drop-file', p);
+      return !!p;
+    },
+  },
   /** 桌面互动：点击穿透 / 拖拽 / 物理 / 全局光标 */
   mascotWindow: {
     platform: process.platform,

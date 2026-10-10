@@ -36,3 +36,8 @@
   border-right: 8px solid transparent;
   border-top: 8px solid rgba(236, 217, 188, 0.9);
 }
+
+/* 有消息时显示（此前缺少该规则，气泡一直是 opacity: 0） */
+.messageBubble.active {
+  opacity: 1;
+}
