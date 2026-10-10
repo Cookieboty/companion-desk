@@ -1,0 +1,160 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+import { _electron as electron, test, expect } from '@playwright/test';
+import type { ElectronApplication, Page } from '@playwright/test';
+
+import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+
+/**
+ * UI 巡检截图（非断言型冒烟）：只有设置了 UI_SHOTS_DIR 才运行，CI 默认跳过。
+ *   UI_SHOTS_DIR=/workspace/screenshots/ui-before xvfb-run -a pnpm test:e2e:headed -g "UI surfaces"
+ * 覆盖：mascot（Live2D / 3D / 自定义图片）+ 工具栏 + 语音设置弹层、AI 对话窗口、
+ * 配置面板、Provider 面板、Provider 切换器、TTS 配置窗口。
+ */
+const shotDir = process.env.UI_SHOTS_DIR;
+const electronPkgDir = resolve(repoRoot(), 'packages', 'electron');
+const mainJs = resolve(electronPkgDir, 'dist', 'main.js');
+
+test.describe('UI surfaces', () => {
+  let app: ElectronApplication | null = null;
+  let userData = '';
+
+  test.beforeAll(() => {
+    userData = mkdtempSync(join(tmpdir(), 'ui-shots-'));
+    if (shotDir) mkdirSync(shotDir, { recursive: true });
+  });
+  test.afterAll(async () => {
+    if (app) {
+      const proc = app.process();
+      await Promise.race([
+        app.close().catch(() => undefined),
+        new Promise((r) => setTimeout(r, 5_000)),
+      ]);
+      if (proc.exitCode === null) proc.kill('SIGKILL');
+    }
+    rmSync(userData, { recursive: true, force: true });
+  });
+
+  test('capture every surface', async () => {
+    test.skip(!shotDir || !existsSync(mainJs), '设置 UI_SHOTS_DIR 并先 pnpm build');
+    test.setTimeout(180_000);
+    execFileSync(process.execPath, [resolve(electronPkgDir, 'scripts', 'copy-renderer.js')]);
+    const env: Record<string, string> = {
+      ...(process.env as Record<string, string>),
+      ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
+      IG_DSH_CORE: 'off',
+    };
+    delete env.NODE_ENV;
+    app = await electron.launch({
+      executablePath: resolveElectronExecutable(),
+      args: [electronPkgDir, `--user-data-dir=${userData}`, '--enable-unsafe-swiftshader'],
+      cwd: electronPkgDir,
+      env,
+      timeout: 30_000,
+    });
+    const shot = (p: Page, name: string) => p.screenshot({ path: join(shotDir!, `${name}.png`) });
+    const main = await app.firstWindow({ timeout: 20_000 });
+    await main.waitForFunction(() => 'electronAPI' in window, undefined, { timeout: 20_000 });
+    await main.waitForTimeout(2_500);
+    await shot(main, '01-mascot-live2d');
+
+    const hover = () =>
+      app!.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().forEach((w) => w.webContents.send('window-mouse-enter')),
+      );
+    await hover();
+    await main.waitForTimeout(600);
+    await shot(main, '02-mascot-toolbar');
+
+    // 工具栏 tooltip（悬停第一个按钮）
+    const buttons = main.locator('[class*="toolbar"] button');
+    if ((await buttons.count()) > 0) {
+      await buttons.nth(1).hover();
+      await main.waitForTimeout(400);
+      await shot(main, '03-toolbar-tooltip');
+      // 语音设置弹层（语音按钮右键打开）
+      await main.locator('button[title^="语音功能"]').first().click({ button: 'right' });
+      await main.waitForTimeout(800);
+      await shot(main, '04-voice-settings');
+      const close = main.locator('[aria-label="关闭"], button:has-text("×")');
+      if (await close.count())
+        await close
+          .first()
+          .click()
+          .catch(() => undefined);
+      await main.keyboard.press('Escape');
+      await main.mouse.click(5, 5);
+    }
+
+    const mode = async (m: string) => {
+      await main.evaluate(
+        (m) => window.dispatchEvent(new CustomEvent('mode-switch', { detail: { mode: m } })),
+        m,
+      );
+      await main.waitForTimeout(2_000);
+      await hover();
+      await main.waitForTimeout(500);
+    };
+    await mode('custom-image');
+    await shot(main, '05-mode-custom-image');
+    await mode('3d');
+    await shot(main, '06-mode-3d');
+    await mode('live2d');
+
+    // TTS 配置窗口
+    const ttsWin = app.waitForEvent('window', { timeout: 15_000 }).catch(() => null);
+    await main.evaluate(() =>
+      (
+        window as unknown as { electronAPI: { openTTSConfig(): Promise<unknown> } }
+      ).electronAPI.openTTSConfig(),
+    );
+    const tts = await ttsWin;
+    if (tts) {
+      await tts.waitForLoadState('domcontentloaded');
+      await tts.waitForTimeout(800);
+      await shot(tts, '07-tts-config-window');
+    }
+
+    // AI 对话窗口
+    const chatWin = app.waitForEvent('window', { timeout: 20_000 });
+    await main.evaluate(() =>
+      (
+        window as unknown as { electronAPI: { openAiChat(): Promise<unknown> } }
+      ).electronAPI.openAiChat(),
+    );
+    const chat = await chatWin;
+    await chat.setViewportSize({ width: 1000, height: 760 }).catch(() => undefined);
+    await chat.waitForSelector('textarea', { timeout: 20_000 });
+    await chat.waitForTimeout(500);
+    await shot(chat, '10-chat-empty');
+    await chat.fill('textarea', '你好，帮我写一段 TypeScript 示例');
+    await shot(chat, '11-chat-typing');
+
+    await chat.click('[title="配置模型"]');
+    await chat.waitForTimeout(500);
+    await shot(chat, '12-chat-config-panel');
+    await chat.click('[aria-label="关闭"], [class*="closeButton"]');
+    await chat.waitForTimeout(300);
+
+    await chat.click('[data-testid="open-provider-panel"]');
+    await expect(chat.locator('[data-testid="provider-panel"]')).toBeVisible();
+    await chat.waitForTimeout(400);
+    await shot(chat, '13-provider-panel');
+    await chat.selectOption('[data-testid="preset-select"]', 'deepseek');
+    await chat.fill('[data-testid="draft-key"]', 'sk-demo-not-a-real-key-0000');
+    await shot(chat, '14-provider-panel-draft');
+    await chat.click('[aria-label="关闭"]');
+
+    const collapse = chat.locator('[title="收起侧边栏"]');
+    if (await collapse.count()) {
+      await collapse.click();
+      await chat.waitForTimeout(400);
+      await shot(chat, '15-chat-sidebar-collapsed');
+    }
+    await chat.locator('[data-testid="provider-switch"]').focus();
+    await shot(chat, '16-provider-switcher');
+  });
+});
