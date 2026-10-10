@@ -16,7 +16,9 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": [],
+      "passThroughEnv": ["*"]
     },
     "clean": {
       "cache": false,
