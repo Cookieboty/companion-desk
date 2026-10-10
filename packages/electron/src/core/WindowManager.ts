@@ -157,6 +157,21 @@ export class WindowManager implements IWindowManager {
   }
 
   /**
+   * 打开 AI 对话窗口并弹出 Provider 配置面板（托盘 / 菜单入口）。
+   */
+  async openProviderPanel(): Promise<void> {
+    const existed = Boolean(this.aiChatWindow);
+    const win = await this.createAiChatWindow();
+    // 新建窗口时给 React 挂载监听留一点时间
+    setTimeout(
+      () => {
+        if (!win.isDestroyed()) win.webContents.send('ai:providers:open-panel', {});
+      },
+      existed ? 0 : 400,
+    );
+  }
+
+  /**
    * 创建TTS配置窗口
    */
   async createTTSConfigWindow(): Promise<BrowserWindow> {

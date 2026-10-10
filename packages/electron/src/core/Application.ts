@@ -20,6 +20,7 @@ import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
 import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
+import { TrayManager } from './TrayManager';
 import { WindowManager } from './WindowManager';
 
 export interface IApplication {
@@ -40,6 +41,7 @@ export class Application implements IApplication {
   private bootstrapManager!: BootstrapManager;
   private aiRuntime?: AIRuntimeBootHandle;
   private clipboardGateway?: ClipboardGateway;
+  private trayManager?: TrayManager;
   private isInitialized = false;
 
   constructor() {
@@ -105,6 +107,9 @@ export class Application implements IApplication {
       // 创建主窗口
       await this.windowManager.createMainWindow();
 
+      // 托盘：一键切换 AI provider
+      this.startTray();
+
       this.logger.info('应用启动完成');
       eventBus.emit('app:started');
     } catch (error) {
@@ -149,10 +154,30 @@ export class Application implements IApplication {
     }
   }
 
+  /** 系统托盘（provider 快速切换）；失败不影响启动。 */
+  private startTray(): void {
+    const providers = this.aiRuntime?.providers;
+    if (!providers || this.trayManager) return;
+    this.trayManager = new TrayManager({
+      providers,
+      logger: this.logger,
+      openChat: () => {
+        void this.windowManager.createAiChatWindow();
+      },
+      openProviderPanel: () => {
+        void this.windowManager.openProviderPanel();
+      },
+      quit: () => app.quit(),
+    });
+    this.trayManager.start();
+  }
+
   /**
    * 停止 AI runtime；幂等。
    */
   async stopAIRuntime(): Promise<void> {
+    this.trayManager?.dispose();
+    this.trayManager = undefined;
     if (!this.aiRuntime) return;
     const handle = this.aiRuntime;
     this.aiRuntime = undefined;
