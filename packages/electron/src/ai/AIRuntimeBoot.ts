@@ -21,16 +21,22 @@ import {
   CapabilityIpcServer,
   EventBroadcaster,
   IPCTransportServer,
+  ProviderIpcServer,
+  ProviderService,
+  ProviderStore,
   createAiSdkBooter,
+  createSafeStorageCipher,
+  llmProvidersFromEnv,
   createElectronIpcAdapter,
   createElectronLifecycle,
   runtime,
   type Booter,
+  type RoutedLLMRegistry,
   type RuntimeLogger,
 } from '@ig-live/ai-runtime';
 import type { AIClient } from '@ig-live/ai-sdk';
 import { FileSessionStorePlugin } from '@ig-live/bundle-ig-electron-caps';
-import { app } from 'electron';
+import { app, safeStorage } from 'electron';
 
 import type { ILoggerService } from '../services/LoggerService';
 
@@ -69,6 +75,8 @@ export interface AIRuntimeBootOptions {
 export interface AIRuntimeBootHandle {
   client: AIClient;
   profile: string;
+  /** 多 provider 配置服务（面板 / 托盘切换） */
+  providers: ProviderService;
   channels: {
     business: readonly string[];
   };
@@ -153,12 +161,37 @@ export async function startAIRuntime(
     process.env.DSH_HOME = path.join(app.getPath('userData'), 'dsh');
   }
 
+  // 多 provider 配置：仅本地 userData，key 用 safeStorage 加密（不可用时明文回退 + 警告）
+  const cipher = createSafeStorageCipher(safeStorage);
+  const providerStore = new ProviderStore({
+    filePath: path.join(app.getPath('userData'), 'ai-providers.json'),
+    cipher,
+  });
+  if (cipher.kind === 'none') {
+    logger.warn(
+      '系统安全存储（safeStorage）不可用：provider token 仅做编码保存，未加密。面板中会提示用户。',
+    );
+  }
+  let registry: RoutedLLMRegistry | undefined;
+  const providerService = new ProviderService({
+    store: providerStore,
+    envEntries: llmProvidersFromEnv(process.env),
+    getRegistry: () => registry,
+    overrideId: process.env.COMPANION_PROVIDER?.trim() || undefined,
+  });
+
   const booter =
     opts.booter ??
     createAiSdkBooter({
       logger: runtimeLogger,
       // FileSessionStorePlugin 提供 ProfileStorageKey → 用户画像持久化到 userData/ai-chat/memory
       before: [{ plugin: FileSessionStorePlugin }],
+      providers: {
+        store: providerStore,
+        onRegistry: (r) => {
+          registry = r;
+        },
+      },
     });
   const lifecycle = createElectronLifecycle();
   const service = runtime.configure({ booter, lifecycle, logger: runtimeLogger });
@@ -198,6 +231,13 @@ export async function startAIRuntime(
     capability.start();
   }
 
+  const providerIpc = new ProviderIpcServer({
+    adapter,
+    service: providerService,
+    logger: runtimeLogger,
+  });
+  providerIpc.start();
+
   let compat: AiChatCompat | undefined;
   if (opts.enableLegacyCompat !== false) {
     compat = new AiChatCompat({ adapter, client, logger: runtimeLogger });
@@ -212,10 +252,20 @@ export async function startAIRuntime(
   return {
     client,
     profile,
+    providers: providerService,
     channels: {
       business: transport.channels,
     },
     async dispose() {
+      try {
+        providerIpc.stop();
+        providerStore.flush();
+        registry?.dispose();
+      } catch (err) {
+        logger.warn('ProviderIpcServer.stop threw', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       try {
         compat?.stop();
       } catch (err) {
