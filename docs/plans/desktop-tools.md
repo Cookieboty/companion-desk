@@ -1,6 +1,7 @@
 # Desktop tools: letting the LLM operate the computer (design)
 
-> Status: **design only.** Nothing in this document is implemented yet. Target branch: after `feat/ai-harness-p0`.
+> Status: **P0 (foundations) and P1 (read & summarize) are implemented**. See [../DESKTOP_TOOLS.md](../DESKTOP_TOOLS.md). P2+ are still design only.
+> P1 differences from this design: PDFs are parsed with `unpdf` (pdf.js) and docx with `fflate` instead of mammoth; minimal `fs_write_text` / `fs_trash` / `undo_last` landed early to exercise consent, journal and trash; there is no feature flag yet.
 > Owner: Companion Desk. Last updated: 2026-10-10.
 
 ## 1. Goals and non-goals
