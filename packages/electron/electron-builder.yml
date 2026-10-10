@@ -45,8 +45,6 @@ asarUnpack:
 extraResources:
   - from: ../renderer/dist
     to: renderer
-  - from: ../renderer/tts-config.html
-    to: renderer/tts-config.html
   - from: ../ai-chat/dist
     to: ai-chat
   - from: assets
