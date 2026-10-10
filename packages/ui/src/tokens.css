@@ -8,7 +8,7 @@
   --cd-color-bg: #0f172a;
   --cd-color-bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
   --cd-color-surface: rgba(15, 23, 42, 0.86);
-  --cd-color-surface-raised: rgba(30, 41, 59, 0.92);
+  --cd-color-surface-raised: rgba(24, 34, 54, 0.98);
   --cd-color-surface-sunken: rgba(2, 6, 23, 0.55);
   --cd-color-border: rgba(59, 130, 246, 0.28);
   --cd-color-border-strong: rgba(59, 130, 246, 0.6);
@@ -72,9 +72,9 @@
   --cd-focus-ring: 0 0 0 2px rgba(0, 212, 255, 0.45);
 
   /* layers */
-  --cd-z-tooltip: 1100;
-  --cd-z-modal: 1000;
-  --cd-z-toast: 1200;
+  --cd-z-tooltip: 100100;
+  --cd-z-modal: 100000; /* 高于看板娘工具栏（99999） */
+  --cd-z-toast: 100200;
 }
 
 [data-theme='light'] {
