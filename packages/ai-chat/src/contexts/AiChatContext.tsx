@@ -9,9 +9,14 @@ import React, {
 } from 'react';
 
 import { createIPCClient } from '../services/IPCClient';
+import { effectiveProviderLabel, providerClientAvailable } from '../services/providerClient';
 import { type ChatMessage, type ChatConfig } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
 import { type IPCClient } from '../types/ipc';
+
+/** 消息上的模型标签：主进程路由时显示当前生效 provider，否则沿用本地模型 id */
+const messageModelTag = (currentModelId?: string): string | undefined =>
+  providerClientAvailable() ? effectiveProviderLabel() : currentModelId;
 
 interface AiChatState {
   messages: ChatMessage[];
@@ -162,7 +167,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         role: 'user',
         content,
         timestamp: Date.now(),
-        modelId: state.currentModelId,
+        modelId: messageModelTag(state.currentModelId),
       };
       // 本轮之前的会话消息作为多轮上下文（state.messages 尚未包含本轮 userMessage）
       const history = state.messages;
@@ -175,7 +180,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         role: 'assistant',
         content: response,
         timestamp: Date.now(),
-        modelId: state.currentModelId,
+        modelId: messageModelTag(state.currentModelId),
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
@@ -199,7 +204,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         role: 'user',
         content,
         timestamp: Date.now(),
-        modelId: state.currentModelId,
+        modelId: messageModelTag(state.currentModelId),
       };
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
@@ -210,7 +215,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         role: 'assistant',
         content: '',
         timestamp: Date.now(),
-        modelId: state.currentModelId,
+        modelId: messageModelTag(state.currentModelId),
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
