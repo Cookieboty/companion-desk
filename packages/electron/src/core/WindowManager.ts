@@ -9,6 +9,7 @@ import { BrowserWindow, screen, app } from 'electron';
 
 import { type IConfigService } from '../services/ConfigService';
 import { type ILoggerService } from '../services/LoggerService';
+import { installPreloadGuard } from '../utils/preloadGuard';
 
 import { eventBus } from './EventBus';
 
@@ -299,6 +300,12 @@ export class WindowManager implements IWindowManager {
         preloadPath,
         error: error instanceof Error ? (error.stack ?? error.message) : String(error),
       });
+    });
+    // 「页面加载完但 preload 没跑」的空白窗口：探测 + 自动恢复（见 utils/preloadGuard.ts）
+    installPreloadGuard(window.webContents, {
+      label: type,
+      globals: ['electronAPI', 'aiIPC'],
+      logger: this.logger,
     });
     window.webContents.on('render-process-gone', (_event, details) => {
       this.logger.error(`[${type}] 渲染进程退出`, { ...details });
