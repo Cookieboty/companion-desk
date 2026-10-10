@@ -47,7 +47,17 @@ export interface TrayManagerOptions {
   openChat: () => void;
   openProviderPanel: () => void;
   quit: () => void;
+  /** 统一模型注册表（托盘「切换角色」子菜单）；可选 */
+  models?: { list(): Promise<RegistryModelLite[]>; onChange(fn: () => void): () => void };
 }
+
+export interface RegistryModelLite {
+  id: string;
+  name: string;
+  origin: string;
+}
+
+const ORIGIN_LABEL: Record<string, string> = { bundled: '', remote: ' · 商店', user: ' · 导入' };
 
 /** 托盘「看板娘动作」菜单项 */
 export const TRAY_MOTIONS: Array<[string, string]> = [
@@ -77,12 +87,26 @@ export class TrayManager {
       this.tray.setToolTip('Companion Desk');
       this.rebuild();
       this.unsubscribe = this.opts.providers.onChange(() => this.rebuild());
+      this.unsubscribeModels = this.opts.models?.onChange(() => void this.refreshModels());
+      void this.refreshModels();
     } catch (error) {
       this.opts.logger.warn('托盘创建失败（不影响主功能）', {
         error: error instanceof Error ? error.message : String(error),
       });
       this.tray = null;
     }
+  }
+
+  private models: RegistryModelLite[] = [];
+  private unsubscribeModels?: () => void;
+
+  private async refreshModels(): Promise<void> {
+    try {
+      this.models = (await this.opts.models?.list()) ?? [];
+    } catch {
+      this.models = [];
+    }
+    this.rebuild();
   }
 
   rebuild(): void {
@@ -121,7 +145,21 @@ export class TrayManager {
           click: () => broadcastMascotCommand({ type: 'motion', name }),
         })),
       },
-      { label: '选择角色…', click: () => broadcastMascotCommand({ type: 'open-picker' }) },
+      ...(this.models.length
+        ? [
+            {
+              label: '切换角色',
+              submenu: this.models.map((m) => ({
+                label: `${m.name}${ORIGIN_LABEL[m.origin] ?? ''}`,
+                click: () => broadcastMascotCommand({ type: 'select-model', id: m.id }),
+              })),
+            } satisfies MenuItemConstructorOptions,
+          ]
+        : []),
+      {
+        label: '选择角色 / 模型商店…',
+        click: () => broadcastMascotCommand({ type: 'open-picker' }),
+      },
       { type: 'separator' },
       { label: '退出', click: () => this.opts.quit() },
     ];
@@ -130,6 +168,7 @@ export class TrayManager {
 
   dispose(): void {
     this.unsubscribe?.();
+    this.unsubscribeModels?.();
     this.tray?.destroy();
     this.tray = null;
   }

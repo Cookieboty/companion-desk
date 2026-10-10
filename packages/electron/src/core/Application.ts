@@ -11,6 +11,7 @@ import { SafeKeyProvider } from '../ai/SafeKeyProvider';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
+import { getModelService } from '../models/ModelService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
@@ -103,6 +104,11 @@ export class Application implements IApplication {
       perfMark('app-ready');
       this.logger.info('Electron应用准备就绪');
 
+      // 模型注册表 / 商店 / 用户导入（cdmodel:// 协议 + models:* IPC）
+      const models = getModelService(this.logger);
+      models.registerProtocol();
+      models.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       perfMark('ai-runtime-ready');
@@ -171,6 +177,7 @@ export class Application implements IApplication {
         void this.windowManager.openProviderPanel();
       },
       quit: () => app.quit(),
+      models: getModelService(this.logger),
     });
     this.trayManager.start();
   }

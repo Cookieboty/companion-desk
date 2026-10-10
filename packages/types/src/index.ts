@@ -44,6 +44,9 @@ export interface IpcApi {
   /** 主进程 → 看板娘指令：{ type: 'motion' | 'expression' | 'parameter', ... } */
   onMascotCommand?: (callback: (cmd: unknown) => void) => () => void;
 
+  /** 模型注册表 / 商店 / 用户导入（主进程实现） */
+  models?: import('./models').ModelsApi;
+
   // MCP集成相关API
   mcp: MCPApi;
 }
@@ -217,3 +220,4 @@ export interface MCPToolExecutionResult {
   };
   error?: string;
 }
+export * from './models';
