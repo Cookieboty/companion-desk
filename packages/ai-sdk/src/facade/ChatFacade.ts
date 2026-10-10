@@ -129,6 +129,42 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     return picked.provider;
   };
 
+  /**
+   * 流式回复结束后发出 `session/assistant-message`（AIClient 桥接为 `message:complete`），
+   * 看板娘气泡据此显示回复摘要。只对 stream / agentStream / regenerate（用户对话）发出；
+   * sendMessage（后台摘要等）不发。中途出错 / 中止且没有文本时不发。
+   */
+  const tap = (it: AsyncIterable<ChatChunk>, req: ChatRequest): AsyncIterable<ChatChunk> => ({
+    async *[Symbol.asyncIterator]() {
+      let text = '';
+      let finish: ChatResponse['finishReason'] | undefined;
+      try {
+        for await (const c of it) {
+          if (c.type === 'delta') text += c.content;
+          else if (c.type === 'done') finish = c.finishReason;
+          yield c;
+        }
+      } finally {
+        if (text.trim()) {
+          try {
+            ctx.emit('session/assistant-message', {
+              message: {
+                id: req.reqId,
+                sessionId: req.reqId,
+                role: 'assistant',
+                parts: [{ type: 'text', text }],
+                createdAt: Date.now(),
+                meta: { provider: req.provider, model: req.model, finishReason: finish },
+              },
+            });
+          } catch {
+            /* 事件总线异常不影响对话 */
+          }
+        }
+      }
+    },
+  });
+
   return {
     async sendMessage(opts) {
       const picked = pick(opts, 'chat');
@@ -136,7 +172,8 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     },
     stream(opts) {
       const picked = pick(opts, 'chat');
-      return picked.provider.stream({ ...buildRequest(opts, picked), stream: true });
+      const req = { ...buildRequest(opts, picked), stream: true };
+      return tap(picked.provider.stream(req), req);
     },
     async agent(opts) {
       const picked = pick(opts, 'agent-tools');
@@ -144,7 +181,8 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     },
     agentStream(opts) {
       const picked = pick(opts, 'agent-tools');
-      return runAgent(picked).stream({ ...buildRequest(opts, picked), stream: true });
+      const req = { ...buildRequest(opts, picked), stream: true };
+      return tap(runAgent(picked).stream(req), req);
     },
     abort(reqId) {
       const reg = ctx.inject(LLMRegistryKey);
@@ -153,11 +191,8 @@ export function createChatFacade(ctx: SdkContext): ChatFacade {
     },
     regenerate(opts) {
       const picked = pick(opts, 'chat');
-      return picked.provider.stream({
-        ...buildRequest(opts, picked),
-        reqId: cryptoRandomId(),
-        stream: true,
-      });
+      const req = { ...buildRequest(opts, picked), reqId: cryptoRandomId(), stream: true };
+      return tap(picked.provider.stream(req), req);
     },
   };
 }
