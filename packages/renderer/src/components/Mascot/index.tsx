@@ -4,6 +4,7 @@ import { MessageBubble } from '../MessageBubble/MessageBubble';
 import { ToolBar } from '../ToolBar';
 
 import { Credits } from './Credits';
+import { InteractionSettings } from './InteractionSettings';
 import { ModelPicker } from './ModelPicker';
 import { MotionMenu } from './MotionMenu';
 import styles from './style.module.css';
@@ -13,7 +14,6 @@ import WaifuAgentBubbleBridge from '@/ai/WaifuAgentBubbleBridge';
 import WaifuMascotSceneReporter from '@/ai/WaifuMascotSceneReporter';
 import { useMascot } from '@/contexts/MascotContext';
 import { useMascotTips } from '@/hooks/useMascotTips';
-import { useWindowDrag } from '@/hooks/useWindowDrag';
 import MascotDriver from '@/mascot/MascotDriver';
 
 // three / VRM 体积较大：按需加载
@@ -28,7 +28,6 @@ export const MascotHost: React.FC = () => {
   const { currentModel } = useMascot();
   const aiReady = useMemo(() => isAiIpcReady(), []);
   useMascotTips();
-  useWindowDrag('mascot-canvas');
 
   return (
     <div className={styles.root}>
@@ -45,6 +44,7 @@ export const MascotHost: React.FC = () => {
       <ModelPicker />
       <MotionMenu />
       <Credits />
+      <InteractionSettings />
       <div id="mascot-canvas" className={styles.stage} data-testid="mascot-canvas">
         {currentModel && (
           <Suspense fallback={null}>

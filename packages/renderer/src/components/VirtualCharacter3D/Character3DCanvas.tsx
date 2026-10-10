@@ -1,9 +1,10 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
 import { OrbitControls, useProgress, Html } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import React, { Suspense, useRef, useEffect } from 'react';
+import React, { Suspense, useRef, useEffect, useState } from 'react';
 import type * as THREE from 'three';
 
+import MascotInteractionLayer from '../../mascot/interaction/MascotInteractionLayer';
 import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type Character3DCanvasProps } from '../../types/character3d';
 
@@ -42,6 +43,13 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   ...htmlProps
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // 窗口隐藏 / 最小化时暂停渲染
+  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    const on = () => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
   const { isLoaded, renderQuality, isVisible, setRenderQuality } = useCharacter3DStore();
 
   // 根据性能自动调整渲染质量
@@ -166,10 +174,12 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
         gl={{
           antialias: renderConfig.antialias,
           alpha: transparent,
-          preserveDrawingBuffer: false,
+          // 逐像素点击穿透需要读回上一帧的 alpha
+          preserveDrawingBuffer: true,
           powerPreference: 'high-performance',
         }}
         dpr={renderConfig.pixelRatio}
+        frameloop={hidden ? 'never' : 'always'}
         camera={{
           // 全身取景：VRoid 模型约 1.5m 高，原点在脚底
           position: [0, 0.82, 3.2],
@@ -202,6 +212,9 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
         <pointLight position={[0, -10, 0]} args={[0xffffff, 0.3]} />
 
         <CameraRig camera={modelConfig?.camera} />
+
+        {/* 桌面互动：点击穿透 / 拖拽 / 触摸反应 / 视线 */}
+        {transparent && <MascotInteractionLayer />}
 
         {/* 性能监控 */}
         <PerformanceMonitor />

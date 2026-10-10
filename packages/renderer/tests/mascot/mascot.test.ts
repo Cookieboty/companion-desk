@@ -103,6 +103,7 @@ function fakeVrm() {
       },
     },
     lookAt: { target: null as THREE.Object3D | null },
+    scene: new THREE.Group(),
   };
   return { vrm, values, bones };
 }

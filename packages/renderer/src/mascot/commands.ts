@@ -6,6 +6,7 @@ export type MascotCommand =
   | { type: 'motion'; name: string }
   | { type: 'expression'; name: string }
   | { type: 'open-picker' }
+  | { type: 'open-panel'; panel: string }
   | { type: 'select-model'; id: string }
   | { type: string; [k: string]: unknown };
 
@@ -25,6 +26,10 @@ export function handleMascotCommand(raw: unknown): boolean {
     case 'select-model':
       if (typeof cmd.id !== 'string') return false;
       window.dispatchEvent(new CustomEvent('mascot:select-model', { detail: { id: cmd.id } }));
+      return true;
+    case 'open-panel':
+      if (typeof cmd.panel !== 'string') return false;
+      window.dispatchEvent(new CustomEvent('mascot:open-panel', { detail: { panel: cmd.panel } }));
       return true;
     case 'open-picker':
       window.dispatchEvent(new CustomEvent('mascot:open-picker'));

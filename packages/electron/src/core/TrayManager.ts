@@ -160,6 +160,10 @@ export class TrayManager {
         label: '选择角色 / 模型商店…',
         click: () => broadcastMascotCommand({ type: 'open-picker' }),
       },
+      {
+        label: '互动设置（穿透 / 重力 / 散步）…',
+        click: () => broadcastMascotCommand({ type: 'open-panel', panel: 'interaction' }),
+      },
       { type: 'separator' },
       { label: '退出', click: () => this.opts.quit() },
     ];
