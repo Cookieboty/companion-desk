@@ -1,6 +1,6 @@
 import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
 import { type IpcApi } from '@ig-live/types';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 // 挂载 ai IPC 桥：`window.aiIPC.invoke/on/off` 走白名单校验的 `ai:` 通道。
 // 与旧 `electronAPI` 并存；ai-sdk-client 的 ClientAIClient 会自动查找 `window.aiIPC`。
@@ -52,6 +52,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('get-cursor-position');
   },
   // 监听窗口鼠标事件
+  /** 模型注册表 / 商店 / 用户导入 */
+  models: {
+    list: () => ipcRenderer.invoke('models:list'),
+    storeState: (refresh?: boolean) => ipcRenderer.invoke('models:store-state', refresh),
+    install: (id: string) => ipcRenderer.invoke('models:install', id),
+    cancel: (id: string) => ipcRenderer.invoke('models:cancel', id),
+    remove: (id: string) => ipcRenderer.invoke('models:remove', id),
+    importVrm: (filePath?: string, config?: unknown) =>
+      ipcRenderer.invoke('models:import-vrm', filePath, config),
+    pathForFile: (file: File) => webUtils.getPathForFile(file),
+    replaceVrm: (id: string, filePath?: string) =>
+      ipcRenderer.invoke('models:replace-vrm', id, filePath),
+    updateConfig: (id: string, config: unknown) =>
+      ipcRenderer.invoke('models:update-config', id, config),
+    exportConfig: (id: string) => ipcRenderer.invoke('models:export-config', id),
+    importConfig: (id: string, json?: string) =>
+      ipcRenderer.invoke('models:import-config', id, json),
+    onProgress: (cb: (p: unknown) => void) => {
+      const l = (_: unknown, p: unknown) => cb(p);
+      ipcRenderer.on('models:progress', l);
+      return () => {
+        ipcRenderer.removeListener('models:progress', l);
+      };
+    },
+    onChanged: (cb: () => void) => {
+      const l = () => cb();
+      ipcRenderer.on('models:changed', l);
+      return () => {
+        ipcRenderer.removeListener('models:changed', l);
+      };
+    },
+  },
   /** 主进程 → 看板娘指令（AI 工具 / 托盘：播放动作、切换表情）。返回取消订阅函数。 */
   onMascotCommand: (callback: (cmd: unknown) => void) => {
     const listener = (_: unknown, cmd: unknown) => callback(cmd);

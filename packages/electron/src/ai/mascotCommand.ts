@@ -5,7 +5,8 @@ export type MascotCommand =
   | { type: 'motion'; name: string }
   | { type: 'expression'; name: string }
   | { type: 'parameter'; id: string; value: number }
-  | { type: 'open-picker' };
+  | { type: 'open-picker' }
+  | { type: 'select-model'; id: string };
 
 export const MASCOT_COMMAND_CHANNEL = 'mascot:command';
 

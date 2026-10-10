@@ -6,6 +6,7 @@
 import { app } from 'electron';
 
 import { Application } from './core/Application';
+import { registerModelSchemePrivileges } from './models/ModelService';
 import { migrateLegacyUserData } from './utils/legacyUserData';
 import { perfMark } from './utils/perfMarks';
 
@@ -20,6 +21,9 @@ if (app.isPackaged) {
     console.warn('旧版用户数据迁移失败:', error);
   }
 }
+
+// cdmodel://（远程 / 用户模型文件）需在 app ready 之前注册为特权协议
+registerModelSchemePrivileges();
 
 // 全局应用实例
 let application: Application | null = null;
