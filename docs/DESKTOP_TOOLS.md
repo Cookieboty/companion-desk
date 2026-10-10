@@ -48,6 +48,27 @@ The OS folder picker opens and the app gets exactly the folder you choose. Nothi
 | `fs_trash`              | destructive | dialog, every time                  | moves to the app trash; the granted root itself is refused; `dryRun`                                                                |
 | `undo_last`             | write       | asks every time                     | reverts the last journal entry if the files have not changed since                                                                  |
 
+### P2 · notes, reminders, clipboard
+
+| Tool              | Level       | Default confirmation                | Notes                                                                                                        |
+| ----------------- | ----------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `note_create`     | write       | ask once per run                    | `{ title, body, tags[] }` → `userData/desktop/notes/<id>.md` (markdown + JSON-valued front matter); undoable |
+| `note_list`       | read        | auto                                | newest first, optional `tag` filter                                                                          |
+| `note_search`     | read        | auto                                | in-memory full-text search over title / tags / body; all terms must match; CJK substring friendly; snippets  |
+| `note_read`       | read        | auto                                | by id only (`n…`); paths are never accepted                                                                  |
+| `note_update`     | write       | ask once per run                    | rename / retag, replace `body` or `append`; undo restores the previous version                               |
+| `note_trash`      | destructive | dialog, every time                  | moves the note file to the app trash; undoable                                                               |
+| `reminder_create` | write       | ask once per run                    | `{ text, at? (ISO) \| inMinutes? \| inSeconds? }`, persisted in `userData/desktop/reminders.json`; undoable  |
+| `reminder_list`   | read        | auto                                | pending by default; `includeEnded` adds fired / missed / cancelled                                           |
+| `reminder_cancel` | write       | ask once per run                    | pending only; undo brings it back                                                                            |
+| `reminder_snooze` | write       | ask once per run                    | `{ id, minutes=10 }`, works for pending / fired / missed                                                     |
+| `clipboard_read`  | read        | **ask once per run** (rememberable) | text only, wrapped in `<clipboard_content trust="untrusted">`; marks the turn as tainted                     |
+| `clipboard_write` | write       | ask once per run                    | the mascot says 「已复制到剪贴板」                                                                           |
+
+**Reminders.** The scheduler runs in the main process while the app is running. When a reminder is due, the mascot window is shown, she waves, the bubble says 「⏰ 提醒：…」, a reminder card with 「好的」/「10 分钟后」 appears at the bottom of the window, and an OS notification is sent where supported. Reminders that came due while the app was closed (more than 60 s overdue at launch) are marked `missed` and announced once on the next launch.
+
+**Panels.** 桌面能力 → 「笔记」 lists, searches, creates, edits and deletes notes; 「提醒」 lists, adds, snoozes and cancels reminders. Panel actions are the user's own, so they are not confirmed again, but they are audited and undoable like tool calls.
+
 Each read / write tool can be set to 总是允许 / 每次运行首次询问 / 每次都询问 under 「工具权限」. Destructive tools and `undo_last` are fixed.
 
 The tool result format is `{ ok: true, data }` or `{ ok: false, error: { code, message } }`. The error codes are:
@@ -96,10 +117,15 @@ Everything lives under `userData/desktop/` (`settings.json`, `audit/`, `journal.
   - dropping a file on the mascot gives a summary in the bubble and in the chat;
   - audit log rows.
     Run with `DESKTOP_TOOLS_SHOTS=<dir>` to save screenshots.
+- **P2 unit** (`tests/unit/desktop/p2.test.ts`): notes store (front matter round-trip, search ranking, AND, path-safe ids, persistence), reminder scheduler with a fake clock (fire, snooze, cancel, persistence, missed-on-launch, announced once), the P2 tools (confirm once, destructive dialog, undo for update / trash / cancel, clipboard consent per run + `ask` policy, tainted turn).
+- **P2 e2e** (`E13.notes-reminders-clipboard.headed.spec.ts`): note create via the model + confirm, search via the model and in the panel, a reminder that fires 4 s later (card + bubble), the reminders panel, clipboard read denied → `user_denied` (content never reaches the model) then allowed + remembered, clipboard write, and a missed reminder announced after relaunch. `P2_SHOTS=<dir>` saves screenshots.
 
-## Known limits (P0/P1)
+## Known limits (P0–P2)
 
 - Scanned PDFs (images only) return `empty`. There is no OCR.
 - `.doc`, `.pages`, `.odt`, `.rtf` and spreadsheets are not parsed yet.
 - The parser runs in an Electron `utilityProcess` with a heap cap and a timeout. It is not an OS-level sandbox (no seccomp / AppContainer), but it only gets a path that already passed the guard.
-- `fs_mkdir` / `move` / `copy`, organize plans, notes, reminders, clipboard, app launch and calendar belong to P2 and later.
+- `fs_mkdir` / `move` / `copy`, organize plans, app launch and calendar belong to P3 and later.
+- Reminders only fire while the app is running (no OS-level scheduled task); quiet hours and recurrence are not implemented yet.
+- Notes live in the app's own folder; pointing the notebook at an existing vault (Obsidian etc.) is not implemented. Search is a simple in-memory index (no stemming / fuzzy matching).
+- The clipboard tools handle text only.
