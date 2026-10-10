@@ -9,6 +9,7 @@ import type { AuditLog } from './AuditLog';
 import type { Danger } from './consent';
 import { extOf, isSupported } from './parse/extract';
 import type { ParseResult } from './parse/runParse';
+import { isInside } from './pathGuard';
 import type { PermissionBroker } from './PermissionBroker';
 import type { InverseOp, UndoJournal } from './UndoJournal';
 
@@ -504,8 +505,13 @@ export function createDesktopTools(deps: DesktopToolDeps): ToolDefinition[] {
         return run<Record<string, unknown>>('fs_trash', i, ctx.signal, async () => {
           const g = await guard(i.path, 'write');
           const st = await fs.promises.stat(g.real);
-          if (broker.scopes().some((s) => s.path === g.real))
-            throw new ToolError('denied', '不能删除已授权的根文件夹本身');
+          // 不能删除授权根目录本身或包含它的上级（比较 realpath；Windows 短文件名 / 大小写）
+          for (const s of broker.scopes()) {
+            const rootReal = await fs.promises.realpath(s.path).catch(() => s.path);
+            if (isInside(rootReal, g.real, process.platform)) {
+              throw new ToolError('denied', '不能删除已授权的根文件夹本身');
+            }
+          }
           let count = 1;
           if (st.isDirectory())
             count = (await fs.promises.readdir(g.real, { recursive: true })).length;
