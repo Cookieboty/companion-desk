@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/doctor.mjs --quick && turbo run dev --filter=@ig-live/electron --filter=@ig-live/renderer --filter=@ig-live/ai-chat --ui=stream",
+    "dev": "node scripts/doctor.mjs --quick && turbo run dev --filter=@ig-live/electron --filter=@ig-live/renderer --filter=@ig-live/ai-chat --ui=stream --log-order=stream",
     "dev:libs": "turbo run dev --filter=./packages/* --filter=!@ig-live/electron --filter=!@ig-live/renderer --filter=!@ig-live/ai-chat --concurrency=20",
     "start": "pnpm run dev",
     "build": "turbo run build",
