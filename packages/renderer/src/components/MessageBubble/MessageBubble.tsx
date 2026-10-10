@@ -2,8 +2,13 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 
 import styles from './style.module.css';
 
-import { useMascot } from '@/contexts/MascotContext';
-import { bubbleScale, placeBubble, type BubblePlacement } from '@/mascot/bubblePlacement';
+import { bubbleHover, useMascot } from '@/contexts/MascotContext';
+import {
+  bubbleScale,
+  intersects,
+  placeBubble,
+  type BubblePlacement,
+} from '@/mascot/bubblePlacement';
 import { layoutStore } from '@/mascot/layoutStore';
 import { toBubbleText } from '@/security/bubbleText';
 
@@ -62,10 +67,15 @@ export const MessageBubble: React.FC = () => {
     setPlace((prev) =>
       prev &&
       prev.candidate === p.candidate &&
-      Math.abs(prev.x - p.x) < 4 &&
-      Math.abs(prev.y - p.y) < 4 &&
-      prev.width === p.width &&
-      prev.height === p.height
+      // 防抖：小幅变化沿用旧位置，但前提是旧位置仍不压到当前的头部
+      !intersects(
+        { left: prev.x, right: prev.x + prev.width, top: prev.y, bottom: prev.y + prev.height },
+        head,
+      ) &&
+      Math.abs(prev.x - p.x) < 8 &&
+      Math.abs(prev.y - p.y) < 8 &&
+      Math.abs(prev.width - p.width) < 8 &&
+      Math.abs(prev.height - p.height) < 8
         ? prev
         : p,
     );
@@ -133,6 +143,8 @@ export const MessageBubble: React.FC = () => {
         aria-live="polite"
         className={`${styles.messageBubble} ${place ? styles.placed : ''} ${active ? styles.active : ''}`}
         style={style}
+        onPointerEnter={() => (bubbleHover.on = true)}
+        onPointerLeave={() => (bubbleHover.on = false)}
       >
         {body(false)}
       </div>
