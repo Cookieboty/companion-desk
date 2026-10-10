@@ -25,6 +25,8 @@ export interface CatalogEntry {
   credit: string;
   /** 经审核的非 OSI 许可：条款地址 + 条件（UI 在徽章 / 致谢里展示） */
   licenseTerms?: LicenseTerms;
+  /** 作者原始许可文件（https，在致谢页展示） */
+  licenseFileUrl?: string;
   vrm: CatalogFile;
   thumbnail: CatalogFile;
 }
@@ -184,6 +186,9 @@ export function validateCatalog(raw: unknown, policy: UrlPolicy = {}): CatalogVa
         : [],
       credit,
       licenseTerms,
+      licenseFileUrl: isAllowedUrl(item.licenseFileUrl)
+        ? (item.licenseFileUrl as string)
+        : undefined,
       vrm,
       thumbnail,
     });
