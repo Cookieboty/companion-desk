@@ -507,8 +507,10 @@ export class WindowManager implements IWindowManager {
       } else {
         // 生产环境加载打包后的TTS配置页面
         // 在打包应用中，extraResources 会被放在 process.resourcesPath 下
-        const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
-        const ttsConfigPath = path.join(resourcesPath, 'renderer', 'tts-config.html');
+        // 未打包的 prod 运行（e2e / 本地 dist）没有 extraResources，回落到源码里的页面
+        const ttsConfigPath = app.isPackaged
+          ? path.join(process.resourcesPath, 'renderer', 'tts-config.html')
+          : path.join(__dirname, '..', '..', '..', 'renderer', 'tts-config.html');
         this.logger.info('TTS配置窗口加载路径', { path: ttsConfigPath });
         await window.loadFile(ttsConfigPath);
       }
