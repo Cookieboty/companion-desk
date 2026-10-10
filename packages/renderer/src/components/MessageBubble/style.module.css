@@ -23,7 +23,7 @@
   opacity: 0;
   /* 位置不做过渡：跟随头部时必须立即到位，避免动画中途压到脸 */
   transition: opacity 0.3s ease-in-out;
-  z-index: 10000;
+  z-index: 20; /* 低于确认气泡 / 对话框（30+）与工具栏 */
   pointer-events: none;
 }
 
