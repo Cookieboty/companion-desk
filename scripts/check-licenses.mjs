@@ -35,27 +35,21 @@ const DEP_ALLOW = new Set([
   'Zlib',
   'WTFPL',
 ]);
-/** Reviewed exceptions: weak-copyleft libraries used unmodified via dynamic linking / separate files. */
-const DEP_EXCEPTIONS = {
-  '@img/sharp-libvips-linux-x64':
-    'LGPL-3.0-or-later — prebuilt libvips shared library, dynamically linked, unmodified',
-  '@img/sharp-libvips-linuxmusl-x64':
-    'LGPL-3.0-or-later — prebuilt libvips shared library, dynamically linked, unmodified',
-  '@img/sharp-libvips-darwin-arm64':
-    'LGPL-3.0-or-later — prebuilt libvips shared library, dynamically linked, unmodified',
-  '@img/sharp-libvips-darwin-x64':
-    'LGPL-3.0-or-later — prebuilt libvips shared library, dynamically linked, unmodified',
-  '@img/sharp-win32-x64':
-    'Apache-2.0 AND LGPL-3.0-or-later — prebuilt sharp + libvips DLLs, unmodified',
-  '@img/sharp-win32-arm64':
-    'Apache-2.0 AND LGPL-3.0-or-later — prebuilt sharp + libvips DLLs, unmodified',
-  '@img/sharp-win32-ia32':
-    'Apache-2.0 AND LGPL-3.0-or-later — prebuilt sharp + libvips DLLs, unmodified',
-  '@deepseek-ai/libreoffice-kit':
-    'MPL-2.0 — file-level copyleft, used unmodified (dsh optional dependency)',
-  '@deepseek-ai/libreoffice-kit-wasm':
-    'MPL-2.0 — file-level copyleft, used unmodified (dsh optional dependency)',
-};
+/**
+ * Reviewed exceptions (name patterns, all platform variants): weak-copyleft libraries used unmodified
+ * via dynamic linking / separate files.
+ */
+const DEP_EXCEPTIONS = [
+  {
+    pattern: /^@img\/sharp-(libvips-|win32-)/,
+    why: 'LGPL-3.0-or-later — prebuilt libvips shared library (via sharp), dynamically linked, unmodified',
+  },
+  {
+    pattern: /^@deepseek-ai\/libreoffice-kit(-|$)/,
+    why: 'MPL-2.0 — file-level copyleft, used unmodified (optional dsh dependency)',
+  },
+];
+const isException = (name) => DEP_EXCEPTIONS.some((e) => e.pattern.test(name));
 
 export function spdxAllowed(expr, allow) {
   const e = String(expr ?? '')
@@ -87,7 +81,7 @@ function checkDeps() {
     for (const pkg of pkgs) {
       count += 1;
       if (spdxAllowed(license, DEP_ALLOW)) continue;
-      if (DEP_EXCEPTIONS[pkg.name]) continue;
+      if (isException(pkg.name)) continue;
       errors.push(
         `deps: ${pkg.name}@${(pkg.versions ?? []).join(',')} has licence "${license}" (not allow-listed)`,
       );
