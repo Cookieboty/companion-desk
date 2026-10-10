@@ -7,10 +7,12 @@ import { z } from 'zod';
 import type { AppTrash } from './AppTrash';
 import type { AuditLog } from './AuditLog';
 import type { Danger } from './consent';
+import { createP2Tools, P2_DANGER, type P2Deps } from './p2tools';
 import { extOf, isSupported } from './parse/extract';
 import type { ParseResult } from './parse/runParse';
 import { isInside } from './pathGuard';
 import type { PermissionBroker } from './PermissionBroker';
+import { ToolError } from './toolError';
 import type { InverseOp, UndoJournal } from './UndoJournal';
 
 export interface ProviderInfo {
@@ -30,19 +32,14 @@ export interface DesktopToolDeps {
   providerFor: (role: 'chat' | 'agent-tools' | 'summary') => ProviderInfo | null;
   /** 打开系统文件夹选择框；用户取消返回 null */
   pickFolder: (suggested?: string) => Promise<string | null>;
+  /** P2：笔记 / 提醒 / 剪贴板（缺省时不注册这些工具） */
+  p2?: P2Deps;
 }
+
+export { ToolError };
 
 export type ToolResult<T> =
   { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
-
-class ToolError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
 
 /** 包裹不可信的文件内容：模型只能把它当作数据 */
 export function wrapUntrusted(p: string, text: string): string {
@@ -60,6 +57,7 @@ export const TOOL_DANGER: Record<string, Danger> = {
   fs_write_text: 'write',
   fs_trash: 'destructive',
   undo_last: 'write',
+  ...P2_DANGER,
 };
 
 const MAX_TEXT_PER_CALL = 60_000;
@@ -556,6 +554,10 @@ export function createDesktopTools(deps: DesktopToolDeps): ToolDefinition[] {
       },
     },
   ];
+  if (deps.p2)
+    tools.push(
+      ...createP2Tools(deps.p2, { run, confirm, journal, markRead: (sg) => broker.markRead(sg) }),
+    );
   return tools;
 }
 

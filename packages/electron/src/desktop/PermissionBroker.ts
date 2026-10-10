@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { decide, sanitizePolicy, type Danger, type Policy } from './consent';
+import { decide, sanitizePolicy, TOOL_DEFAULT_POLICY, type Danger, type Policy } from './consent';
 import { guardPath, type GuardEnv, type GuardResult, type Scope } from './pathGuard';
 
 export interface DesktopSettings {
@@ -161,7 +161,7 @@ export class PermissionBroker {
 
   // ---------- 策略 ----------
   policy(tool: string, danger: Danger): Policy {
-    return sanitizePolicy(danger, this.settings.policies[tool]);
+    return sanitizePolicy(danger, this.settings.policies[tool] ?? TOOL_DEFAULT_POLICY[tool]);
   }
 
   setPolicy(tool: string, danger: Danger, p: Policy): void {

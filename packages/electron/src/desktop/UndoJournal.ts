@@ -9,7 +9,15 @@ export type InverseOp =
   | { op: 'move'; from: string; to: string }
   | { op: 'restore'; stored: string; original: string }
   | { op: 'trash'; path: string }
-  | { op: 'truncate'; path: string; size: number; expectSize: number };
+  | { op: 'truncate'; path: string; size: number; expectSize: number }
+  /** 由注册的处理器执行（笔记内容回写、提醒状态恢复等非纯文件操作） */
+  | { op: 'custom'; kind: string; payload: unknown };
+
+export interface CustomUndo {
+  /** 返回问题描述则不执行撤销 */
+  check(payload: unknown): string | null;
+  apply(payload: unknown): Promise<void> | void;
+}
 
 export interface JournalEntry {
   id: string;
@@ -27,6 +35,12 @@ interface UndoMark {
 
 /** 撤销日志：userData/desktop/journal.jsonl（只追加；撤销本身也追加一条标记） */
 export class UndoJournal {
+  private readonly custom = new Map<string, CustomUndo>();
+
+  registerCustom(kind: string, h: CustomUndo): void {
+    this.custom.set(kind, h);
+  }
+
   constructor(
     private readonly file: string,
     private readonly trash: AppTrash,
@@ -81,6 +95,12 @@ export class UndoJournal {
       if (op.op === 'restore' && (!fs.existsSync(op.stored) || fs.existsSync(op.original)))
         return `无法恢复：${op.original}`;
       if (op.op === 'trash' && !fs.existsSync(op.path)) return `文件已不存在：${op.path}`;
+      if (op.op === 'custom') {
+        const h = this.custom.get(op.kind);
+        if (!h) return `无法撤销：${op.kind}`;
+        const p = h.check(op.payload);
+        if (p) return p;
+      }
       if (op.op === 'truncate') {
         if (!fs.existsSync(op.path) || fs.statSync(op.path).size !== op.expectSize)
           return `文件在此之后被修改过：${op.path}`;
@@ -97,6 +117,7 @@ export class UndoJournal {
       else if (op.op === 'restore') await this.trash.restore(op);
       else if (op.op === 'trash') await this.trash.trash(op.path);
       else if (op.op === 'truncate') await fs.promises.truncate(op.path, op.size);
+      else if (op.op === 'custom') await this.custom.get(op.kind)!.apply(op.payload);
     }
     fs.appendFileSync(
       this.file,
