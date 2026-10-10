@@ -76,7 +76,7 @@ export const AddProvider: React.FC<{
                       data-testid={`preset-${p.id}`}
                       onClick={() => onPick(p)}
                     >
-                      <Monogram name={p.id === 'custom' ? '⚙' : p.name} />
+                      <Monogram name={p.id === 'custom' ? '⚙' : p.name} brand={p.id} />
                       <span className={styles.presetText}>
                         <span className={styles.presetName}>{p.name}</span>
                         <span className="cd-muted">

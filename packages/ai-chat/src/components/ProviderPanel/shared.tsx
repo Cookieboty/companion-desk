@@ -1,4 +1,4 @@
-import { Badge } from '@ig-live/ui';
+import { Badge, BrandIcon, hasBrandIcon } from '@ig-live/ui';
 import React from 'react';
 
 import type { FetchModelsResult, TestResult } from '../../services/providerClient';
@@ -61,13 +61,18 @@ export const FetchBadge: React.FC<{ r?: FetchModelsResult | 'pending' }> = ({ r 
   );
 };
 
-/** 首字母头像（与 cc-switch 的名称前图标一致；不使用任何厂商商标图） */
-export const Monogram: React.FC<{ name: string; size?: number }> = ({ name, size = 32 }) => (
-  <span
-    aria-hidden
-    className="pp-mono"
-    style={{ width: size, height: size, fontSize: size * 0.42 }}
-  >
-    {(name.trim()[0] ?? '?').toUpperCase()}
-  </span>
-);
+const BRAND_ALIAS: Record<string, string> = { siliconflow: 'siliconcloud', claude: 'anthropic' };
+
+/** 预设 / 环境变量供应商 id → 品牌图标 id（@lobehub/icons-static-svg，MIT）；未知返回 undefined */
+export function brandOf(id?: string): string | undefined {
+  if (!id || id === 'custom') return undefined;
+  const b = BRAND_ALIAS[id] ?? id;
+  return hasBrandIcon(b) ? b : undefined;
+}
+
+/** 供应商头像：有开源授权的品牌图标就用图标，否则首字母 */
+export const Monogram: React.FC<{ name: string; size?: number; brand?: string }> = ({
+  name,
+  size = 32,
+  brand,
+}) => <BrandIcon brand={brandOf(brand)} name={name} size={size} />;
