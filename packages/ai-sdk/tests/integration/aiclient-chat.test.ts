@@ -38,6 +38,26 @@ describe('AIClient · chat', () => {
     await client.dispose();
   });
 
+  it('stream end emits message:complete with the full reply (sendMessage does not)', async () => {
+    const { ctx } = wire();
+    const client = new AIClient(ctx);
+    const got: Array<{ message: { role: string; parts: Array<{ type: string; text?: string }> } }> =
+      [];
+    client.on('message:complete', (p) => got.push(p as never));
+    for await (const c of client.chat.stream({ messages: [{ role: 'user', content: 'hi' }] })) {
+      void c;
+    }
+    await client.chat.sendMessage({ messages: [{ role: 'user', content: 'ping' }] });
+    const ev = ctx.emitted.filter((e) => e.evt === 'session/assistant-message');
+    expect(ev).toHaveLength(1);
+    // 真实 IgPluginHost 会把 emit 派发给 hook；fake ctx 需手动触发，验证 AIClient 桥接
+    await ctx.triggerEvent('session/assistant-message', ev[0]!.payload);
+    expect(got).toHaveLength(1);
+    expect(got[0]!.message.role).toBe('assistant');
+    expect(got[0]!.message.parts[0]!.text).toBe('hello');
+    await client.dispose();
+  });
+
   it('sendMessage returns non-stream response', async () => {
     const { ctx } = wire();
     const client = new AIClient(ctx);

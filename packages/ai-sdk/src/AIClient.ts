@@ -96,6 +96,13 @@ export class AIClient {
       ) => { evt: AIClientEvent; data: AIClientEventMap[AIClientEvent] } | undefined;
     }> = [
       {
+        dshEvent: 'session/assistant-message',
+        map: (p) => {
+          const payload = p as AIClientEventMap['message:complete'];
+          return payload?.message ? { evt: 'message:complete', data: payload } : undefined;
+        },
+      },
+      {
         dshEvent: 'agent/turn-end',
         map: (p) => {
           const payload = p as {
