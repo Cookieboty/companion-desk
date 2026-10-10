@@ -47,7 +47,7 @@
 
 - [ ] `pnpm --filter @ig-live/electron install`：依赖已含 `@ig-live/ai-runtime`、`@ig-live/ai-sdk`、`@deepseek-ai/dsh*`（版本三处锁死，见 [README.md#dsh-基座版本策略](../README.md#-dsh-基座版本策略)）。
 - [ ] `pnpm run doctor <profile>` 装配诊断通过（[scripts/dsh-doctor.ts](../scripts/dsh-doctor.ts)）。
-- [ ] 明确 profile：`waifu`（看板娘 + TTS + Live2D） / `chat-only`（纯聊天）/ `mcp-headless`（CLI）。
+- [ ] 明确 profile：`waifu`（看板娘 + TTS + VRM） / `chat-only`（纯聊天）/ `mcp-headless`（CLI）。
 
 ### 1.2 装配 AI Runtime
 
@@ -142,8 +142,8 @@ export function Root() {
 
 ### 3.4 看板娘专属（waifu profile）
 
-- [ ] Live2D 嘴型：`useTTSLipSync()` → 写入 [lipSyncStore](../packages/renderer/src/ai/lipSyncStore.ts) → [useLive2DModel](../packages/renderer/src/hooks/useLive2DModel.ts) 每帧写 `PARAM_MOUTH_OPEN_Y`。
-- [ ] Live2D 场景注册器（`ctx.live2d.registerSceneProvider`）与 `waifuTipsTool` 挂钩留待 P8-3 后续子任务；参考 [P8-3 尚未落地子项](plans/P8-consumer-migration.md#p8-3-看板娘接入renderer)。
+- [x] 看板娘嘴型：`useTTSLipSync()` → 写入 [lipSyncStore](../packages/renderer/src/ai/lipSyncStore.ts) → [MascotDriver](../packages/renderer/src/mascot/MascotDriver.tsx) → `MascotBackend.setMouthOpen()`（VRM `aa`/`oh`）。
+- [ ] 看板娘场景注册器（`ctx.live2d.registerSceneProvider`，协议名沿用 live2d）与 `waifuTipsTool` 挂钩留待 P8-3 后续子任务；参考 [P8-3 尚未落地子项](plans/P8-consumer-migration.md#p8-3-看板娘接入renderer)。
 
 ## 4. 迁移遗留数据 / 配置（可选）
 

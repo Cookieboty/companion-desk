@@ -58,6 +58,15 @@ Other open 2D options considered:
 
 `@pixiv/three-vrm` (MIT) + three (MIT) is fine; VRM 0.x/1.0 supports expressions (`happy/sad/angry/surprised/relaxed`), `aa/ih/ou/ee/oh` visemes (lip-sync), lookAt (eye tracking), spring bones (physics), humanoid for VRMA animations. Model licences are per-file (VRoid/VRM meta: check `commercialUsage`, `allowRedistribution`/`licenseName` = CC0 or CC-BY). Waiting on the other worker's CC0 VRMs. Already lazy-loaded (966 KB chunk) since the perf work.
 
+## Status (2026-10-10)
+
+**Phase 2 + 3 done.** VRM is the only mascot backend (`packages/renderer/src/mascot/`), behind `MascotBackend`.
+Removed: Live2D runtime, `cubism2/`, all Live2D models, the GPL `waifu-tips.json` (replaced by original `mascot/tips.ts`),
+keyword voice clips (replaced by original lines spoken with the Web Speech API), unverified completion sounds
+(replaced by synthesised CC0 chimes) and the app icon of unknown provenance (replaced by a CC0 VRoid-derived icon).
+`bundle-ig-live2d` is renamed `bundle-ig-mascot`; the wire protocol keeps the `live2d` name for compatibility.
+Licence gate: `pnpm check:licenses` (CI). The Inochi2D and PNG-tuber backends are still open options.
+
 ## 4. Replacement plan
 
 **Recommendation:** make **VRM the primary (default) mascot backend now**. Keep a **thin `MascotBackend` abstraction** so an Inochi2D backend can be added behind an experimental flag when Inox2D matures. Optionally add a tiny MIT "PNG-tuber" 2D backend as a low-GPU fallback.

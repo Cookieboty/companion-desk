@@ -12,7 +12,7 @@ alwaysApply: false
 - Electron - 跨平台桌面应用开发框架
 - React - 用户界面库
 - TypeScript - 类型安全的JavaScript超集
-- Live2D Cubism - Live2D模型渲染引擎
+- three.js + @pixiv/three-vrm - VRM 3D 看板娘渲染（MIT）
 
 ## 构建工具
 

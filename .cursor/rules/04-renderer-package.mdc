@@ -12,7 +12,7 @@ alwaysApply: false
 - [src/components/](mdc:packages/renderer/src/components) - React组件
 - [src/utils/](mdc:packages/renderer/src/utils) - 实用工具
 - [src/types/](mdc:packages/renderer/src/types) - 类型定义
-- [src/cubism2/](mdc:packages/renderer/src/cubism2) - Live2D Cubism相关代码
+- [src/mascot/](mdc:packages/renderer/src/mascot) - 看板娘后端抽象（MascotBackend）与 VRM 实现
 - [src/assets/](mdc:packages/renderer/src/assets) - 静态资源
 - [public/](mdc:packages/renderer/public) - 公共资源目录
 
@@ -26,11 +26,10 @@ alwaysApply: false
 
 - `pnpm dev` - 启动Vite开发服务器
 - `pnpm build` - 构建渲染进程代码
-- `pnpm copy-assets` - 复制Live2D资源
 
 ## 主要功能
 
 - 实现透明UI界面
-- 加载和显示Live2D模型
+- 加载和显示 VRM 3D 看板娘
 - 提供模型互动功能
 - 显示消息气泡
