@@ -25,7 +25,11 @@ export interface VrmBackend extends MascotBackend {
  */
 export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
   const em = vrm.expressionManager;
-  const has = (name: string) => !!em?.getExpression(name);
+  // VRoid 0.x 模型的自定义表情名大小写不统一（如 'Surprised'）：按不区分大小写解析
+  const keys = em ? Object.keys(em.expressionMap) : [];
+  const resolve = (name: string) =>
+    keys.find((k) => k.toLowerCase() === name.toLowerCase()) ?? name;
+  const has = (name: string) => !!em?.getExpression(resolve(name));
 
   const weights = new Map<string, number>();
   const targets = new Map<string, number>();
@@ -52,7 +56,7 @@ export function createVrmBackend(vrm: VRM, scene: THREE.Object3D): VrmBackend {
   if (rUpper) rUpper.rotation.z = -1.2;
 
   const set = (name: string, v: number) => {
-    if (em && has(name)) em.setValue(name, v);
+    if (em && has(name)) em.setValue(resolve(name), v);
   };
 
   const backend: VrmBackend = {
