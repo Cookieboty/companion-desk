@@ -119,8 +119,13 @@ function checkAssets() {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets-licenses.json'), 'utf8'));
   const allow = new Set(manifest.allowedLicenses);
   const entries = manifest.assets.map((a) => ({ ...a, re: globToRegExp(a.pattern) }));
+  const firstParty = manifest.firstPartyLicense;
   for (const a of entries) {
-    if (!allow.has(a.license))
+    // 第一方作品（项目作者所有、保留所有权利）：只允许显式标记 firstParty + owner 的条目
+    const isFirstParty = a.license === firstParty && a.firstParty === true && !!a.owner;
+    if (a.license === firstParty && !isFirstParty)
+      errors.push(`assets: ${a.pattern} uses ${firstParty} but lacks firstParty:true / owner`);
+    if (!isFirstParty && !allow.has(a.license))
       errors.push(`assets: manifest entry ${a.pattern} uses non-allowed licence ${a.license}`);
     if (!a.author || !a.source)
       errors.push(`assets: manifest entry ${a.pattern} needs author and source`);

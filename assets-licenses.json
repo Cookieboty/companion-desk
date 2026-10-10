@@ -1,5 +1,5 @@
 {
-  "$comment": "Every shipped static asset must match an entry with an allow-listed open licence. Checked by scripts/check-licenses.mjs.",
+  "$comment": "Every shipped static asset must match an entry with an allow-listed open licence. Checked by scripts/check-licenses.mjs. 'LicenseRef-FirstParty' = artwork owned by the project author (Cookieboty), all rights reserved; allowed only for explicitly listed files.",
   "roots": ["packages/renderer/public", "packages/electron/assets"],
   "allowedLicenses": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "MIT", "Apache-2.0", "OFL-1.1"],
   "assets": [
@@ -23,9 +23,11 @@
     },
     {
       "pattern": "packages/electron/assets/{icon.png,logo.jpg}",
-      "license": "CC0-1.0",
-      "author": "Derived from the CC0 VRoid sample 'Sendagaya Shibu' thumbnail (pixiv Inc.)",
-      "source": "https://opengameart.org/content/vroid-studio-cc0-models"
+      "license": "LicenseRef-FirstParty",
+      "author": "Cookieboty (project owner) — all rights reserved, first-party artwork",
+      "source": "this repository (first-party)",
+      "firstParty": true,
+      "owner": "Cookieboty"
     },
     {
       "pattern": "packages/electron/assets/completion/**",
@@ -33,5 +35,6 @@
       "author": "Companion Desk contributors (ffmpeg-synthesised chimes)",
       "source": "this repository"
     }
-  ]
+  ],
+  "firstPartyLicense": "LicenseRef-FirstParty"
 }

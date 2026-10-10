@@ -7,16 +7,16 @@ entry in `assets-licenses.json`.
 
 ## Mascot stack
 
-| Component                                                              | Licence   | Notes                                                                                    |
-| ---------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------- |
-| three.js (`three`)                                                     | MIT       | WebGL renderer                                                                           |
-| `@pixiv/three-vrm`                                                     | MIT       | VRM loader, expressions, look-at, spring bones                                           |
-| `@react-three/fiber`, `@react-three/drei`                              | MIT       | React bindings                                                                           |
-| VRoid sample models (5 × `.vrm` + thumbnails)                          | CC0-1.0   | pixiv Inc. / VRoid Project — see `packages/renderer/public/assets/models/vrm/CREDITS.md` |
-| App icon (`packages/electron/assets/icon.png`, `logo.jpg`)             | CC0-1.0   | Derived from the CC0 "Sendagaya Shibu" thumbnail                                         |
-| Completion chimes (`packages/electron/assets/completion/*.mp3`)        | CC0-1.0   | Synthesised by the project with ffmpeg                                                   |
-| Toolbar icons (`packages/renderer/src/utils/icons.ts`)                 | CC-BY-4.0 | Font Awesome Free icons by Fonticons, Inc. — https://fontawesome.com/license/free        |
-| Mascot tip / voice-line texts (`packages/renderer/src/mascot/tips.ts`) | MIT       | Original project text                                                                    |
+| Component                                                              | Licence                           | Notes                                                                                                  |
+| ---------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| three.js (`three`)                                                     | MIT                               | WebGL renderer                                                                                         |
+| `@pixiv/three-vrm`                                                     | MIT                               | VRM loader, expressions, look-at, spring bones                                                         |
+| `@react-three/fiber`, `@react-three/drei`                              | MIT                               | React bindings                                                                                         |
+| VRoid sample models (5 × `.vrm` + thumbnails)                          | CC0-1.0                           | pixiv Inc. / VRoid Project — see `packages/renderer/public/assets/models/vrm/CREDITS.md`               |
+| App icon (`packages/electron/assets/icon.png`, `logo.jpg`)             | First-party — all rights reserved | Original artwork owned by Cookieboty (project owner). Not third-party; not covered by the MIT licence. |
+| Completion chimes (`packages/electron/assets/completion/*.mp3`)        | CC0-1.0                           | Synthesised by the project with ffmpeg                                                                 |
+| Toolbar icons (`packages/renderer/src/utils/icons.ts`)                 | CC-BY-4.0                         | Font Awesome Free icons by Fonticons, Inc. — https://fontawesome.com/license/free                      |
+| Mascot tip / voice-line texts (`packages/renderer/src/mascot/tips.ts`) | MIT                               | Original project text                                                                                  |
 
 Removed in this release for licensing reasons: the proprietary Live2D Cubism 2 runtime (`live2d.min.js`),
 the Cubism 2 framework code, ~58 Live2D models of unverified provenance, the GPL-3.0 `waifu-tips.json`
