@@ -50,19 +50,52 @@
   --cd-space-6: 24px;
   --cd-space-8: 32px;
 
-  /* typography */
+  /* typography —— 类型阶梯 12 / 13 / 14 / 16 / 18 / 22，字重 400 / 500 / 600 */
   --cd-font-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Roboto',
-    'Ubuntu', 'Helvetica Neue', sans-serif;
-  --cd-font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-  --cd-font-size-xs: 11px;
-  --cd-font-size-sm: 12px;
-  --cd-font-size-md: 14px;
-  --cd-font-size-lg: 16px;
-  --cd-font-size-xl: 20px;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', Roboto, Ubuntu,
+    'Helvetica Neue', Arial, sans-serif;
+  --cd-font-mono:
+    'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, Consolas, 'Noto Sans Mono CJK SC',
+    monospace;
+  --cd-font-size-xs: 12px; /* caption / badge / tooltip */
+  --cd-font-size-sm: 13px; /* label / 控件 / 次要正文 */
+  --cd-font-size-md: 14px; /* body */
+  --cd-font-size-lg: 16px; /* subtitle / 区块标题 */
+  --cd-font-size-xl: 18px; /* title / 对话框标题 */
+  --cd-font-size-2xl: 22px; /* display / 页面标题 */
+  --cd-line-height-xs: 18px;
+  --cd-line-height-sm: 20px;
+  --cd-line-height-md: 22px;
+  --cd-line-height-lg: 24px;
+  --cd-line-height-xl: 26px;
+  --cd-line-height-2xl: 30px;
+  --cd-line-height: 1.6; /* 多行正文 */
+  --cd-font-weight-regular: 400;
   --cd-font-weight-medium: 500;
   --cd-font-weight-bold: 600;
-  --cd-line-height: 1.5;
+  --cd-tracking-tight: -0.01em; /* 标题 */
+  --cd-tracking-normal: 0;
+  --cd-tracking-wide: 0.02em; /* caption / 小号大写 */
+
+  /* 语义字体（font 简写：weight size/line-height family） */
+  --cd-text-display: var(--cd-font-weight-bold) var(--cd-font-size-2xl) / var(--cd-line-height-2xl)
+    var(--cd-font-sans);
+  --cd-text-title: var(--cd-font-weight-bold) var(--cd-font-size-xl) / var(--cd-line-height-xl)
+    var(--cd-font-sans);
+  --cd-text-subtitle: var(--cd-font-weight-bold) var(--cd-font-size-lg) / var(--cd-line-height-lg)
+    var(--cd-font-sans);
+  --cd-text-body: var(--cd-font-weight-regular) var(--cd-font-size-md) / var(--cd-line-height-md)
+    var(--cd-font-sans);
+  --cd-text-label: var(--cd-font-weight-medium) var(--cd-font-size-sm) / var(--cd-line-height-sm)
+    var(--cd-font-sans);
+  --cd-text-caption: var(--cd-font-weight-regular) var(--cd-font-size-xs) / var(--cd-line-height-xs)
+    var(--cd-font-sans);
+
+  /* 控件尺寸（4/8 栅格） */
+  --cd-control-h-sm: 28px;
+  --cd-control-h-md: 36px;
+  --cd-control-h-lg: 40px;
 
   /* elevation */
   --cd-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);

@@ -23,3 +23,7 @@ export { FormField } from './FormField';
 export type { FormFieldProps } from './FormField';
 export { Notice } from './Notice';
 export type { NoticeProps } from './Notice';
+export { BrandIcon, hasBrandIcon } from './BrandIcon';
+export type { BrandIconProps } from './BrandIcon';
+export { Skeleton, SkeletonList, Truncate } from './Skeleton';
+export type { SkeletonProps } from './Skeleton';
