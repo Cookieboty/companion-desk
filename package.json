@@ -1,7 +1,7 @@
 {
   "name": "companion-desk",
   "version": "1.0.0",
-  "description": "Companion Desk：本地运行的桌面 AI 助手（Electron + IgPluginHost / Vercel AI SDK），可选 Live2D 桌面伙伴",
+  "description": "Companion Desk：本地运行的桌面 AI 助手（Electron + IgPluginHost / Vercel AI SDK），可选开源 VRM 桌面伙伴",
   "private": true,
   "type": "module",
   "scripts": {
