@@ -9,6 +9,7 @@ import { BrowserWindow, screen, app } from 'electron';
 
 import { type IConfigService } from '../services/ConfigService';
 import { type ILoggerService } from '../services/LoggerService';
+import { perfEnabled, perfMark } from '../utils/perfMarks';
 import { installPreloadGuard } from '../utils/preloadGuard';
 
 import { eventBus } from './EventBus';
@@ -316,6 +317,15 @@ export class WindowManager implements IWindowManager {
         error: error instanceof Error ? (error.stack ?? error.message) : String(error),
       });
     });
+    if (perfEnabled) {
+      window.webContents.once('did-finish-load', () => perfMark(`${type}-did-finish-load`));
+      window.webContents.on('console-message', (e: unknown) => {
+        const m = (e as { message?: string }).message ?? '';
+        const hit = /^\[perf\] (\S+)/.exec(m);
+        if (hit) perfMark(`${type}:${hit[1]}`);
+      });
+    }
+
     // 「页面加载完但 preload 没跑」的空白窗口：探测 + 自动恢复（见 utils/preloadGuard.ts）
     installPreloadGuard(window.webContents, {
       label: type,
@@ -328,6 +338,7 @@ export class WindowManager implements IWindowManager {
 
     // 通用窗口事件
     window.once('ready-to-show', () => {
+      perfMark(`${type}-shown`);
       window.show();
 
       // 开发环境打开开发者工具
