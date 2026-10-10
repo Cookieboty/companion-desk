@@ -1,7 +1,7 @@
 /**
- * @ig-live/bundle-ig-live2d
+ * @ig-live/bundle-ig-mascot
  *
- * dsh Bundle：看板娘渲染进程能力
+ * dsh Bundle：看板娘渲染进程能力（渲染后端无关；协议名沿用 live2d，见 seams/mascot.ts）
  *   - Live2dSeamPlugin：ctx.live2d 服务与事件桥
  *   - TouchInjectPlugin：hitArea 触摸 → agent/sensory-inject（5s/area 冷却）
  *   - TtsLipSyncPlugin：tts/chunk → driveLipSync（20fps 节流）+ tts/end 归零

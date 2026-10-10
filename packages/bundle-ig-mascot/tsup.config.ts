@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 /**
- * bundle-ig-live2d 主入口是 React/渲染进程代码（ESM only），
+ * bundle-ig-mascot 主入口是 React/渲染进程代码（ESM only），
  * 但 `./seams` 只导出 Service Key / 类型 / 契约，是纯 Node/浏览器双兼容代码，
  * 且被 `@ig-live/ai-sdk` 的 CJS build 作为**运行时值**引用（Live2dKey 需要注入）。
  *

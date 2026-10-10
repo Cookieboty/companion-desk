@@ -1,18 +1,22 @@
+import type {
+  DshEvent,
+  HookContext,
+  HookHandler,
+  PluginContext,
+  ServiceKey,
+} from '@ig-live/bundle-ig-base';
+
 /**
- * fakeSdkCtx —— 单测用的最小 SdkContext。
- *
- * 兼容与 [`fakeCtx`](file:///../../../bundle-ig-mascot/tests/helpers/fakeCtx.ts) 一致的风格：
- * - `provide` / `inject`：内存 Map，按 ServiceKey.key 定位
- * - `on` / `emit`：内部维护 handler set，`triggerEvent(evt, payload)` 同步串行触发
+ * FakePluginContext —— vitest 单测用的最小可注入上下文。
+ * - inject/provide：内存 Map，按 ServiceKey.key 定位
+ * - on/emit：注册 handler，emit 时同步串行调用
+ * - logger：容器数组，便于断言（默认静默）
+ * - config：直接返回构造入参
+ * - dispose：清理所有 handler，避免测试串扰
  */
-
-import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@ig-live/bundle-ig-base';
-
-import type { SdkContext } from '../../src/di/SdkContext';
-
-export interface FakeSdkContext extends SdkContext {
-  provide<T>(key: ServiceKey<T>, impl: T): void;
-  emitted: Array<{ evt: DshEvent; payload: unknown }>;
+export interface FakePluginContext extends PluginContext {
+  events: Array<{ evt: DshEvent; payload: unknown }>;
+  logs: Array<{ level: 'info' | 'warn' | 'error' | 'debug'; msg: string; meta?: unknown }>;
   triggerEvent<TPayload>(evt: DshEvent, payload: TPayload): Promise<void>;
   disposeAll(): void;
 }
@@ -21,13 +25,21 @@ interface HandlerEntry {
   handler: HookHandler<unknown, unknown>;
 }
 
-export function createFakeSdkCtx(): FakeSdkContext {
+export function createFakeCtx<TConfig = unknown>(cfg?: TConfig): FakePluginContext {
   const services = new Map<symbol, unknown>();
   const handlers = new Map<DshEvent, Set<HandlerEntry>>();
-  const emitted: FakeSdkContext['emitted'] = [];
+  const events: FakePluginContext['events'] = [];
+  const logs: FakePluginContext['logs'] = [];
 
-  const ctx: FakeSdkContext = {
-    emitted,
+  const ctx: FakePluginContext = {
+    events,
+    logs,
+    logger: {
+      info: (msg, meta) => logs.push({ level: 'info', msg, meta }),
+      warn: (msg, meta) => logs.push({ level: 'warn', msg, meta }),
+      error: (msg, meta) => logs.push({ level: 'error', msg, meta }),
+      debug: (msg, meta) => logs.push({ level: 'debug', msg, meta }),
+    },
     provide<T>(key: ServiceKey<T>, impl: T) {
       services.set(key.key, impl);
     },
@@ -46,7 +58,10 @@ export function createFakeSdkCtx(): FakeSdkContext {
       };
     },
     emit<TPayload = unknown>(event: DshEvent, payload: TPayload) {
-      emitted.push({ evt: event, payload });
+      events.push({ evt: event, payload });
+    },
+    config<T = unknown>(): T {
+      return cfg as T;
     },
     async triggerEvent<TPayload>(event: DshEvent, payload: TPayload) {
       const set = handlers.get(event);
@@ -57,7 +72,7 @@ export function createFakeSdkCtx(): FakeSdkContext {
           reject: (reason, code) => {
             throw Object.assign(new Error(reason), { code });
           },
-          log: () => {},
+          log: (level, msg, meta) => logs.push({ level, msg, meta }),
         };
         await handler(hookCtx as unknown as HookContext<unknown>);
       }

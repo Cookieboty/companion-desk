@@ -3,6 +3,6 @@
 # 覆盖 / disable / insert。允许使用 !!js 表达式。
 #
 # 当前处于 P1 骨架期：先保持空数组，dsh-base 的默认行为已经能装配出可用的 ctx。
-# P2/P3/P4 会把 @ig-live/bundle-ig-base、bundle-ig-electron-caps、bundle-ig-live2d
+# P2/P3/P4 会把 @ig-live/bundle-ig-base、bundle-ig-electron-caps、bundle-ig-mascot
 # 追加到 package.json 的 dsh.profile.bundles，并在这里对相关 row 做覆盖。
 []

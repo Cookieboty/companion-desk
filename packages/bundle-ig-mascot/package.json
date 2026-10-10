@@ -1,8 +1,8 @@
 {
-  "name": "@ig-live/bundle-ig-live2d",
+  "name": "@ig-live/bundle-ig-mascot",
   "version": "0.0.1",
   "private": true,
-  "description": "dsh Bundle：看板娘渲染进程能力（Live2d seam / 触摸感官注入 / TTS 嘴型联动 / waifu 专属工具 + agent preset）",
+  "description": "dsh Bundle：看板娘渲染进程能力（mascot seam（协议名 live2d） / 触摸感官注入 / TTS 嘴型联动 / waifu 专属工具 + agent preset）",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

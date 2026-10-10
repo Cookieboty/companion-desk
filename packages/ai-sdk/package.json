@@ -40,14 +40,14 @@
   "peerDependencies": {
     "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@ig-live/bundle-ig-base": "workspace:*",
-    "@ig-live/bundle-ig-live2d": "workspace:*",
+    "@ig-live/bundle-ig-mascot": "workspace:*",
     "@ig-live/bundle-ig-electron-caps": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh": {
       "optional": true
     },
-    "@ig-live/bundle-ig-live2d": {
+    "@ig-live/bundle-ig-mascot": {
       "optional": true
     },
     "@ig-live/bundle-ig-electron-caps": {
@@ -60,7 +60,7 @@
   "devDependencies": {
     "@ig-live/bundle-ig-base": "workspace:*",
     "@ig-live/bundle-ig-electron-caps": "workspace:*",
-    "@ig-live/bundle-ig-live2d": "workspace:*",
+    "@ig-live/bundle-ig-mascot": "workspace:*",
     "rimraf": "^6.1.3",
     "tsup": "^8.3.5",
     "typescript": "^6.0.3",

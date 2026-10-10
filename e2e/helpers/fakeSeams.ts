@@ -41,7 +41,7 @@ import type {
   Live2dEvent,
   Live2dEventPayload,
   Live2dService,
-} from '@ig-live/bundle-ig-live2d/seams';
+} from '@ig-live/bundle-ig-mascot/seams';
 
 export interface FakeLLM extends LLMProvider {
   chatCalls: ChatRequest[];

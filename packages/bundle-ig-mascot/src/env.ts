@@ -22,7 +22,7 @@ export function assertRendererProcess(opts: AssertRendererProcessOptions = {}): 
 
   if (!hasWindow || !hasDocument) {
     throw new Error(
-      '[@ig-live/bundle-ig-live2d] must be loaded inside a renderer (window/document required)',
+      '[@ig-live/bundle-ig-mascot] must be loaded inside a renderer (window/document required)',
     );
   }
 
@@ -30,7 +30,7 @@ export function assertRendererProcess(opts: AssertRendererProcessOptions = {}): 
     const proc = process as unknown as ElectronProcessLike;
     if (proc.type === 'browser') {
       throw new Error(
-        '[@ig-live/bundle-ig-live2d] cannot be loaded in Electron main process ' +
+        '[@ig-live/bundle-ig-mascot] cannot be loaded in Electron main process ' +
           "(process.type === 'browser').",
       );
     }

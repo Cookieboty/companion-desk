@@ -1,4 +1,4 @@
-# bundle-ig-live2d 默认 patch
+# bundle-ig-mascot 默认 patch
 # 由 dsh 加载时合入 Cordis 配置图。仅在需要看板娘的 profile（waifu）中启用。
 #
 # 说明：本 bundle 依赖渲染进程 DOM（用于口型驱动/触摸事件桥接）；主进程 profile
@@ -7,7 +7,7 @@
 apiVersion: dsh/v1
 kind: Bundle
 metadata:
-  name: bundle-ig-live2d
+  name: bundle-ig-mascot
   version: 0.0.1
   description: 看板娘渲染进程能力（Live2d seam / 触摸感官注入 / TTS 嘴型联动 / waifu 工具 & agent preset）
 
