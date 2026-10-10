@@ -118,6 +118,20 @@ function walk(dir) {
 function checkAssets() {
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets-licenses.json'), 'utf8'));
   const allow = new Set(manifest.allowedLicenses);
+  // 经人工审核的非 OSI 许可：必须同时允许商用与再分发（VRM Public License 1.0、VRoid AvatarSample 条款）
+  const reviewed = manifest.reviewedLicenses ?? {};
+  for (const [id, r] of Object.entries(reviewed)) {
+    const need = r.perModelConditions ? r.requires : r.conditions;
+    if (
+      !r.url?.startsWith('https://') ||
+      need?.commercialUse !== true ||
+      need?.redistribution !== true
+    )
+      errors.push(
+        `assets: reviewed licence ${id} must have an https url and permit commercialUse + redistribution`,
+      );
+    else allow.add(id);
+  }
   const entries = manifest.assets.map((a) => ({ ...a, re: globToRegExp(a.pattern) }));
   const firstParty = manifest.firstPartyLicense;
   for (const a of entries) {

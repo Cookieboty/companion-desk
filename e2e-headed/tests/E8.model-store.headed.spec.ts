@@ -111,6 +111,7 @@ test.describe('E8 · model store + local import', () => {
           schemaVersion: 1,
           models: [
             entry('store-girl', 'Store Girl', 'CC0-1.0'),
+            entry('sample-girl', 'Sample Girl', 'LicenseRef-VRoid-AvatarSample'),
             entry('closed-girl', 'Closed', 'LicenseRef-Proprietary'),
           ],
         }),
@@ -145,6 +146,8 @@ test.describe('E8 · model store + local import', () => {
       },
     );
 
+    // preloadGuard 可能在首次加载缺 preload 时 reload 一次：等 API 就绪
+    await page.waitForFunction(() => !!window.electronAPI?.models, undefined, { timeout: 20_000 });
     // 只内置默认角色
     const bundled = await page.evaluate(() => window.electronAPI!.models!.list());
     expect(bundled.map((m) => m.id)).toEqual(['default-character']);
@@ -155,6 +158,9 @@ test.describe('E8 · model store + local import', () => {
     await expect(page.getByTestId('store-item-store-girl')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('store-item-closed-girl')).toHaveCount(0);
     await expect(page.getByTestId('store-item-store-girl').getByText('CC0-1.0')).toBeVisible();
+    // 审核过的非 OSI 条款：徽章 + 条件
+    await expect(page.getByTestId('store-item-sample-girl').getByText('VRoid 条款')).toBeVisible();
+    await expect(page.getByTestId('store-terms-sample-girl')).toContainText('可商用 · 可再分发');
     await shot(page, 'store-browse');
     await page.getByTestId('store-install-store-girl').click();
     await expect(page.getByTestId('store-progress-store-girl')).toBeVisible({ timeout: 10_000 });

@@ -1,4 +1,10 @@
-import type { ModelConfig, ModelOrigin, RegistryModel, VrmMetaSummary } from '@ig-live/types';
+import type {
+  LicenseTermsView,
+  ModelConfig,
+  ModelOrigin,
+  RegistryModel,
+  VrmMetaSummary,
+} from '@ig-live/types';
 
 /**
  * 看板娘模型（统一注册表：内置 + 商店已安装 + 用户导入）。
@@ -17,6 +23,7 @@ export interface MascotModel {
   tags?: string[];
   origin?: ModelOrigin;
   credit?: string;
+  licenseTerms?: LicenseTermsView;
   version?: string;
   config?: ModelConfig;
   meta?: VrmMetaSummary;
@@ -36,6 +43,7 @@ export function fromRegistry(m: RegistryModel): MascotModel {
     tags: m.tags,
     origin: m.origin,
     credit: m.credit,
+    licenseTerms: m.licenseTerms,
     version: m.version,
     config: m.config,
     meta: m.meta,

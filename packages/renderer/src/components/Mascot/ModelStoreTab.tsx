@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import styles from './style.module.css';
 
 import { useMascot } from '@/contexts/MascotContext';
+import { conditionsText, licenseLabel } from '@/mascot/licenseTerms';
 
 const hostOf = (u?: string) => {
   try {
@@ -100,13 +101,20 @@ export const ModelStoreTab: React.FC = () => {
               <div className={styles.storeInfo}>
                 <div className={styles.creditHead}>
                   <strong>{e.name}</strong>
-                  <Badge tone="success">{e.license}</Badge>
+                  <Badge tone={e.licenseTerms ? 'warning' : 'success'}>
+                    {licenseLabel(e.license)}
+                  </Badge>
                   <Badge tone="neutral">v{e.version}</Badge>
                   {e.updateAvailable && <Badge tone="accent">有更新</Badge>}
                 </div>
                 <div className={styles.creditMeta}>
                   {e.author} · VRM {e.vrmVersion} · {mb(e.size)}
                 </div>
+                {e.licenseTerms && (
+                  <div className={styles.creditMeta} data-testid={`store-terms-${e.id}`}>
+                    {conditionsText(e.licenseTerms)}
+                  </div>
+                )}
                 {busy && (
                   <div
                     className={styles.progress}

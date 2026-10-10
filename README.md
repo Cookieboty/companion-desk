@@ -14,7 +14,7 @@ Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + R
 - 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
 - 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
 - 🧩 **可扩展宿主** - IgPluginHost profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包 + Vercel AI SDK providers，MCP 桥接
-- 🎭 **可选 3D 桌面伙伴** - 开源 VRM 角色（内置 1 个 + 模型商店 6 个 CC0 VRoid 模型，支持导入自己的 .vrm）、表情、眨眼/视线、TTS 口型同步
+- 🎭 **可选 3D 桌面伙伴** - 开源 VRM 角色（内置 1 个 + 模型商店 8 个 VRoid 模型，支持导入自己的 .vrm）、表情、眨眼/视线、TTS 口型同步
 - 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
 - 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
 - 📦 **工程化管理** - pnpm workspace + Turborepo，Vitest / Jest / Playwright 全链路测试
@@ -203,10 +203,10 @@ pnpm package:debug
 - **开源渲染栈** - three.js + @pixiv/three-vrm（MIT），通过 `MascotBackend` 抽象接入，可扩展其他开源后端
 - **内置角色** - 安装包只带默认角色（千駄ヶ谷 渋，CC0）；工具栏「切换角色」左键切到下一个，右键打开角色列表
 - **模型商店** - 角色列表的「模型商店」页读取远程目录
-  [Cookieboty/companion-desk-models](https://github.com/Cookieboty/companion-desk-models)（目前 7 个 CC0 VRoid 角色），
+  [Cookieboty/companion-desk-models](https://github.com/Cookieboty/companion-desk-models)（目前 9 个 VRoid 角色：7 个 CC0 + AvatarSample_A/B，后者为 pixiv 条款：可商用、可再分发），
   显示缩略图与许可徽章，下载带进度、断点续传、多镜像重试（GitHub Releases → jsDelivr → raw），**sha256 必须匹配**才会安装；
   可更新（版本号变化时提示）/ 删除；目录用 ETag 缓存，离线时显示缓存目录，已下载 / 内置模型照常可用。
-  只接受开源许可（CC0 / CC-BY / CC-BY-SA / MIT / Apache-2.0 / OFL，与 `assets-licenses.json` 一致）、仅 https、单文件 ≤ 200 MB，
+  只接受开源许可（CC0 / CC-BY / CC-BY-SA / MIT / Apache-2.0 / OFL）或经审核、允许商用且允许再分发的条款（VRoid AvatarSample 条款、VRM Public License 1.0；条件显示在徽章与致谢页），与 `assets-licenses.json` 一致、仅 https、单文件 ≤ 200 MB，
   模型文件只做静态解析（GLB + VRM meta），不执行任何内容。文件保存在 `userData/models/remote/`，经 `cdmodel://` 协议只读提供给渲染进程。
   目录地址可用 `COMPANION_MODEL_CATALOG_URL`（逗号分隔多个）覆盖。添加模型见 [docs/MODELS.md](docs/MODELS.md)
 - **导入自己的 VRM** - 「导入 VRM」页：文件对话框或拖放 `.vrm`（0.x / 1.0，≤ 300 MB）。会读取并展示 VRM meta

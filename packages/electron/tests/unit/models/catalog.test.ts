@@ -1,5 +1,5 @@
 import { compareVersions, isAllowedUrl, validateCatalog } from '../../../src/models/catalog';
-import { ALLOWED_MODEL_LICENSES } from '../../../src/models/licenses';
+import { ALLOWED_MODEL_LICENSES, REVIEWED_MODEL_LICENSES } from '../../../src/models/licenses';
 
 const file = (over: Record<string, unknown> = {}) => ({
   urls: ['https://example.com/a.vrm'],
@@ -61,6 +61,32 @@ describe('model catalog validation', () => {
     expect(isAllowedUrl('http://127.0.0.1:1234/x', { allowLoopbackHttp: true })).toBe(true);
     expect(isAllowedUrl('http://evil.com/x', { allowLoopbackHttp: true })).toBe(false);
     expect(isAllowedUrl('https://user:pw@example.com/x')).toBe(false);
+  });
+
+  it('accepts reviewed non-OSI licences and attaches their conditions', () => {
+    const { catalog, rejected } = validateCatalog({
+      schemaVersion: 1,
+      models: [
+        entry({ id: 'sample-a', license: 'LicenseRef-VRoid-AvatarSample' }),
+        entry({
+          id: 'vrm-pl-ok',
+          license: 'LicenseRef-VRM-Public-1.0',
+          licenseTerms: { conditions: { commercialUse: true, redistribution: true, credit: true } },
+        }),
+        entry({
+          id: 'vrm-pl-nc',
+          license: 'LicenseRef-VRM-Public-1.0',
+          licenseTerms: { conditions: { commercialUse: false, redistribution: true } },
+        }),
+        entry({ id: 'vrm-pl-missing', license: 'LicenseRef-VRM-Public-1.0' }),
+      ],
+    });
+    expect(catalog.models.map((m) => m.id)).toEqual(['sample-a', 'vrm-pl-ok']);
+    expect(catalog.models[0]?.licenseTerms).toMatchObject({
+      url: 'https://vroid.pixiv.help/hc/ja/articles/4402394424089',
+      conditions: { commercialUse: true, redistribution: true, modification: true, credit: false },
+    });
+    expect(rejected.map((r) => r.id)).toEqual(['vrm-pl-nc', 'vrm-pl-missing']);
   });
 
   it('compares semver', () => {
