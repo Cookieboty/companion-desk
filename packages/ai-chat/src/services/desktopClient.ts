@@ -48,6 +48,25 @@ export interface DesktopSummaryEvent {
   at: number;
 }
 
+export interface NoteMetaView {
+  id: string;
+  title: string;
+  tags: string[];
+  created: number;
+  updated: number;
+}
+export interface NoteView extends NoteMetaView {
+  body: string;
+}
+export interface ReminderView {
+  id: string;
+  text: string;
+  dueAt: number;
+  createdAt: number;
+  status: 'pending' | 'fired' | 'missed' | 'cancelled' | 'done';
+  snoozes?: number;
+}
+
 interface AiBridge {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
   on: (channel: string, fn: (payload: unknown) => void) => () => void;
@@ -82,6 +101,19 @@ export const desktopClient = {
   resetAll: () => call<boolean>('reset-all'),
   onChanged: (fn: (s: DesktopState) => void) =>
     on('ai:desktop:changed', (p) => fn(p as DesktopState)),
+  notes: (query?: string) =>
+    call<Array<NoteMetaView & { snippet?: string }>>('notes-list', query ?? ''),
+  readNote: (id: string) => call<NoteView | null>('notes-read', id),
+  saveNote: (n: { id?: string; title: string; body: string; tags?: string[] }) =>
+    call<NoteView>('notes-save', n),
+  trashNote: (id: string) => call<boolean>('notes-trash', id),
+  reminders: (all = false) => call<ReminderView[]>('reminders-list', all),
+  createReminder: (r: { text: string; at?: string; inMinutes?: number }) =>
+    call<ReminderView | null>('reminders-create', r),
+  cancelReminder: (id: string) => call<boolean>('reminders-cancel', id),
+  snoozeReminder: (id: string, minutes = 10) => call<boolean>('reminders-snooze', id, minutes),
+  onP2Changed: (fn: (kind: 'notes' | 'reminders') => void) =>
+    on('ai:desktop:p2-changed', (p) => fn((p as { kind: 'notes' | 'reminders' }).kind)),
   onOpenPanel: (fn: () => void) => on('ai:desktop:open-panel', () => fn()),
   onSummary: (fn: (e: DesktopSummaryEvent) => void) =>
     on('ai:desktop:summary', (p) => fn(p as DesktopSummaryEvent)),
@@ -100,6 +132,19 @@ export const TOOL_LABELS: Record<string, string> = {
   grant_scope: '授权文件夹',
   revoke_scope: '撤销授权',
   drop_summarize: '拖到看板娘总结',
+  note_create: '新建笔记',
+  note_list: '列出笔记',
+  note_search: '搜索笔记',
+  note_read: '读取笔记',
+  note_update: '修改笔记',
+  note_trash: '删除笔记（回收站）',
+  reminder_create: '设置提醒',
+  reminder_list: '查看提醒',
+  reminder_cancel: '取消提醒',
+  reminder_snooze: '稍后提醒',
+  reminder_fire: '提醒触发',
+  clipboard_read: '读取剪贴板',
+  clipboard_write: '写入剪贴板',
 };
 
 export const DANGER_LABELS: Record<Danger, string> = {
