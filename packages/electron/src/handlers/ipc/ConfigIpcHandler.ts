@@ -8,12 +8,7 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 
-import {
-  type TTSConfig,
-  type TTSTestResult,
-  type DisplayModeConfig,
-  type RenderMode,
-} from '@ig-live/types';
+import { type TTSConfig, type TTSTestResult } from '@ig-live/types';
 import { app } from 'electron';
 
 import { type IConfigService, type VoiceSettings } from '../../services/ConfigService';
@@ -153,97 +148,8 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
-    // ==================== 显示模式相关配置处理器 ====================
-
-    // 获取显示模式配置
-    this.registerHandler('get-display-mode-config', async () => {
-      try {
-        const config = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: '3d' as RenderMode,
-        });
-
-        this.logger.debug('获取显示模式配置', { config });
-        // 旧版本保存的 'live2d'（已移除）归一化为 '3d'
-        return { ...config, currentMode: normalizeRenderMode(config.currentMode) };
-      } catch (error) {
-        this.logger.error('获取显示模式配置失败', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return { currentMode: '3d' as RenderMode };
-      }
-    });
-
-    // 保存显示模式配置
-    this.registerHandler('save-display-mode-config', async (_, config: DisplayModeConfig) => {
-      this.validateArgs([config], 1, ['object']);
-
-      try {
-        const currentConfig = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: '3d' as RenderMode,
-        });
-
-        const updatedConfig = { ...currentConfig, ...config };
-
-        this.configService.set('displayMode', updatedConfig);
-        await this.configService.save();
-
-        this.logger.info('显示模式配置已保存', { config: updatedConfig });
-        return this.createSuccessResponse();
-      } catch (error) {
-        this.logger.error('保存显示模式配置失败', {
-          error: error instanceof Error ? error.message : String(error),
-          config,
-        });
-        return this.createErrorResponse(error);
-      }
-    });
-
-    // 设置当前显示模式
-    this.registerHandler('set-current-mode', async (_, mode: RenderMode) => {
-      this.validateArgs([mode], 1, ['string']);
-
-      try {
-        const validModes: RenderMode[] = ['3d', 'custom-image'];
-        if (!validModes.includes(mode)) {
-          throw new Error(`无效的显示模式: ${mode}，支持的模式: ${validModes.join(', ')}`);
-        }
-
-        const currentConfig = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: '3d' as RenderMode,
-        });
-
-        const updatedConfig = { ...currentConfig, currentMode: mode };
-
-        this.configService.set('displayMode', updatedConfig);
-        await this.configService.save();
-
-        this.logger.info('当前显示模式已设置', { mode });
-        return this.createSuccessResponse();
-      } catch (error) {
-        this.logger.error('设置显示模式失败', {
-          error: error instanceof Error ? error.message : String(error),
-          mode,
-        });
-        return this.createErrorResponse(error);
-      }
-    });
-
-    // 获取当前显示模式
-    this.registerHandler('get-current-mode', async () => {
-      try {
-        const config = this.configService.get<DisplayModeConfig>('displayMode', {
-          currentMode: '3d' as RenderMode,
-        });
-
-        this.logger.debug('获取当前显示模式', { mode: config.currentMode });
-        return normalizeRenderMode(config.currentMode);
-      } catch (error) {
-        this.logger.error('获取当前显示模式失败', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return '3d' as RenderMode;
-      }
-    });
+    // 旧版本的显示模式（Live2D / 自定义图片）已移除：清理持久化的 displayMode，统一为 3D 看板娘
+    this.migrateLegacyDisplayMode();
 
     // 获取应用信息
     this.registerHandler('get-app-info', async () => {
@@ -665,9 +571,20 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       req.end();
     });
   }
-}
 
-/** 旧版本的 'live2d'（已移除）及未知值归一化为 '3d'。 */
-export function normalizeRenderMode(mode: unknown): RenderMode {
-  return mode === 'custom-image' ? 'custom-image' : '3d';
+  /** 旧版 displayMode（'live2d' / 'custom-image'）不再使用：读取到就删掉，避免残留配置。 */
+  private migrateLegacyDisplayMode(): void {
+    try {
+      const legacy = this.configService.get<unknown>('displayMode', undefined);
+      if (legacy !== undefined) {
+        this.configService.set('displayMode', undefined);
+        void this.configService.save();
+        this.logger.info('已迁移旧的显示模式配置到 3D 看板娘', { legacy });
+      }
+    } catch (error) {
+      this.logger.warn('迁移旧显示模式配置失败', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }

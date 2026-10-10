@@ -1,6 +1,6 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import { IpcApi } from '@ig-live/types';
 import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+import { type IpcApi } from '@ig-live/types';
+import { contextBridge, ipcRenderer } from 'electron';
 
 // 挂载 ai IPC 桥：`window.aiIPC.invoke/on/off` 走白名单校验的 `ai:` 通道。
 // 与旧 `electronAPI` 并存；ai-sdk-client 的 ClientAIClient 会自动查找 `window.aiIPC`。
@@ -52,6 +52,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('get-cursor-position');
   },
   // 监听窗口鼠标事件
+  /** 主进程 → 看板娘指令（AI 工具 / 托盘：播放动作、切换表情）。返回取消订阅函数。 */
+  onMascotCommand: (callback: (cmd: unknown) => void) => {
+    const listener = (_: unknown, cmd: unknown) => callback(cmd);
+    ipcRenderer.on('mascot:command', listener);
+    return () => {
+      ipcRenderer.removeListener('mascot:command', listener);
+    };
+  },
   onWindowMouseEnter: (callback: () => void) => {
     ipcRenderer.on('window-mouse-enter', callback);
   },
@@ -70,34 +78,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   saveVoiceSettings: (settings: any) => {
     ipcRenderer.send('save-voice-settings', settings);
-  },
-
-  // 自定义图片相关API
-  selectImageFile: async () => {
-    return await ipcRenderer.invoke('select-image-file');
-  },
-  saveCustomImage: async (sourcePath: string) => {
-    return await ipcRenderer.invoke('save-custom-image', sourcePath);
-  },
-  getCustomImage: async () => {
-    return await ipcRenderer.invoke('get-custom-image');
-  },
-  deleteCustomImage: async () => {
-    return await ipcRenderer.invoke('delete-custom-image');
-  },
-
-  // 显示模式配置相关API
-  getDisplayModeConfig: async () => {
-    return await ipcRenderer.invoke('get-display-mode-config');
-  },
-  saveDisplayModeConfig: async (config: any) => {
-    return await ipcRenderer.invoke('save-display-mode-config', config);
-  },
-  getCurrentMode: async () => {
-    return await ipcRenderer.invoke('get-current-mode');
-  },
-  setCurrentMode: async (mode: string) => {
-    return await ipcRenderer.invoke('set-current-mode', mode);
   },
 
   // 键盘监听API
@@ -195,6 +175,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 设置Cursor MCP集成
     setupCursorIntegration: async () => {
       return await ipcRenderer.invoke('mcp:setupCursorIntegration');
-    }
-  }
-} as IpcApi); 
+    },
+  },
+} as IpcApi);

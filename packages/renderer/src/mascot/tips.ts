@@ -20,7 +20,7 @@ export const MOUSEOVER_TIPS: TipRule[] = [
   { selector: '#waifu-tool-info', text: ['想了解这个项目吗？', '这里有关于我的介绍。'] },
   { selector: '#waifu-tool-photo', text: ['要拍照吗？我准备好了！'] },
   { selector: '#waifu-tool-voice-settings', text: ['语音设置在这里，右键可以细调。'] },
-  { selector: '#waifu-tool-mode-switch', text: ['切换展示方式：3D 角色或你自己的图片。'] },
+  { selector: '#waifu-tool-motion', text: ['想看我做个动作吗？右键可以挑一个。'] },
   { selector: '#waifu-tool-toggle-top', text: ['要我一直待在最前面吗？'] },
   { selector: '#waifu-tool-quit', text: ['要休息了吗？下次见～', '记得早点回来哦。'] },
 ];
