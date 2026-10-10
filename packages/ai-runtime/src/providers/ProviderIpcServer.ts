@@ -15,6 +15,10 @@ import type { ProviderInput, ProviderRole, RouteBinding } from './ProviderStore'
 
 export const PROVIDER_CHANNELS = [
   'presets',
+  'meta',
+  'fetchModels',
+  'fetchModelsDraft',
+  'setModels',
   'state',
   'upsert',
   'remove',
@@ -58,10 +62,19 @@ export class ProviderIpcServer {
     const s = this.opts.service;
     const handlers: Record<(typeof PROVIDER_CHANNELS)[number], (...a: unknown[]) => unknown> = {
       presets: () => s.presets(),
+      meta: () => s.meta(),
+      fetchModels: (id) => s.fetchModels(str(id, 'id')),
+      fetchModelsDraft: (input) => s.fetchModelsDraft((input ?? {}) as ProviderInput),
+      setModels: (id, models) =>
+        s.setModels(str(id, 'id'), Array.isArray(models) ? models.map((m) => str(m, 'model')) : []),
       state: () => s.state(),
       upsert: (input) => s.upsert((input ?? {}) as ProviderInput),
       remove: (id) => s.remove(str(id, 'id')),
-      setActive: (id) => s.setActive(id === null || id === undefined ? null : str(id, 'id')),
+      setActive: (id, model) =>
+        s.setActive(
+          id === null || id === undefined ? null : str(id, 'id'),
+          model === undefined || model === null ? undefined : str(model, 'model'),
+        ),
       setRoute: (role, binding) =>
         s.setRoute(str(role, 'role') as ProviderRole, (binding ?? null) as RouteBinding | null),
       addKey: (id, key, label) =>

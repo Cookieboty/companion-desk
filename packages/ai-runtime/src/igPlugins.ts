@@ -8,7 +8,7 @@
  *     ANTHROPIC_MODEL | CLAUDE_MODEL     （Claude via @ai-sdk/anthropic）
  *   GOOGLE_GENERATIVE_AI_API_KEY | GEMINI_API_KEY /
  *     GOOGLE_GENERATIVE_AI_BASE_URL | GEMINI_BASE_URL /
- *     GOOGLE_GENERATIVE_AI_MODEL | GEMINI_MODEL  （Gemini via @ai-sdk/google）
+ *     GOOGLE_GENERATIVE_AI_MODEL | GEMINI_MODEL  （Gemini 走其 OpenAI 兼容端点）
  *   OLLAMA_BASE_URL  / OLLAMA_MODEL      （本地 Ollama，无需 key，始终注册）
  * 注册顺序决定"未指定 provider 时"的默认项：已配置 key 的云端 provider → ollama →
  * 未配置 key 的云端 provider（仍注册，调用时给出明确的 "API key is not configured"）。

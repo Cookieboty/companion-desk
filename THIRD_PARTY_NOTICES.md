@@ -43,10 +43,9 @@ and keyword voice clips of unknown licence.
 | --------------------------------------------------------- | -------------------- | ------------------------- |
 | `@agentclientprotocol/sdk`                                | 1.4.0                | Apache-2.0                |
 | `@ai-sdk/anthropic`                                       | 4.0.78               | Apache-2.0                |
-| `@ai-sdk/deepseek`                                        | 3.0.63               | Apache-2.0                |
 | `@ai-sdk/gateway`                                         | 4.0.110              | Apache-2.0                |
-| `@ai-sdk/google`                                          | 4.0.93               | Apache-2.0                |
 | `@ai-sdk/mcp`                                             | 2.0.73               | Apache-2.0                |
+| `@ai-sdk/openai`                                          | 4.0.91               | Apache-2.0                |
 | `@ai-sdk/openai-compatible`                               | 3.0.67               | Apache-2.0                |
 | `@ai-sdk/provider`                                        | 4.0.26               | Apache-2.0                |
 | `@ai-sdk/provider-utils`                                  | 5.0.58               | Apache-2.0                |

@@ -5,9 +5,23 @@
  */
 import type { LLMProviderEntry } from '@ig-live/bundle-ig-base';
 
-import { PROVIDER_DEFAULTS } from '../ai-sdk/AiSdkLlmProvider';
+import { envProviderConfig, type AiSdkLlmProviderOptions } from '../ai-sdk/AiSdkLlmProvider';
 
-import { PROVIDER_PRESETS, findPreset, type ProviderPreset } from './presets';
+import {
+  PRESET_CATEGORY_LABELS,
+  PROVIDER_PRESETS,
+  findPreset,
+  type ProviderPreset,
+} from './presets';
+import {
+  PROTOCOL_LABELS,
+  endpointURL,
+  modelsRequestHeaders,
+  modelsURL,
+  parseModelList,
+  type FetchedModel,
+  type Protocol,
+} from './protocol';
 import {
   defaultProviderFactory,
   type ProviderFactory,
@@ -26,6 +40,7 @@ import {
 export interface EnvProviderView {
   id: string;
   name: string;
+  protocol: Protocol;
   baseURL?: string;
   defaultModel?: string;
   hasKey: boolean;
@@ -40,15 +55,27 @@ export interface ProviderState {
   providers: ProviderView[];
   envProviders: EnvProviderView[];
   activeProviderId?: string;
-  /** 实际生效的默认 provider（考虑 override / env fallback） */
+  /** 实际生效的对话 provider（考虑 override / 路由 / env fallback）——下一次请求就发给它 */
   effectiveProviderId?: string;
+  /** 实际生效的对话模型 */
+  effectiveModel?: string;
   routes: Partial<Record<ProviderRole, RouteBinding>>;
   roles: readonly ProviderRole[];
   encryption: 'safeStorage' | 'none';
   overrideId?: string;
 }
 
+export interface FetchModelsResult {
+  ok: boolean;
+  latencyMs: number;
+  url: string;
+  models: FetchedModel[];
+  error?: string;
+}
+
 export interface TestResult {
+  /** 实际请求的端点 */
+  endpoint?: string;
   ok: boolean;
   latencyMs: number;
   model?: string;
@@ -64,6 +91,8 @@ export interface ProviderServiceOptions {
   factory?: ProviderFactory;
   overrideId?: string;
   testTimeoutMs?: number;
+  /** 「获取模型」用的 fetch（测试注入） */
+  fetchImpl?: typeof fetch;
 }
 
 /** 把 key / token 样式的片段从错误信息里抹掉，避免经 UI / 日志泄露。 */
@@ -84,22 +113,35 @@ export class ProviderService {
     return PROVIDER_PRESETS;
   }
 
+  /** 预设分类 / 协议的显示名（UI 用） */
+  meta(): { categories: typeof PRESET_CATEGORY_LABELS; protocols: typeof PROTOCOL_LABELS } {
+    return { categories: PRESET_CATEGORY_LABELS, protocols: PROTOCOL_LABELS };
+  }
+
   state(): ProviderState {
     const { store } = this.opts;
     const usage = store.usage();
     const activeId = store.activeProviderId();
-    const effective = this.opts.getRegistry()?.resolve('chat')?.provider.id;
+    const resolved = this.opts.getRegistry()?.resolve('chat');
+    const effective = resolved?.provider.id;
+    const effStored = effective ? store.providers().find((p) => p.id === effective) : undefined;
+    const effEnv = effective ? this.opts.envEntries.find((e) => e.id === effective) : undefined;
+    const effectiveModel =
+      resolved?.model ??
+      effStored?.defaultModel ??
+      (effEnv ? envProviderConfig(effEnv).defaultModel : undefined);
     return {
       providers: store.list(),
       envProviders: this.opts.envEntries.map((e) => {
-        const d = PROVIDER_DEFAULTS[e.id];
+        const c = envProviderConfig(e);
         return {
           id: e.id,
-          name: findPreset(e.id)?.name ?? e.id,
-          baseURL: e.baseURL ?? d?.baseURL,
-          defaultModel: e.model ?? d?.model,
-          hasKey: Boolean(e.apiKey) || d?.requiresApiKey === false,
-          keyless: d?.requiresApiKey === false,
+          name: `${findPreset(e.id === 'claude' ? 'anthropic' : e.id)?.name ?? e.id}（环境变量）`,
+          protocol: c.protocol ?? 'openai-chat',
+          baseURL: c.baseURL,
+          defaultModel: c.defaultModel,
+          hasKey: Boolean(e.apiKey) || c.requiresApiKey === false,
+          keyless: c.requiresApiKey === false,
           active: activeId === e.id,
           usage: {
             requests: 0,
@@ -114,6 +156,7 @@ export class ProviderService {
       }),
       activeProviderId: activeId,
       effectiveProviderId: effective,
+      effectiveModel,
       routes: store.routes(),
       roles: PROVIDER_ROLES,
       encryption: store.encryption,
@@ -134,10 +177,107 @@ export class ProviderService {
     this.opts.store.remove(id);
   }
 
-  setActive(id: string | null): ProviderState {
+  setActive(id: string | null, model?: string): ProviderState {
     if (id) this.assertKnown(id);
-    this.opts.store.setActive(id ?? undefined);
+    this.opts.store.setActive(id ?? undefined, model);
     return this.state();
+  }
+
+  setModels(id: string, enabled: string[]): ProviderView {
+    return this.opts.store.setModels(id, { enabled });
+  }
+
+  /** 已保存 provider：拉取上游模型列表并缓存到 provider.fetchedModels。 */
+  async fetchModels(id: string): Promise<FetchModelsResult> {
+    const p = this.opts.store.providers().find((x) => x.id === id);
+    if (!p) throw new Error(`provider '${id}' 不存在`);
+    const key = this.opts.store.resolveKeys(id)[0];
+    const res = await this.listModels(
+      {
+        protocol: p.protocol,
+        baseURL: p.baseURL,
+        fullUrl: p.fullUrl,
+        headers: p.headers,
+        userAgent: p.userAgent,
+      },
+      key,
+    );
+    if (res.ok) this.opts.store.setModels(id, { fetched: res.models });
+    return res;
+  }
+
+  /** 草稿（新建 / 编辑中未保存）：拉取模型列表；编辑已有 provider 且没填新 key 时用已保存的 key。 */
+  async fetchModelsDraft(input: ProviderInput): Promise<FetchModelsResult> {
+    const cfg = this.draftConfig(input);
+    return this.listModels(cfg, cfg.apiKey);
+  }
+
+  private async listModels(
+    cfg: {
+      protocol: Protocol;
+      baseURL: string;
+      fullUrl?: boolean;
+      headers?: Record<string, string>;
+      userAgent?: string;
+    },
+    apiKey: string | undefined,
+  ): Promise<FetchModelsResult> {
+    const url = modelsURL(cfg.protocol, cfg.baseURL, cfg.fullUrl);
+    const t0 = Date.now();
+    const extra = {
+      ...(cfg.headers ?? {}),
+      ...(cfg.userAgent ? { 'User-Agent': cfg.userAgent } : {}),
+    };
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), this.opts.testTimeoutMs ?? 15_000);
+    try {
+      const f = (this.opts.fetchImpl ?? fetch) as typeof fetch;
+      const r = await f(url, {
+        headers: modelsRequestHeaders(cfg.protocol, apiKey, extra),
+        signal: ctl.signal,
+      });
+      const text = await r.text();
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0, 200)}`);
+      const models = parseModelList(JSON.parse(text));
+      return { ok: true, latencyMs: Date.now() - t0, url, models };
+    } catch (err) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - t0,
+        url,
+        models: [],
+        error: redactSecrets(
+          ctl.signal.aborted ? '超时' : err instanceof Error ? err.message : String(err),
+          apiKey ? [apiKey] : [],
+        ),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** 表单草稿 → 完整连接配置（缺省值来自预设 / 已保存的 provider）。 */
+  private draftConfig(
+    input: ProviderInput,
+  ): AiSdkLlmProviderOptions & { protocol: Protocol; baseURL: string; defaultModel: string } {
+    const saved = input.id ? this.opts.store.providers().find((x) => x.id === input.id) : undefined;
+    const preset = findPreset(input.presetId ?? saved?.presetId) ?? findPreset('custom')!;
+    const apiKey =
+      input.apiKey?.trim() || (saved ? this.opts.store.resolveKeys(saved.id)[0] : undefined);
+    return {
+      id: 'connectivity-test',
+      protocol: input.protocol ?? saved?.protocol ?? preset.protocol,
+      baseURL: (input.baseURL ?? saved?.baseURL ?? preset.baseURL).trim().replace(/\/+$/, ''),
+      fullUrl: input.fullUrl ?? saved?.fullUrl ?? false,
+      defaultModel:
+        input.defaultModel?.trim() || saved?.defaultModel || preset.defaultModel || 'default',
+      modelMap: input.modelMap ?? saved?.modelMap,
+      headers: input.headers ?? saved?.headers,
+      userAgent: input.userAgent ?? saved?.userAgent,
+      thinking: input.thinking ?? saved?.thinking,
+      apiKey,
+      requiresApiKey: false,
+    };
   }
 
   setRoute(role: ProviderRole, binding: RouteBinding | null): ProviderState {
@@ -192,11 +332,16 @@ export class ProviderService {
     const apiKey = keys[idx];
     const result = await this.pingWith(
       {
-        backend: p.backend,
+        id: 'connectivity-test',
+        protocol: p.protocol,
         baseURL: p.baseURL,
+        fullUrl: p.fullUrl,
         defaultModel: p.defaultModel,
+        modelMap: p.modelMap,
         headers: p.headers,
+        userAgent: p.userAgent,
         apiKey,
+        requiresApiKey: false,
       },
       apiKey ? [apiKey] : [],
     );
@@ -204,47 +349,25 @@ export class ProviderService {
     return result;
   }
 
-  /** 测试尚未保存的草稿（面板「粘贴 key → 测试 → 保存」流程）。 */
+  /** 测试 / 测速尚未保存的草稿（面板「填写 → 测试 → 保存」流程）。 */
   async testDraft(input: ProviderInput): Promise<TestResult> {
-    const preset = findPreset(input.presetId) ?? findPreset('custom')!;
-    return this.pingWith(
-      {
-        backend: input.backend ?? preset.backend,
-        baseURL: (input.baseURL ?? preset.baseURL).trim().replace(/\/+$/, ''),
-        defaultModel: input.defaultModel?.trim() || preset.defaultModel,
-        headers: input.headers,
-        apiKey: input.apiKey?.trim() || undefined,
-      },
-      input.apiKey ? [input.apiKey.trim()] : [],
-    );
+    const cfg = this.draftConfig(input);
+    return this.pingWith(cfg, cfg.apiKey ? [cfg.apiKey] : []);
   }
 
-  private async pingWith(
-    cfg: {
-      backend: ProviderPreset['backend'];
-      baseURL: string;
-      defaultModel: string;
-      headers?: Record<string, string>;
-      apiKey?: string;
-    },
-    secrets: string[],
-  ): Promise<TestResult> {
+  private async pingWith(cfg: AiSdkLlmProviderOptions, secrets: string[]): Promise<TestResult> {
     const factory = this.opts.factory ?? defaultProviderFactory;
+    const endpoint = cfg.baseURL
+      ? endpointURL(cfg.protocol ?? 'openai-chat', cfg.baseURL, cfg.fullUrl)
+      : undefined;
     let provider;
     try {
-      provider = factory({
-        id: 'connectivity-test',
-        backend: cfg.backend,
-        baseURL: cfg.baseURL,
-        defaultModel: cfg.defaultModel,
-        headers: cfg.headers,
-        apiKey: cfg.apiKey,
-        requiresApiKey: false,
-      });
+      provider = factory(cfg);
     } catch (err) {
       return {
         ok: false,
         latencyMs: 0,
+        endpoint,
         error: redactSecrets(String((err as Error).message), secrets),
       };
     }
@@ -253,14 +376,14 @@ export class ProviderService {
         provider.chat({
           reqId: `test-${Date.now()}`,
           provider: 'connectivity-test',
-          model: cfg.defaultModel,
+          model: cfg.defaultModel ?? 'default',
           messages: [{ role: 'user', content: 'ping' }],
           maxTokens: 16,
           stream: false,
         }),
       secrets,
     );
-    return { ...res, model: cfg.defaultModel };
+    return { ...res, endpoint, model: res.model ?? cfg.defaultModel };
   }
 
   private async ping(

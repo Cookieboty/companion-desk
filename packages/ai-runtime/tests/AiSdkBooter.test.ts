@@ -134,10 +134,13 @@ describe('AiSdkLlmProvider', () => {
     expect(fetchImpl).toHaveBeenCalled();
   });
 
-  it('claude backend uses @ai-sdk/anthropic (mock fetch)', async () => {
-    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+  it('anthropic protocol → POST {base}/v1/messages via @ai-sdk/anthropic (mock fetch)', async () => {
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (url: unknown, init?: RequestInit) => {
+      urls.push(String(url));
       const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string };
       expect(body.model).toBe('claude-sonnet-4-5');
+      expect(new Headers(init?.headers).get('x-api-key')).toBe('sk-ant');
       return new Response(
         JSON.stringify({
           id: 'msg_1',
@@ -152,8 +155,9 @@ describe('AiSdkLlmProvider', () => {
       );
     });
     const p = new AiSdkLlmProvider({
-      id: 'claude',
-      backend: 'anthropic',
+      id: 'any-anthropic-gateway',
+      protocol: 'anthropic',
+      baseURL: 'https://gw.example.com',
       apiKey: 'sk-ant',
       defaultModel: 'claude-sonnet-4-5',
       requiresApiKey: true,
@@ -161,7 +165,7 @@ describe('AiSdkLlmProvider', () => {
     });
     const resp = await p.chat({
       reqId: 'c1',
-      provider: 'claude',
+      provider: 'x',
       model: 'default',
       messages: [
         { role: 'system', content: 'be brief' },
@@ -169,46 +173,102 @@ describe('AiSdkLlmProvider', () => {
       ],
     });
     expect(resp.content).toContain('bonjour');
-    expect(fetchImpl).toHaveBeenCalled();
+    expect(urls).toEqual(['https://gw.example.com/v1/messages']);
   });
 
-  it('gemini backend uses @ai-sdk/google (mock fetch)', async () => {
-    const fetchImpl = vi.fn(async () => {
+  it('openai-responses protocol → POST {base}/responses via @ai-sdk/openai (mock fetch)', async () => {
+    const urls: string[] = [];
+    const models: string[] = [];
+    const fetchImpl = vi.fn(async (url: unknown, init?: RequestInit) => {
+      urls.push(String(url));
+      models.push((JSON.parse(String(init?.body ?? '{}')) as { model: string }).model);
       return new Response(
         JSON.stringify({
-          candidates: [
+          id: 'resp_1',
+          object: 'response',
+          created_at: 1,
+          model: 'gpt-x',
+          status: 'completed',
+          output: [
             {
-              content: { parts: [{ text: 'namaste' }], role: 'model' },
-              finishReason: 'STOP',
+              type: 'message',
+              id: 'msg_1',
+              role: 'assistant',
+              status: 'completed',
+              content: [{ type: 'output_text', text: 'namaste', annotations: [] }],
             },
           ],
-          usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+          usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } },
       );
     });
     const p = new AiSdkLlmProvider({
-      id: 'gemini',
-      backend: 'google',
-      apiKey: 'gk',
-      defaultModel: 'gemini-2.5-flash',
+      id: 'resp',
+      protocol: 'openai-responses',
+      baseURL: 'https://gw.example.com/v1',
+      apiKey: 'k',
+      defaultModel: 'alias',
+      modelMap: [{ from: 'alias', to: 'gpt-x' }],
       requiresApiKey: true,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     const resp = await p.chat({
-      reqId: 'g1',
-      provider: 'gemini',
+      reqId: 'r',
+      provider: 'resp',
       model: 'default',
       messages: [{ role: 'user', content: 'hi' }],
     });
-    expect(resp.content).toContain('namaste');
-    expect(fetchImpl).toHaveBeenCalled();
+    expect(resp.content).toBe('namaste');
+    expect(urls).toEqual(['https://gw.example.com/v1/responses']);
+    expect(models).toEqual(['gpt-x']);
   });
 
-  it('createAiSdkProviderFromEntry picks anthropic/google backends', () => {
-    const c = createAiSdkProviderFromEntry({ id: 'claude', apiKey: 'k' });
-    const g = createAiSdkProviderFromEntry({ id: 'gemini', apiKey: 'k' });
-    expect(c.id).toBe('claude');
-    expect(g.id).toBe('gemini');
+  it('full URL toggle sends to the URL as-is (openai-chat)', async () => {
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (url: unknown) => {
+      urls.push(String(url));
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+    });
+    const p = new AiSdkLlmProvider({
+      id: 'full',
+      protocol: 'openai-chat',
+      baseURL: 'https://gw.example.com/custom/chat-endpoint?api-version=1',
+      fullUrl: true,
+      apiKey: 'k',
+      defaultModel: 'm',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await p.chat({
+      reqId: 'r',
+      provider: 'full',
+      model: 'default',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    expect(urls).toEqual(['https://gw.example.com/custom/chat-endpoint?api-version=1']);
+  });
+
+  it('env providers map onto the same generic protocol config', async () => {
+    const { envProviderConfig } = await import('../src/ai-sdk/AiSdkLlmProvider');
+    expect(envProviderConfig({ id: 'claude', apiKey: 'k' })).toMatchObject({
+      protocol: 'anthropic',
+      baseURL: 'https://api.anthropic.com/v1',
+    });
+    expect(envProviderConfig({ id: 'gemini', apiKey: 'k' })).toMatchObject({
+      protocol: 'openai-chat',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    });
+    expect(envProviderConfig({ id: 'deepseek', baseURL: 'http://x/v1' })).toMatchObject({
+      protocol: 'openai-chat',
+      baseURL: 'http://x/v1',
+      defaultModel: 'deepseek-chat',
+    });
+    expect(createAiSdkProviderFromEntry({ id: 'gemini', apiKey: 'k' }).id).toBe('gemini');
   });
 });

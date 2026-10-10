@@ -1,16 +1,16 @@
 /**
  * LLMProvider backed by Vercel AI SDK (`generateText` / `streamText`).
  *
- * Backends:
- * - openai-compatible — DeepSeek / OpenAI / Ollama / … via @ai-sdk/openai-compatible
- * - anthropic — Claude via @ai-sdk/anthropic
- * - google — Gemini via @ai-sdk/google
+ * 三种上游协议（见 providers/protocol.ts），全部通用、无按厂商的代码路径：
+ * - openai-chat       → @ai-sdk/openai-compatible（POST {base}/chat/completions）
+ * - openai-responses  → @ai-sdk/openai `.responses()`（POST {base}/responses）
+ * - anthropic         → @ai-sdk/anthropic（POST {base}/v1/messages）
  *
  * Keeps the existing ChatFacade / IPC surface: chat() and stream() still speak
  * bundle-ig-base ChatRequest / ChatChunk. Tool loops use `stopWhen: stepCountIs`.
  */
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type {
   ChatChunk,
@@ -21,6 +21,7 @@ import type {
   LLMProvider,
   ToolDefinition,
 } from '@ig-live/bundle-ig-base';
+import { ENV_ENDPOINT_DEFAULTS } from '@ig-live/bundle-ig-base';
 import {
   generateText,
   stepCountIs,
@@ -30,18 +31,31 @@ import {
   type ToolSet,
 } from 'ai';
 
-import { toAiSdkToolSet } from './mapTools';
+import {
+  fullUrlFetch,
+  mapModel,
+  sdkBaseURL,
+  type ModelMapping,
+  type Protocol,
+} from '../providers/protocol';
 
-export type AiSdkBackend = 'openai-compatible' | 'anthropic' | 'google';
+import { toAiSdkToolSet } from './mapTools';
 
 export interface AiSdkLlmProviderOptions {
   id: string;
-  /** Required for openai-compatible; optional override for anthropic/google. */
+  /** 上游协议（默认 openai-chat） */
+  protocol?: Protocol;
+  /** API 请求地址（必填）；fullUrl=true 时为最终端点原样使用 */
   baseURL?: string;
+  fullUrl?: boolean;
   apiKey?: string;
   defaultModel?: string;
   requiresApiKey?: boolean;
-  backend?: AiSdkBackend;
+  /** 请求模型 → 上游模型 */
+  modelMap?: ModelMapping[];
+  /** 思考 / 推理（anthropic: thinking；openai: reasoningEffort） */
+  thinking?: boolean;
+  userAgent?: string;
   /** Max agent loop steps when tools are attached (default 5). */
   maxSteps?: number;
   fetchImpl?: typeof fetch;
@@ -115,39 +129,54 @@ function finishOf(raw: string | undefined): ChatResponse['finishReason'] {
 }
 
 function buildModelFactory(opts: AiSdkLlmProviderOptions): (modelId: string) => LanguageModel {
-  const backend = opts.backend ?? 'openai-compatible';
-  const fetchImpl = opts.fetchImpl as never;
-  const headers = opts.headers && Object.keys(opts.headers).length > 0 ? opts.headers : undefined;
-  if (backend === 'anthropic') {
+  const protocol = opts.protocol ?? 'openai-chat';
+  if (!opts.baseURL?.trim()) throw new Error(`[${opts.id}] baseURL is required`);
+  const headers: Record<string, string> = { ...(opts.headers ?? {}) };
+  if (opts.userAgent?.trim()) headers['User-Agent'] = opts.userAgent.trim();
+  const hdrs = Object.keys(headers).length > 0 ? headers : undefined;
+  const baseURL = sdkBaseURL(protocol, opts.baseURL, opts.fullUrl);
+  const fetchImpl = (fullUrlFetch(protocol, opts.baseURL, Boolean(opts.fullUrl), opts.fetchImpl) ??
+    opts.fetchImpl) as never;
+  if (protocol === 'anthropic') {
     const provider = createAnthropic({
-      apiKey: opts.apiKey,
-      baseURL: opts.baseURL,
-      headers,
+      apiKey: opts.apiKey ?? '',
+      baseURL,
+      headers: hdrs,
       fetch: fetchImpl,
     });
-    return (modelId) => provider.chat(modelId);
+    return (modelId) => provider.messages(modelId);
   }
-  if (backend === 'google') {
-    const provider = createGoogleGenerativeAI({
-      apiKey: opts.apiKey,
-      baseURL: opts.baseURL,
-      headers,
+  if (protocol === 'openai-responses') {
+    const provider = createOpenAI({
+      apiKey: opts.apiKey ?? '',
+      baseURL,
+      headers: hdrs,
       fetch: fetchImpl,
+      name: opts.id,
     });
-    return (modelId) => provider.chat(modelId);
-  }
-  if (!opts.baseURL?.trim()) {
-    throw new Error(`[${opts.id}] baseURL is required for openai-compatible backend`);
+    return (modelId) => provider.responses(modelId);
   }
   const provider = createOpenAICompatible({
     name: opts.id,
-    baseURL: opts.baseURL.replace(/\/$/, ''),
+    baseURL,
     apiKey: opts.apiKey,
-    headers,
+    headers: hdrs,
     fetch: fetchImpl,
     includeUsage: true,
   });
   return (modelId) => provider.chatModel(modelId);
+}
+
+/** thinking 开关 → 各协议的 providerOptions（同样是通用协议参数，不区分厂商）。 */
+function thinkingOptions(
+  opts: AiSdkLlmProviderOptions,
+): Record<string, Record<string, never>> | undefined {
+  if (!opts.thinking) return undefined;
+  const protocol = opts.protocol ?? 'openai-chat';
+  if (protocol === 'anthropic')
+    return { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } } as never;
+  if (protocol === 'openai-responses') return { openai: { reasoningEffort: 'medium' } } as never;
+  return { [opts.id]: { reasoningEffort: 'medium' } } as never;
 }
 
 export class AiSdkLlmProvider implements LLMProvider {
@@ -185,8 +214,11 @@ export class AiSdkLlmProvider implements LLMProvider {
   }
 
   private resolveModel(request: ChatRequest): string {
-    if (request.model && request.model !== 'default') return request.model;
-    return this.opts.defaultModel ?? 'default';
+    const asked =
+      request.model && request.model !== 'default'
+        ? request.model
+        : (this.opts.defaultModel ?? 'default');
+    return mapModel(asked, this.opts.modelMap);
   }
 
   private assertKey(): void {
@@ -218,6 +250,7 @@ export class AiSdkLlmProvider implements LLMProvider {
         topP: request.topP,
         maxOutputTokens: request.maxTokens,
         abortSignal: signal,
+        ...(thinkingOptions(this.opts) ? { providerOptions: thinkingOptions(this.opts) } : {}),
         ...(tools ? { tools, stopWhen: stepCountIs(this.opts.maxSteps ?? 5) } : {}),
       });
       const toolCalls =
@@ -255,6 +288,7 @@ export class AiSdkLlmProvider implements LLMProvider {
         topP: request.topP,
         maxOutputTokens: request.maxTokens,
         abortSignal: signal,
+        ...(thinkingOptions(this.opts) ? { providerOptions: thinkingOptions(this.opts) } : {}),
         ...(tools ? { tools, stopWhen: stepCountIs(this.opts.maxSteps ?? 5) } : {}),
       });
       for await (const part of result.fullStream) {
@@ -286,63 +320,28 @@ export class AiSdkLlmProvider implements LLMProvider {
   }
 }
 
-export type ProviderDefaults = {
-  backend: AiSdkBackend;
-  baseURL?: string;
-  model: string;
-  requiresApiKey: boolean;
-};
+/**
+ * 环境变量 provider（DEEPSEEK_* / OPENAI_* / ANTHROPIC_* / GEMINI_* / OLLAMA_*）→ 同一套通用配置。
+ * 只有 claude 用 Anthropic Messages 协议，其余都是 OpenAI Chat Completions（Gemini 走其 OpenAI 兼容端点）。
+ */
+export const ENV_PROTOCOL: Readonly<Record<string, Protocol>> = { claude: 'anthropic' };
 
-export const PROVIDER_DEFAULTS: Readonly<Record<string, ProviderDefaults>> = {
-  deepseek: {
-    backend: 'openai-compatible',
-    baseURL: 'https://api.deepseek.com/v1',
-    model: 'deepseek-chat',
-    requiresApiKey: true,
-  },
-  openai: {
-    backend: 'openai-compatible',
-    baseURL: 'https://api.openai.com/v1',
-    model: 'gpt-4o-mini',
-    requiresApiKey: true,
-  },
-  ollama: {
-    backend: 'openai-compatible',
-    baseURL: 'http://127.0.0.1:11434/v1',
-    model: 'qwen2.5:3b-instruct',
-    requiresApiKey: false,
-  },
-  llamacpp: {
-    backend: 'openai-compatible',
-    baseURL: 'http://127.0.0.1:8080/v1',
-    model: 'local',
-    requiresApiKey: false,
-  },
-  qwen: {
-    backend: 'openai-compatible',
-    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    model: 'qwen-plus',
-    requiresApiKey: true,
-  },
-  doubao: {
-    backend: 'openai-compatible',
-    baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
-    model: 'doubao-pro',
-    requiresApiKey: true,
-  },
-  claude: {
-    backend: 'anthropic',
-    baseURL: 'https://api.anthropic.com/v1',
-    model: 'claude-sonnet-4-5',
-    requiresApiKey: true,
-  },
-  gemini: {
-    backend: 'google',
-    baseURL: 'https://generativelanguage.googleapis.com/v1beta',
-    model: 'gemini-2.5-flash',
-    requiresApiKey: true,
-  },
-};
+export function envProviderConfig(entry: {
+  id: string;
+  apiKey?: string;
+  baseURL?: string;
+  model?: string;
+}): AiSdkLlmProviderOptions {
+  const d = ENV_ENDPOINT_DEFAULTS[entry.id];
+  return {
+    id: entry.id,
+    protocol: ENV_PROTOCOL[entry.id] ?? 'openai-chat',
+    apiKey: entry.apiKey,
+    baseURL: entry.baseURL ?? d?.baseURL ?? 'http://127.0.0.1',
+    defaultModel: entry.model ?? d?.model ?? 'default',
+    requiresApiKey: d?.requiresApiKey ?? Boolean(entry.apiKey),
+  };
+}
 
 export function createAiSdkProviderFromEntry(entry: {
   id: string;
@@ -350,18 +349,5 @@ export function createAiSdkProviderFromEntry(entry: {
   baseURL?: string;
   model?: string;
 }): AiSdkLlmProvider {
-  const d = PROVIDER_DEFAULTS[entry.id] ?? {
-    backend: 'openai-compatible' as const,
-    baseURL: entry.baseURL ?? 'http://127.0.0.1',
-    model: 'default',
-    requiresApiKey: Boolean(entry.apiKey),
-  };
-  return new AiSdkLlmProvider({
-    id: entry.id,
-    apiKey: entry.apiKey,
-    baseURL: entry.baseURL ?? d.baseURL,
-    defaultModel: entry.model ?? d.model,
-    requiresApiKey: d.requiresApiKey,
-    backend: d.backend,
-  });
+  return new AiSdkLlmProvider(envProviderConfig(entry));
 }

@@ -2,16 +2,7 @@ import { LLMRegistryKey, type LLMRegistry } from '../seams/llm';
 import type { LLMProvider } from '../types/common';
 import { definePlugin, type PluginContext } from '../types/dsh';
 
-import {
-  ClaudeProvider,
-  DeepSeekProvider,
-  DoubaoProvider,
-  GeminiProvider,
-  LlamaCppProvider,
-  OllamaProvider,
-  OpenAIProvider,
-  QwenProvider,
-} from './llm';
+import { BaseOpenAICompat, ENV_ENDPOINT_DEFAULTS, type OpenAICompatOptions } from './llm';
 
 export type ProviderId =
   'openai' | 'deepseek' | 'ollama' | 'llamacpp' | 'claude' | 'gemini' | 'qwen' | 'doubao';
@@ -43,26 +34,21 @@ class InMemoryLLMRegistry implements LLMRegistry {
   }
 }
 
-function createProvider(entry: LLMProviderEntry): LLMProvider {
-  const shared = { apiKey: entry.apiKey, baseURL: entry.baseURL, defaultModel: entry.model };
-  switch (entry.id) {
-    case 'openai':
-      return new OpenAIProvider(shared);
-    case 'deepseek':
-      return new DeepSeekProvider(shared);
-    case 'ollama':
-      return new OllamaProvider(shared);
-    case 'llamacpp':
-      return new LlamaCppProvider(shared);
-    case 'claude':
-      return new ClaudeProvider(shared);
-    case 'gemini':
-      return new GeminiProvider(shared);
-    case 'qwen':
-      return new QwenProvider(shared);
-    case 'doubao':
-      return new DoubaoProvider(shared);
-  }
+/** 所有 provider 统一走 OpenAI Chat Completions（无按厂商的类）；id 只决定预填的端点默认值。 */
+export function createProvider(
+  entry: LLMProviderEntry,
+  overrides: Partial<OpenAICompatOptions> = {},
+): BaseOpenAICompat {
+  const d = ENV_ENDPOINT_DEFAULTS[entry.id];
+  if (!d && !entry.baseURL) throw new Error(`unknown provider '${entry.id}' needs baseURL`);
+  return new BaseOpenAICompat({
+    id: entry.id,
+    apiKey: entry.apiKey,
+    baseURL: entry.baseURL ?? d!.baseURL,
+    defaultModel: entry.model ?? d?.model,
+    requiresApiKey: d?.requiresApiKey ?? Boolean(entry.apiKey),
+    ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)),
+  });
 }
 
 export const LLMProvidersPlugin = definePlugin<LLMProvidersConfig>({
