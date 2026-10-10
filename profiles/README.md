@@ -24,7 +24,7 @@ dsh 的每次启动都会按下面顺序把补丁层"依次叠加"到空的 entr
 
 1. **Bundle 补丁层**：`dsh.profile.bundles` 中的每一个 npm 包，按声明顺序 `applyEntryPatches`
    - 本项目锁定的第一层是 `@deepseek-ai/dsh-base`（dsh 官方核心 bundle）
-   - P2/P3/P4 之后追加 `@ig-live/bundle-ig-base`、`@ig-live/bundle-ig-electron-caps`、`@ig-live/bundle-ig-live2d`
+   - P2/P3/P4 之后追加 `@ig-live/bundle-ig-base`、`@ig-live/bundle-ig-electron-caps`、`@ig-live/bundle-ig-mascot`
 2. **Profile 用户补丁层**：`profiles/<name>/cordis.patch.yml`，一份顶层 YAML 数组
    - id 定位 + config 覆盖 / disable / insert
    - 允许 `!!js` 表达式（例如 `!!js process.env.FOO`）
