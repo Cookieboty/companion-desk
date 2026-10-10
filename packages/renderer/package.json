@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@ig-live/ai-sdk-client": "workspace:*",
+    "@ig-live/ui": "workspace:*",
     "@pixiv/three-vrm": "^3.5.5",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",

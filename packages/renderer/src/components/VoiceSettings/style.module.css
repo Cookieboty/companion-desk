@@ -1,0 +1,37 @@
+.panel {
+  width: min(400px, 100%);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cd-space-2);
+  margin-bottom: var(--cd-space-4);
+}
+
+.range {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cd-space-1);
+  width: 100%;
+  font-size: var(--cd-font-size-sm);
+  color: var(--cd-color-text-muted);
+}
+
+.range input {
+  width: 100%;
+  accent-color: var(--cd-color-accent);
+}
+
+.help {
+  margin: 0;
+  padding-left: var(--cd-space-4);
+  font-size: var(--cd-font-size-sm);
+  line-height: var(--cd-line-height);
+  color: var(--cd-color-text-muted);
+}
+
+.help strong {
+  color: var(--cd-color-text);
+}

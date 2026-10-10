@@ -3,15 +3,15 @@
   position: fixed;
   top: 20px;
   left: 50%;
-  width: 200px; 
+  width: 200px;
   min-height: 70px;
-  margin-left: -100px; 
+  margin-left: -100px;
   padding: 8px 12px;
   border: 1px solid rgba(224, 186, 140, 0.62);
-  border-radius: 12px;
+  border-radius: var(--cd-radius-lg);
   background-color: rgba(236, 217, 188, 0.9);
   box-shadow: 0 3px 15px 2px rgba(191, 158, 118, 0.3);
-  font-size: 14px;
+  font-size: var(--cd-font-size-md);
   line-height: 24px;
   word-break: break-all;
   text-overflow: ellipsis;
@@ -20,7 +20,7 @@
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
   z-index: 10000; /* 还原到原来的值 */
-  pointer-events: none; 
+  pointer-events: none;
 }
 
 /* 添加消息气泡的小三角箭头指向看板娘 */
@@ -35,4 +35,4 @@
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
   border-top: 8px solid rgba(236, 217, 188, 0.9);
-} 
+}
