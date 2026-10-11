@@ -188,12 +188,19 @@ test.describe('E9 · mascot desktop interaction', () => {
       if (h === 'head' || h === 'face') headHit = h;
     }
     expect(headHit).not.toBe('');
-    xdo('click', '1');
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.dataset.mascotReaction ?? ''), {
-        timeout: 5_000,
-      })
-      .toMatch(/^(click|double|hover|pat):/);
+    // 头顶 alpha 很薄时 Linux setShape 可能不含该像素，但 onCursor+pickAt 仍会报 head|face。
+    // 点到已验证可命中的躯干中心，并重试（单击反应经 ClickClassifier 约 260ms 才写入 dataset）。
+    xdo('mousemove', String(cx), String(bodyY));
+    await sleep(200);
+    await expect(async () => {
+      xdo('click', '1');
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.dataset.mascotReaction ?? ''), {
+          timeout: 2_500,
+          intervals: [100],
+        })
+        .toMatch(/^(click|double|hover|pat):/);
+    }).toPass({ timeout: 15_000 });
     grabScreen('02-reaction', screenSize.width, screenSize.height);
     await page.screenshot({ path: shots ? join(shots, '02-reaction-window.png') : undefined });
 
