@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "prebuild": "npm run clean",
-    "build": "tsc && node scripts/bundle-preload.mjs",
+    "build": "node ../../scripts/run-tsc.mjs && node scripts/bundle-preload.mjs",
     "copy-renderer": "node scripts/copy-renderer.js",
     "clean": "rimraf dist",
     "package": "npm run copy-renderer && npm run package:prod",

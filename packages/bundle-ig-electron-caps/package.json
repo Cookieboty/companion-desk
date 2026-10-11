@@ -30,7 +30,7 @@
   "scripts": {
     "build": "tsup && node scripts/copy-patch.mjs",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/run-tsc.mjs --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "clean": "rimraf dist coverage .turbo"

@@ -5,8 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
+    "dev": "node ../../scripts/run-tsc.mjs --watch",
+    "build": "node ../../scripts/run-tsc.mjs",
     "clean": "rimraf dist",
     "package": "echo 'Types build completed, no packaging needed'"
   },

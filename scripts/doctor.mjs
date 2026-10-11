@@ -74,7 +74,27 @@ if (!existsSync(path.join(root, 'node_modules'))) {
   }
 }
 
-// 5. 端口
+// 5. TypeScript（pnpm 在 Windows 上常把 .bin/tsc 指到包内缺失路径；build 已改走 scripts/run-tsc.mjs）
+try {
+  const tsPkg = require.resolve('typescript/package.json');
+  const tsVer = JSON.parse(readFileSync(tsPkg, 'utf8')).version;
+  ok(`typescript ${tsVer} (workspace root)`);
+} catch {
+  bad('typescript not resolvable from repo root', 'pnpm install');
+}
+try {
+  const fromTypes = createRequire(path.join(root, 'packages/types/package.json'));
+  fromTypes.resolve('typescript/package.json');
+  ok('typescript resolvable from packages/types');
+} catch {
+  // 根上有即可：run-tsc.mjs 从根解析。包内解析失败时给出清理提示（常见于 Windows 损坏的 node_modules）。
+  warn('typescript is not linked under packages/types (ok if root has it; run-tsc uses root).');
+  warn(
+    'If `pnpm --filter @ig-live/types build` still fails: rm -rf node_modules packages/*/node_modules && pnpm install',
+  );
+}
+
+// 6. 端口
 const free = (port) =>
   new Promise((resolve) => {
     const s = net.createServer();
@@ -89,7 +109,7 @@ for (const [port, what] of [
   else bad(`port ${port} is in use (${what})`, `stop the other process: lsof -i :${port}`);
 }
 
-// 6. 可选：AI provider 环境变量（只提示）
+// 7. 可选：AI provider 环境变量（只提示）
 if (!quick) {
   const keys = [
     'DEEPSEEK_API_KEY',

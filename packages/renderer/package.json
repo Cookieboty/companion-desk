@@ -4,7 +4,7 @@
   "description": "基于React的前端UI",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node ../../scripts/run-tsc.mjs && vite build",
     "clean": "rimraf dist",
     "test": "vitest run --passWithNoTests",
     "package": "echo 'Renderer build completed, no packaging needed'"

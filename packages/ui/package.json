@@ -21,9 +21,9 @@
     "*.css"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-css.mjs",
+    "build": "node ../../scripts/run-tsc.mjs -p tsconfig.json && node scripts/copy-css.mjs",
     "clean": "rimraf dist",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "node ../../scripts/run-tsc.mjs -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "peerDependencies": {

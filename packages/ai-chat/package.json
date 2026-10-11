@@ -6,8 +6,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit",
+    "build": "node ../../scripts/run-tsc.mjs && vite build",
+    "typecheck": "node ../../scripts/run-tsc.mjs --noEmit",
     "clean": "rimraf dist",
     "test": "vitest run",
     "package": "echo 'AI Chat client build completed'"
