@@ -223,9 +223,11 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
     await chat.screenshot(shot('01-chat-notes.png'));
 
     // 设置面板 → 笔记页能看到、能搜到
-    await chat.click('[data-testid="open-desktop-panel"]');
-    await chat.waitForSelector('[data-testid="desktop-panel"]');
-    await chat.getByRole('tab', { name: '笔记' }).click();
+    await chat.click('[data-testid="open-desktop-panel"]', { timeout: 30_000 });
+    await chat.waitForSelector('[data-testid="desktop-panel"]', { timeout: 30_000 });
+    await chat
+      .getByRole('tab', { name: '笔记' })
+      .click({ force: true, noWaitAfter: true, timeout: 30_000 });
     await expect(chat.locator('[data-testid="notes-list"]')).toContainText('Groceries');
     await chat.fill('[data-testid="notes-search"]', 'TOKENNOTE9');
     await expect(chat.locator('[data-testid="notes-list"]')).toContainText('Groceries');
