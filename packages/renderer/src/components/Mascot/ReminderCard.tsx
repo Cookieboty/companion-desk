@@ -18,8 +18,9 @@ export const ReminderCard: React.FC = () => {
 
   useEffect(() => {
     if (!api?.onReminder) return;
+    // priority 11 > messageComplete (9): late AI replies must not replace a live reminder
     const say = (text: string, ms = 15000) =>
-      window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text, ms } }));
+      window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text, ms, priority: 11 } }));
     const off1 = api.onReminder((r) => {
       setQueue((q) => [...q.filter((x) => x.id !== r.id), r]);
       say(`⏰ 提醒：${r.text}`);

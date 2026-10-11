@@ -198,9 +198,14 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
         await expect(ok).toBeEnabled({ timeout: 5_000 });
         await ok.click();
       } else {
-        await main.click(
-          allow ? '[data-testid="desktop-confirm-allow"]' : '[data-testid="desktop-confirm-deny"]',
-        );
+        // Windows CI: Playwright can hang after click waiting for navigations on the bubble button.
+        await main
+          .locator(
+            allow
+              ? '[data-testid="desktop-confirm-allow"]'
+              : '[data-testid="desktop-confirm-deny"]',
+          )
+          .click({ force: true, noWaitAfter: true, timeout: 15_000 });
       }
       await expect(confirmBubble).toHaveCount(0);
     };
@@ -237,8 +242,10 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
     });
     const card = main.locator('[data-testid="reminder-card"]');
     await expect(card).toContainText('Stretch break', { timeout: 20_000 });
+    // Reminder say can race a late AI reply on the bubble; wait until the reminder text wins.
     await expect(main.locator('[data-testid="mascot-bubble"]')).toContainText(
       '提醒：Stretch break',
+      { timeout: 20_000 },
     );
     await main.waitForTimeout(500);
     await main.screenshot(shot('03-reminder-fired.png'));
