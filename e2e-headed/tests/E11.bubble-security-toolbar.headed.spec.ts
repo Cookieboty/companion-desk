@@ -333,11 +333,13 @@ test.describe('E11 · bubble security + toolbar', () => {
       }
       await new Promise((r) => setTimeout(r, 200));
       api.dragEnd();
-      // Force window against the work-area right edge so placeGutter flips (CI displays vary).
+      // Hang most of the window past the work-area right edge so the right gutter
+      // is off-screen (placeGutter → side "left"). Fullscreen-ish windows need a
+      // large overhang; "outerWidth - 48" barely moves them.
       const availLeft = (window.screen as Screen & { availLeft?: number }).availLeft ?? 0;
       const screenRight = availLeft + window.screen.availWidth;
-      w.electronAPI.setPosition(Math.round(screenRight - window.outerWidth + 48), window.screenY);
-      await new Promise((r) => setTimeout(r, 400));
+      w.electronAPI.setPosition(Math.round(screenRight - 140), window.screenY);
+      await new Promise((r) => setTimeout(r, 900)); // ToolBar recomputes every ~700ms
     });
     await expect
       .poll(() => main.evaluate(() => document.documentElement.dataset.toolbarSide), {

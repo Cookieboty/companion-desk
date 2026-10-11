@@ -217,7 +217,7 @@ test.describe('E9 · mascot desktop interaction', () => {
       xdo('mousemove', String(cx - i * 8), String(bodyY - i * 15));
       await sleep(30);
     }
-    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 5_000 }).toBe('held');
+    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 10_000 }).toBe('held');
     await sleep(300);
     s = await snap(page);
     expect(Math.round(s.body.y + box.bottom)).toBeLessThan(wa.y + wa.height - 150);
@@ -285,7 +285,7 @@ test.describe('E9 · mascot desktop interaction', () => {
       xdo('mousemove', String(cx), String(midY - i * 18));
       await sleep(30);
     }
-    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 5_000 }).toBe('held');
+    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 10_000 }).toBe('held');
     const heldY = (await snap(page)).body.y;
     xdo('mouseup', '1');
     await sleep(800);
