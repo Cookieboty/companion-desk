@@ -1,4 +1,0 @@
-@tool
-extends GLTFDocumentExtension
-
-pass

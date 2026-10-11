@@ -1,7 +1,0 @@
-.godot/
-assets/models/*.vrm
-assets/models/*.import
-bench/results/*.json
-!bench/results/.gitkeep
-export_presets.cfg
-*.translation
