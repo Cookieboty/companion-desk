@@ -64,7 +64,10 @@ Built-in defaults:
 | ------------------- | -------- | ---- | ----- |
 | `default-character` | xiaoxiao | 0.88 | 1.06  |
 | `soft-face`         | yunxia   | 0.85 | 1.08  |
-| `pixel-neko`        | yaoyao   | 0.92 | 1.12  |
+| `sakura-chan`       | yunxia   | 0.86 | 1.10  |
+| `pastel-girl`       | xiaoxiao | 0.90 | 1.08  |
+| `michona`           | meijia   | 0.88 | 1.05  |
+| `kenney-panda`      | yaoyao   | 0.94 | 1.12  |
 
 Resolve order: global soft prefs (preferNeural/volume) → character defaults → `model.config.voice` → local override.
 

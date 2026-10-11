@@ -35,9 +35,9 @@ describe('characterVoice', () => {
 
   it('ships distinct softer defaults per character', () => {
     expect(CHARACTER_VOICE_DEFAULTS['soft-face'].rate).toBeLessThan(
-      CHARACTER_VOICE_DEFAULTS['pixel-neko'].rate!,
+      CHARACTER_VOICE_DEFAULTS['kenney-panda'].rate!,
     );
-    expect(defaultsForCharacter('pixel-neko').voiceHint).toBe('yaoyao');
+    expect(defaultsForCharacter('kenney-panda').voiceHint).toBe('yaoyao');
   });
 
   it('merges config then override', async () => {
@@ -53,8 +53,8 @@ describe('characterVoice', () => {
   });
 
   it('active character drives resolvePrefsForCharacter', () => {
-    setActiveCharacter('pixel-neko', { voice: { voiceHint: 'yaoyao', rate: 0.92 } });
+    setActiveCharacter('kenney-panda', { voice: { voiceHint: 'yaoyao', rate: 0.94 } });
     const prefs = resolvePrefsForCharacter();
-    expect(prefs.rate).toBe(0.92);
+    expect(prefs.rate).toBe(0.94);
   });
 });

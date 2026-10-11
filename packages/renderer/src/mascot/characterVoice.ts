@@ -29,9 +29,24 @@ export const CHARACTER_VOICE_DEFAULTS: Record<string, ModelVoiceConfig> = {
     rate: 0.85,
     pitch: 1.08,
   },
-  'pixel-neko': {
+  'sakura-chan': {
+    voiceHint: 'yunxia',
+    rate: 0.86,
+    pitch: 1.1,
+  },
+  'pastel-girl': {
+    voiceHint: 'xiaoxiao',
+    rate: 0.9,
+    pitch: 1.08,
+  },
+  michona: {
+    voiceHint: 'meijia',
+    rate: 0.88,
+    pitch: 1.05,
+  },
+  'kenney-panda': {
     voiceHint: 'yaoyao',
-    rate: 0.92,
+    rate: 0.94,
     pitch: 1.12,
   },
 };
@@ -83,7 +98,8 @@ export function defaultsForCharacter(
 ): ModelVoiceConfig {
   if (modelName && CHARACTER_VOICE_DEFAULTS[modelName])
     return { ...CHARACTER_VOICE_DEFAULTS[modelName] };
-  if (tags?.includes('pixel')) return { ...CHARACTER_VOICE_DEFAULTS['pixel-neko'] };
+  if (tags?.includes('pixel') || tags?.includes('pet'))
+    return { ...CHARACTER_VOICE_DEFAULTS['kenney-panda'] };
   if (tags?.includes('sprite') || tags?.includes('soft'))
     return { ...CHARACTER_VOICE_DEFAULTS['soft-face'] };
   return { ...CHARACTER_VOICE_DEFAULTS['default-character'] };
