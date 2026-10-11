@@ -11,7 +11,7 @@ import { directiveForEvent, motionForText } from '../../src/mascot/expressionDir
 import { mascotRegistry, type MascotBackend } from '../../src/mascot/MascotBackend';
 import { applyDirective, resetMoodForTests } from '../../src/mascot/mood';
 import { MOTION_LABELS, parseMotionLibrary } from '../../src/mascot/motion/library';
-import { MotionController, buildClip } from '../../src/mascot/motion/MotionController';
+import { MotionController, buildClip, fadeFor } from '../../src/mascot/motion/MotionController';
 
 const LIB = parseMotionLibrary(
   JSON.parse(
@@ -81,6 +81,15 @@ describe('buildClip', () => {
     // 腿部由 idle 补齐
     expect(v0.tracks.some((t) => t.name === 'Normalized_leftUpperLeg.quaternion')).toBe(true);
     expect(v0.tracks.some((t) => t.name === 'Normalized_hips.position')).toBe(true);
+  });
+});
+
+describe('fadeFor', () => {
+  it('keeps short gestures snappy and caps long fades', () => {
+    expect(fadeFor(0.33)).toBeLessThan(0.2);
+    expect(fadeFor(0.33)).toBeGreaterThanOrEqual(0.12);
+    expect(fadeFor(3)).toBeLessThanOrEqual(0.4);
+    expect(fadeFor(2.5)).toBeCloseTo(0.4, 5);
   });
 });
 

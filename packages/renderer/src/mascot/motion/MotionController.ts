@@ -3,7 +3,13 @@ import * as THREE from 'three';
 
 import type { MotionClipData, MotionLibrary } from './library';
 
-const FADE = 0.5;
+/** Base-loop crossfade (idle ↔ talk / walk). */
+const BASE_FADE = 0.35;
+
+/** One-shot fade length: short clips need a snappy blend or they never reach full weight. */
+export function fadeFor(duration: number): number {
+  return Math.max(0.12, Math.min(0.4, duration * 0.22));
+}
 
 export interface MotionControllerOptions {
   /** 随机待机小动作的间隔（秒）[min, max] */
@@ -79,9 +85,9 @@ export class MotionController {
       // 一次性动作进行中：基础层先静默，等动作结束再淡入
       next.play().setEffectiveWeight(0);
     } else {
-      next.fadeIn(FADE).play();
+      next.fadeIn(BASE_FADE).play();
     }
-    if (this.base && this.base !== next) this.base.fadeOut(FADE);
+    if (this.base && this.base !== next) this.base.fadeOut(BASE_FADE);
     this.base = next;
     this.baseName = name;
   }
@@ -99,13 +105,14 @@ export class MotionController {
       this.setBase(resolved);
       return true;
     }
+    const fade = fadeFor(data?.duration ?? clip.duration);
     const action = this.mixer.clipAction(clip);
     action.reset();
     action.setLoop(data?.loop ? THREE.LoopRepeat : THREE.LoopOnce, data?.loop ? 2 : 1);
     action.clampWhenFinished = true;
-    action.setEffectiveWeight(1).fadeIn(FADE).play();
-    if (this.current && this.current !== action) this.current.fadeOut(FADE);
-    this.base?.fadeOut(FADE);
+    action.setEffectiveWeight(1).fadeIn(fade).play();
+    if (this.current && this.current !== action) this.current.fadeOut(fade);
+    this.base?.fadeOut(fade);
     this.current = action;
     this.currentName = resolved;
     this.emit();
@@ -114,10 +121,15 @@ export class MotionController {
 
   stop(): void {
     if (!this.current) return;
-    this.current.fadeOut(FADE);
+    const fade = fadeFor(this.meta.get(this.currentName ?? '')?.duration ?? 1);
+    this.current.fadeOut(fade);
     this.current = null;
     this.currentName = null;
-    if (this.base) this.base.reset().setEffectiveWeight(1).fadeIn(FADE).play();
+    // Do not reset() the base loop — that snaps idle to t=0 and looks like a pop.
+    if (this.base) {
+      if (!this.base.isRunning()) this.base.play();
+      this.base.setEffectiveWeight(1).fadeIn(BASE_FADE);
+    }
     this.nextIdleVariety = this.elapsed + this.pickIdleDelay();
     this.emit();
   }
@@ -196,9 +208,18 @@ export function buildClip(
       vrm.humanoid?.normalizedRestPose?.hips?.position?.[1] ?? rest.y ?? 0.9,
     );
     const values: number[] = [];
+    // Soften vertical bob on looped clips (idle/talk bob was a common source of "jank").
+    const bob =
+      data.name === 'idle' || data.name === 'talk'
+        ? 0.5
+        : data.name === 'walk'
+          ? 0.8
+          : data.tags.includes('idle')
+            ? 0.6
+            : 0.75;
     for (let i = 0; i < data.times.length; i += 1) {
       // 原地动作：只保留竖直位移（跳跃 / 下蹲），水平位移归零以免漂移
-      values.push(rest.x, rest.y + data.hips[i * 3 + 1] * height, rest.z);
+      values.push(rest.x, rest.y + data.hips[i * 3 + 1] * height * bob, rest.z);
     }
     tracks.push(new THREE.VectorKeyframeTrack(`${hips.name}.position`, data.times, values));
   }

@@ -120,6 +120,7 @@ export function createVrmBackend(
   let yaw = { x: 0, v: 0 };
   let pitch = { x: 0, v: 0 };
   const lookNorm = { x: 0, y: 0 };
+  const lookDesired = { x: 0, y: 0 };
   const baseScale = vrm.scene.scale.clone();
   const baseRotY = vrm.scene.rotation.y; // VRM 0.x 经 rotateVRM0 后为 π
   const tmpQ = new THREE.Quaternion();
@@ -193,11 +194,9 @@ export function createVrmBackend(
       mouthTarget = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
     },
     lookAt(x, y) {
-      const cx = Math.max(-1, Math.min(1, x));
-      const cy = Math.max(-1, Math.min(1, y));
-      lookNorm.x = cx;
-      lookNorm.y = cy;
-      lookGoal.set(cx * 1.5, headY + cy * 0.8, 3);
+      // Store desired only — update() lowpasses lookNorm to kill cursor / drag jitter.
+      lookDesired.x = Math.max(-1, Math.min(1, x));
+      lookDesired.y = Math.max(-1, Math.min(1, y));
     },
     blink() {
       blinkT = 0;
@@ -344,11 +343,19 @@ export function createVrmBackend(
       // 调试 / 动画巡检：window.__mascotDebugYaw 旋转模型（侧视图）
       const debugYaw = (globalThis as { __mascotDebugYaw?: number }).__mascotDebugYaw ?? 0;
       vrm.scene.rotation.y = baseRotY + facing + debugYaw;
-      // ---- 头部跟随视线（阻尼弹簧 + 颈部限位），叠加在动作之上 ----
+      // ---- 头部跟随视线（低通目标 + 阻尼弹簧 + 颈部限位），叠加在动作之上 ----
+      // 拖拽 / 悬空时把视线收回正前，避免和窗口加速度抢脖子
+      const lookRet = body.mode === 'held' ? 0.15 : 1;
+      const lx = lookDesired.x * lookRet;
+      const ly = lookDesired.y * lookRet;
+      lookNorm.x = lowpass(lookNorm.x, lx, body.mode === 'held' ? 6 : 10, dt);
+      lookNorm.y = lowpass(lookNorm.y, ly, body.mode === 'held' ? 6 : 10, dt);
+      lookGoal.set(lookNorm.x * 1.5, headY + lookNorm.y * 0.8, 3);
       const tYaw = lookNorm.x * NECK_LIMITS.yaw * (1 - dangle * 0.6);
       const tPitch = (lookNorm.y > 0 ? NECK_LIMITS.pitchUp : NECK_LIMITS.pitchDown) * lookNorm.y;
-      yaw = dampedSpring(yaw, tYaw - facing * 0.5, 5, 1, dt);
-      pitch = dampedSpring(pitch, tPitch, 5, 1, dt);
+      // Softer spring (omega 4.2, slight overdamp) reduces neck twitch on fine cursor motion
+      yaw = dampedSpring(yaw, tYaw - facing * 0.5, 4.2, 1.05, dt);
+      pitch = dampedSpring(pitch, tPitch, 4.2, 1.05, dt);
       addRot(neck, -pitch.x * 0.4, yaw.x * 0.4, 0);
       addRot(head, -pitch.x * 0.6, yaw.x * 0.6, 0);
       // ---- 手不穿过头发 / 帽子（举手类动作、拎起姿态）----
@@ -382,7 +389,7 @@ export function createVrmBackend(
         j.settings.gravityPower = g.power;
       }
       // 视线
-      lookTarget.position.lerp(lookGoal, 1 - Math.exp(-4 * dt));
+      lookTarget.position.lerp(lookGoal, 1 - Math.exp(-5.5 * dt));
     },
   };
   return backend;

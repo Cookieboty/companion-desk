@@ -177,9 +177,14 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
           // 逐像素点击穿透需要读回上一帧的 alpha
           preserveDrawingBuffer: true,
           powerPreference: 'high-performance',
+          // Let the compositor vsync; avoid tearing on transparent desktop windows
+          stencil: false,
         }}
         dpr={renderConfig.pixelRatio}
+        // rAF is display-synced; pause when the document is hidden
         frameloop={hidden ? 'never' : 'always'}
+        // Adaptive DPR when GPU falls behind (R3F performance.max defaults to 1)
+        performance={{ min: 0.5, max: 1, debounce: 200 }}
         camera={{
           // 全身取景：VRoid 模型约 1.5m 高，原点在脚底
           position: [0, 0.82, 3.2],
@@ -187,8 +192,10 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
           near: 0.1,
           far: 1000,
         }}
-        onCreated={({ camera }) => {
+        onCreated={({ camera, gl }) => {
           camera.lookAt(0, 0.8, 0);
+          // Cap pixel ratio again after context creation (HiDPI + transparent window)
+          gl.setPixelRatio(renderConfig.pixelRatio);
         }}
         shadows={renderQuality !== 'low'}
         style={{
