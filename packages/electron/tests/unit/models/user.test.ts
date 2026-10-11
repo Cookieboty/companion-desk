@@ -131,8 +131,15 @@ describe('model config JSON', () => {
 
   it('sanitizes bad values', () => {
     expect(
-      sanitizeModelConfig({ scale: 'big', offset: [1, 2], expressionMap: { 'a b<': 'x' } }),
-    ).toEqual({});
+      sanitizeModelConfig({
+        scale: 'big',
+        offset: [1, 2],
+        expressionMap: { 'a b<': 'x' },
+        voice: { rate: 0.88, voiceHint: 'xiaoxiao', voiceURI: 'x'.repeat(300) },
+      }),
+    ).toEqual({
+      voice: { rate: 0.88, voiceHint: 'xiaoxiao', voiceURI: 'x'.repeat(256) },
+    });
   });
 });
 

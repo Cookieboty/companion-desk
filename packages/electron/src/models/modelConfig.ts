@@ -37,6 +37,19 @@ export function sanitizeModelConfig(raw: unknown): ModelConfig {
       .filter((m): m is string => typeof m === 'string' && /^[a-z_]{1,32}$/.test(m))
       .slice(0, 64);
   }
+  if (c.voice && typeof c.voice === 'object') {
+    const v = c.voice as Record<string, unknown>;
+    const voice: NonNullable<ModelConfig['voice']> = {};
+    if (typeof v.voiceURI === 'string') voice.voiceURI = v.voiceURI.slice(0, 256);
+    if (typeof v.voiceHint === 'string' && /^[A-Za-z0-9_\-. ]{1,64}$/.test(v.voiceHint.trim())) {
+      voice.voiceHint = v.voiceHint.trim();
+    }
+    const rate = clamp(v.rate, 0.5, 1.5);
+    if (rate !== undefined) voice.rate = rate;
+    const pitch = clamp(v.pitch, 0, 2);
+    if (pitch !== undefined) voice.pitch = pitch;
+    if (Object.keys(voice).length) out.voice = voice;
+  }
   return out;
 }
 
