@@ -489,11 +489,16 @@ export const ToolBar: React.FC = () => {
       const bar = barRef.current;
       const bw = bar?.offsetWidth || 44;
       const bh = bar?.offsetHeight || 200;
+      const force = (
+        window as unknown as {
+          __cdForceToolbarScreen?: { winX: number; availLeft: number; availWidth: number };
+        }
+      ).__cdForceToolbarScreen;
       const p = placeGutter({
         box: layoutStore.get().box,
         bar: { width: bw, height: bh },
         view: { width: window.innerWidth, height: window.innerHeight },
-        screen: {
+        screen: force ?? {
           winX: window.screenX,
           availLeft: (window.screen as Screen & { availLeft?: number }).availLeft ?? 0,
           availWidth: window.screen.availWidth,

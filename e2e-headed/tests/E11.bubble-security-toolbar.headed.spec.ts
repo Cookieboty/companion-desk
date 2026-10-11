@@ -313,7 +313,8 @@ test.describe('E11 · bubble security + toolbar', () => {
     // Move the always-on-top mascot BrowserWindow so its right gutter is past the
     // work-area edge (renderer setPosition / drag is unreliable on CI / Linux WM).
     await app!.evaluate(({ BrowserWindow, screen }) => {
-      const w = BrowserWindow.getAllWindows().find((b) => !b.isDestroyed() && b.isAlwaysOnTop());
+      const wins = BrowserWindow.getAllWindows().filter((b) => !b.isDestroyed());
+      const w = wins.find((b) => b.isAlwaysOnTop()) ?? wins[0];
       if (!w) throw new Error('mascot window not found');
       const wa = screen.getPrimaryDisplay().workArea;
       const b = w.getBounds();
@@ -324,6 +325,20 @@ test.describe('E11 · bubble security + toolbar', () => {
         width: b.width,
         height: b.height,
       });
+    });
+    // WM may clamp bounds; force placeGutter screen metrics so the right gutter is off-screen.
+    await main.evaluate(() => {
+      const availLeft = (window.screen as Screen & { availLeft?: number }).availLeft ?? 0;
+      const availWidth = window.screen.availWidth;
+      (
+        window as unknown as {
+          __cdForceToolbarScreen?: { winX: number; availLeft: number; availWidth: number };
+        }
+      ).__cdForceToolbarScreen = {
+        winX: availLeft + availWidth - 80,
+        availLeft,
+        availWidth,
+      };
     });
     await expect
       .poll(() => main.evaluate(() => document.documentElement.dataset.toolbarSide), {
