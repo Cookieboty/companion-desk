@@ -313,26 +313,31 @@ test.describe('E11 · bubble security + toolbar', () => {
     );
     // 用拖拽把角色拖到屏幕最右（物理会把她卡在屏幕内，但窗口右侧槽位已在屏幕外）
     await main.evaluate(async () => {
-      const api = (
-        window as unknown as {
-          electronAPI: {
-            mascotWindow: {
-              dragStart(x: number, y: number): void;
-              dragMove(x: number, y: number): void;
-              dragEnd(): void;
-            };
+      const w = window as unknown as {
+        electronAPI: {
+          setPosition(x: number, y: number): void;
+          mascotWindow: {
+            dragStart(x: number, y: number): void;
+            dragMove(x: number, y: number): void;
+            dragEnd(): void;
           };
-        }
-      ).electronAPI.mascotWindow;
+        };
+      };
+      const api = w.electronAPI.mascotWindow;
       const gx = window.screenX + window.innerWidth / 2;
       const gy = window.screenY + window.innerHeight / 2;
       api.dragStart(gx, gy);
-      for (let k = 1; k <= 20; k++) {
-        api.dragMove(gx + k * 60, gy);
-        await new Promise((r) => setTimeout(r, 30));
+      for (let k = 1; k <= 24; k++) {
+        api.dragMove(gx + k * 80, gy);
+        await new Promise((r) => setTimeout(r, 25));
       }
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 200));
       api.dragEnd();
+      // Force window against the work-area right edge so placeGutter flips (CI displays vary).
+      const availLeft = (window.screen as Screen & { availLeft?: number }).availLeft ?? 0;
+      const screenRight = availLeft + window.screen.availWidth;
+      w.electronAPI.setPosition(Math.round(screenRight - window.outerWidth + 48), window.screenY);
+      await new Promise((r) => setTimeout(r, 400));
     });
     await expect
       .poll(() => main.evaluate(() => document.documentElement.dataset.toolbarSide), {

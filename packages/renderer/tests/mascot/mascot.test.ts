@@ -36,7 +36,7 @@ describe('catalog', () => {
     expect(nextModel([], null)).toBeUndefined();
   });
 
-  it('ships only the default CC0 model (others live in the model store)', async () => {
+  it('ships default VRM plus bundled 2D sprite spikes (all CC0)', async () => {
     const fs = await import('node:fs');
     const raw = JSON.parse(
       fs.readFileSync(
@@ -45,9 +45,9 @@ describe('catalog', () => {
       ),
     );
     const list = parseCatalog(raw);
-    expect(list).toHaveLength(1);
-    expect(list[0].name).toBe('default-character');
+    expect(list.map((m) => m.name)).toEqual(['default-character', 'soft-face', 'pixel-neko']);
     for (const m of list) expect(m.license).toBe('CC0-1.0');
+    expect(list.filter((m) => m.tags?.includes('sprite'))).toHaveLength(2);
   });
 });
 
