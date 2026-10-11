@@ -218,6 +218,11 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
           await expect(chat.locator('[data-testid="preset-openrouter"]')).toHaveCount(0);
           await chat.screenshot({ path: join(shotDir, '03-add-provider-search.png') });
           await chat.fill('[data-testid="preset-search"]', '');
+          // 预设不再预填默认模型：选厂商后应提示先获取模型
+          await chat.click('[data-testid="preset-openai"]');
+          await expect(chat.locator('[data-testid="fetch-models-prompt"]')).toBeVisible();
+          await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue('');
+          await chat.click('[data-testid="editor-back"]');
         }
         await chat.click('[data-testid="preset-custom"]');
         await expect(chat.locator('[data-testid="provider-editor"]')).toBeVisible();
@@ -249,9 +254,13 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
           const box = chat.locator(`[data-testid="model-row-${m}"] input[type="checkbox"]`);
           if (!(await box.isChecked())) await box.check();
         }
+        await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue('');
+        await expect(chat.locator('[data-testid="fetch-models-prompt"]')).toBeVisible();
         const setDefault = chat.locator(`[data-testid="model-default-${spec.models[0]}"]`);
-        if (await setDefault.count()) await setDefault.click();
+        await expect(setDefault).toHaveCount(1);
+        await setDefault.click();
         await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue(spec.models[0]!);
+        await expect(chat.locator('[data-testid="fetch-models-prompt"]')).toHaveCount(0);
         // 测速
         await chat.click('[data-testid="draft-test"]');
         await expect(chat.locator('[data-testid="test-ok"]')).toBeVisible({ timeout: 15_000 });
@@ -273,6 +282,30 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
       }
       await expect(chat.locator('[data-testid^="provider-card-"]')).toHaveCount(4);
       await expect(chat.locator('[data-testid="masked-key"]')).toHaveCount(0); // 列表只显示掩码摘要
+
+      // 保存后自动拉取模型：不预先点「获取模型」，保存后留在编辑器选默认
+      {
+        const mock = await startMockLlm('AutoFetch', 'openai-chat', ['auto-a', 'auto-b']);
+        mocks.push(mock);
+        await chat.click('[data-testid="add-provider-btn"]');
+        await chat.click('[data-testid="preset-custom"]');
+        await chat.fill('[data-testid="draft-name"]', 'Auto Fetch');
+        await chat.fill('[data-testid="draft-key"]', 'sk-auto-fetch-key');
+        await chat.fill('[data-testid="draft-baseurl"]', `http://127.0.0.1:${mock.port}/v1`);
+        await expect(chat.locator('[data-testid="fetch-models-prompt"]')).toBeVisible();
+        await chat.click('[data-testid="draft-save"]');
+        await expect(chat.locator('[data-testid="provider-editor"]')).toBeVisible();
+        await expect(chat.locator('[data-testid="model-row-auto-a"]')).toBeVisible({
+          timeout: 15_000,
+        });
+        await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue('');
+        await chat.click('[data-testid="model-default-auto-a"]');
+        await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue('auto-a');
+        await chat.click('[data-testid="draft-save"]');
+        await expect(chat.locator('[data-testid="provider-editor"]')).toHaveCount(0);
+        expect(mock.seen.some((r) => r.method === 'GET' && r.path === '/v1/models')).toBe(true);
+        await expect(chat.locator('[data-testid^="provider-card-"]')).toHaveCount(5);
+      }
       const s1 = await state();
       const ids = SPECS.map((sp) => s1.providers.find((p) => p.name === sp.name)!.id);
       expect(s1.effectiveProviderId).toBe(ids[0]);

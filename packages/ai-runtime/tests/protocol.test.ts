@@ -222,4 +222,12 @@ describe('preset verification metadata', () => {
       expect(p.icon, p.id).toBeTruthy();
     }
   });
+
+  it('no preset ships a defaultModel — user must fetch and pick', async () => {
+    const { PROVIDER_PRESETS } = await import('../src/providers');
+    for (const p of PROVIDER_PRESETS) {
+      expect(p.defaultModel, p.id).toBe('');
+      expect(p.models, p.id).toEqual([]);
+    }
+  });
 });

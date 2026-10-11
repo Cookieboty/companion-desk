@@ -334,7 +334,7 @@ export class ProviderStore {
     const preset = findPreset(input.presetId) ?? findPreset('custom')!;
     const baseURL = input.baseURL ?? preset.baseURL;
     if (!baseURL.trim()) throw new Error('请填写 API 请求地址');
-    const defaultModel = input.defaultModel?.trim() || preset.defaultModel || 'default';
+    const defaultModel = input.defaultModel?.trim() || preset.defaultModel || '';
     const created: StoredProvider = {
       id: `p-${preset.id}-${randomUUID().slice(0, 8)}`,
       presetId: preset.id,
@@ -351,7 +351,8 @@ export class ProviderStore {
       updatedAt: ts,
     };
     applyConfig(created, { ...input, baseURL });
-    if (created.models.length === 0) created.models = [created.defaultModel];
+    if (created.models.length === 0 && created.defaultModel)
+      created.models = [created.defaultModel];
     this.data.providers.push(created);
     this.commit();
     return this.view(created);
@@ -365,7 +366,7 @@ export class ProviderStore {
       p.fetchedAt = this.now();
     }
     if (patch.enabled) p.models = uniq(patch.enabled);
-    if (!p.models.includes(p.defaultModel)) p.models.unshift(p.defaultModel);
+    if (p.defaultModel && !p.models.includes(p.defaultModel)) p.models.unshift(p.defaultModel);
     p.updatedAt = this.now();
     this.commit();
     return this.view(p);
@@ -575,8 +576,12 @@ function migrateProvider(raw: Record<string, unknown>): StoredProvider {
   }
   const presetId = String(raw.presetId ?? 'custom');
   const renamed: Record<string, string> = { claude: 'anthropic', moonshot: 'kimi' };
-  const defaultModel = String(raw.defaultModel ?? 'default');
-  const models = Array.isArray(raw.models) ? uniq(raw.models.map(String)) : [defaultModel];
+  const defaultModel = String(raw.defaultModel ?? '').trim();
+  const models = Array.isArray(raw.models)
+    ? uniq(raw.models.map(String).filter(Boolean))
+    : defaultModel
+      ? [defaultModel]
+      : [];
   const { backend: _drop, ...rest } = raw;
   void _drop;
   return {
@@ -586,7 +591,7 @@ function migrateProvider(raw: Record<string, unknown>): StoredProvider {
     baseURL: trimBase(baseURL),
     fullUrl: Boolean(raw.fullUrl),
     defaultModel,
-    models: models.includes(defaultModel) ? models : [defaultModel, ...models],
+    models: defaultModel && !models.includes(defaultModel) ? [defaultModel, ...models] : models,
     websiteUrl:
       (raw.websiteUrl as string | undefined) ??
       findPreset(renamed[presetId] ?? presetId)?.websiteUrl,
