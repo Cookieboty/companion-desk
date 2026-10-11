@@ -1,11 +1,11 @@
 {
-  "id": "pixel-neko",
-  "displayName": "Pixel Neko (2D spike)",
+  "id": "kenney-panda",
+  "displayName": "Panda Pet (2D)",
   "style": "pixel",
   "license": "CC0-1.0",
-  "author": "Companion Desk (original procedural pixel art)",
-  "source": "generated in-repo for sprite-2d spike",
-  "description": "Cute anime-adjacent pixel pet (32\u00d732 Nearest). Expression-swapped sprites.",
+  "author": "Kenney.nl (+ Companion Desk overlays)",
+  "source": "https://opengameart.org/content/animal-pack-redux",
+  "description": "CC0 Kenney panda with soft expression overlays. Pixel-scaled.",
   "expressions": {
     "neutral": "neutral.png",
     "happy": "happy.png",
@@ -24,6 +24,7 @@
     "2d",
     "pixel",
     "pet",
+    "cute",
     "cc0"
   ]
 }

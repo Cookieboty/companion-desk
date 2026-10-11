@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-11  
 **Branch:** `feat/ai-harness-p0`  
-**Status:** spike landed — expression-swapped sprites (soft + **pixel pet**); VRM remains default.
+**Status:** spike landed — expression-swapped sprites (soft VN-style + cute pixel pet); VRM remains default.
 
 ## Goal
 
@@ -38,19 +38,23 @@ Candidates to evaluate for a later pack (verify license file on download; prefer
 
 **Policy:** do not vendor third-party zips until LICENSE + commercial desktop redistribution is confirmed in-tree (`THIRD_PARTY_NOTICES` + model CREDITS).
 
-## What landed in-repo (CC0 originals)
+## What landed in-repo (all CC0)
 
-| Id | Style | Path | Notes |
-|----|-------|------|-------|
-| `soft-face` | Soft anime-adjacent plate | `packages/renderer/public/assets/models/sprite/soft-face/` | Expressions + blink + mouth overlay |
-| `pixel-neko` | **Pixel pet** (32×32 → ×8) | `packages/renderer/public/assets/models/sprite/pixel-neko/` | Cute pink neko; `image-rendering: pixelated` |
+| Id | Style | Path | Source |
+|----|-------|------|--------|
+| `soft-face` | Soft plate | `…/sprite/soft-face/` | Companion Desk procedural |
+| `sakura-chan` | Soft VN bust (cuter) | `…/sprite/sakura-chan/` | Companion Desk procedural |
+| `pastel-girl` | Soft pastel girl | `…/sprite/pastel-girl/` | pzUH / OpenGameArt CC0 |
+| `michona` | Anime girl frames | `…/sprite/michona/` | Hordana / OpenGameArt CC0 |
+| `kenney-panda` | Cute pixel pet | `…/sprite/kenney-panda/` | Kenney Animal Pack Redux CC0 |
 
-Both appear in `model-list.json` (Model picker). Backend: `packages/renderer/src/mascot/backends/sprite.ts`. Canvas: `components/SpriteMascot/SpriteCanvas.tsx`.
+**Removed:** `pixel-neko` (procedural placeholder).
+
+All appear in `model-list.json`. Backend: `sprite.ts` / `SpriteCanvas.tsx`.
 
 ## How to try
 
-1. Run the app → Model picker → **Soft Face (2D)** or **Pixel Neko (2D)**.
-2. Or set catalog path to `./assets/models/sprite/pixel-neko/manifest.json`.
+1. Run the app → Model picker → Soft Face / Sakura Chan / Pastel Girl / Michona / Panda Pet.
 
 AI mood / TTS still drive `setExpression` / `setMouthOpen` / `lookAt` through `mascotRegistry`.
 

@@ -1,0 +1,27 @@
+{
+  "id": "pastel-girl",
+  "displayName": "Pastel Girl (2D)",
+  "style": "soft",
+  "license": "CC0-1.0",
+  "author": "pzUH (gameart2d.com)",
+  "source": "https://opengameart.org/content/cute-girl-free-sprites",
+  "description": "CC0 pastel platformer girl (pzUH). Idle/jump frames remapped to moods.",
+  "expressions": {
+    "neutral": "neutral.png",
+    "happy": "happy.png",
+    "angry": "angry.png",
+    "sad": "sad.png",
+    "relaxed": "relaxed.png",
+    "surprised": "surprised.png"
+  },
+  "blink": "blink.png",
+  "mouthOpen": "mouth.png",
+  "thumbnail": "thumb.png",
+  "tags": [
+    "sprite",
+    "2d",
+    "soft",
+    "cute",
+    "cc0"
+  ]
+}

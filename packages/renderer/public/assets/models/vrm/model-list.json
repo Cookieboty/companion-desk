@@ -46,30 +46,104 @@
       }
     },
     {
-      "name": "pixel-neko",
-      "displayName": "Pixel Neko (2D)",
-      "description": "Original CC0 cute pixel pet — expression-swapped 32×32 sprites.",
-      "path": "./assets/models/sprite/pixel-neko/manifest.json",
-      "thumbnail": "./assets/models/sprite/pixel-neko/thumb.png",
+      "name": "sakura-chan",
+      "displayName": "Sakura Chan (2D)",
+      "description": "Softer VN-style pink-haired bust — CC0 procedural (cuter Soft Face sibling).",
+      "path": "./assets/models/sprite/sakura-chan/manifest.json",
+      "thumbnail": "./assets/models/sprite/sakura-chan/thumb.png",
       "author": "Companion Desk",
       "license": "CC0-1.0",
-      "source": "in-repo procedural pixel art",
+      "source": "in-repo procedural art",
+      "tags": [
+        "sprite",
+        "2d",
+        "soft",
+        "vn",
+        "cute",
+        "cc0"
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "yunxia",
+          "rate": 0.86,
+          "pitch": 1.1
+        }
+      }
+    },
+    {
+      "name": "pastel-girl",
+      "displayName": "Pastel Girl (2D)",
+      "description": "CC0 pastel cute girl by pzUH (OpenGameArt / gameart2d).",
+      "path": "./assets/models/sprite/pastel-girl/manifest.json",
+      "thumbnail": "./assets/models/sprite/pastel-girl/thumb.png",
+      "author": "pzUH",
+      "license": "CC0-1.0",
+      "source": "https://opengameart.org/content/cute-girl-free-sprites",
+      "tags": [
+        "sprite",
+        "2d",
+        "soft",
+        "cute",
+        "cc0"
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "xiaoxiao",
+          "rate": 0.9,
+          "pitch": 1.08
+        }
+      }
+    },
+    {
+      "name": "michona",
+      "displayName": "Michona (2D)",
+      "description": "CC0 anime girl by Hordana — walk/jump frames mapped to moods.",
+      "path": "./assets/models/sprite/michona/manifest.json",
+      "thumbnail": "./assets/models/sprite/michona/thumb.png",
+      "author": "Hordana",
+      "license": "CC0-1.0",
+      "source": "https://opengameart.org/content/anime-girl",
+      "tags": [
+        "sprite",
+        "2d",
+        "soft",
+        "anime",
+        "cc0"
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "meijia",
+          "rate": 0.88,
+          "pitch": 1.05
+        }
+      }
+    },
+    {
+      "name": "kenney-panda",
+      "displayName": "Panda Pet (2D)",
+      "description": "CC0 Kenney Animal Pack Redux panda + expression overlays.",
+      "path": "./assets/models/sprite/kenney-panda/manifest.json",
+      "thumbnail": "./assets/models/sprite/kenney-panda/thumb.png",
+      "author": "Kenney.nl",
+      "license": "CC0-1.0",
+      "source": "https://opengameart.org/content/animal-pack-redux",
       "tags": [
         "sprite",
         "2d",
         "pixel",
         "pet",
+        "cute",
         "cc0"
       ],
       "config": {
         "voice": {
           "voiceHint": "yaoyao",
-          "rate": 0.92,
+          "rate": 0.94,
           "pitch": 1.12
         }
       }
     }
   ],
-  "lastUpdated": "2026-10-11T00:00:00Z",
-  "version": "2.2.0"
+  "lastUpdated": "2026-10-12T00:00:00Z",
+  "version": "2.3.0"
 }
