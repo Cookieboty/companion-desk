@@ -6,28 +6,42 @@ import {
 } from '@pixiv/three-vrm';
 import * as THREE from 'three';
 
+type ColliderGroup = { colliders: VRMSpringBoneCollider[]; name: string };
+
 /**
- * 给弹簧骨骼（头发 / 裙子）补一组身体碰撞体：胸、腰臀、大腿、上臂。
+ * 给弹簧骨骼（头发 / 裙子）补一组身体碰撞体：胸、腰臀、大腿、上臂、肩。
  * 很多 VRM 只给头发配了头部碰撞体，裙子会穿过大腿、发梢会穿过胸口和手臂。
- * 半径按身高比例取（模型空间，身高≈1.5 时头 0.1）。返回移除函数。
+ * 半径按身高比例取（模型空间，身高≈1.5 时头 0.1）。
+ * 头发类关节挂躯干+手臂组，裙子/下摆挂腰腿组，减少互相干扰。返回移除函数。
  */
 export function addBodySpringColliders(vrm: VRM, height: number): () => void {
   const mgr = vrm.springBoneManager;
   if (!mgr || !vrm.humanoid) return () => {};
   const k = height / 1.5;
   const raw = (n: VRMHumanBoneName) => vrm.humanoid!.getRawBoneNode(n);
-  const colliders: VRMSpringBoneCollider[] = [];
+  const torso: VRMSpringBoneCollider[] = [];
+  const legs: VRMSpringBoneCollider[] = [];
 
-  const sphere = (bone: VRMHumanBoneName, r: number, off = new THREE.Vector3()) => {
+  const sphere = (
+    list: VRMSpringBoneCollider[],
+    bone: VRMHumanBoneName,
+    r: number,
+    off = new THREE.Vector3(),
+  ) => {
     const b = raw(bone);
     if (!b) return;
     const c = new VRMSpringBoneCollider(
       new VRMSpringBoneColliderShapeSphere({ radius: r * k, offset: off }),
     );
     b.add(c);
-    colliders.push(c);
+    list.push(c);
   };
-  const capsule = (bone: VRMHumanBoneName, child: VRMHumanBoneName, r: number) => {
+  const capsule = (
+    list: VRMSpringBoneCollider[],
+    bone: VRMHumanBoneName,
+    child: VRMHumanBoneName,
+    r: number,
+  ) => {
     const b = raw(bone);
     const c = raw(child);
     if (!b || !c) return;
@@ -35,26 +49,50 @@ export function addBodySpringColliders(vrm: VRM, height: number): () => void {
       new VRMSpringBoneColliderShapeCapsule({
         radius: r * k,
         offset: new THREE.Vector3(),
-        tail: c.position.clone(), // 子骨骼在父骨骼局部空间的位置
+        tail: c.position.clone(),
       }),
     );
     b.add(col);
-    colliders.push(col);
+    list.push(col);
   };
 
-  sphere('upperChest', 0.1);
-  sphere('chest', 0.1);
-  sphere('hips', 0.115, new THREE.Vector3(0, -0.02 * k, 0));
-  capsule('leftUpperLeg', 'leftLowerLeg', 0.075);
-  capsule('rightUpperLeg', 'rightLowerLeg', 0.075);
-  capsule('leftUpperArm', 'leftLowerArm', 0.045);
-  capsule('rightUpperArm', 'rightLowerArm', 0.045);
+  // Torso / arms — hair, ribbons, bangs
+  sphere(torso, 'upperChest', 0.11);
+  sphere(torso, 'chest', 0.105, new THREE.Vector3(0, -0.02 * k, 0.01 * k));
+  sphere(torso, 'spine', 0.09, new THREE.Vector3(0, 0.02 * k, 0));
+  sphere(torso, 'hips', 0.1, new THREE.Vector3(0, 0.04 * k, 0)); // upper hips for hair tips
+  sphere(torso, 'leftShoulder', 0.05, new THREE.Vector3(0.02 * k, 0, 0));
+  sphere(torso, 'rightShoulder', 0.05, new THREE.Vector3(-0.02 * k, 0, 0));
+  capsule(torso, 'leftUpperArm', 'leftLowerArm', 0.05);
+  capsule(torso, 'rightUpperArm', 'rightLowerArm', 0.05);
 
-  const group = { colliders, name: 'companion-body' };
-  for (const j of mgr.joints) j.colliderGroups.push(group);
+  // Hips / legs — skirts, coats, long hair tips near thighs
+  sphere(legs, 'hips', 0.125, new THREE.Vector3(0, -0.03 * k, 0));
+  capsule(legs, 'leftUpperLeg', 'leftLowerLeg', 0.085);
+  capsule(legs, 'rightUpperLeg', 'rightLowerLeg', 0.085);
+  capsule(legs, 'leftLowerLeg', 'leftFoot', 0.055);
+  capsule(legs, 'rightLowerLeg', 'rightFoot', 0.055);
+
+  const torsoGroup: ColliderGroup = { colliders: torso, name: 'companion-torso' };
+  const legsGroup: ColliderGroup = { colliders: legs, name: 'companion-legs' };
+  const both = [torsoGroup, legsGroup];
+
+  for (const j of mgr.joints) {
+    const n = (j.bone?.name ?? '').toLowerCase();
+    const skirtLike = /skirt|hip|leg|thigh|suso|bottom|hem|coat|cloak|外套|裙/.test(n);
+    const hairLike = /hair|bang|ahoge|twin|尾|发|kami|ribbon|head/.test(n);
+    if (skirtLike && !hairLike) j.colliderGroups.push(legsGroup);
+    else if (hairLike && !skirtLike) j.colliderGroups.push(torsoGroup);
+    else {
+      for (const g of both) j.colliderGroups.push(g);
+    }
+  }
+
   return () => {
-    for (const j of mgr.joints) j.colliderGroups = j.colliderGroups.filter((g) => g !== group);
-    for (const c of colliders) c.removeFromParent();
+    for (const j of mgr.joints) {
+      j.colliderGroups = j.colliderGroups.filter((g) => g !== torsoGroup && g !== legsGroup);
+    }
+    for (const c of [...torso, ...legs]) c.removeFromParent();
   };
 }
 
@@ -111,7 +149,7 @@ export function keepHandsOutOfHead(
   if (!head) return 0;
   head.updateWorldMatrix(true, false);
   head.getWorldPosition(_h);
-  _h.y += radius * 0.45; // 头顶 / 发顶 / 帽子
+  _h.y += radius * 0.45;
   let fixes = 0;
   for (const [side, sign] of [
     ['left', 1],
@@ -126,9 +164,8 @@ export function keepHandsOutOfHead(
       const dHand = hand.getWorldPosition(_p).distanceTo(_h);
       const dElbow = lower ? lower.getWorldPosition(_p).distanceTo(_h) : Infinity;
       if (Math.min(dHand, dElbow) >= radius) break;
-      // 规范化空间：左臂 +Z 转 = 向下，右臂 −Z 转 = 向下
       upper.quaternion.multiply(_q.setFromEuler(_e.set(0, 0, sign * 0.12)));
-      if (lower) lower.quaternion.slerp(_q.identity(), 0.25); // 小臂伸直一些，手离头更远
+      if (lower) lower.quaternion.slerp(_q.identity(), 0.25);
       fixes += 1;
     }
   }

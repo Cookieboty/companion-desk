@@ -31,6 +31,9 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   const groupRef = useRef<THREE.Group>(null);
   const vrmRef = useRef<VRM | null>(null);
   const backendRef = useRef<VrmBackend | null>(null);
+  // EMA-smoothed dt + spring-bone accumulator → stable pacing under vsync jitter
+  const smoothDt = useRef(1 / 60);
+  const springAcc = useRef(0);
   const [useFallback, setUseFallback] = useState(false);
 
   const { scene } = useThree();
@@ -113,14 +116,25 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   useFrame((state, delta) => {
     const vrm = vrmRef.current;
     if (!vrm) return;
-    const dt = Math.min(delta, 1 / 20);
+    const raw = Math.min(Math.max(delta, 0), 1 / 20);
+    // Blend toward measured frame time (vsync ~60/120Hz); kills 1-frame spikes
+    smoothDt.current += (raw - smoothDt.current) * 0.28;
+    const dt = smoothDt.current;
     backendRef.current?.update(dt, state.clock.getElapsedTime());
-    // 弹簧骨骼固定子步长（≤1/60s）：掉帧或高速拖拽时不至于炸开
-    const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
-    for (let i = 0; i < steps; i += 1) vrm.update(dt / steps);
+    // Spring bones: fixed 1/90s substeps with carry-over (smoother than ceil(dt/60))
+    const STEP = 1 / 90;
+    springAcc.current = Math.min(springAcc.current + dt, STEP * 8);
+    let steps = 0;
+    while (springAcc.current >= STEP - 1e-9 && steps < 8) {
+      vrm.update(STEP);
+      springAcc.current -= STEP;
+      steps += 1;
+    }
+    // If we somehow stalled, still advance once so the pose doesn't freeze
+    if (steps === 0) vrm.update(dt);
     onAnimationUpdate?.(vrm, dt);
     updatePerformanceMetrics({
-      fps: 1 / delta,
+      fps: 1 / Math.max(raw, 1e-4),
       memoryMB:
         ((performance as Performance & { memory?: { usedJSHeapSize: number } }).memory
           ?.usedJSHeapSize ?? 0) /

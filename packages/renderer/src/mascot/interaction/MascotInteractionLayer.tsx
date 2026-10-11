@@ -309,12 +309,16 @@ const MascotInteractionLayer: FC = () => {
 
     const c = s.cursor;
     // ---- 视线：全局光标（或窗口内光标）相对头部 ----
+    // 拖拽中收回正视，避免窗口移动与视线弹簧叠出抖动
     const headW = b.headWorld();
-    if (headW && (cfg.globalLook || c.inside) && c.x > -1e5) {
+    if (s.dragging) {
+      b.lookAt(0, 0);
+    } else if (headW && (cfg.globalLook || c.inside) && c.x > -1e5) {
       const h = toScreen(headW);
       const dx = c.x - h.x;
       const dy = c.y - h.y;
-      b.lookAt(Math.max(-1, Math.min(1, dx / 450)), Math.max(-1, Math.min(1, -dy / 450)));
+      // 更深的假想视距 → 更小偏转，细微光标抖动不那么明显
+      b.lookAt(Math.max(-1, Math.min(1, dx / 560)), Math.max(-1, Math.min(1, -dy / 560)));
     } else if (!cfg.globalLook && !c.inside) {
       b.lookAt(0, 0);
     }
