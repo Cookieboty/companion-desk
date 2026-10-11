@@ -22,10 +22,11 @@ import MascotDriver from '@/mascot/MascotDriver';
 
 // three / VRM 体积较大：按需加载
 const VirtualCharacter3D = lazy(() => import('../VirtualCharacter3D'));
+const SpriteCanvas = lazy(() => import('../SpriteMascot/SpriteCanvas'));
 const MascotAIBridge = lazy(() => import('@/mascot/MascotAIBridge'));
 
 /**
- * 看板娘宿主：气泡 + 工具栏 + 角色画布（当前唯一后端：VRM）。
+ * 看板娘宿主：气泡 + 工具栏 + 角色画布（VRM 或 2D sprite）。
  * 必须位于 MascotProvider 内。
  */
 export const MascotHost: React.FC = () => {
@@ -56,15 +57,25 @@ export const MascotHost: React.FC = () => {
         {currentModel && (
           <CanvasBoundary>
             <Suspense fallback={null}>
-              <VirtualCharacter3D
-                modelPath={currentModel.path}
-                modelConfig={currentModel.config}
-                enableMCPIntegration
-                enableVoiceSync
-                enableControls={false}
-                transparent
-                style={{ transform: 'translateX(-40px)' }}
-              />
+              {currentModel.path.includes('/sprite/') ||
+              currentModel.path.endsWith('manifest.json') ||
+              currentModel.tags?.includes('sprite') ? (
+                <SpriteCanvas
+                  manifestPath={currentModel.path}
+                  transparent
+                  style={{ transform: 'translateX(-20px)' }}
+                />
+              ) : (
+                <VirtualCharacter3D
+                  modelPath={currentModel.path}
+                  modelConfig={currentModel.config}
+                  enableMCPIntegration
+                  enableVoiceSync
+                  enableControls={false}
+                  transparent
+                  style={{ transform: 'translateX(-40px)' }}
+                />
+              )}
             </Suspense>
           </CanvasBoundary>
         )}
