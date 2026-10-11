@@ -719,10 +719,3 @@ and keyword voice clips of unknown licence.
 | `zod`                                                     | 4.6.5                | MIT                       |
 | `zod-to-json-schema`                                      | 3.25.2               | ISC                       |
 | `zustand`                                                 | 4.5.7, 5.0.15        | MIT                       |
-
-## godot-vrm / Godot-MToon-Shader (V-Sekai)
-
-- Path: `engines/godot-stage/addons/vrm`, `engines/godot-stage/addons/Godot-MToon-Shader`
-- License: MIT
-- Source: https://github.com/V-Sekai/godot-vrm
-- Used by: optional Godot sidecar spike only (not shipped in Electron builds yet)
