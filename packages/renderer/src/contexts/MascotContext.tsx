@@ -16,6 +16,7 @@ import {
   writeSelectedModel,
   type MascotModel,
 } from '@/mascot/catalog';
+import { setActiveCharacter } from '@/mascot/characterVoice';
 
 export interface MascotConfig {
   /** 工具栏按钮 id 列表 */
@@ -200,6 +201,10 @@ export const MascotProvider: React.FC<{ children: ReactNode; config: MascotConfi
   }, []);
 
   const currentModel = state.modelList.find((m) => m.name === state.modelName);
+
+  useEffect(() => {
+    setActiveCharacter(currentModel?.name ?? state.modelName, currentModel?.config);
+  }, [currentModel, state.modelName]);
 
   return (
     <MascotContext.Provider value={{ state, dispatch, config, currentModel, selectModel }}>

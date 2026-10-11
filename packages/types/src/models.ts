@@ -4,6 +4,18 @@
 
 export type ModelOrigin = 'bundled' | 'remote' | 'user';
 
+/** Per-character soft TTS binding (Web Speech voiceURI + rate/pitch). */
+export interface ModelVoiceConfig {
+  /** speechSynthesis.voiceURI or empty for auto soft pick */
+  voiceURI?: string;
+  /** Name substring hint when URI differs across OS (e.g. xiaoxiao, meijia, yaoyao) */
+  voiceHint?: string;
+  /** Speech rate 0.5..1.5 */
+  rate?: number;
+  /** Pitch 0..2 */
+  pitch?: number;
+}
+
 /** 用户可调的模型呈现配置（导入模型 / 任意模型的本地覆盖），可导出为 JSON。 */
 export interface ModelConfig {
   /** 显示名（覆盖 meta 里的名字） */
@@ -18,6 +30,8 @@ export interface ModelConfig {
   expressionMap?: Record<string, string>;
   /** 允许的身体动作；缺省 = 全部 */
   motions?: string[];
+  /** Soft TTS voice for this character (defaults in model-list; user override persists here / local) */
+  voice?: ModelVoiceConfig;
 }
 
 export const MODEL_CONFIG_SCHEMA = 'companion-desk/model-config@1';

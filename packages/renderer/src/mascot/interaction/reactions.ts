@@ -1,5 +1,5 @@
+import { speakForActiveCharacter } from '../characterVoice';
 import { mascotRegistry } from '../MascotBackend';
-import { speakSoft } from '../softSpeech';
 
 import { reactionFor, type ReactionKind } from './gestures';
 import type { BodyRegion } from './regions';
@@ -11,7 +11,7 @@ let lastAt = 0;
 const lastByKey = new Map<string, number>();
 
 function speak(text: string): void {
-  speakSoft(text);
+  speakForActiveCharacter(text);
 }
 
 /**

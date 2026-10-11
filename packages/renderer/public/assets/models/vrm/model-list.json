@@ -13,7 +13,14 @@
       "tags": [
         "default",
         "vroid"
-      ]
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "xiaoxiao",
+          "rate": 0.88,
+          "pitch": 1.06
+        }
+      }
     },
     {
       "name": "soft-face",
@@ -29,7 +36,14 @@
         "2d",
         "soft",
         "cc0"
-      ]
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "yunxia",
+          "rate": 0.85,
+          "pitch": 1.08
+        }
+      }
     },
     {
       "name": "pixel-neko",
@@ -46,9 +60,16 @@
         "pixel",
         "pet",
         "cc0"
-      ]
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "yaoyao",
+          "rate": 0.92,
+          "pitch": 1.12
+        }
+      }
     }
   ],
   "lastUpdated": "2026-10-11T00:00:00Z",
-  "version": "2.1.0"
+  "version": "2.2.0"
 }

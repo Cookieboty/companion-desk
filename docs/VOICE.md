@@ -45,3 +45,27 @@ Prefs persist in `localStorage` key `mascot.softSpeech.v1`.
 
 - Piper / Edge TTS HTTP provider as a first-class `TtsProvider` (higher quality, offline possible).
 - True SSML when a provider supports it (not Web Speech).
+
+## Per-character voice binding
+
+Each model id can bind its own softer TTS:
+
+| Field            | Meaning                                                             |
+| ---------------- | ------------------------------------------------------------------- |
+| `voiceURI`       | Exact `speechSynthesis` voiceURI (OS-specific)                      |
+| `voiceHint`      | Portable name substring (`xiaoxiao`, `yunxia`, `yaoyao`, `meijia`…) |
+| `rate` / `pitch` | Per-character soft defaults                                         |
+
+Stored on `ModelConfig.voice` (model-list defaults + user `models.updateConfig`) and user overrides in `localStorage` key `mascot.characterVoice.v1`.
+
+Built-in defaults:
+
+| Character           | Hint     | Rate | Pitch |
+| ------------------- | -------- | ---- | ----- |
+| `default-character` | xiaoxiao | 0.88 | 1.06  |
+| `soft-face`         | yunxia   | 0.85 | 1.08  |
+| `pixel-neko`        | yaoyao   | 0.92 | 1.12  |
+
+Resolve order: global soft prefs (preferNeural/volume) → character defaults → `model.config.voice` → local override.
+
+Code: `packages/renderer/src/mascot/characterVoice.ts`; UI: VoiceSettings「当前角色音色」.

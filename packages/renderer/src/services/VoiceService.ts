@@ -291,10 +291,11 @@ export class VoiceService {
   private async playVoice(line: string) {
     try {
       window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: line } }));
-      const { speakSoft, loadSoftSpeechPrefs } = await import('../mascot/softSpeech');
-      const prefs = loadSoftSpeechPrefs();
+      const { speakForActiveCharacter, resolvePrefsForCharacter } =
+        await import('../mascot/characterVoice');
+      const prefs = resolvePrefsForCharacter();
       if (this.voiceSettings?.volume != null) prefs.volume = this.voiceSettings.volume;
-      speakSoft(line, { prefs });
+      speakForActiveCharacter(line, { prefs });
     } catch (error) {
       console.error('VoiceService: 朗读失败:', error);
     }

@@ -1,15 +1,20 @@
+import type { ModelVoiceConfig } from '@ig-live/types';
 import { type VoiceSettings as VoiceSettingsType } from '@ig-live/types';
 import { Modal, Switch } from '@ig-live/ui';
 import React, { useState, useEffect, useCallback } from 'react';
 
 import {
-  DEFAULT_SOFT_SPEECH,
-  listSoftVoiceChoices,
+  clearCharacterVoiceOverride,
+  getActiveCharacter,
   loadSoftSpeechPrefs,
+  previewVoiceName,
+  resolvePrefsForCharacter,
+  saveCharacterVoice,
   saveSoftSpeechPrefs,
-  speakSoft,
+  speakForActiveCharacter,
   type SoftSpeechPrefs,
-} from '../../mascot/softSpeech';
+} from '../../mascot/characterVoice';
+import { listSoftVoiceChoices } from '../../mascot/softSpeech';
 import { type VoiceService } from '../../services/VoiceService';
 
 import styles from './style.module.css';
@@ -28,7 +33,9 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
   onSettingsChange,
 }) => {
   const [settings, setSettings] = useState<VoiceSettingsType | null>(null);
-  const [soft, setSoft] = useState<SoftSpeechPrefs>(DEFAULT_SOFT_SPEECH);
+  const [soft, setSoft] = useState<SoftSpeechPrefs>(() => loadSoftSpeechPrefs());
+  const [charPrefs, setCharPrefs] = useState<SoftSpeechPrefs>(() => resolvePrefsForCharacter());
+  const [charName, setCharName] = useState<string | null>(null);
   const [voices, setVoices] = useState<ReturnType<typeof listSoftVoiceChoices>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,20 +43,26 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     setVoices(listSoftVoiceChoices());
   }, []);
 
+  const refreshCharacter = useCallback(() => {
+    const { name, config } = getActiveCharacter();
+    setCharName(name);
+    setCharPrefs(resolvePrefsForCharacter(name, config));
+    setSoft(loadSoftSpeechPrefs());
+  }, []);
+
   useEffect(() => {
     if (!isVisible) return;
     setSettings(voiceService.getSettings());
-    setSoft(loadSoftSpeechPrefs());
+    refreshCharacter();
     refreshVoices();
     const synth = window.speechSynthesis;
     synth?.addEventListener('voiceschanged', refreshVoices);
-    // Chrome populates voices asynchronously
     const t = setTimeout(refreshVoices, 300);
     return () => {
       synth?.removeEventListener('voiceschanged', refreshVoices);
       clearTimeout(t);
     };
-  }, [isVisible, voiceService, refreshVoices]);
+  }, [isVisible, voiceService, refreshVoices, refreshCharacter]);
 
   const handleSettingChange = async (
     key: keyof VoiceSettingsType,
@@ -69,9 +82,23 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     }
   };
 
-  const patchSoft = (patch: Partial<SoftSpeechPrefs>) => {
-    const next = saveSoftSpeechPrefs(patch);
-    setSoft(next);
+  const patchGlobal = (patch: Partial<SoftSpeechPrefs>) => {
+    setSoft(saveSoftSpeechPrefs(patch));
+  };
+
+  const patchCharacter = async (patch: ModelVoiceConfig) => {
+    if (!charName) return;
+    const { config } = getActiveCharacter();
+    setIsLoading(true);
+    try {
+      await saveCharacterVoice(charName, patch, config);
+      setCharPrefs(
+        resolvePrefsForCharacter(charName, { ...config, voice: { ...config?.voice, ...patch } }),
+      );
+      onSettingsChange?.();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isVisible || !settings) {
@@ -79,6 +106,8 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
   }
 
   const off = isLoading || !settings.enabled;
+  const preview = previewVoiceName(charPrefs);
+
   return (
     <Modal
       open
@@ -110,21 +139,26 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
       </section>
 
       <section className={styles.group}>
-        <h4 className="cd-section-title">柔和朗读（系统 / Edge 语音）</h4>
-        <p className="cd-muted" style={{ marginBottom: 8, fontSize: 12 }}>
-          优先选用柔和中文女声；若本机装有 Microsoft Edge 在线自然语音（如 Xiaoxiao
-          Online），会自动偏好它们。也可手动挑选。
+        <h4 className="cd-section-title">当前角色音色</h4>
+        <p
+          className="cd-muted"
+          style={{ marginBottom: 8, fontSize: 12 }}
+          data-testid="char-voice-label"
+        >
+          角色：<strong>{charName ?? '（未选择）'}</strong>
+          <br />
+          将使用：{preview}
         </p>
         <label className={styles.range}>
-          <span>音色</span>
+          <span>音色（本角色）</span>
           <select
-            data-testid="soft-speech-voice"
-            value={soft.voiceURI}
-            disabled={off}
-            onChange={(e) => patchSoft({ voiceURI: e.target.value })}
+            data-testid="char-speech-voice"
+            value={charPrefs.voiceURI}
+            disabled={off || !charName}
+            onChange={(e) => void patchCharacter({ voiceURI: e.target.value })}
             style={{ width: '100%', marginTop: 4 }}
           >
-            <option value="">自动（柔和中文女声）</option>
+            <option value="">自动（角色默认 / 柔和女声）</option>
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
                 {v.neural ? '✦ ' : ''}
@@ -133,51 +167,73 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             ))}
           </select>
         </label>
-        <Switch
-          checked={soft.preferNeural}
-          onChange={(v) => patchSoft({ preferNeural: v })}
-          disabled={off}
-          label="优先 Edge / 在线自然语音（Neural）"
-        />
         <label className={styles.range}>
-          <span>语速: {soft.rate.toFixed(2)}×（偏慢更柔和）</span>
+          <span>语速: {charPrefs.rate.toFixed(2)}×</span>
           <input
             type="range"
             min="0.7"
             max="1.15"
             step="0.01"
-            value={soft.rate}
-            data-testid="soft-speech-rate"
-            onChange={(e) => patchSoft({ rate: parseFloat(e.target.value) })}
-            disabled={off}
+            value={charPrefs.rate}
+            data-testid="char-speech-rate"
+            onChange={(e) => void patchCharacter({ rate: parseFloat(e.target.value) })}
+            disabled={off || !charName}
           />
         </label>
         <label className={styles.range}>
-          <span>音高: {soft.pitch.toFixed(2)}</span>
+          <span>音高: {charPrefs.pitch.toFixed(2)}</span>
           <input
             type="range"
             min="0.85"
             max="1.25"
             step="0.01"
-            value={soft.pitch}
-            data-testid="soft-speech-pitch"
-            onChange={(e) => patchSoft({ pitch: parseFloat(e.target.value) })}
-            disabled={off}
+            value={charPrefs.pitch}
+            data-testid="char-speech-pitch"
+            onChange={(e) => void patchCharacter({ pitch: parseFloat(e.target.value) })}
+            disabled={off || !charName}
           />
         </label>
-        <button
-          type="button"
-          className="cd-btn cd-btn--sm"
-          data-testid="soft-speech-test"
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="cd-btn cd-btn--sm"
+            data-testid="char-speech-test"
+            disabled={off}
+            onClick={() =>
+              speakForActiveCharacter('你好，我是看板娘。今天也一起加油吧。', {
+                prefs: { ...charPrefs, volume: settings.volume },
+              })
+            }
+          >
+            试听本角色
+          </button>
+          <button
+            type="button"
+            className="cd-btn cd-btn--sm"
+            data-testid="char-speech-reset"
+            disabled={off || !charName}
+            onClick={() => {
+              if (!charName) return;
+              clearCharacterVoiceOverride(charName);
+              refreshCharacter();
+            }}
+          >
+            恢复角色默认
+          </button>
+        </div>
+      </section>
+
+      <section className={styles.group}>
+        <h4 className="cd-section-title">全局柔和偏好</h4>
+        <Switch
+          checked={soft.preferNeural}
+          onChange={(v) => patchGlobal({ preferNeural: v })}
           disabled={off}
-          onClick={() =>
-            speakSoft('你好，我是看板娘。今天也一起加油吧。', {
-              prefs: { ...soft, volume: settings.volume },
-            })
-          }
-        >
-          试听柔和朗读
-        </button>
+          label="优先 Edge / 在线自然语音（Neural）"
+        />
+        <p className="cd-muted" style={{ fontSize: 12 }}>
+          全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/VOICE.md。
+        </p>
       </section>
 
       <section className={styles.group}>
@@ -200,17 +256,14 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         <h4 className="cd-section-title">使用说明</h4>
         <ul className={styles.help}>
           <li>
-            <strong>柔和音色</strong>：互动台词与关键词播报走 Web Speech；标 ✦ 的多为 Edge
-            在线自然女声。
+            <strong>按角色绑定</strong>：每个模型可有独立 OS 音色 + 语速/音高；切换角色自动切换。
           </li>
           <li>
-            <strong>键盘监听</strong>：检测到编程关键词时播放相应语音
+            <strong>持久化</strong>：覆盖写入 localStorage，并尽量写入模型
+            config.voice（用户导入模型）。
           </li>
           <li>
-            <strong>定时播报</strong>：按时段问候
-          </li>
-          <li>
-            详见 <code>docs/VOICE.md</code>
+            <strong>键盘 / 定时</strong>：同样走当前角色的柔和朗读。
           </li>
         </ul>
       </section>
