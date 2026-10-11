@@ -12,7 +12,7 @@ import { safeRm } from '../fixtures/fsutil';
 /**
  * E9 · 看板娘桌面互动（真实应用 + 真实系统光标）
  *
- * - 启动后落到工作区底部（重力 + 角色包围盒）
+ * - 开启重力后落到工作区底部（默认重力关闭=自由摆放；本测显式打开重力）
  * - 逐像素点击穿透：光标在透明区 → setIgnoreMouseEvents(true)；在角色身上 → false
  * - 区域悬停 / 点击反应
  * - 按住拖动窗口 → 松手下落 → 落地事件
@@ -58,6 +58,7 @@ type Snap = {
   shapeRects: number;
   clickThroughMode: 'ignore' | 'shape';
   box: { left: number; right: number; top: number; bottom: number } | null;
+  cfg?: { gravity?: boolean; clickThrough?: boolean; wander?: boolean };
 };
 const snap = (page: Page) =>
   page.evaluate(() => window.electronAPI!.mascotWindow!.snapshot()) as Promise<Snap>;
@@ -106,6 +107,9 @@ test.describe('E9 · mascot desktop interaction', () => {
     await page.waitForFunction(() => !!document.documentElement.dataset.mascotBox, undefined, {
       timeout: 30_000,
     });
+
+    // Gravity is off by default (free place). Turn it on for settle / fall coverage.
+    await page.evaluate(() => window.electronAPI!.mascotWindow!.setConfig({ gravity: true }));
 
     const wa = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().workArea);
     const screenSize = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().size);
@@ -268,7 +272,29 @@ test.describe('E9 · mascot desktop interaction', () => {
     const mode = (await snap(page)).body.mode;
     expect(mode === 'idle' || Math.abs(x1 - x0) > 5).toBe(true);
 
-    // 6) 关闭点击穿透：透明区也接收鼠标
+    // 6) 重力关闭 = 自由摆放：拖到半空松手后停在原处
+    await page.evaluate(() => window.electronAPI!.mascotWindow!.setConfig({ gravity: false }));
+    await sleep(400);
+    [, wy] = await pos();
+    s = await snap(page);
+    const midY = Math.round(wy + (s.box!.top + s.box!.bottom) / 2);
+    xdo('mousemove', String(cx), String(midY));
+    await sleep(150);
+    xdo('mousedown', '1');
+    for (let i = 1; i <= 12; i += 1) {
+      xdo('mousemove', String(cx), String(midY - i * 18));
+      await sleep(30);
+    }
+    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 5_000 }).toBe('held');
+    const heldY = (await snap(page)).body.y;
+    xdo('mouseup', '1');
+    await sleep(800);
+    const placed = await snap(page);
+    expect(placed.body.mode).toBe('idle');
+    expect(Math.abs(placed.body.y - heldY)).toBeLessThan(40); // stays where dropped
+    expect(placed.cfg?.gravity ?? false).toBe(false);
+
+    // 7) 关闭点击穿透：透明区也接收鼠标
     await page.evaluate(() => window.electronAPI!.mascotWindow!.setConfig({ clickThrough: false }));
     [wx, wy] = await pos();
     xdo('mousemove', String(wx + 3), String(wy + 3));

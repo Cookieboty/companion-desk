@@ -47,12 +47,12 @@ export interface PhysicsConfig {
 }
 
 export const DEFAULT_PHYSICS: PhysicsConfig = {
-  gravity: 1800,
-  restitution: 0.25,
-  groundFriction: 9,
-  airDrag: 0.35,
+  gravity: 1550, // softer fall arc when gravity is enabled
+  restitution: 0.18, // less bouncy landing
+  groundFriction: 11,
+  airDrag: 0.4,
   maxSpeed: 4200,
-  bounceThreshold: 280,
+  bounceThreshold: 320, // more landings settle without a second bounce
   walkSpeed: 70,
   fallGap: 24,
 };

@@ -297,7 +297,7 @@ export function createVrmBackend(
         motions.update(dt);
         // 头部微动叠加在动画之上
         if (neck) {
-          swayEuler.set(0, Math.sin(t * 0.37) * 0.04, Math.sin(t * 0.23) * 0.02);
+          swayEuler.set(0, Math.sin(t * 0.37) * 0.028, Math.sin(t * 0.23) * 0.014);
           neck.quaternion.multiply(sway.setFromEuler(swayEuler));
         }
       } else {
@@ -317,7 +317,7 @@ export function createVrmBackend(
       // 小臂轻弯；双腿自然下垂、轻轻摆动；身体只做很小的惯性倾斜，头不下垂。
       // 被拎起的姿态只在真正拖拽时完整出现；下落只有轻微悬空感
       const dangleGoal = body.mode === 'held' ? 1 : body.mode === 'falling' ? 0.3 : 0;
-      dangle = lowpass(dangle, dangleGoal, dangleGoal > dangle ? 5 : 3.5, dt);
+      dangle = lowpass(dangle, dangleGoal, dangleGoal > dangle ? 4.2 : 3.2, dt);
       lean = lowpass(lean, Math.max(-1, Math.min(1, body.vx / 2400)), 4, dt);
       const airborne = body.mode === 'held' || body.mode === 'falling';
       if (dangle > 0.001) {

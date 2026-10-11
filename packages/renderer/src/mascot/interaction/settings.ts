@@ -1,10 +1,10 @@
 import type { MascotInteractionConfig } from '@ig-live/types';
 
-const KEY = 'mascot.interaction.v1';
+const KEY = 'mascot.interaction.v2';
 
 export const DEFAULT_INTERACTION: MascotInteractionConfig = {
   clickThrough: true,
-  gravity: true,
+  gravity: false,
   wander: false,
   reactions: true,
   globalLook: true,
