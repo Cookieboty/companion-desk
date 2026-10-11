@@ -5,11 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "vite",
-    "build": "node ../../scripts/run-tsc.mjs && vite build",
-    "typecheck": "node ../../scripts/run-tsc.mjs --noEmit",
-    "clean": "rimraf dist",
-    "test": "vitest run",
+    "dev": "node ../../scripts/run-bin.mjs vite",
+    "build": "node ../../scripts/run-bin.mjs tsc && node ../../scripts/run-bin.mjs vite build",
+    "typecheck": "node ../../scripts/run-bin.mjs tsc --noEmit",
+    "clean": "node ../../scripts/run-bin.mjs rimraf dist",
+    "test": "node ../../scripts/run-bin.mjs vitest run",
     "package": "echo 'AI Chat client build completed'"
   },
   "author": "",

@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "node ../../scripts/run-tsc.mjs --watch",
-    "build": "node ../../scripts/run-tsc.mjs",
-    "clean": "rimraf dist",
+    "dev": "node ../../scripts/run-bin.mjs tsc --watch",
+    "build": "node ../../scripts/run-bin.mjs tsc",
+    "clean": "node ../../scripts/run-bin.mjs rimraf dist",
     "package": "echo 'Types build completed, no packaging needed'"
   },
   "author": "",

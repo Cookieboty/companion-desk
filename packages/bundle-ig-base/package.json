@@ -27,12 +27,12 @@
     "bundle": "./dist/patch.yml"
   },
   "scripts": {
-    "build": "tsup && node scripts/copy-patch.mjs",
-    "dev": "tsup --watch",
-    "typecheck": "node ../../scripts/run-tsc.mjs --noEmit",
+    "build": "node ../../scripts/run-bin.mjs tsup && node scripts/copy-patch.mjs",
+    "dev": "node ../../scripts/run-bin.mjs tsup --watch",
+    "typecheck": "node ../../scripts/run-bin.mjs tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
-    "clean": "rimraf dist coverage .turbo"
+    "test": "node ../../scripts/run-bin.mjs vitest run",
+    "clean": "node ../../scripts/run-bin.mjs rimraf dist coverage .turbo"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": "0.2.0-rc.2"
