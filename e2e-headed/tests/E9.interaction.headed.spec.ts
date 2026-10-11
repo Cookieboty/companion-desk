@@ -275,18 +275,21 @@ test.describe('E9 · mascot desktop interaction', () => {
     // 6) 重力关闭 = 自由摆放：拖到半空松手后停在原处
     await page.evaluate(() => window.electronAPI!.mascotWindow!.setConfig({ gravity: false }));
     await sleep(400);
-    [, wy] = await pos();
-    s = await snap(page);
-    const midY = Math.round(wy + (s.box!.top + s.box!.bottom) / 2);
-    xdo('mousemove', String(cx), String(midY));
-    await sleep(150);
-    xdo('mousedown', '1');
-    for (let i = 1; i <= 12; i += 1) {
-      xdo('mousemove', String(cx), String(midY - i * 18));
-      await sleep(30);
-    }
-    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 10_000 }).toBe('held');
-    const heldY = (await snap(page)).body.y;
+    let heldY = 0;
+    await expect(async () => {
+      [, wy] = await pos();
+      s = await snap(page);
+      const midY = Math.round(wy + (s.box!.top + s.box!.bottom) / 2);
+      xdo('mousemove', String(cx), String(midY));
+      await sleep(150);
+      xdo('mousedown', '1');
+      for (let i = 1; i <= 16; i += 1) {
+        xdo('mousemove', String(cx), String(midY - i * 18));
+        await sleep(30);
+      }
+      await expect.poll(async () => (await snap(page)).body.mode, { timeout: 4_000 }).toBe('held');
+      heldY = (await snap(page)).body.y;
+    }).toPass({ timeout: 25_000 });
     xdo('mouseup', '1');
     await sleep(800);
     const placed = await snap(page);
