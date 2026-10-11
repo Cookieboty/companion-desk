@@ -14,8 +14,9 @@ import {
   Switch,
   Textarea,
   SkeletonList,
+  useToast,
 } from '@ig-live/ui';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 
 import {
   LOCAL_ONLY_NOTICE,
@@ -45,13 +46,21 @@ const PROTOCOL_HINT: Record<Protocol, string> = {
   anthropic: '填写兼容 Anthropic Messages 的服务端点地址（会拼接 /v1/messages）',
 };
 
+export type SaveResult = {
+  provider: ProviderView;
+  /** 保存后已拉取模型列表，请留在编辑器里选默认模型 */
+  pickModel: boolean;
+};
+
 export const ProviderEditor: React.FC<{
   target: EditorTarget;
   isActive: boolean;
   onBack: () => void;
-  onSaved: () => void;
+  onSaved: (result: SaveResult) => void;
   onError: (e: unknown) => void;
 }> = ({ target, isActive, onBack, onSaved, onError }) => {
+  const toast = useToast();
+  const modelListAnchorRef = useRef<HTMLDivElement>(null);
   const saved = target.kind === 'edit' ? target.provider : undefined;
   const preset = target.kind === 'new' ? target.preset : undefined;
   const [name, setName] = useState(
@@ -97,7 +106,7 @@ export const ProviderEditor: React.FC<{
     protocol,
     baseURL,
     fullUrl,
-    defaultModel: defaultModel.trim() || [...enabled][0] || modelMap[0]?.to || '',
+    defaultModel: defaultModel.trim(),
     models: [...enabled],
     fetchedModels: fetched,
     modelMap: modelMap.filter((m) => m.from.trim() && m.to.trim()),
@@ -107,15 +116,59 @@ export const ProviderEditor: React.FC<{
     apiKey: apiKey.trim() || undefined,
   });
 
+  const needModel = !defaultModel.trim();
+  // 允许先保存再拉模型；默认模型在保存后的列表里选择
   const missing = !baseURL.trim() || (keyRequired && !apiKey.trim());
+
+  const applyFetchResult = (r: FetchModelsResult) => {
+    setFetchRes(r);
+    if (r.ok) {
+      setFetched(r.models);
+      // 不自动设默认：留给用户点「设为默认」
+      modelListAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
 
   const save = async (activate: boolean) => {
     setBusy(true);
     try {
-      const view = await providerClient.upsert(input());
+      let view = await providerClient.upsert(input());
       if (activate) await providerClient.setActive(view.id);
       setApiKey('');
-      onSaved();
+
+      const hasKey = view.keys.length > 0;
+      const canFetch = !!view.baseURL.trim() && (!keyRequired || hasKey);
+      if (canFetch) {
+        setFetchRes('pending');
+        // 刷新列表时保留已有勾选，避免闪空；首次则显示骨架
+        if (fetched.length === 0) setFetched([]);
+        try {
+          const r = await providerClient.fetchModels(view.id);
+          applyFetchResult(r);
+          const st = await providerClient.state();
+          view = st.providers.find((p) => p.id === view.id) ?? view;
+          const stay = !view.defaultModel.trim();
+          if (r.ok) {
+            toast.show(
+              stay
+                ? r.models.length
+                  ? `已获取 ${r.models.length} 个模型，请选择默认模型`
+                  : '模型列表为空，请手填模型 ID'
+                : `已刷新模型列表（${r.models.length}）`,
+              { tone: r.models.length || !stay ? 'success' : 'warning' },
+            );
+          } else {
+            toast.show(r.error || '获取模型失败', { tone: 'danger' });
+          }
+          onSaved({ provider: view, pickModel: stay });
+        } catch (e) {
+          setFetchRes(undefined);
+          toast.show(e instanceof Error ? e.message : '获取模型失败', { tone: 'danger' });
+          onSaved({ provider: view, pickModel: !view.defaultModel.trim() });
+        }
+      } else {
+        onSaved({ provider: view, pickModel: false });
+      }
     } catch (e) {
       onError(e);
     } finally {
@@ -127,13 +180,17 @@ export const ProviderEditor: React.FC<{
     setFetchRes('pending');
     try {
       const r = await providerClient.fetchModelsDraft(input());
-      setFetchRes(r);
+      applyFetchResult(r);
       if (r.ok) {
-        setFetched(r.models);
-        if (!defaultModel.trim() && r.models[0]) setDefaultModel(r.models[0].id);
+        toast.show(r.models.length ? `已获取 ${r.models.length} 个模型` : '模型列表为空', {
+          tone: r.models.length ? 'success' : 'warning',
+        });
+      } else {
+        toast.show(r.error || '获取模型失败', { tone: 'danger' });
       }
     } catch (e) {
       setFetchRes(undefined);
+      toast.show(e instanceof Error ? e.message : '获取模型失败', { tone: 'danger' });
       onError(e);
     }
   };
@@ -329,36 +386,52 @@ export const ProviderEditor: React.FC<{
 
           <FormField
             className={styles.full}
-            label="默认模型"
-            hint="对话默认请求的模型，随时可改；聊天窗口的模型选择器列出下方勾选的模型。留空且配置了模型映射时，默认使用映射第一行。"
+            label={
+              <>
+                默认模型 <span className={styles.req}>*</span>
+              </>
+            }
+            hint={
+              needModel
+                ? '预设不预填默认模型。可先保存（将自动获取模型列表），再点「设为默认」；也可手填模型 ID。'
+                : '对话默认请求的模型，随时可改；聊天窗口的模型选择器列出下方勾选的模型。'
+            }
           >
             {({ id }) => (
-              <div className={styles.inline}>
-                <Input
-                  id={id}
-                  data-testid="draft-model"
-                  list="pp-models"
-                  value={defaultModel}
-                  onChange={(e) => setDefaultModel(e.target.value)}
-                />
-                <datalist id="pp-models">
-                  {fetched.map((m) => (
-                    <option key={m.id} value={m.id} />
-                  ))}
-                </datalist>
-                <Button
-                  size="sm"
-                  data-testid="fetch-models"
-                  title="从上游获取模型列表"
-                  onClick={() => void fetchModels()}
-                >
-                  ⤓ 获取模型
-                </Button>
+              <div className={styles.stack}>
+                {needModel && (
+                  <Notice tone="warning" data-testid="fetch-models-prompt">
+                    尚未选择默认模型。保存后会自动获取模型列表，请在下方点「设为默认」；也可先点「获取模型」。
+                  </Notice>
+                )}
+                <div className={styles.inline}>
+                  <Input
+                    id={id}
+                    data-testid="draft-model"
+                    list="pp-models"
+                    value={defaultModel}
+                    placeholder="获取模型后选择，或手填 ID"
+                    onChange={(e) => setDefaultModel(e.target.value)}
+                  />
+                  <datalist id="pp-models">
+                    {fetched.map((m) => (
+                      <option key={m.id} value={m.id} />
+                    ))}
+                  </datalist>
+                  <Button
+                    size="sm"
+                    data-testid="fetch-models"
+                    title="从上游获取模型列表"
+                    onClick={() => void fetchModels()}
+                  >
+                    ⤓ 获取模型
+                  </Button>
+                </div>
               </div>
             )}
           </FormField>
 
-          <div className={styles.full}>
+          <div className={styles.full} ref={modelListAnchorRef} data-testid="model-picker">
             <div className={styles.inline}>
               <FetchBadge r={fetchRes} />
               {fetched.length > 0 && (
@@ -553,6 +626,12 @@ export const ProviderEditor: React.FC<{
       </div>
 
       <div className={styles.editorFoot}>
+        {needModel && (
+          <span className="cd-muted" data-testid="save-then-pick-hint">
+            保存后将自动获取模型并打开列表供选择
+          </span>
+        )}
+        <span className="cd-spacer" />
         <Button onClick={onBack}>取消</Button>
         {target.kind === 'new' && (
           <Button

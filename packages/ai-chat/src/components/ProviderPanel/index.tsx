@@ -4,7 +4,7 @@
  *   任务路由：chat / agent-tools / summary 从各供应商已启用（或已获取）的模型里选。
  * 明文 key 只单向提交给主进程；界面只显示掩码。
  */
-import { Badge, Button, Card, EmptyState, Modal, Notice, Select } from '@ig-live/ui';
+import { Badge, Button, Card, EmptyState, Modal, Notice, Select, ToastProvider } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -231,157 +231,168 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
     view.kind === 'add' ? '添加供应商' : view.kind === 'edit' ? '供应商设置' : 'AI 供应商';
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={title}
-      size="lg"
-      data-testid="provider-panel"
-      bodyClassName={styles.modalBody}
-    >
-      <div className={styles.stack}>
-        {error && (
-          <Notice
-            tone="danger"
-            onClick={() => setError(null)}
-            title="点击关闭"
-            data-testid="provider-error"
-          >
-            {error}
-          </Notice>
-        )}
-        {state?.encryption === 'none' && (
-          <Notice tone="warning" data-testid="encryption-warning">
-            ⚠️ 当前系统不支持安全存储（safeStorage 不可用），Token 仅以编码形式保存在本机，未加密。
-          </Notice>
-        )}
-        {locked && view.kind === 'list' && (
-          <Notice tone="warning">
-            环境变量 COMPANION_PROVIDER={state!.overrideId} 已锁定对话供应商，此处切换不会生效。
-          </Notice>
-        )}
+    <ToastProvider>
+      <Modal
+        open
+        onClose={onClose}
+        title={title}
+        size="lg"
+        data-testid="provider-panel"
+        bodyClassName={styles.modalBody}
+      >
+        <div className={styles.stack}>
+          {error && (
+            <Notice
+              tone="danger"
+              onClick={() => setError(null)}
+              title="点击关闭"
+              data-testid="provider-error"
+            >
+              {error}
+            </Notice>
+          )}
+          {state?.encryption === 'none' && (
+            <Notice tone="warning" data-testid="encryption-warning">
+              ⚠️ 当前系统不支持安全存储（safeStorage 不可用），Token
+              仅以编码形式保存在本机，未加密。
+            </Notice>
+          )}
+          {locked && view.kind === 'list' && (
+            <Notice tone="warning">
+              环境变量 COMPANION_PROVIDER={state!.overrideId} 已锁定对话供应商，此处切换不会生效。
+            </Notice>
+          )}
 
-        {view.kind === 'add' && (
-          <>
-            <div className={styles.inline}>
-              <Button
-                size="sm"
-                variant="ghost"
-                data-testid="add-back"
-                onClick={() => setView({ kind: 'list' })}
-              >
-                ‹ 返回
-              </Button>
-            </div>
-            <AddProvider
-              presets={presets}
-              onPick={(p) => setView({ kind: 'edit', target: { kind: 'new', preset: p } })}
+          {view.kind === 'add' && (
+            <>
+              <div className={styles.inline}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  data-testid="add-back"
+                  onClick={() => setView({ kind: 'list' })}
+                >
+                  ‹ 返回
+                </Button>
+              </div>
+              <AddProvider
+                presets={presets}
+                onPick={(p) => setView({ kind: 'edit', target: { kind: 'new', preset: p } })}
+              />
+            </>
+          )}
+
+          {view.kind === 'edit' && (
+            <ProviderEditor
+              key={
+                view.target.kind === 'edit'
+                  ? view.target.provider.id
+                  : `new-${view.target.preset.id}`
+              }
+              target={view.target}
+              isActive={view.target.kind === 'edit' && view.target.provider.id === current}
+              onBack={() =>
+                setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
+              }
+              onSaved={(result) => {
+                setError(null);
+                if (result.pickModel) {
+                  setView({ kind: 'edit', target: { kind: 'edit', provider: result.provider } });
+                } else {
+                  setView({ kind: 'list' });
+                }
+              }}
+              onError={onError}
             />
-          </>
-        )}
+          )}
 
-        {view.kind === 'edit' && (
-          <ProviderEditor
-            key={
-              view.target.kind === 'edit' ? view.target.provider.id : `new-${view.target.preset.id}`
-            }
-            target={view.target}
-            isActive={view.target.kind === 'edit' && view.target.provider.id === current}
-            onBack={() => setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })}
-            onSaved={() => {
-              setError(null);
-              setView({ kind: 'list' });
-            }}
-            onError={onError}
-          />
-        )}
-
-        {view.kind === 'list' && state && (
-          <>
-            <div className={styles.inline}>
-              <span className="cd-muted">
-                当前：
-                <b data-testid="current-provider">
-                  {selectableProviders(state).find((o) => o.id === current)?.label ?? '未选择'}
-                </b>
-                {state.effectiveModel && (
-                  <>
-                    {' '}
-                    · <span data-testid="current-model">{state.effectiveModel}</span>
-                  </>
-                )}
-              </span>
-              <span className="cd-spacer" />
-              <Button
-                variant="primary"
-                data-testid="add-provider-btn"
-                onClick={() => setView({ kind: 'add' })}
-              >
-                ＋ 添加供应商
-              </Button>
-            </div>
-            {state.providers.length + state.envProviders.length === 0 && (
-              <EmptyState
-                icon="🔌"
-                title="还没有供应商"
-                description="点「添加供应商」，选择预设或自定义配置"
-              />
-            )}
-            {state.providers.map((p) => (
-              <ProviderRow
-                key={p.id}
-                p={p}
-                current={current === p.id}
-                locked={locked}
-                onEdit={() => setView({ kind: 'edit', target: { kind: 'edit', provider: p } })}
-                onError={onError}
-              />
-            ))}
-            {state.envProviders
-              .filter((e) => e.hasKey)
-              .map((e) => (
-                <Card
-                  key={e.id}
-                  flat
-                  active={current === e.id}
-                  title={
-                    <span className={styles.inline}>
-                      <Monogram name={e.name} brand={e.id} size={28} />
-                      {e.name}
-                      {current === e.id && <Badge>当前</Badge>}
-                    </span>
-                  }
-                  subtitle={`${PROTOCOL_LABELS[e.protocol]} · ${e.baseURL ?? ''} · ${e.defaultModel ?? ''} · ${
-                    e.keyless
-                      ? '本地服务，无需 key'
-                      : e.hasKey
-                        ? 'key 由环境变量提供'
-                        : '未设置 key'
-                  }`}
-                  actions={
-                    current !== e.id && e.hasKey ? (
-                      <Button
-                        size="sm"
-                        disabled={locked}
-                        onClick={() => void providerClient.setActive(e.id).catch(onError)}
-                      >
-                        启用
-                      </Button>
-                    ) : undefined
-                  }
+          {view.kind === 'list' && state && (
+            <>
+              <div className={styles.inline}>
+                <span className="cd-muted">
+                  当前：
+                  <b data-testid="current-provider">
+                    {selectableProviders(state).find((o) => o.id === current)?.label ?? '未选择'}
+                  </b>
+                  {state.effectiveModel && (
+                    <>
+                      {' '}
+                      · <span data-testid="current-model">{state.effectiveModel}</span>
+                    </>
+                  )}
+                </span>
+                <span className="cd-spacer" />
+                <Button
+                  variant="primary"
+                  data-testid="add-provider-btn"
+                  onClick={() => setView({ kind: 'add' })}
+                >
+                  ＋ 添加供应商
+                </Button>
+              </div>
+              {state.providers.length + state.envProviders.length === 0 && (
+                <EmptyState
+                  icon="🔌"
+                  title="还没有供应商"
+                  description="点「添加供应商」，选择预设或自定义配置"
+                />
+              )}
+              {state.providers.map((p) => (
+                <ProviderRow
+                  key={p.id}
+                  p={p}
+                  current={current === p.id}
+                  locked={locked}
+                  onEdit={() => setView({ kind: 'edit', target: { kind: 'edit', provider: p } })}
+                  onError={onError}
                 />
               ))}
-            <section>
-              <h3 className="cd-section-title">任务路由（可选，默认都跟随当前供应商）</h3>
-              <RoutesTable state={state} onError={onError} />
-              <p className="cd-muted">
-                优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前供应商。工具栏 /
-                托盘一键切换会让「对话」立即改用所选供应商。
-              </p>
-            </section>
-          </>
-        )}
-      </div>
-    </Modal>
+              {state.envProviders
+                .filter((e) => e.hasKey)
+                .map((e) => (
+                  <Card
+                    key={e.id}
+                    flat
+                    active={current === e.id}
+                    title={
+                      <span className={styles.inline}>
+                        <Monogram name={e.name} brand={e.id} size={28} />
+                        {e.name}
+                        {current === e.id && <Badge>当前</Badge>}
+                      </span>
+                    }
+                    subtitle={`${PROTOCOL_LABELS[e.protocol]} · ${e.baseURL ?? ''} · ${e.defaultModel ?? ''} · ${
+                      e.keyless
+                        ? '本地服务，无需 key'
+                        : e.hasKey
+                          ? 'key 由环境变量提供'
+                          : '未设置 key'
+                    }`}
+                    actions={
+                      current !== e.id && e.hasKey ? (
+                        <Button
+                          size="sm"
+                          disabled={locked}
+                          onClick={() => void providerClient.setActive(e.id).catch(onError)}
+                        >
+                          启用
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              <section>
+                <h3 className="cd-section-title">任务路由（可选，默认都跟随当前供应商）</h3>
+                <RoutesTable state={state} onError={onError} />
+                <p className="cd-muted">
+                  优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前供应商。工具栏 /
+                  托盘一键切换会让「对话」立即改用所选供应商。
+                </p>
+              </section>
+            </>
+          )}
+        </div>
+      </Modal>
+    </ToastProvider>
   );
 };
