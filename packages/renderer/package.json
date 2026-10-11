@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "基于React的前端UI",
   "scripts": {
-    "dev": "vite",
-    "build": "node ../../scripts/run-tsc.mjs && vite build",
-    "clean": "rimraf dist",
-    "test": "vitest run --passWithNoTests",
+    "dev": "node ../../scripts/run-bin.mjs vite",
+    "build": "node ../../scripts/run-bin.mjs tsc && node ../../scripts/run-bin.mjs vite build",
+    "clean": "node ../../scripts/run-bin.mjs rimraf dist",
+    "test": "node ../../scripts/run-bin.mjs vitest run --passWithNoTests",
     "package": "echo 'Renderer build completed, no packaging needed'"
   },
   "author": "",

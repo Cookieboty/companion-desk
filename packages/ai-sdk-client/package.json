@@ -40,12 +40,12 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "typecheck": "node ../../scripts/run-tsc.mjs --noEmit",
+    "build": "node ../../scripts/run-bin.mjs tsup",
+    "dev": "node ../../scripts/run-bin.mjs tsup --watch",
+    "typecheck": "node ../../scripts/run-bin.mjs tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
-    "clean": "rimraf dist coverage .turbo"
+    "test": "node ../../scripts/run-bin.mjs vitest run",
+    "clean": "node ../../scripts/run-bin.mjs rimraf dist coverage .turbo"
   },
   "peerDependencies": {
     "@ig-live/ai-sdk": "workspace:*",

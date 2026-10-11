@@ -74,24 +74,32 @@ if (!existsSync(path.join(root, 'node_modules'))) {
   }
 }
 
-// 5. TypeScript（pnpm 在 Windows 上常把 .bin/tsc 指到包内缺失路径；build 已改走 scripts/run-tsc.mjs）
-try {
-  const tsPkg = require.resolve('typescript/package.json');
-  const tsVer = JSON.parse(readFileSync(tsPkg, 'utf8')).version;
-  ok(`typescript ${tsVer} (workspace root)`);
-} catch {
-  bad('typescript not resolvable from repo root', 'pnpm install');
-}
-try {
-  const fromTypes = createRequire(path.join(root, 'packages/types/package.json'));
-  fromTypes.resolve('typescript/package.json');
-  ok('typescript resolvable from packages/types');
-} catch {
-  // 根上有即可：run-tsc.mjs 从根解析。包内解析失败时给出清理提示（常见于 Windows 损坏的 node_modules）。
-  warn('typescript is not linked under packages/types (ok if root has it; run-tsc uses root).');
-  warn(
-    'If `pnpm --filter @ig-live/types build` still fails: rm -rf node_modules packages/*/node_modules && pnpm install',
-  );
+// 5. Tooling CLIs at workspace root (Windows pnpm .bin shims are fragile; scripts use run-bin.mjs)
+{
+  const tools = [
+    ['typescript', 'typescript'],
+    ['vite', 'vite'],
+    ['tsup', 'tsup'],
+  ];
+  for (const [label, pkg] of tools) {
+    try {
+      const pkgJson = require.resolve(`${pkg}/package.json`);
+      const ver = JSON.parse(readFileSync(pkgJson, 'utf8')).version;
+      ok(`${label} ${ver} (workspace root)`);
+    } catch {
+      bad(`${label} not resolvable from repo root`, 'pnpm install');
+    }
+  }
+  // Package-local link is nice-to-have; run-bin always uses root.
+  try {
+    createRequire(path.join(root, 'packages/ai-chat/package.json')).resolve('vite/package.json');
+    ok('vite resolvable from packages/ai-chat');
+  } catch {
+    warn('vite is not linked under packages/ai-chat (ok — run-bin.mjs resolves from root).');
+    warn(
+      'If pnpm dev still fails on Windows: delete node_modules and packages/*/node_modules, then pnpm install',
+    );
+  }
 }
 
 // 6. 端口
