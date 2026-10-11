@@ -45,6 +45,12 @@
       "source": "this repository"
     },
     {
+      "pattern": "packages/renderer/public/assets/models/sprite/**",
+      "license": "CC0-1.0",
+      "author": "Companion Desk contributors (procedural Soft Face + Pixel Neko)",
+      "source": "this repository — see packages/renderer/public/assets/models/sprite/*/LICENSE.txt and docs/plans/sprite-2d.md"
+    },
+    {
       "pattern": "packages/renderer/public/assets/motions/motions.json",
       "license": "CC0-1.0 AND MIT",
       "author": "Quaternius (Universal Animation Library, retargeted) + Companion Desk contributors (procedural gestures)",
