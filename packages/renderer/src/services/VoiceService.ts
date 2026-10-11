@@ -291,13 +291,10 @@ export class VoiceService {
   private async playVoice(line: string) {
     try {
       window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: line } }));
-      const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
-      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(line);
-      u.lang = 'zh-CN';
-      u.volume = this.voiceSettings?.volume ?? 0.8;
-      synth.speak(u);
+      const { speakSoft, loadSoftSpeechPrefs } = await import('../mascot/softSpeech');
+      const prefs = loadSoftSpeechPrefs();
+      if (this.voiceSettings?.volume != null) prefs.volume = this.voiceSettings.volume;
+      speakSoft(line, { prefs });
     } catch (error) {
       console.error('VoiceService: 朗读失败:', error);
     }

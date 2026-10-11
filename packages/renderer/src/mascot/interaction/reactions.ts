@@ -1,4 +1,5 @@
 import { mascotRegistry } from '../MascotBackend';
+import { speakSoft } from '../softSpeech';
 
 import { reactionFor, type ReactionKind } from './gestures';
 import type { BodyRegion } from './regions';
@@ -10,18 +11,7 @@ let lastAt = 0;
 const lastByKey = new Map<string, number>();
 
 function speak(text: string): void {
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN';
-    u.pitch = 1.3;
-    u.volume = 0.8;
-    synth.speak(u);
-  } catch {
-    /* 系统无语音引擎：只显示气泡 */
-  }
+  speakSoft(text);
 }
 
 /**

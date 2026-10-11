@@ -84,22 +84,37 @@ export class AdvancedTTSEngine {
    * 设置默认配置
    */
   private setDefaultConfig(): void {
+    // Prefer soft Chinese female system voices; slower rate by default.
+    const softByPlatform: Record<string, string> = {
+      darwin: 'Meijia', // Taiwan Mandarin soft; Ting-Ting is fallback
+      win32: 'Microsoft Huihui Desktop',
+      linux: 'zh', // espeak/espeak-ng zh
+    };
+    const systemVoice = softByPlatform[process.platform] ?? 'default';
     this.config = {
-      currentVoice: 'default',
+      currentVoice: 'soft-zh-female',
       voices: {
+        'soft-zh-female': {
+          name: '柔和中文女声',
+          systemVoice,
+          platform: process.platform as 'darwin' | 'win32' | 'linux',
+          language: 'zh-CN',
+          gender: 'female',
+          style: 'soft',
+        },
         default: {
           name: '系统默认',
-          systemVoice: process.platform === 'darwin' ? 'Ting-Ting' : 'default',
-          platform: process.platform as any,
+          systemVoice: process.platform === 'darwin' ? 'Meijia' : systemVoice,
+          platform: process.platform as 'darwin' | 'win32' | 'linux',
           language: 'zh-CN',
           gender: 'female',
           style: 'standard',
         },
       },
       settings: {
-        speed: 1.0,
-        pitch: 1.0,
-        volume: 0.8,
+        speed: 0.88,
+        pitch: 1.05,
+        volume: 0.78,
         autoSelectByPlatform: true,
         fallbackToDefault: true,
       },
@@ -275,15 +290,16 @@ export class AdvancedTTSEngine {
     voice: TTSVoiceConfig,
     settings: TTSSettings,
   ): ChildProcess {
-    const args = [
-      '-v',
-      voice.systemVoice,
-      '-r',
-      Math.round(settings.speed * 200).toString(), // 转换速度范围
-      text,
-    ];
-
-    return spawn('say', args);
+    // ~175 wpm feels softer than the old 200 default
+    const rate = Math.round(Math.max(120, Math.min(220, settings.speed * 200)));
+    const preferred = [voice.systemVoice, 'Meijia', 'Ting-Ting', 'Sinji', 'Yu-shu'].filter(
+      (v, i, a) => v && a.indexOf(v) === i,
+    );
+    // bash: try voices until say succeeds
+    const script = preferred
+      .map((v) => `say -v ${JSON.stringify(v)} -r ${rate} ${JSON.stringify(text)}`)
+      .join(' || ');
+    return spawn('bash', ['-lc', script]);
   }
 
   /**
@@ -314,7 +330,16 @@ export class AdvancedTTSEngine {
     voice: TTSVoiceConfig,
     settings: TTSSettings,
   ): ChildProcess {
-    const args = ['-v', voice.systemVoice, '-s', Math.round(settings.speed * 160).toString(), text];
+    // Slower espeak; zh+f3 approximates a softer female when available
+    const args = [
+      '-v',
+      voice.systemVoice.includes('zh') ? voice.systemVoice : 'zh',
+      '-s',
+      Math.round(Math.max(100, settings.speed * 140)).toString(),
+      '-p',
+      Math.round(40 + settings.pitch * 20).toString(),
+      text,
+    ];
 
     const process = spawn('espeak', args);
 
