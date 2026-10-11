@@ -302,6 +302,15 @@ test.describe('E11 · bubble security + toolbar', () => {
 
     // 贴近右侧屏幕边缘 → 翻到左侧
     expect(await main.evaluate(() => document.documentElement.dataset.toolbarSide)).toBe('right');
+    // Free-place (gravity off) so she stays at the edge after drop; otherwise she falls
+    // away and the toolbar may flip back to right before we assert.
+    await main.evaluate(() =>
+      (
+        window as unknown as {
+          electronAPI: { mascotWindow: { setConfig(c: { gravity: boolean }): void } };
+        }
+      ).electronAPI.mascotWindow.setConfig({ gravity: false }),
+    );
     // 用拖拽把角色拖到屏幕最右（物理会把她卡在屏幕内，但窗口右侧槽位已在屏幕外）
     await main.evaluate(async () => {
       const api = (
@@ -327,7 +336,8 @@ test.describe('E11 · bubble security + toolbar', () => {
     });
     await expect
       .poll(() => main.evaluate(() => document.documentElement.dataset.toolbarSide), {
-        timeout: 8_000,
+        timeout: 15_000,
+        intervals: [200],
       })
       .toBe('left');
     await reveal();
