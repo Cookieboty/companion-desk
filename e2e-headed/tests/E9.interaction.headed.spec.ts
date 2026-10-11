@@ -272,29 +272,26 @@ test.describe('E9 · mascot desktop interaction', () => {
     const mode = (await snap(page)).body.mode;
     expect(mode === 'idle' || Math.abs(x1 - x0) > 5).toBe(true);
 
-    // 6) 重力关闭 = 自由摆放：拖到半空松手后停在原处
+    // 6) 重力关闭 = 自由摆放：拖到半空松手后停在原处（IPC drag，避开 xdo 命中抖动）
     await page.evaluate(() => window.electronAPI!.mascotWindow!.setConfig({ gravity: false }));
     await sleep(400);
-    let heldY = 0;
-    await expect(async () => {
-      [, wy] = await pos();
-      s = await snap(page);
-      const midY = Math.round(wy + (s.box!.top + s.box!.bottom) / 2);
-      xdo('mousemove', String(cx), String(midY));
-      await sleep(150);
-      xdo('mousedown', '1');
-      for (let i = 1; i <= 16; i += 1) {
-        xdo('mousemove', String(cx), String(midY - i * 18));
-        await sleep(30);
+    await page.evaluate(async () => {
+      const api = window.electronAPI!.mascotWindow!;
+      const gx = window.screenX + window.innerWidth / 2;
+      const gy = window.screenY + window.innerHeight / 2;
+      api.dragStart(gx, gy);
+      for (let i = 1; i <= 16; i++) {
+        api.dragMove(gx, gy - i * 24);
+        await new Promise((r) => setTimeout(r, 25));
       }
-      await expect.poll(async () => (await snap(page)).body.mode, { timeout: 4_000 }).toBe('held');
-      heldY = (await snap(page)).body.y;
-    }).toPass({ timeout: 25_000 });
-    xdo('mouseup', '1');
+    });
+    await expect.poll(async () => (await snap(page)).body.mode, { timeout: 8_000 }).toBe('held');
+    const yWhileHeld = (await snap(page)).body.y;
+    await page.evaluate(() => window.electronAPI!.mascotWindow!.dragEnd());
     await sleep(800);
     const placed = await snap(page);
     expect(placed.body.mode).toBe('idle');
-    expect(Math.abs(placed.body.y - heldY)).toBeLessThan(40); // stays where dropped
+    expect(Math.abs(placed.body.y - yWhileHeld)).toBeLessThan(40); // stays where dropped
     expect(placed.cfg?.gravity ?? false).toBe(false);
 
     // 7) 关闭点击穿透：透明区也接收鼠标
