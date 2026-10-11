@@ -5,6 +5,10 @@ still in git history (`git log --diff-filter=D --stat -- <path>`).
 
 ## Live2D → VRM (2026)
 
+### 2D sprite spike (2026-10)
+
+- Optional **expression-swapped PNG** mascot path (`docs/plans/sprite-2d.md`): soft face + **pixel-neko** pet (CC0 originals). Not Live2D; Inochi2D still deferred.
+
 - The first versions rendered the mascot with the proprietary **Live2D Cubism 2** runtime and
   Live2D models of unclear provenance. Both were removed for licensing reasons and replaced by
   open-source **three-vrm** with CC0 / openly licensed VRM models (see `docs/MODELS.md`,

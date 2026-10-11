@@ -1,0 +1,29 @@
+{
+  "id": "pixel-neko",
+  "displayName": "Pixel Neko (2D spike)",
+  "style": "pixel",
+  "license": "CC0-1.0",
+  "author": "Companion Desk (original procedural pixel art)",
+  "source": "generated in-repo for sprite-2d spike",
+  "description": "Cute anime-adjacent pixel pet (32\u00d732 Nearest). Expression-swapped sprites.",
+  "expressions": {
+    "neutral": "neutral.png",
+    "happy": "happy.png",
+    "angry": "angry.png",
+    "sad": "sad.png",
+    "relaxed": "relaxed.png",
+    "surprised": "surprised.png"
+  },
+  "blink": "blink.png",
+  "mouthOpen": "mouth.png",
+  "thumbnail": "thumb.png",
+  "pixelScale": 1,
+  "idleBobPx": 4,
+  "tags": [
+    "sprite",
+    "2d",
+    "pixel",
+    "pet",
+    "cc0"
+  ]
+}

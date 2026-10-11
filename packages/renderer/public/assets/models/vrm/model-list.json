@@ -14,8 +14,41 @@
         "default",
         "vroid"
       ]
+    },
+    {
+      "name": "soft-face",
+      "displayName": "Soft Face (2D)",
+      "description": "Original CC0 anime-adjacent expression plate — sprite spike (no Live2D).",
+      "path": "./assets/models/sprite/soft-face/manifest.json",
+      "thumbnail": "./assets/models/sprite/soft-face/thumb.png",
+      "author": "Companion Desk",
+      "license": "CC0-1.0",
+      "source": "in-repo procedural art",
+      "tags": [
+        "sprite",
+        "2d",
+        "soft",
+        "cc0"
+      ]
+    },
+    {
+      "name": "pixel-neko",
+      "displayName": "Pixel Neko (2D)",
+      "description": "Original CC0 cute pixel pet — expression-swapped 32×32 sprites.",
+      "path": "./assets/models/sprite/pixel-neko/manifest.json",
+      "thumbnail": "./assets/models/sprite/pixel-neko/thumb.png",
+      "author": "Companion Desk",
+      "license": "CC0-1.0",
+      "source": "in-repo procedural pixel art",
+      "tags": [
+        "sprite",
+        "2d",
+        "pixel",
+        "pet",
+        "cc0"
+      ]
     }
   ],
-  "lastUpdated": "2026-10-10T00:00:00Z",
-  "version": "2.0.0"
+  "lastUpdated": "2026-10-11T00:00:00Z",
+  "version": "2.1.0"
 }

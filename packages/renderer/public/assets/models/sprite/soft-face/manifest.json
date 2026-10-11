@@ -1,0 +1,26 @@
+{
+  "id": "soft-face",
+  "displayName": "Soft Face (2D spike)",
+  "style": "soft",
+  "license": "CC0-1.0",
+  "author": "Companion Desk (original procedural art)",
+  "source": "generated in-repo for sprite-2d spike",
+  "description": "Simple anime-adjacent expression plate (original CC0). Swap PNGs per mood.",
+  "expressions": {
+    "neutral": "neutral.png",
+    "happy": "happy.png",
+    "angry": "angry.png",
+    "sad": "sad.png",
+    "relaxed": "relaxed.png",
+    "surprised": "surprised.png"
+  },
+  "blink": "blink.png",
+  "mouthOpen": "mouth.png",
+  "thumbnail": "thumb.png",
+  "tags": [
+    "sprite",
+    "2d",
+    "soft",
+    "cc0"
+  ]
+}

@@ -11,7 +11,13 @@ import { directiveForEvent, motionForText } from '../../src/mascot/expressionDir
 import { mascotRegistry, type MascotBackend } from '../../src/mascot/MascotBackend';
 import { applyDirective, resetMoodForTests } from '../../src/mascot/mood';
 import { MOTION_LABELS, parseMotionLibrary } from '../../src/mascot/motion/library';
-import { MotionController, buildClip, fadeFor } from '../../src/mascot/motion/MotionController';
+import {
+  MotionController,
+  buildClip,
+  fadeFor,
+  softenQuats,
+  poseSoften,
+} from '../../src/mascot/motion/MotionController';
 
 const LIB = parseMotionLibrary(
   JSON.parse(
@@ -85,11 +91,22 @@ describe('buildClip', () => {
 });
 
 describe('fadeFor', () => {
-  it('keeps short gestures snappy and caps long fades', () => {
-    expect(fadeFor(0.33)).toBeLessThan(0.2);
-    expect(fadeFor(0.33)).toBeGreaterThanOrEqual(0.12);
-    expect(fadeFor(3)).toBeLessThanOrEqual(0.4);
-    expect(fadeFor(2.5)).toBeCloseTo(0.4, 5);
+  it('prefers longer blends and caps at 0.55s', () => {
+    expect(fadeFor(0.33)).toBeGreaterThanOrEqual(0.22);
+    expect(fadeFor(0.33)).toBeLessThan(0.35);
+    expect(fadeFor(3)).toBeLessThanOrEqual(0.55);
+    expect(fadeFor(2.5)).toBeCloseTo(0.55, 5);
+  });
+});
+
+describe('softenQuats / poseSoften', () => {
+  it('pulls extreme rotations toward rest', () => {
+    expect(poseSoften('wave', ['greet'])).toBeGreaterThan(poseSoften('idle', ['idle']));
+    const rest = [0, 0, 0, 1];
+    const extreme = [0, 0, Math.sin(0.8), Math.cos(0.8)]; // ~1.6 rad around Z
+    const soft = softenQuats([...extreme], rest, 0.25);
+    const ang = (q: number[]) => 2 * Math.acos(Math.min(1, Math.abs(q[3])));
+    expect(ang(soft)).toBeLessThan(ang(extreme));
   });
 });
 

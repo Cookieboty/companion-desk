@@ -2,9 +2,8 @@
  * Mascot 渲染后端抽象。
  *
  * 看板娘的所有「驱动」（口型、表情、视线、眨眼）都只面向本接口编程；
- * 具体渲染库（当前唯一实现：three-vrm，见 backends/vrm.ts）在加载模型后
- * 通过 `mascotRegistry.attach()` 挂上来。将来若接入 Inochi2D 等开源 2D 运行时，
- * 只需新增一个实现本接口的 backend。
+ * 具体渲染库（three-vrm，或 2D sprite 见 backends/sprite.ts）在加载模型后
+ * 通过 `mascotRegistry.attach()` 挂上来。Inochi2D 仍未接入（web runtime 不成熟）。
  */
 
 /** 通用表情名（VRM 1.0 预设表情名，0.x 由 three-vrm 自动映射）。 */
@@ -19,7 +18,7 @@ export const MASCOT_EXPRESSIONS: readonly MascotExpression[] = [
   'surprised',
 ];
 
-export type MascotBackendKind = 'vrm';
+export type MascotBackendKind = 'vrm' | 'sprite';
 
 export interface MascotCapabilities {
   /** 模型实际支持的表情（预设 + 自定义） */
