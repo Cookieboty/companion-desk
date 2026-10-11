@@ -302,8 +302,7 @@ test.describe('E11 · bubble security + toolbar', () => {
 
     // 贴近右侧屏幕边缘 → 翻到左侧
     expect(await main.evaluate(() => document.documentElement.dataset.toolbarSide)).toBe('right');
-    // Free-place (gravity off) so she stays at the edge after drop; otherwise she falls
-    // away and the toolbar may flip back to right before we assert.
+    // Free-place so physics does not pull the window back after we pin it.
     await main.evaluate(() =>
       (
         window as unknown as {
@@ -311,35 +310,20 @@ test.describe('E11 · bubble security + toolbar', () => {
         }
       ).electronAPI.mascotWindow.setConfig({ gravity: false }),
     );
-    // 用拖拽把角色拖到屏幕最右（物理会把她卡在屏幕内，但窗口右侧槽位已在屏幕外）
-    await main.evaluate(async () => {
-      const w = window as unknown as {
-        electronAPI: {
-          setPosition(x: number, y: number): void;
-          mascotWindow: {
-            dragStart(x: number, y: number): void;
-            dragMove(x: number, y: number): void;
-            dragEnd(): void;
-          };
-        };
-      };
-      const api = w.electronAPI.mascotWindow;
-      const gx = window.screenX + window.innerWidth / 2;
-      const gy = window.screenY + window.innerHeight / 2;
-      api.dragStart(gx, gy);
-      for (let k = 1; k <= 24; k++) {
-        api.dragMove(gx + k * 80, gy);
-        await new Promise((r) => setTimeout(r, 25));
-      }
-      await new Promise((r) => setTimeout(r, 200));
-      api.dragEnd();
-      // Hang most of the window past the work-area right edge so the right gutter
-      // is off-screen (placeGutter → side "left"). Fullscreen-ish windows need a
-      // large overhang; "outerWidth - 48" barely moves them.
-      const availLeft = (window.screen as Screen & { availLeft?: number }).availLeft ?? 0;
-      const screenRight = availLeft + window.screen.availWidth;
-      w.electronAPI.setPosition(Math.round(screenRight - 140), window.screenY);
-      await new Promise((r) => setTimeout(r, 900)); // ToolBar recomputes every ~700ms
+    // Move the always-on-top mascot BrowserWindow so its right gutter is past the
+    // work-area edge (renderer setPosition / drag is unreliable on CI / Linux WM).
+    await app!.evaluate(({ BrowserWindow, screen }) => {
+      const w = BrowserWindow.getAllWindows().find((b) => !b.isDestroyed() && b.isAlwaysOnTop());
+      if (!w) throw new Error('mascot window not found');
+      const wa = screen.getPrimaryDisplay().workArea;
+      const b = w.getBounds();
+      // Leave ~120px of the window on-screen; the rest hangs past the right edge.
+      w.setBounds({
+        x: Math.round(wa.x + wa.width - 120),
+        y: b.y,
+        width: b.width,
+        height: b.height,
+      });
     });
     await expect
       .poll(() => main.evaluate(() => document.documentElement.dataset.toolbarSide), {
