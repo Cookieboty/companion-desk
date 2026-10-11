@@ -16,7 +16,7 @@ const ITEMS: Array<{ key: keyof MascotInteractionConfig; label: string; hint: st
   {
     key: 'gravity',
     label: '重力与落地',
-    hint: '松手后落到任务栏 / Dock 上方，可以把她扔出去（会反弹、撞墙）。',
+    hint: '默认关闭：松手后停在你放的位置。开启后会落到任务栏 / Dock 上方，也可以扔出去（会反弹、撞墙）。',
   },
   { key: 'wander', label: '偶尔散步', hint: '闲着时沿屏幕底边走一走（约每 20~60 秒一次）。' },
   { key: 'reactions', label: '触摸反应', hint: '摸头、戳脸、点击、双击时的表情、动作与台词。' },

@@ -1,14 +1,14 @@
 # Mascot desktop interaction
 
-The mascot window is a transparent, frameless, always-on-top Electron window (420×450). This page covers how she reacts to the mouse, how she gets dragged around and how she moves on the desktop. Everything below can be switched off in **Tray → 互动设置** or **Character picker → 互动设置**. The settings live in `localStorage` (`mascot.interaction.v1`) and are pushed to the main process.
+The mascot window is a transparent, frameless, always-on-top Electron window (420×450). This page covers how she reacts to the mouse, how she gets dragged around and how she moves on the desktop. Everything below can be switched off in **Tray → 互动设置** or **Character picker → 互动设置**. The settings live in `localStorage` (`mascot.interaction.v2`) and are pushed to the main process.
 
-| Toggle                            | Default | What it does                                                                              |
-| --------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| 透明区域点击穿透 (`clickThrough`) | on      | Clicks on transparent pixels go to the window underneath.                                 |
-| 重力与落地 (`gravity`)            | on      | When you let go she falls onto the taskbar/Dock edge, bounces, and hits the walls.        |
-| 偶尔散步 (`wander`)               | **off** | Every 20–60 s she walks a short distance along the bottom edge.                           |
-| 触摸反应 (`reactions`)            | on      | Expression, motion and a line of dialogue for hover, head pats, clicks and double-clicks. |
-| 视线跟随全局鼠标 (`globalLook`)   | on      | Her eyes and head follow the cursor even when it is outside the window.                   |
+| Toggle                            | Default | What it does                                                                                                          |
+| --------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| 透明区域点击穿透 (`clickThrough`) | on      | Clicks on transparent pixels go to the window underneath.                                                             |
+| 重力与落地 (`gravity`)            | **off** | Off by default: drag-place anywhere and she stays. Turn on to fall onto the taskbar/Dock edge, bounce, and hit walls. |
+| 偶尔散步 (`wander`)               | **off** | Every 20–60 s she walks a short distance along the bottom edge.                                                       |
+| 触摸反应 (`reactions`)            | on      | Expression, motion and a line of dialogue for hover, head pats, clicks and double-clicks.                             |
+| 视线跟随全局鼠标 (`globalLook`)   | on      | Her eyes and head follow the cursor even when it is outside the window.                                               |
 
 ## Architecture
 
@@ -37,7 +37,7 @@ MascotWindowController (60 Hz)                 MascotInteractionLayer
   - squash-and-settle on landing;
   - sideways facing while walking;
   - spring-bone inertia: each joint's `gravityDir`/`gravityPower` gets an inertial term from the window acceleration. The term is low-passed and capped at 2.5 so the bones stay stable during violent drags.
-- `vrm.update()` runs in ≤1/60 s sub-steps, so spring bones also stay stable after a dropped frame. Rendering stops (`frameloop="never"`) while the document is hidden.
+- `vrm.update()` uses fixed ~1/90 s spring-bone sub-steps with an EMA-smoothed frame delta. Rendering stops (`frameloop="never"`) while the document is hidden. Desktop gravity is optional (off by default).
 - New motion clips (CC0, Quaternius UAL): `walk` (in-place Walk_Loop, used as the base loop while wandering) and `poke` (Hit_Chest).
 
 ## Reactions

@@ -29,7 +29,7 @@ export interface InteractionConfig {
 
 export const DEFAULT_INTERACTION: InteractionConfig = {
   clickThrough: true,
-  gravity: true,
+  gravity: false,
   wander: false,
   reactions: true,
   globalLook: true,
@@ -248,8 +248,12 @@ export class MascotWindowController {
     // 重力只在真正拖拽松手后生效
     this.drag = null;
     const v = this.tracker.release(performance.now());
-    this.body = { ...this.body, vx: v.vx, vy: v.vy, mode: this.cfg.gravity ? 'falling' : 'idle' };
-    if (!this.cfg.gravity) this.body = { ...this.body, vx: v.vx * 0.3, vy: v.vy * 0.3 };
+    if (this.cfg.gravity) {
+      this.body = { ...this.body, vx: v.vx, vy: v.vy, mode: 'falling' };
+    } else {
+      // Free place: stay exactly where dropped (no slide / throw residual)
+      this.body = { ...this.body, vx: 0, vy: 0, mode: 'idle' };
+    }
     this.send('mascot:physics-event', { type: 'release', vx: v.vx, vy: v.vy });
   }
 

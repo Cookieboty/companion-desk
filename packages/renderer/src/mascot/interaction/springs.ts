@@ -33,10 +33,11 @@ export function dampedSpring(
  */
 export function squashAt(t: number, impact: number): { sx: number; sy: number } {
   if (t < 0) return { sx: 1, sy: 1 };
-  const amp = Math.min(0.18, Math.max(0.035, impact / 9000));
-  const k = amp * Math.exp(-7 * t) * Math.cos(18 * t);
+  // Gentler squash: smaller amp, faster decay, lower frequency → less "jelly" on land
+  const amp = Math.min(0.12, Math.max(0.025, impact / 11000));
+  const k = amp * Math.exp(-9 * t) * Math.cos(14 * t);
   if (Math.abs(k) < 1e-4) return { sx: 1, sy: 1 };
-  return { sx: 1 + k * 0.5, sy: 1 - k };
+  return { sx: 1 + k * 0.45, sy: 1 - k };
 }
 
 export interface LookLimits {
