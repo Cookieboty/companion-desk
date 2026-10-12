@@ -10,7 +10,9 @@ import {
   MAX_ATTACHMENTS,
   attachmentFromFile,
   likelyVision,
+  fromRaw,
   screenClient,
+  type RawAttachment,
   type ImageAttachment,
 } from '../../services/screenClient';
 import { ErrorHint } from '../ErrorHint';
@@ -31,6 +33,7 @@ interface MessageInputProps {
   onScheduleClick?: () => void;
   onScreenClick?: () => void;
   onExtClick?: () => void;
+  onLocalClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -45,6 +48,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onScheduleClick,
   onScreenClick,
   onExtClick,
+  onLocalClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -139,6 +143,22 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       }),
     [addImages],
   );
+  // 本地中心（剪贴板历史）发来的图片 / 文字
+  useEffect(() => {
+    const onImg = (e: Event) =>
+      void fromRaw((e as CustomEvent<RawAttachment>).detail).then((a) => a && addImages([a]));
+    const onText = (e: Event) => {
+      const t = String((e as CustomEvent<string>).detail ?? '');
+      setMessage((m) => (m ? `${m}\n${t}` : t));
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    };
+    window.addEventListener('cd:attach-image', onImg);
+    window.addEventListener('cd:insert-text', onText);
+    return () => {
+      window.removeEventListener('cd:attach-image', onImg);
+      window.removeEventListener('cd:insert-text', onText);
+    };
+  }, [addImages]);
   useEffect(() => {
     if (!screenOk) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -442,6 +462,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               data-testid="open-ext-panel"
             >
               🧩
+            </button>
+          )}
+          {onLocalClick && extClient.available() && (
+            <button
+              className={styles.configButton}
+              onClick={onLocalClick}
+              title="本地中心：本机模型、日历、剪贴板、导出（Ctrl/⌘+Shift+J）"
+              data-testid="open-local-panel"
+            >
+              🏠
             </button>
           )}
           {onDesktopClick && (

@@ -39,7 +39,7 @@ export interface ScreenEntry {
   thumbUrl?: string;
 }
 
-interface RawAttachment {
+export interface RawAttachment {
   mime: ImageAttachment['mime'];
   data: string;
   width: number;
@@ -130,7 +130,7 @@ export async function attachmentFromFile(f: File): Promise<ImageAttachment> {
   return attachmentFromDataUrl(url, 'paste');
 }
 
-async function fromRaw(r: RawAttachment | null): Promise<ImageAttachment | null> {
+export async function fromRaw(r: RawAttachment | null): Promise<ImageAttachment | null> {
   if (!r) return null;
   return attachmentFromDataUrl(`data:${r.mime};base64,${r.data}`, r.source);
 }
