@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { strToU8, zipSync, gzipSync } from 'fflate';
+
 import { VOICE_ASSETS, assetsFor, findAsset } from '../../../src/voice/catalog';
 import { downloadVerified, extractTarGz, extractZip, safeJoin } from '../../../src/voice/download';
 import {
@@ -96,9 +97,11 @@ describe('whisper cli', () => {
 
 describe('archive extraction', () => {
   it('safeJoin blocks traversal', () => {
-    expect(safeJoin('/r', '../x')).toBeNull();
-    expect(safeJoin('/r', '/etc/passwd')).toBeNull();
-    expect(safeJoin('/r', 'a/b')).toBe(path.join('/r', 'a/b'));
+    const root = path.resolve(os.tmpdir(), 'r');
+    expect(safeJoin(root, '../x')).toBeNull();
+    expect(safeJoin(root, '/etc/passwd')).toBeNull();
+    expect(safeJoin(root, 'C:\\Windows')).toBeNull();
+    expect(safeJoin(root, 'a/b')).toBe(path.join(root, 'a', 'b'));
   });
   it('zip extracts and refuses zip-slip', () => {
     const d = tmp();
