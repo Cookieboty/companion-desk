@@ -47,7 +47,6 @@ describe('catalog', () => {
     const list = parseCatalog(raw);
     expect(list.map((m) => m.name)).toEqual([
       'default-character',
-      'soft-face',
       'sakura-chan',
       'pastel-girl',
       'michona',

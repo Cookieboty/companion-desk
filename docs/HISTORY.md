@@ -7,7 +7,7 @@ still in git history (`git log --diff-filter=D --stat -- <path>`).
 
 ### 2D sprite spike (2026-10)
 
-- Optional **expression-swapped PNG** mascot path (`docs/plans/sprite-2d.md`): Soft Face + Sakura Chan / Pastel Girl / Michona / Kenney Panda (CC0). Not Live2D; Inochi2D still deferred.
+- Optional **expression-swapped PNG** mascot path (`docs/plans/sprite-2d.md`): Sakura Chan / Pastel Girl / Michona / Kenney Panda (CC0). Not Live2D; Inochi2D still deferred.
 
 - The first versions rendered the mascot with the proprietary **Live2D Cubism 2** runtime and
   Live2D models of unclear provenance. Both were removed for licensing reasons and replaced by

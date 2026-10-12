@@ -63,7 +63,6 @@ Built-in defaults:
 | Character           | Hint     | Rate | Pitch |
 | ------------------- | -------- | ---- | ----- |
 | `default-character` | xiaoxiao | 0.88 | 1.06  |
-| `soft-face`         | yunxia   | 0.85 | 1.08  |
 | `sakura-chan`       | yunxia   | 0.86 | 1.10  |
 | `pastel-girl`       | xiaoxiao | 0.90 | 1.08  |
 | `michona`           | meijia   | 0.88 | 1.05  |

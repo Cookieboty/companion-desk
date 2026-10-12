@@ -42,19 +42,18 @@ Candidates to evaluate for a later pack (verify license file on download; prefer
 
 | Id | Style | Path | Source |
 |----|-------|------|--------|
-| `soft-face` | Soft plate | `…/sprite/soft-face/` | Companion Desk procedural |
 | `sakura-chan` | Soft VN bust (cuter) | `…/sprite/sakura-chan/` | Companion Desk procedural |
 | `pastel-girl` | Soft pastel girl | `…/sprite/pastel-girl/` | pzUH / OpenGameArt CC0 |
 | `michona` | Anime girl frames | `…/sprite/michona/` | Hordana / OpenGameArt CC0 |
 | `kenney-panda` | Cute pixel pet | `…/sprite/kenney-panda/` | Kenney Animal Pack Redux CC0 |
 
-**Removed:** `pixel-neko` (procedural placeholder).
+**Removed:** `pixel-neko`, `soft-face` (procedural placeholders).
 
 All appear in `model-list.json`. Backend: `sprite.ts` / `SpriteCanvas.tsx`.
 
 ## How to try
 
-1. Run the app → Model picker → Soft Face / Sakura Chan / Pastel Girl / Michona / Panda Pet.
+1. Run the app → Model picker → Sakura Chan / Pastel Girl / Michona / Panda Pet.
 
 AI mood / TTS still drive `setExpression` / `setMouthOpen` / `lookAt` through `mascotRegistry`.
 
