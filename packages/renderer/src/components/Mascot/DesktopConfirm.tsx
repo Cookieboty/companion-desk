@@ -1,8 +1,11 @@
 import type { DesktopConfirmRequest } from '@ig-live/types';
 import { Badge, Button, Modal } from '@ig-live/ui';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import styles from './DesktopConfirm.module.css';
+
+import { placeConfirmBubble, type BubblePlacement } from '@/mascot/bubblePlacement';
+import { layoutStore } from '@/mascot/layoutStore';
 
 const DANGER: Record<
   DesktopConfirmRequest['danger'],
@@ -32,6 +35,63 @@ export const DesktopConfirm: React.FC = () => {
   const [now, setNow] = useState(() => Date.now());
   const api = window.electronAPI?.desktop;
   const cur = queue[0];
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<BubblePlacement | null>(null);
+  const [fallbackRight, setFallbackRight] = useState<number | null>(null);
+
+  // 与回复气泡共用摆放逻辑：不压脸、不压工具栏、靠近屏幕边缘时翻到另一侧
+  const compute = useCallback(() => {
+    const el = bubbleRef.current;
+    const { head, gutter } = layoutStore.get();
+    if (!el) return;
+    if (!head) {
+      // 头部还没测出来：至少让出工具栏槽位
+      setFallbackRight(
+        gutter && gutter.left > window.innerWidth / 2 ? window.innerWidth - gutter.left + 8 : null,
+      );
+      setPlace(null);
+      return;
+    }
+    const p = placeConfirmBubble({
+      head,
+      gutter,
+      view: { width: window.innerWidth, height: window.innerHeight },
+      screen: {
+        winX: window.screenX,
+        availLeft: (window.screen as Screen & { availLeft?: number }).availLeft ?? 0,
+        availWidth: window.screen.availWidth,
+      },
+      measure: (w) => {
+        const prev = el.style.cssText;
+        el.style.width = `${w}px`;
+        el.style.height = 'auto';
+        const h = el.offsetHeight;
+        el.style.cssText = prev;
+        return h;
+      },
+    });
+    setPlace((old) =>
+      old && old.x === p.x && old.y === p.y && old.width === p.width && old.height === p.height
+        ? old
+        : p,
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    if (cur) compute();
+  }, [cur, compute]);
+
+  useEffect(() => {
+    if (!cur) return;
+    const off = layoutStore.subscribe(() => compute());
+    window.addEventListener('resize', compute);
+    const t = setInterval(compute, 1000);
+    return () => {
+      off();
+      window.removeEventListener('resize', compute);
+      clearInterval(t);
+    };
+  }, [cur, compute]);
 
   useEffect(() => {
     if (!api) return;
@@ -78,7 +138,22 @@ export const DesktopConfirm: React.FC = () => {
   return (
     <>
       <div
+        ref={bubbleRef}
         className={styles.bubble}
+        style={
+          place
+            ? {
+                left: place.x,
+                top: place.y,
+                width: place.width,
+                right: 'auto',
+                minHeight: place.height,
+              }
+            : fallbackRight !== null
+              ? { right: fallbackRight }
+              : undefined
+        }
+        data-placement={place?.candidate ?? 'fixed'}
         data-mascot-ui
         data-testid="desktop-confirm-bubble"
         data-danger={cur.danger}

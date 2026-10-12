@@ -76,9 +76,15 @@ export function placeBubble(i: BubbleInput): BubblePlacement {
   };
 
   const MIN_H = 56; // 高度不够时允许压缩（内容在气泡内滚动），但不少于约两行
-  const fullW = clamp(view.width - 2 * m, min, pref);
+  // 水平可用范围 = 窗口 ∩ 屏幕工作区（窗口被拖到屏幕边缘时气泡翻向屏幕内侧）
+  const xLo = Math.max(m, i.screen ? i.screen.availLeft - i.screen.winX : m);
+  const xHi = Math.min(
+    view.width - m,
+    i.screen ? i.screen.availLeft + i.screen.availWidth - i.screen.winX : view.width - m,
+  );
+  const fullW = clamp(Math.min(view.width - 2 * m, xHi - xLo), min, pref);
   const fullH = i.measure(fullW);
-  const xCentered = clamp(hx - fullW / 2, m, view.width - m - fullW);
+  const xCentered = clamp(hx - fullW / 2, xLo, Math.max(xLo, xHi - fullW));
   const roomAbove = head.top - gap - m;
   const roomBelow = view.height - m - (head.bottom + gap);
 
@@ -191,4 +197,13 @@ export function shortReply(text: string, max = 90): { text: string; truncated: b
         .slice(0, max - 1)
         .join('') + '…';
   return { text: out, truncated: out.length < t.length };
+}
+
+/** 确认气泡：需要放下三个按钮，最小宽度更大；其余规则与回复气泡相同（避开脸 / 工具栏，靠近屏幕边缘时翻到另一侧） */
+export const CONFIRM_MIN_W = 210;
+export const CONFIRM_PREF_W = 260;
+export function placeConfirmBubble(
+  i: Omit<BubbleInput, 'prefWidth' | 'minWidth'> & { prefWidth?: number },
+): BubblePlacement {
+  return placeBubble({ ...i, prefWidth: i.prefWidth ?? CONFIRM_PREF_W, minWidth: CONFIRM_MIN_W });
 }
