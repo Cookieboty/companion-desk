@@ -47,10 +47,8 @@ describe('catalog', () => {
     const list = parseCatalog(raw);
     expect(list.map((m) => m.name)).toEqual([
       'default-character',
-      'sakura-chan',
       'pastel-girl',
       'michona',
-      'kenney-panda',
     ]);
     for (const m of list) expect(m.license).toBe('CC0-1.0');
     expect(list.filter((m) => m.tags?.includes('sprite')).length).toBeGreaterThanOrEqual(4);

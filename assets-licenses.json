@@ -59,12 +59,6 @@
       "source": "this repository"
     },
     {
-      "pattern": "packages/renderer/public/assets/models/sprite/sakura-chan/**",
-      "license": "CC0-1.0",
-      "author": "Companion Desk contributors (procedural Sakura Chan)",
-      "source": "this repository — packages/renderer/public/assets/models/sprite/sakura-chan/LICENSE.txt"
-    },
-    {
       "pattern": "packages/renderer/public/assets/models/sprite/pastel-girl/**",
       "license": "CC0-1.0",
       "author": "pzUH (Cute Girl Free Sprites) + Companion Desk (mood remap overlays)",
@@ -75,12 +69,6 @@
       "license": "CC0-1.0",
       "author": "Hordana (Anime Girl / Michona) + Companion Desk (frame extract)",
       "source": "https://opengameart.org/content/anime-girl"
-    },
-    {
-      "pattern": "packages/renderer/public/assets/models/sprite/kenney-panda/**",
-      "license": "CC0-1.0",
-      "author": "Kenney.nl (Animal Pack Redux) + Companion Desk (expression overlays)",
-      "source": "https://opengameart.org/content/animal-pack-redux"
     },
     {
       "pattern": "packages/renderer/public/assets/motions/motions.json",

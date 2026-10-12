@@ -63,10 +63,8 @@ Built-in defaults:
 | Character           | Hint     | Rate | Pitch |
 | ------------------- | -------- | ---- | ----- |
 | `default-character` | xiaoxiao | 0.88 | 1.06  |
-| `sakura-chan`       | yunxia   | 0.86 | 1.10  |
 | `pastel-girl`       | xiaoxiao | 0.90 | 1.08  |
 | `michona`           | meijia   | 0.88 | 1.05  |
-| `kenney-panda`      | yaoyao   | 0.94 | 1.12  |
 
 Resolve order: global soft prefs (preferNeural/volume) → character defaults → `model.config.voice` → local override.
 

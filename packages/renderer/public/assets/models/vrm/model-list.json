@@ -23,31 +23,6 @@
       }
     },
     {
-      "name": "sakura-chan",
-      "displayName": "Sakura Chan (2D)",
-      "description": "Softer VN-style pink-haired bust — CC0 procedural.",
-      "path": "./assets/models/sprite/sakura-chan/manifest.json",
-      "thumbnail": "./assets/models/sprite/sakura-chan/thumb.png",
-      "author": "Companion Desk",
-      "license": "CC0-1.0",
-      "source": "in-repo procedural art",
-      "tags": [
-        "sprite",
-        "2d",
-        "soft",
-        "vn",
-        "cute",
-        "cc0"
-      ],
-      "config": {
-        "voice": {
-          "voiceHint": "yunxia",
-          "rate": 0.86,
-          "pitch": 1.1
-        }
-      }
-    },
-    {
       "name": "pastel-girl",
       "displayName": "Pastel Girl (2D)",
       "description": "CC0 pastel cute girl by pzUH (OpenGameArt / gameart2d).",
@@ -92,31 +67,6 @@
           "voiceHint": "meijia",
           "rate": 0.88,
           "pitch": 1.05
-        }
-      }
-    },
-    {
-      "name": "kenney-panda",
-      "displayName": "Panda Pet (2D)",
-      "description": "CC0 Kenney Animal Pack Redux panda + expression overlays.",
-      "path": "./assets/models/sprite/kenney-panda/manifest.json",
-      "thumbnail": "./assets/models/sprite/kenney-panda/thumb.png",
-      "author": "Kenney.nl",
-      "license": "CC0-1.0",
-      "source": "https://opengameart.org/content/animal-pack-redux",
-      "tags": [
-        "sprite",
-        "2d",
-        "pixel",
-        "pet",
-        "cute",
-        "cc0"
-      ],
-      "config": {
-        "voice": {
-          "voiceHint": "yaoyao",
-          "rate": 0.94,
-          "pitch": 1.12
         }
       }
     }

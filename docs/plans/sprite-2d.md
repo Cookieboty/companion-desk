@@ -30,7 +30,6 @@ Candidates to evaluate for a later pack (verify license file on download; prefer
 ### Pixel-art (cute / anime-adjacent pets & chibi)
 | Asset | License (claimed) | Why |
 |-------|------------------|-----|
-| [Kenney.nl](https://kenney.nl/assets) Animal Pack / Toon Characters | **CC0** | Clean packs; more “game animal” than anime, still great pets |
 | Pixel Frog — Pixel Adventure / similar itch free packs | often **free for commercial** (check each) | Platformer animals; remap to expression frames |
 | OpenGameArt — “cat pixel”, “chibi”, “pet” + CC0 filter | CC0 / CC-BY | Good for idle/walk strips; convert strips → expression sheet |
 | Liberated Pixel Cup (LPC) base | **CC-BY-SA** | Strong corpus but ShareAlike — only if we accept SA on derivatives |
@@ -42,23 +41,21 @@ Candidates to evaluate for a later pack (verify license file on download; prefer
 
 | Id | Style | Path | Source |
 |----|-------|------|--------|
-| `sakura-chan` | Soft VN bust (cuter) | `…/sprite/sakura-chan/` | Companion Desk procedural |
 | `pastel-girl` | Soft pastel girl | `…/sprite/pastel-girl/` | pzUH / OpenGameArt CC0 |
 | `michona` | Anime girl frames | `…/sprite/michona/` | Hordana / OpenGameArt CC0 |
-| `kenney-panda` | Cute pixel pet | `…/sprite/kenney-panda/` | Kenney Animal Pack Redux CC0 |
 
-**Removed:** `pixel-neko`, `soft-face` (procedural placeholders).
+**Removed:** `pixel-neko`, `soft-face`, `sakura-chan`, `kenney-panda` (not pretty enough).
 
 All appear in `model-list.json`. Backend: `sprite.ts` / `SpriteCanvas.tsx`.
 
 ## How to try
 
-1. Run the app → Model picker → Sakura Chan / Pastel Girl / Michona / Panda Pet.
+1. Run the app → Model picker → Pastel Girl / Michona.
 
 AI mood / TTS still drive `setExpression` / `setMouthOpen` / `lookAt` through `mascotRegistry`.
 
 ## Follow-ups
 
-- Import a vetted Kenney / OGA pixel pack as optional download (not required for CI).
+- Import a vetted OGA pixel pack as optional download (not required for CI).
 - Per-pixel click-through for sprites (alpha hit) parity with VRM.
 - Optional short GIF/APNG idle loops for pixel pets.
