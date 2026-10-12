@@ -8,6 +8,8 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PORTS } from './ports.mjs';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const quick = process.argv.includes('--quick');
 const MIN_NODE = [22, 12, 0];
@@ -110,8 +112,8 @@ const free = (port) =>
     s.listen(port, () => s.close(() => resolve(true))); // 双栈（:: 同时覆盖 IPv4/IPv6）
   });
 for (const [port, what] of [
-  [3000, 'mascot renderer dev server'],
-  [5175, 'chat window dev server'],
+  [PORTS.renderer, 'mascot renderer dev server'],
+  [PORTS.chat, 'chat window dev server'],
 ]) {
   if (await free(port)) ok(`port ${port} free (${what})`);
   else bad(`port ${port} is in use (${what})`, `stop the other process: lsof -i :${port}`);

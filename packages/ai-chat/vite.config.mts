@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { DEV_HOST, PORTS } from '../../scripts/ports.mjs';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
@@ -9,10 +10,11 @@ export default defineConfig(({ mode }) => ({
     'process.env.MODE': JSON.stringify(mode),
     'process.env.ELECTRON_ENV': JSON.stringify(!!process.env.ELECTRON_ENV),
     'process.env.API_BASE_URL':
-      mode === 'development' ? '"http://localhost:3000"' : '"https://api.example.com"',
+      mode === 'development' ? JSON.stringify(`http://${DEV_HOST}:${PORTS.renderer}`) : '"https://api.example.com"',
   },
   server: {
-    port: 5175,
+    host: DEV_HOST,
+    port: PORTS.chat,
     strictPort: true,
     cors: true,
   },

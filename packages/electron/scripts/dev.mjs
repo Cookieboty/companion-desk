@@ -1,7 +1,7 @@
 // Electron 开发模式：
 //   1. 先编译一次主进程（tsc）并打包 preload —— 保证 dist/main.js 存在再启动 Electron
 //   2. 之后 tsc -w / preload --watch 增量编译
-//   3. 等渲染进程（:3000）与对话窗口（:5175）的 Vite 开发服务器就绪，再以 NODE_ENV=development 启动 Electron
+//   3. 等渲染进程（:6127）与对话窗口（:6128）（见 dev-ports.json）的 Vite 开发服务器就绪，再以 NODE_ENV=development 启动 Electron
 // 由根目录 `pnpm dev`（turbo）与渲染进程 / 对话窗口的 dev 任务并行启动。
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -9,13 +9,15 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { DEV_HOST, PORTS as DEV_PORTS, portEnv } from '../../../scripts/ports.mjs';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const tsc = require.resolve('typescript/bin/tsc');
 const node = process.execPath;
 const PORTS = [
-  { port: 3000, what: 'renderer (packages/renderer)' },
-  { port: 5175, what: 'chat window (packages/ai-chat)' },
+  { port: DEV_PORTS.renderer, what: 'renderer (packages/renderer)' },
+  { port: DEV_PORTS.chat, what: 'chat window (packages/ai-chat)' },
 ];
 
 const log = (m) => console.log(`[electron:dev] ${m}`);
@@ -33,7 +35,11 @@ run([path.join(root, 'scripts/bundle-preload.mjs')], 'preload bundle');
 
 const children = [];
 const start = (cmd, args, env) => {
-  const c = spawn(cmd, args, { cwd: root, stdio: 'inherit', env: { ...process.env, ...env } });
+  const c = spawn(cmd, args, {
+    cwd: root,
+    stdio: 'inherit',
+    env: { ...process.env, ...portEnv(), ...env },
+  });
   children.push(c);
   return c;
 };
@@ -47,7 +53,7 @@ const probe = (port, host) =>
     s.once('connect', () => (s.destroy(), resolve(true)));
     s.once('error', () => resolve(false));
   });
-const portOpen = async (port) => (await probe(port, '127.0.0.1')) || (await probe(port, '::1'));
+const portOpen = async (port) => (await probe(port, DEV_HOST)) || (await probe(port, '::1'));
 for (const { port, what } of PORTS) {
   const t0 = Date.now();
   while (!(await portOpen(port))) {
