@@ -152,10 +152,8 @@ test.describe('E8 · model store + local import', () => {
     const bundled = await page.evaluate(() => window.electronAPI!.models!.list());
     expect(bundled.map((m) => m.id)).toEqual([
       'default-character',
-      'sakura-chan',
       'pastel-girl',
       'michona',
-      'kenney-panda',
     ]);
 
     // —— 商店 ——

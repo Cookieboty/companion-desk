@@ -34,26 +34,26 @@ describe('characterVoice', () => {
   });
 
   it('ships distinct softer defaults per character', () => {
-    expect(CHARACTER_VOICE_DEFAULTS['sakura-chan'].rate).toBeLessThan(
-      CHARACTER_VOICE_DEFAULTS['kenney-panda'].rate!,
+    expect(CHARACTER_VOICE_DEFAULTS.michona.rate).toBeLessThan(
+      CHARACTER_VOICE_DEFAULTS['pastel-girl'].rate!,
     );
-    expect(defaultsForCharacter('kenney-panda').voiceHint).toBe('yaoyao');
+    expect(defaultsForCharacter('pastel-girl').voiceHint).toBe('xiaoxiao');
   });
 
   it('merges config then override', async () => {
-    const merged = resolveCharacterVoice('sakura-chan', { voice: { rate: 0.8 } });
+    const merged = resolveCharacterVoice('michona', { voice: { rate: 0.8 } });
     expect(merged.rate).toBe(0.8);
-    expect(merged.voiceHint).toBe('yunxia');
-    await saveCharacterVoice('sakura-chan', { pitch: 1.2 });
-    expect(resolveCharacterVoice('sakura-chan', { voice: { rate: 0.8 } }).pitch).toBe(1.2);
-    clearCharacterVoiceOverride('sakura-chan');
-    expect(resolveCharacterVoice('sakura-chan').pitch).toBe(
-      CHARACTER_VOICE_DEFAULTS['sakura-chan'].pitch,
+    expect(merged.voiceHint).toBe('meijia');
+    await saveCharacterVoice('michona', { pitch: 1.2 });
+    expect(resolveCharacterVoice('michona', { voice: { rate: 0.8 } }).pitch).toBe(1.2);
+    clearCharacterVoiceOverride('michona');
+    expect(resolveCharacterVoice('michona').pitch).toBe(
+      CHARACTER_VOICE_DEFAULTS.michona.pitch,
     );
   });
 
   it('active character drives resolvePrefsForCharacter', () => {
-    setActiveCharacter('kenney-panda', { voice: { voiceHint: 'yaoyao', rate: 0.94 } });
+    setActiveCharacter('pastel-girl', { voice: { voiceHint: 'xiaoxiao', rate: 0.94 } });
     const prefs = resolvePrefsForCharacter();
     expect(prefs.rate).toBe(0.94);
   });
