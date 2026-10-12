@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import '@ig-live/ui/styles.css';
+import '@ig-live/voice/styles.css';
 
 import { WaifuAIRoot } from './ai';
 import App from './App';

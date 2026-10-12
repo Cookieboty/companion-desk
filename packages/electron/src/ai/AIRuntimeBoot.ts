@@ -83,6 +83,12 @@ export interface AIRuntimeBootHandle {
   resolveProvider(
     role: 'chat' | 'agent-tools' | 'summary',
   ): { id: string; name: string; baseURL?: string } | null;
+  /** 已保存 provider 的连接信息（语音识别等非聊天用途；只在主进程内使用，绝不发给渲染进程） */
+  providerCredentials(
+    id: string,
+  ): { id: string; name: string; baseURL: string; apiKey?: string } | null;
+  /** 已保存 provider 列表（不含 key） */
+  listProviders(): Array<{ id: string; name: string; baseURL: string }>;
   channels: {
     business: readonly string[];
   };
@@ -268,6 +274,19 @@ export async function startAIRuntime(
       const v =
         st.providers.find((x) => x.id === p.id) ?? st.envProviders.find((x) => x.id === p.id);
       return { id: p.id, name: v?.name ?? p.id, baseURL: v?.baseURL };
+    },
+    providerCredentials(id) {
+      const p = providerStore.providers().find((x) => x.id === id);
+      if (!p) return null;
+      return {
+        id: p.id,
+        name: p.name,
+        baseURL: p.baseURL,
+        apiKey: providerStore.resolveKeys(id)[0],
+      };
+    },
+    listProviders() {
+      return providerStore.providers().map((p) => ({ id: p.id, name: p.name, baseURL: p.baseURL }));
     },
     channels: {
       business: transport.channels,

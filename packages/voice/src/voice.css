@@ -1,0 +1,277 @@
+/* @ig-live/voice —— 基于 @ig-live/ui 设计 token */
+.cd-voice-mic {
+  --cd-voice-level: 0;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--cd-control-h-md, 36px);
+  height: var(--cd-control-h-md, 36px);
+  border-radius: var(--cd-radius-full, 999px);
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-surface-raised);
+  color: var(--cd-color-text-muted);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+.cd-voice-mic--sm {
+  width: var(--cd-control-h-sm, 28px);
+  height: var(--cd-control-h-sm, 28px);
+}
+.cd-voice-mic:hover:not(:disabled) {
+  color: var(--cd-color-accent);
+  border-color: var(--cd-color-accent);
+}
+.cd-voice-mic:focus-visible {
+  outline: none;
+  box-shadow: var(--cd-focus-ring);
+}
+.cd-voice-mic:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cd-voice-mic::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid var(--cd-color-accent);
+  opacity: 0;
+  transform: scale(calc(1 + var(--cd-voice-level) * 0.35));
+  transition:
+    transform 0.08s linear,
+    opacity 0.18s ease;
+  pointer-events: none;
+}
+.cd-voice-mic.is-recording {
+  background: var(--cd-color-accent);
+  border-color: var(--cd-color-accent);
+  color: var(--cd-color-text-on-accent);
+  transform: scale(1.06);
+}
+.cd-voice-mic.is-recording::after {
+  opacity: calc(0.35 + var(--cd-voice-level) * 0.65);
+}
+.cd-voice-mic.is-cancel {
+  background: var(--cd-color-danger);
+  border-color: var(--cd-color-danger);
+}
+.cd-voice-mic.is-cancel::after {
+  border-color: var(--cd-color-danger);
+}
+.cd-voice-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: cd-voice-spin 0.8s linear infinite;
+}
+@keyframes cd-voice-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cd-voice-toggle.is-on {
+  color: var(--cd-color-accent);
+  border-color: var(--cd-color-accent);
+  background: var(--cd-color-accent-soft);
+}
+
+.cd-voice-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cd-space-2, 8px);
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: var(--cd-radius-full, 999px);
+  background: var(--cd-color-accent-soft);
+  color: var(--cd-color-text);
+  font-size: var(--cd-font-size-xs, 12px);
+  line-height: var(--cd-line-height-xs, 16px);
+}
+.cd-voice-status.is-error {
+  background: var(--cd-color-danger-soft);
+}
+/* 悬浮在透明窗口（看板娘）上：实底 + 阴影，保证任何桌面背景下都可读 */
+.cd-voice-status--floating {
+  background: var(--cd-color-surface-raised);
+  border: 1px solid var(--cd-color-border-strong);
+  box-shadow: var(--cd-shadow-md, 0 4px 14px rgba(0, 0, 0, 0.35));
+}
+.cd-voice-status--floating.is-error {
+  border-color: var(--cd-color-danger);
+}
+
+.cd-voice-status__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cd-voice-status__hint {
+  color: var(--cd-color-text-subtle);
+}
+.cd-voice-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--cd-color-danger);
+  animation: cd-voice-pulse 1.4s ease-in-out infinite;
+}
+.cd-voice-status.is-transcribing .cd-voice-dot {
+  background: var(--cd-color-accent);
+}
+.cd-voice-status.is-wake-armed .cd-voice-dot {
+  background: var(--cd-color-warning);
+  animation-duration: 2.6s;
+}
+@keyframes cd-voice-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cd-voice-dot,
+  .cd-voice-spinner {
+    animation: none;
+  }
+}
+.cd-voice-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--cd-color-accent);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.cd-voice-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cd-space-4, 16px);
+}
+.cd-voice-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cd-space-3, 12px);
+}
+.cd-voice-section h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--cd-font-size-sm, 13px);
+  color: var(--cd-color-text);
+}
+.cd-voice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--cd-space-3, 12px);
+}
+.cd-voice-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cd-voice-hint,
+.cd-voice-loading {
+  color: var(--cd-color-text-muted);
+  font-size: var(--cd-font-size-xs, 12px);
+  word-break: break-all;
+}
+.cd-voice-ready {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--cd-radius-md, 8px);
+  font-size: var(--cd-font-size-sm, 13px);
+}
+.cd-voice-ready.is-ok {
+  background: var(--cd-color-success-soft);
+}
+.cd-voice-ready.is-warn {
+  background: var(--cd-color-warning-soft);
+}
+.cd-voice-asset {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--cd-color-border);
+  border-radius: var(--cd-radius-md, 8px);
+  background: var(--cd-color-surface-sunken);
+}
+.cd-voice-asset__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cd-voice-asset__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--cd-font-weight-medium, 500);
+  font-size: var(--cd-font-size-sm, 13px);
+}
+.cd-voice-asset__desc {
+  color: var(--cd-color-text-muted);
+  font-size: var(--cd-font-size-xs, 12px);
+}
+.cd-voice-asset__desc a {
+  color: var(--cd-color-accent);
+}
+.cd-voice-asset__error {
+  color: var(--cd-color-danger);
+  font-size: var(--cd-font-size-xs, 12px);
+}
+.cd-voice-asset__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.cd-voice-progress {
+  position: relative;
+  height: 18px;
+  border-radius: var(--cd-radius-full, 999px);
+  background: var(--cd-color-surface);
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--cd-color-text);
+}
+.cd-voice-progress__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--cd-color-accent-soft), var(--cd-color-accent));
+  opacity: 0.55;
+  transition: width 0.15s linear;
+}
+.cd-voice-progress span {
+  position: relative;
+}
+.cd-voice-range {
+  width: 100%;
+  accent-color: var(--cd-color-accent);
+}
+.cd-voice-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}

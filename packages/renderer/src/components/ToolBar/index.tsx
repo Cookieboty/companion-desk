@@ -34,7 +34,9 @@ import { useMascot } from '@/contexts/MascotContext';
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
 import { nextModel } from '@/mascot/catalog';
 import { layoutStore, placeGutter, type GutterPlacement } from '@/mascot/layoutStore';
+import { registerSpeechStopper } from '@/mascot/speechStop';
 import { MESSAGES } from '@/mascot/tips';
+import { MascotMicTool, toggleMascotHandsfree } from '@/mascot/voice/MascotVoice';
 import { getCache, setCache } from '@/utils/cache';
 
 /**
@@ -115,6 +117,8 @@ export const ToolBar: React.FC = () => {
         // 创建VoiceService实例
         if (!globalVoiceService) {
           globalVoiceService = new VoiceService();
+          const svc = globalVoiceService;
+          registerSpeechStopper(() => svc.stop());
 
           // 等待VoiceService初始化完成
           await globalVoiceService.waitForInit();
@@ -313,6 +317,8 @@ export const ToolBar: React.FC = () => {
   // 获取工具处理函数
   const getToolHandler = (toolId: string) => {
     switch (toolId) {
+      case 'voice-input':
+        return () => void toggleMascotHandsfree();
       case 'switch-model':
         return switchModel;
       case 'photo':
@@ -547,6 +553,8 @@ export const ToolBar: React.FC = () => {
     switch (toolId) {
       case 'ai-chat':
         return Bot;
+      case 'voice-input':
+        return Mic;
       case 'switch-model':
         return UserRound;
       case 'motion':
@@ -590,6 +598,8 @@ export const ToolBar: React.FC = () => {
         return 'TTS 语音配置';
       case 'ai-chat':
         return 'AI 对话';
+      case 'voice-input':
+        return '免按键语音：开/关（工具栏麦克风按住说话）';
       case 'motion':
         return '做个动作（右键：动作列表）';
       case 'cursor-mcp':
@@ -626,6 +636,8 @@ export const ToolBar: React.FC = () => {
   const tipSide = place?.side === 'left' ? 'right' : 'left';
 
   const iconButton = (toolId: string) => {
+    if (toolId === 'voice-input')
+      return <MascotMicTool key={toolId} className={styles.btn} tipSide={tipSide} />;
     const Icon = toolIcon(toolId);
     const label = toolLabel(toolId);
     const handler = getToolHandler(toolId);

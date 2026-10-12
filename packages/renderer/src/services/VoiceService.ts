@@ -27,6 +27,16 @@ const TIME_KEYWORD_LINES = TIME_KEYWORDS.map(([keyword, hour]) => ({
 }));
 
 export class VoiceService {
+  /** 立即停止当前音频（语音打断） */
+  stop(): void {
+    try {
+      this.currentAudio?.pause();
+    } catch {
+      /* ignore */
+    }
+    this.currentAudio = null;
+  }
+
   private voiceConfig: VoiceConfig | null = null;
   private voiceSettings: VoiceSettings | null = null;
   private keyBuffer: string[] = [];

@@ -3,9 +3,12 @@
  * 负责应用初始化、服务注册和生命周期管理
  */
 
-import { app, ipcMain } from 'electron';
+import path from 'node:path';
+
+import { app, ipcMain, session } from 'electron';
 
 import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
+import { getVoiceService } from '../voice/VoiceService';
 import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { SafeKeyProvider } from '../ai/SafeKeyProvider';
 import { ScreenCapture } from '../ai/ScreenCapture';
@@ -131,6 +134,28 @@ export class Application implements IApplication {
         });
       }
       perfMark('ai-runtime-ready');
+
+      // 语音输入：本地 whisper.cpp / OpenAI 兼容识别、按需下载模型、打断 TTS、唤醒词
+      const rtv = this.aiRuntime;
+      const voice = getVoiceService({
+        root: path.join(app.getPath('userData'), 'voice'),
+        logger: this.logger as never,
+        providers: () => rtv?.listProviders() ?? [],
+        credentials: (id) => rtv?.providerCredentials(id) ?? null,
+        localOnly: () => desktop.broker.view().localOnly,
+        audit: (e) => desktop.audit.append({ ...e, source: 'voice' }),
+        openChat: () => this.windowManager.createAiChatWindow(),
+      });
+      voice.registerIpc();
+      // 麦克风：只允许本应用窗口申请「音频」采集（不允许摄像头 / 屏幕）
+      session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+        if (permission === 'media') {
+          const types = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
+          callback(types.length > 0 && types.every((t) => t === 'audio'));
+          return;
+        }
+        callback(true);
+      });
 
       // 创建主窗口
       await this.windowManager.createMainWindow();

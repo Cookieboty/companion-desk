@@ -43,6 +43,8 @@ export default defineConfig({
 
   // 构建配置
   build: {
+    // AudioWorklet 等 .js 资源不能内联成 data: URL（CSP 只允许 'self' 脚本）
+    assetsInlineLimit: (file: string) => (file.endsWith('.js') ? false : undefined),
     outDir: 'dist',
     emptyOutDir: true,
     assetsDir: 'assets',
@@ -57,7 +59,12 @@ export default defineConfig({
         // 稳定的 vendor 拆分：react 常驻；three/VRM 仅 3D 模式懒加载时请求
         manualChunks(id: string) {
           if (!id.includes('node_modules')) return undefined;
-          if (/[\\/](three|@pixiv|@react-three|three-stdlib|troika-[^\\/]+|maath|camera-controls)[\\/]/.test(id)) return 'vendor-three';
+          if (
+            /[\\/](three|@pixiv|@react-three|three-stdlib|troika-[^\\/]+|maath|camera-controls)[\\/]/.test(
+              id,
+            )
+          )
+            return 'vendor-three';
           if (/[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'vendor-react';
           return undefined;
         },
@@ -70,8 +77,8 @@ export default defineConfig({
     modules: {
       // CSS Modules配置
       localsConvention: 'camelCase',
-      generateScopedName: '[name]__[local]___[hash:base64:5]'
-    }
+      generateScopedName: '[name]__[local]___[hash:base64:5]',
+    },
   },
 
   // 解析配置
@@ -79,6 +86,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
-  }
-}); 
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
+  },
+});

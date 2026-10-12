@@ -1,9 +1,10 @@
-import React, { useState, useRef, type KeyboardEvent } from 'react';
+import React, { useCallback, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
 import { providerClientAvailable } from '../../services/providerClient';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
+import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
 
 import styles from './index.module.css';
 
@@ -85,10 +86,29 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const isDisabled = disabled || state.isLoading || !state.currentModelId;
 
+  // 语音：自动发送（对话空闲时）或填入输入框
+  const busyRef = useRef(false);
+  busyRef.current = isDisabled;
+  const onVoiceText = useCallback(
+    (text: string, autoSend: boolean) => {
+      if (autoSend && !busyRef.current) {
+        void (onSend ? Promise.resolve(onSend(text)) : actions.sendStreamMessage(text));
+        return;
+      }
+      setMessage((m) => (m ? `${m} ${text}` : text));
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    },
+    [onSend, actions],
+  );
+  const cv = useChatVoice({ disabled: disabled || !state.currentModelId, onText: onVoiceText });
+
   return (
     <div className={styles.messageInputContainer}>
       {state.error && <ErrorHint error={state.error} />}
 
+      <div className={styles.voiceRow}>
+        <VoiceStatusRow cv={cv} />
+      </div>
       <div className={styles.inputWrapper}>
         <textarea
           ref={textareaRef}
@@ -103,6 +123,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           rows={1}
         />
 
+        <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
         <button
           onClick={handleSend}
           disabled={isDisabled || !message.trim()}
@@ -120,7 +141,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       </div>
 
       <div className={styles.inputHint}>
-        <span>Enter 发送，Shift+Enter 换行</span>
+        <span>Enter 发送，Shift+Enter 换行 · 按住 F2 说话</span>
         <div className={styles.modelStatus}>
           {providerClientAvailable() ? (
             <ProviderSwitcher
@@ -134,6 +155,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               当前模型:{' '}
               {state.models.find((m) => m.id === state.currentModelId)?.name || 'DeepSeek Chat'}
             </span>
+          )}
+          {cv.v.available && (
+            <button
+              className={styles.configButton}
+              onClick={() => cv.setShowSettings(true)}
+              title="语音输入设置"
+              data-testid="open-voice-settings"
+            >
+              🎙
+            </button>
           )}
           {onDesktopClick && (
             <button
@@ -157,6 +188,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </button>
         </div>
       </div>
+      <VoiceSettingsModal cv={cv} />
     </div>
   );
 };

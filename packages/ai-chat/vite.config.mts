@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => ({
     'process.env.MODE': JSON.stringify(mode),
     'process.env.ELECTRON_ENV': JSON.stringify(!!process.env.ELECTRON_ENV),
     'process.env.API_BASE_URL':
-      mode === 'development' ? JSON.stringify(`http://${DEV_HOST}:${PORTS.renderer}`) : '"https://api.example.com"',
+      mode === 'development'
+        ? JSON.stringify(`http://${DEV_HOST}:${PORTS.renderer}`)
+        : '"https://api.example.com"',
   },
   server: {
     host: DEV_HOST,
@@ -19,6 +21,8 @@ export default defineConfig(({ mode }) => ({
     cors: true,
   },
   build: {
+    // AudioWorklet 等 .js 资源不能内联成 data: URL（CSP 只允许 'self' 脚本）
+    assetsInlineLimit: (file: string) => (file.endsWith('.js') ? false : undefined),
     outDir: 'dist',
     sourcemap: mode === 'development',
     rollupOptions: {
