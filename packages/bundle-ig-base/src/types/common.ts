@@ -64,6 +64,8 @@ export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
   input: unknown;
   /** 是否属于"破坏性"工具（需 UI 确认） */
   dangerous?: boolean;
+  /** 只读工具（例如 MCP annotations.readOnlyHint）；用于宽松的确认策略 */
+  readOnly?: boolean;
   execute: (input: TInput, ctx: { signal?: AbortSignal }) => Promise<TOutput>;
 }
 

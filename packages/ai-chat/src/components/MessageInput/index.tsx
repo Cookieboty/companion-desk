@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
+import { extClient } from '../../services/extClient';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
 import { providerClientAvailable } from '../../services/providerClient';
@@ -29,6 +30,7 @@ interface MessageInputProps {
   onMemoryClick?: () => void;
   onScheduleClick?: () => void;
   onScreenClick?: () => void;
+  onExtClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -42,6 +44,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onMemoryClick,
   onScheduleClick,
   onScreenClick,
+  onExtClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -429,6 +432,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               data-testid="open-screen-panel"
             >
               🖥
+            </button>
+          )}
+          {onExtClick && extClient.available() && (
+            <button
+              className={styles.configButton}
+              onClick={onExtClick}
+              title="扩展：MCP 与技能（Ctrl/⌘+Shift+E）"
+              data-testid="open-ext-panel"
+            >
+              🧩
             </button>
           )}
           {onDesktopClick && (

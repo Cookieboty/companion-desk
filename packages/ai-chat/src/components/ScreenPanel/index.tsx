@@ -135,7 +135,10 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
   return (
     <Modal
       open={isVisible}
-      onClose={onClose}
+      onClose={() => {
+        if (pick) return;
+        onClose();
+      }}
       title="截图与屏幕记忆"
       size="lg"
       data-testid="screen-panel"

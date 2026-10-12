@@ -157,6 +157,7 @@ export class AiSdkMcpService implements McpService {
         description: t.description ?? t.title ?? registeredName,
         input: jsonSchema(inputSchema as never),
         dangerous: t.annotations?.destructiveHint === true,
+        readOnly: t.annotations?.readOnlyHint === true,
         execute: async (input, { signal }) => {
           const result = await client.callTool({
             name: mcpName,

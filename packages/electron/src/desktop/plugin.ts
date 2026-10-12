@@ -1,5 +1,6 @@
-import { ToolRegistryKey, definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
+import { McpKey, ToolRegistryKey, definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
 
+import { getExtensionsService } from '../extensions/ExtensionsService';
 import { getKnowledgeService } from '../knowledge/KnowledgeService';
 import { getMemoryService } from '../memory/MemoryService';
 import { getScreenService } from '../screen/ScreenService';
@@ -23,6 +24,12 @@ export const DesktopToolsPlugin = definePlugin<Record<string, never>>({
     for (const t of getMemoryService()?.tools() ?? []) registry.register(t);
     // 屏幕记忆（screen_memory_search，默认关闭）
     for (const t of getScreenService()?.tools() ?? []) registry.register(t);
+    // 扩展：技能（skill_load / skill_read_file）+ GUI 管理的 MCP 服务器
+    const ext = getExtensionsService();
+    if (ext) {
+      for (const t of ext.tools()) registry.register(t);
+      ext.attach(() => ctx.inject(McpKey), registry);
+    }
   },
 });
 

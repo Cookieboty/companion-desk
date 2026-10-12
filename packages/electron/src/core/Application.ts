@@ -13,6 +13,7 @@ import { SafeKeyProvider } from '../ai/SafeKeyProvider';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { getDesktopService } from '../desktop/DesktopService';
+import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getMemoryService, initMemoryService } from '../memory/MemoryService';
@@ -199,6 +200,15 @@ export class Application implements IApplication {
       });
       scr.registerIpc();
 
+      // 扩展：GUI 管理的 MCP 服务器 + SKILL.md 技能包
+      const ext = initExtensionsService({
+        root: path.join(app.getPath('userData'), 'extensions'),
+        skillsRoot: path.join(app.getPath('userData'), 'skills'),
+        logger: this.logger as never,
+        desktop,
+      });
+      ext.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -212,6 +222,7 @@ export class Application implements IApplication {
         });
       }
       perfMark('ai-runtime-ready');
+      void ext.start();
 
       // 语音输入：本地 whisper.cpp / OpenAI 兼容识别、按需下载模型、打断 TTS、唤醒词
       const rtv = this.aiRuntime;
