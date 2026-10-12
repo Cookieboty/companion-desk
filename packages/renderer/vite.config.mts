@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { DEV_HOST, PORTS } from '../../scripts/ports.mjs';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -34,7 +35,8 @@ export default defineConfig({
 
   // 开发服务器配置
   server: {
-    port: 3000,
+    host: DEV_HOST,
+    port: PORTS.renderer,
     strictPort: true,
     open: false,
   },

@@ -142,9 +142,9 @@ pnpm dev                 # 预检 → 构建 workspace 库 → 启动 Vite ×2 +
 `pnpm dev` 做了这些事：
 
 1. `scripts/doctor.mjs --quick` 预检：Node/pnpm 版本、依赖是否安装、**Electron 二进制**（Electron 44 不再在
-   postinstall 下载，首次运行时这里会下载）、端口 3000/5175 是否空闲。
+   postinstall 下载，首次运行时这里会下载）、端口 6127/6128 是否空闲（见 `dev-ports.json` / `docs/PORTS.md`）。
 2. turbo 先 `build` 所有 workspace 依赖（`@ig-live/ui`、`types`、`ai-sdk*`、`ai-runtime`、`bundle-ig-*`；有缓存时秒过）。
-3. 并行启动：看板娘渲染进程 Vite（`:3000`）、对话窗口 Vite（`:5175`）、`packages/electron/scripts/dev.mjs`
+3. 并行启动：看板娘渲染进程 Vite（`:6127`）、对话窗口 Vite（`:6128`）、`packages/electron/scripts/dev.mjs`
    （先编译一次主进程与 preload，再 `tsc -w` + preload 监听，等两个端口就绪后以 `NODE_ENV=development` 启动 Electron）。
 
 改渲染进程 / 对话窗口代码会热更新；改主进程代码后在终端 `Ctrl+C` 再 `pnpm dev` 重启。
@@ -173,7 +173,7 @@ pnpm doctor:dsh    # 仅当使用可选 dsh 内核（IG_DSH_CORE=auto|required�
 - `Node.util.isObject is not a function`：旧版本中按键监听的 key server 没有可执行位，回退到了与 Node 24 不兼容的
   sudo-prompt。已修复（启动前自动 `chmod +x`）；如仍遇到，`rm -rf node_modules && pnpm install`。
 - macOS 上全局按键监听需要在「系统设置 → 隐私与安全性 → 辅助功能」里允许 Electron / Companion Desk；不授权只影响按键台词。
-- 端口被占用：`lsof -i :3000` / `lsof -i :5175` 结束对应进程。
+- 端口被占用：`lsof -i :6127` / `lsof -i :6128`（Windows：`netstat -ano | findstr :6127`）结束对应进程，或用 `CD_RENDERER_PORT` / `CD_CHAT_PORT` 改端口。
 - Electron 下载慢：设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后 `pnpm run doctor`。
 
 ### 构建

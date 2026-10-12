@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [react()],
   root: '.',
   server: {
-    port: 5178,
+    host: '127.0.0.1',
+    port: Number(process.env.CD_DEMO_PORT) || 6129,
     strictPort: true,
   },
   build: {

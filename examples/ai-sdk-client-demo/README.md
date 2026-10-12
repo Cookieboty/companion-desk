@@ -24,7 +24,7 @@ examples/ai-sdk-client-demo/
 
 ```bash
 pnpm --filter @ig-live/ai-sdk-client-demo dev:renderer
-# open http://127.0.0.1:5178
+# open http://127.0.0.1:6129
 ```
 
 Demo 会自动执行 [`installMockBridge`](src/mockBridge.ts)，把 `window.aiIPC` 换成一份内存 IPC 桥，模拟主进程通道，无需 Electron 也能跑：
@@ -51,7 +51,7 @@ electron examples/ai-sdk-client-demo
 pnpm --filter @ig-live/ai-sdk-client-demo dev:renderer
 
 # terminal 2
-VITE_DEV_URL=http://127.0.0.1:5178 electron examples/ai-sdk-client-demo
+VITE_DEV_URL=http://127.0.0.1:6129 electron examples/ai-sdk-client-demo
 ```
 
 > ⚠️ demo 的 [preload.cjs](electron/preload.cjs) 只是最小演示；真实项目应当直接 `require('@ig-live/ai-sdk-client/preload').mkAiPreload({...})`，参见 [docs/preload-usage.md](../../docs/preload-usage.md)。

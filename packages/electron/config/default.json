@@ -73,7 +73,7 @@
   "mcp": {
     "enabled": true,
     "autoStart": true,
-    "port": 3000,
+    "port": 7213,
     "timeout": 30000,
     "retryAttempts": 3,
     "tools": {

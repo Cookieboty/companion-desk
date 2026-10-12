@@ -13,6 +13,7 @@ import { type ILoggerService } from '../services/LoggerService';
 import { perfEnabled, perfMark } from '../utils/perfMarks';
 import { installPreloadGuard } from '../utils/preloadGuard';
 
+import { devChatUrl, devRendererUrl } from './devPorts';
 import { eventBus } from './EventBus';
 
 export interface WindowOptions {
@@ -479,7 +480,7 @@ export class WindowManager implements IWindowManager {
     let startUrl: string;
 
     if (isDev) {
-      startUrl = 'http://localhost:3000';
+      startUrl = devRendererUrl();
     } else {
       // 生产环境路径处理
       const rendererPath = this.getRendererPath();
@@ -497,7 +498,7 @@ export class WindowManager implements IWindowManager {
     const isDev = process.env.NODE_ENV === 'development';
 
     if (isDev) {
-      const devUrl = 'http://localhost:5175';
+      const devUrl = devChatUrl();
       await window.loadURL(devUrl);
     } else {
       const aiChatPath = this.getAiChatPath();
@@ -515,7 +516,7 @@ export class WindowManager implements IWindowManager {
     try {
       if (isDev) {
         // 开发环境：由 renderer 的 vite dev server 提供（多页面入口）
-        const devUrl = 'http://localhost:3000/tts-config.html';
+        const devUrl = devRendererUrl('/tts-config.html');
         this.logger.info('TTS配置窗口加载地址', { url: devUrl });
         await window.loadURL(devUrl);
       } else {
@@ -556,7 +557,7 @@ export class WindowManager implements IWindowManager {
 
     if (isDev) {
       // 开发环境
-      return 'http://localhost:3000';
+      return devRendererUrl();
     }
 
     if (app.isPackaged) {

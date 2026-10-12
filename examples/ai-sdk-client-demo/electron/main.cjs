@@ -5,7 +5,7 @@
  *
  * 使用方式：
  *   1. 先 `pnpm --filter @ig-live/ai-sdk-client-demo dev:renderer` 起 vite dev server
- *   2. 另开一个 shell：`VITE_DEV_URL=http://127.0.0.1:5178 electron examples/ai-sdk-client-demo`
+ *   2. 另开一个 shell：`VITE_DEV_URL=http://127.0.0.1:6129 electron examples/ai-sdk-client-demo`
  *
  * 或者：
  *   1. `pnpm --filter @ig-live/ai-sdk-client-demo build`
