@@ -15,6 +15,7 @@ import { kbClient } from '../services/kbClient';
 import { ingestConversation, memoryContext } from '../services/memClient';
 import { effectiveProviderLabel, providerClientAvailable } from '../services/providerClient';
 import { schedClient } from '../services/schedClient';
+import { screenClient, type ImageAttachment } from '../services/screenClient';
 import { type ChatMessage, type ChatConfig } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
 import { type IPCClient } from '../types/ipc';
@@ -122,7 +123,7 @@ interface AiChatContextType {
   dispatch: React.Dispatch<AiChatAction>;
   actions: {
     sendMessage: (content: string) => Promise<void>;
-    sendStreamMessage: (content: string) => Promise<void>;
+    sendStreamMessage: (content: string, images?: ImageAttachment[]) => Promise<void>;
     askKnowledge: (content: string) => Promise<void>;
     loadChatHistory: () => Promise<void>;
     clearChatHistory: () => Promise<void>;
@@ -311,10 +312,20 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
   };
 
   // 发送流式消息
-  const sendStreamMessage = async (content: string) => {
+  const sendStreamMessage = async (content: string, images?: ImageAttachment[]) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: undefined });
+
+      // 图片要离开本机前：云端模型首次告知 / 仅本地模式拦截
+      if (images?.length && screenClient.available()) {
+        const r = await screenClient.checkSend();
+        if (r === 'local_only')
+          throw new Error(
+            '已开启「仅本地模型」，当前对话模型在云端，不能发送图片。可切换到本地视觉模型（如 Ollama）',
+          );
+        if (r === 'user_denied') throw new Error('已取消：图片没有发送给云端模型');
+      }
 
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
@@ -322,6 +333,16 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         content,
         timestamp: Date.now(),
         modelId: messageModelTag(state.currentModelId),
+        ...(images?.length
+          ? {
+              images: images.map((i) => ({
+                thumb: i.thumb,
+                width: i.width,
+                height: i.height,
+                source: i.source,
+              })),
+            }
+          : {}),
       };
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
@@ -352,6 +373,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         },
         history,
         mem.text,
+        images?.map((i) => ({ mime: i.mime, data: i.data })),
       );
 
       const finalAiMessage: ChatMessage = { ...aiMessage, content: accumulated };

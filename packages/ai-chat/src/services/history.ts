@@ -11,20 +11,28 @@ import type { ChatMessage } from '../types/chat';
 export interface ProviderMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  images?: Array<{ mime: string; data: string }>;
 }
 
 export function buildProviderMessages(
   history: readonly ChatMessage[],
   userContent: string,
   systemPrompt?: string,
+  images?: Array<{ mime: string; data: string }>,
 ): ProviderMessage[] {
   const out: ProviderMessage[] = [];
   if (systemPrompt && systemPrompt.trim())
     out.push({ role: 'system', content: systemPrompt.trim() });
   for (const m of history) {
-    if (m.error || !m.content || !m.content.trim()) continue;
-    out.push({ role: m.role, content: m.content });
+    if (m.error || ((!m.content || !m.content.trim()) && !m.images?.length)) continue;
+    // 历史里的图片不再重发（只有缩略图），用文字占位让模型知道上下文
+    const tag = m.images?.length ? `[此前附了 ${m.images.length} 张图片] ` : '';
+    out.push({ role: m.role, content: tag + m.content });
   }
-  out.push({ role: 'user', content: userContent });
+  out.push(
+    images?.length
+      ? { role: 'user', content: userContent, images }
+      : { role: 'user', content: userContent },
+  );
   return out;
 }

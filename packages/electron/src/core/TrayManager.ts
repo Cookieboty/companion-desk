@@ -51,6 +51,13 @@ export interface TrayManagerOptions {
   quit: () => void;
   /** 统一模型注册表（托盘「切换角色」子菜单）；可选 */
   models?: { list(): Promise<RegistryModelLite[]>; onChange(fn: () => void): () => void };
+  /** 屏幕记忆（开启时托盘提示 + 菜单「暂停」）；可选 */
+  screenMemory?: {
+    active(): boolean;
+    onChange(fn: () => void): () => void;
+    pause(minutes: number): void;
+    open(): void;
+  };
 }
 
 export interface RegistryModelLite {
@@ -76,8 +83,22 @@ export const TRAY_MOTIONS: Array<[string, string]> = [
 export class TrayManager {
   private tray: Tray | null = null;
   private unsubscribe?: () => void;
+  private unsubscribeScreen?: () => void;
 
   constructor(private readonly opts: TrayManagerOptions) {}
+
+  /** 屏幕记忆开启时：托盘提示文字 + 菜单顶部醒目的状态与暂停入口 */
+  private screenMenu(): MenuItemConstructorOptions[] {
+    const sm = this.opts.screenMemory;
+    const on = !!sm?.active();
+    this.tray?.setToolTip(on ? 'Companion Desk · ● 屏幕记忆中' : 'Companion Desk');
+    if (!sm || !on) return [];
+    return [
+      { label: '● 屏幕记忆中（仅保存在本机）', click: () => sm.open() },
+      { label: '暂停屏幕记忆 1 小时', click: () => sm.pause(60) },
+      { type: 'separator' },
+    ];
+  }
 
   start(): void {
     if (process.env.IG_DISABLE_TRAY === '1' || this.tray) return;
@@ -90,6 +111,7 @@ export class TrayManager {
       this.unsubscribe = this.opts.providers.onChange(() => this.rebuild());
       this.unsubscribeModels = this.opts.models?.onChange(() => void this.refreshModels());
       void this.refreshModels();
+      this.unsubscribeScreen = this.opts.screenMemory?.onChange(() => this.rebuild());
     } catch (error) {
       this.opts.logger.warn('托盘创建失败（不影响主功能）', {
         error: error instanceof Error ? error.message : String(error),
@@ -130,6 +152,7 @@ export class TrayManager {
       },
     }));
     const template: MenuItemConstructorOptions[] = [
+      ...this.screenMenu(),
       { label: '打开 AI 对话', click: () => this.opts.openChat() },
       { type: 'separator' },
       {
@@ -174,6 +197,7 @@ export class TrayManager {
 
   dispose(): void {
     this.unsubscribe?.();
+    this.unsubscribeScreen?.();
     this.unsubscribeModels?.();
     this.tray?.destroy();
     this.tray = null;

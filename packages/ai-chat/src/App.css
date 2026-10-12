@@ -362,3 +362,37 @@ body {
 .quick-action-btn:nth-child(6) {
   animation-delay: 0.6s;
 }
+
+/* 屏幕记忆开启时的常驻指示 */
+.main-content {
+  position: relative;
+}
+.screen-mem-indicator {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--cd-font-size-xs);
+  color: var(--cd-color-text);
+  background: var(--cd-color-surface);
+  border: 1px solid var(--cd-color-danger);
+}
+.screen-mem-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cd-color-danger);
+  animation: cd-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cd-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

@@ -387,3 +387,17 @@
   max-height: 50vh;
   overflow: auto;
 }
+
+.imageRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cd-space-2);
+  margin-bottom: var(--cd-space-2);
+}
+.imageThumb {
+  max-width: 200px;
+  max-height: 160px;
+  border-radius: var(--cd-radius-md);
+  border: 1px solid var(--cd-color-border);
+  object-fit: cover;
+}

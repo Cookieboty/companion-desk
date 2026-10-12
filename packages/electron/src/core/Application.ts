@@ -18,6 +18,7 @@ import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getMemoryService, initMemoryService } from '../memory/MemoryService';
 import { getModelService } from '../models/ModelService';
 import { getSchedulerService, initSchedulerService } from '../schedule/SchedulerService';
+import { getScreenService, initScreenService } from '../screen/ScreenService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
@@ -185,6 +186,19 @@ export class Application implements IApplication {
       });
       sched.registerIpc();
 
+      // 截图提问 + 屏幕记忆（默认关闭；OCR 复用知识库语言包）
+      const scr = initScreenService({
+        root: path.join(app.getPath('userData'), 'screen-memory'),
+        logger: this.logger as never,
+        desktop,
+        ocr: (img) => kb.ocr(img),
+        ocrReady: () => kb.ocrLangsReady().length > 0,
+        chatWindow: () => this.windowManager.getAiChatWindow(),
+        openChat: () => this.windowManager.createAiChatWindow(),
+        loadOverlay: (win) => this.windowManager.loadChatRoute(win, 'snip'),
+      });
+      scr.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -228,6 +242,7 @@ export class Application implements IApplication {
       kb.start();
       mem.start();
       sched.start();
+      scr.start();
 
       // 托盘：一键切换 AI provider
       this.startTray();
@@ -294,6 +309,14 @@ export class Application implements IApplication {
       },
       quit: () => app.quit(),
       models: getModelService(this.logger),
+      screenMemory: getScreenService()
+        ? {
+            active: () => getScreenService()!.active(),
+            onChange: (fn) => getScreenService()!.onChange(fn),
+            pause: (m) => getScreenService()!.pause(m),
+            open: () => void this.windowManager.openProviderPanel('ai:screen:open-panel'),
+          }
+        : undefined,
     });
     this.trayManager.start();
   }
@@ -304,6 +327,7 @@ export class Application implements IApplication {
   async stopAIRuntime(): Promise<void> {
     getMemoryService()?.flush();
     getSchedulerService()?.stop();
+    getScreenService()?.stop();
     this.trayManager?.dispose();
     this.trayManager = undefined;
     if (!this.aiRuntime) return;

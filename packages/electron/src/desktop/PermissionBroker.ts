@@ -279,6 +279,7 @@ export class PermissionBroker {
   async checkSend(
     provider: { id: string; name: string; local: boolean } | null,
     signal?: AbortSignal,
+    what = '文件内容',
   ): Promise<null | 'local_only' | 'user_denied'> {
     if (!provider || provider.local) return null;
     if (this.settings.localOnly) return 'local_only';
@@ -286,9 +287,9 @@ export class PermissionBroker {
     const d = await this.authorize({
       tool: 'cloud_send_notice',
       danger: 'write',
-      summary: `文件内容将发送给「${provider.name}」进行处理，可以吗？`,
+      summary: `${what}将发送给「${provider.name}」进行处理，可以吗？`,
       args: { provider: provider.name },
-      preview: `这是第一次把本地文件内容发送给云端模型「${provider.name}」。\n文件内容会离开本机，由该服务商处理。\n可以在「桌面能力 → 隐私」里开启「仅本地模型可读文件」。`,
+      preview: `这是第一次把本地${what}发送给云端模型「${provider.name}」。\n${what}会离开本机，由该服务商处理。\n可以在「桌面能力 → 隐私」里开启「仅本地模型可读文件」。`,
       signal,
       force: { dialog: true },
     });

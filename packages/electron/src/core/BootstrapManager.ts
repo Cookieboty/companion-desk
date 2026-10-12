@@ -3,7 +3,8 @@
  * 实现延迟加载、异步初始化和启动性能监控
  */
 
-import { ILoggerService } from '../services/LoggerService';
+import { type ILoggerService } from '../services/LoggerService';
+
 import { eventBus } from './EventBus';
 
 export interface BootstrapTask {
@@ -59,7 +60,7 @@ export class BootstrapManager implements IBootstrapManager {
     this.logger.debug(`启动任务已添加: ${task.name}`, {
       priority: task.priority,
       delay: task.delay,
-      dependencies: task.dependencies
+      dependencies: task.dependencies,
     });
   }
 
@@ -87,7 +88,7 @@ export class BootstrapManager implements IBootstrapManager {
       totalStartTime: startTime,
       totalEndTime: 0,
       totalDuration: 0,
-      taskMetrics: []
+      taskMetrics: [],
     };
 
     try {
@@ -108,12 +109,11 @@ export class BootstrapManager implements IBootstrapManager {
       this.logger.info('关键启动任务执行完成', {
         duration: this.metrics.totalDuration,
         successfulTasks: this.completedTasks.size,
-        totalTasks: this.tasks.size
+        totalTasks: this.tasks.size,
       });
 
       eventBus.emit('bootstrap:critical-complete', this.metrics);
       return this.metrics;
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('启动任务执行失败', { error: errorMessage });
@@ -141,7 +141,7 @@ export class BootstrapManager implements IBootstrapManager {
       critical: [] as BootstrapTask[],
       high: [] as BootstrapTask[],
       medium: [] as BootstrapTask[],
-      low: [] as BootstrapTask[]
+      low: [] as BootstrapTask[],
     };
 
     for (const task of this.tasks.values()) {
@@ -169,11 +169,15 @@ export class BootstrapManager implements IBootstrapManager {
     this.logger.info('执行高优先级启动任务...', { count: tasks.length });
 
     // 并行执行没有依赖的任务
-    const independentTasks = tasks.filter(task => !task.dependencies || task.dependencies.length === 0);
-    const dependentTasks = tasks.filter(task => task.dependencies && task.dependencies.length > 0);
+    const independentTasks = tasks.filter(
+      (task) => !task.dependencies || task.dependencies.length === 0,
+    );
+    const dependentTasks = tasks.filter(
+      (task) => task.dependencies && task.dependencies.length > 0,
+    );
 
     // 先执行独立任务
-    await Promise.all(independentTasks.map(task => this.executeTask(task)));
+    await Promise.all(independentTasks.map((task) => this.executeTask(task)));
 
     // 再执行有依赖的任务
     for (const task of dependentTasks) {
@@ -184,16 +188,19 @@ export class BootstrapManager implements IBootstrapManager {
   /**
    * 异步执行中低优先级任务
    */
-  private executeMediumAndLowPriorityTasks(mediumTasks: BootstrapTask[], lowTasks: BootstrapTask[]): void {
+  private executeMediumAndLowPriorityTasks(
+    mediumTasks: BootstrapTask[],
+    lowTasks: BootstrapTask[],
+  ): void {
     this.logger.info('异步执行中低优先级任务...', {
       mediumCount: mediumTasks.length,
-      lowCount: lowTasks.length
+      lowCount: lowTasks.length,
     });
 
     // 延迟执行中优先级任务
     setTimeout(async () => {
       try {
-        await Promise.all(mediumTasks.map(task => this.executeTask(task)));
+        await Promise.all(mediumTasks.map((task) => this.executeTask(task)));
         this.logger.info('中优先级任务执行完成');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -207,7 +214,7 @@ export class BootstrapManager implements IBootstrapManager {
         for (const task of lowTasks) {
           await this.executeTask(task);
           // 低优先级任务之间增加间隔，避免影响性能
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 50));
         }
         this.logger.info('低优先级任务执行完成');
         eventBus.emit('bootstrap:all-complete', this.metrics);
@@ -245,7 +252,7 @@ export class BootstrapManager implements IBootstrapManager {
 
       // 应用延迟
       if (task.delay && task.delay > 0) {
-        await new Promise(resolve => setTimeout(resolve, task.delay));
+        await new Promise((resolve) => setTimeout(resolve, task.delay));
       }
 
       // 执行任务（带超时）
@@ -253,8 +260,8 @@ export class BootstrapManager implements IBootstrapManager {
         await Promise.race([
           task.execute(),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`任务超时: ${task.name}`)), task.timeout)
-          )
+            setTimeout(() => reject(new Error(`任务超时: ${task.name}`)), task.timeout),
+          ),
         ]);
       } else {
         await task.execute();
@@ -272,12 +279,11 @@ export class BootstrapManager implements IBootstrapManager {
         startTime: taskStartTime,
         endTime: taskEndTime,
         duration,
-        success: true
+        success: true,
       });
 
       this.logger.info(`启动任务执行成功: ${task.name}`, { duration: `${duration}ms` });
       eventBus.emit('bootstrap:task-complete', { name: task.name, duration });
-
     } catch (error) {
       const taskEndTime = Date.now();
       const duration = taskEndTime - taskStartTime;
@@ -292,12 +298,12 @@ export class BootstrapManager implements IBootstrapManager {
         endTime: taskEndTime,
         duration,
         success: false,
-        error: errorMessage
+        error: errorMessage,
       });
 
       this.logger.error(`启动任务执行失败: ${task.name}`, {
         error: errorMessage,
-        duration: `${duration}ms`
+        duration: `${duration}ms`,
       });
 
       eventBus.emit('bootstrap:task-error', { name: task.name, error: errorMessage });
@@ -326,26 +332,26 @@ export class BootstrapManager implements IBootstrapManager {
       return null;
     }
 
-    const successfulTasks = this.metrics.taskMetrics.filter(t => t.success);
-    const failedTasks = this.metrics.taskMetrics.filter(t => !t.success);
+    const successfulTasks = this.metrics.taskMetrics.filter((t) => t.success);
+    const failedTasks = this.metrics.taskMetrics.filter((t) => !t.success);
 
     const slowestTasks = [...this.metrics.taskMetrics]
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 5)
-      .map(t => ({ name: t.name, duration: t.duration }));
+      .map((t) => ({ name: t.name, duration: t.duration }));
 
     return {
       overview: {
         totalDuration: this.metrics.totalDuration,
         taskCount: this.metrics.taskMetrics.length,
         successCount: successfulTasks.length,
-        failureCount: failedTasks.length
+        failureCount: failedTasks.length,
       },
       slowestTasks,
-      failedTasks: failedTasks.map(t => ({
+      failedTasks: failedTasks.map((t) => ({
         name: t.name,
-        error: t.error || 'Unknown error'
-      }))
+        error: t.error || 'Unknown error',
+      })),
     };
   }
 
@@ -372,7 +378,7 @@ export class BootstrapManager implements IBootstrapManager {
       total: this.tasks.size,
       completed: this.completedTasks.size,
       running: this.runningTasks.size,
-      pending: this.tasks.size - this.completedTasks.size - this.runningTasks.size
+      pending: this.tasks.size - this.completedTasks.size - this.runningTasks.size,
     };
   }
 }

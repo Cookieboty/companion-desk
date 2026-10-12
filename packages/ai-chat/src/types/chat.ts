@@ -19,6 +19,8 @@ export interface ChatMessage {
   kb?: boolean;
   /** 回答时参考了哪些长期记忆 */
   memories?: Array<{ id: string; kind: 'episode' | 'fact'; title: string }>;
+  /** 用户消息附带的图片：只保存缩略图（原图只随本轮发送，不进历史） */
+  images?: Array<{ thumb: string; width: number; height: number; source?: string }>;
 }
 
 export interface ChatSession {

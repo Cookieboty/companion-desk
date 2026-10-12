@@ -2,6 +2,7 @@ import { ToolRegistryKey, definePlugin, type PluginContext } from '@ig-live/bund
 
 import { getKnowledgeService } from '../knowledge/KnowledgeService';
 import { getMemoryService } from '../memory/MemoryService';
+import { getScreenService } from '../screen/ScreenService';
 
 import { getDesktopService } from './DesktopService';
 
@@ -20,6 +21,8 @@ export const DesktopToolsPlugin = definePlugin<Record<string, never>>({
     for (const t of getKnowledgeService()?.tools() ?? []) registry.register(t);
     // 长期记忆（memory_search / memory_remember）
     for (const t of getMemoryService()?.tools() ?? []) registry.register(t);
+    // 屏幕记忆（screen_memory_search，默认关闭）
+    for (const t of getScreenService()?.tools() ?? []) registry.register(t);
   },
 });
 

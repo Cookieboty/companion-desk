@@ -11,11 +11,13 @@ import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { ProviderPanel } from './components/ProviderPanel';
 import { SchedulePanel } from './components/SchedulePanel';
+import { ScreenPanel } from './components/ScreenPanel';
 import { Sidebar } from './components/Sidebar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
 import { desktopClient } from './services/desktopClient';
 import { providerClient } from './services/providerClient';
+import { screenClient, type ScreenState } from './services/screenClient';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
@@ -57,6 +59,30 @@ const AiChatContent: React.FC = () => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  const [showScreen, setShowScreen] = useState(false);
+  const [screenSt, setScreenSt] = useState<ScreenState | null>(null);
+  useEffect(() => {
+    if (!screenClient.available()) return;
+    void screenClient
+      .state()
+      .then(setScreenSt)
+      .catch(() => undefined);
+    const off1 = screenClient.onChanged(setScreenSt);
+    const off2 = screenClient.onOpenPanel(() => setShowScreen(true));
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        setShowScreen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      off1();
+      off2();
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+  const screenActive = !!screenSt?.settings.enabled && screenSt.settings.pausedUntil <= Date.now();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleNewChat = () => {
@@ -74,6 +100,18 @@ const AiChatContent: React.FC = () => {
 
       {/* 主内容区域 */}
       <div className="main-content">
+        {screenActive && (
+          <button
+            type="button"
+            className="screen-mem-indicator"
+            onClick={() => setShowScreen(true)}
+            title="屏幕记忆开启中（仅保存在本机），点击管理或暂停"
+            data-testid="screen-mem-indicator"
+          >
+            <span className="screen-mem-dot" />
+            屏幕记忆中
+          </button>
+        )}
         {/* 对话区域 */}
         <main className="chat-container">
           {state.messages.length === 0 ? (
@@ -141,6 +179,7 @@ const AiChatContent: React.FC = () => {
             onKnowledgeClick={() => setShowKb(true)}
             onMemoryClick={() => setShowMem(true)}
             onScheduleClick={() => setShowSched(true)}
+            onScreenClick={() => setShowScreen(true)}
           />
         </footer>
       </div>
@@ -152,6 +191,7 @@ const AiChatContent: React.FC = () => {
       <KnowledgePanel isVisible={showKb} onClose={() => setShowKb(false)} />
       <MemoryPanel isVisible={showMem} onClose={() => setShowMem(false)} />
       <SchedulePanel isVisible={showSched} onClose={() => setShowSched(false)} />
+      <ScreenPanel isVisible={showScreen} onClose={() => setShowScreen(false)} />
     </div>
   );
 };
