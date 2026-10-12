@@ -148,11 +148,10 @@ test.describe('E8 · model store + local import', () => {
 
     // preloadGuard 可能在首次加载缺 preload 时 reload 一次：等 API 就绪
     await page.waitForFunction(() => !!window.electronAPI?.models, undefined, { timeout: 20_000 });
-    // Bundled: default VRM + Soft Face + cuter 2D sprites (no Pixel Neko)
+    // Bundled: default VRM + 2D sprites
     const bundled = await page.evaluate(() => window.electronAPI!.models!.list());
     expect(bundled.map((m) => m.id)).toEqual([
       'default-character',
-      'soft-face',
       'sakura-chan',
       'pastel-girl',
       'michona',

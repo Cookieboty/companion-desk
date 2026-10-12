@@ -24,11 +24,6 @@ export const CHARACTER_VOICE_DEFAULTS: Record<string, ModelVoiceConfig> = {
     rate: 0.88,
     pitch: 1.06,
   },
-  'soft-face': {
-    voiceHint: 'yunxia',
-    rate: 0.85,
-    pitch: 1.08,
-  },
   'sakura-chan': {
     voiceHint: 'yunxia',
     rate: 0.86,
@@ -101,7 +96,7 @@ export function defaultsForCharacter(
   if (tags?.includes('pixel') || tags?.includes('pet'))
     return { ...CHARACTER_VOICE_DEFAULTS['kenney-panda'] };
   if (tags?.includes('sprite') || tags?.includes('soft'))
-    return { ...CHARACTER_VOICE_DEFAULTS['soft-face'] };
+    return { ...CHARACTER_VOICE_DEFAULTS['sakura-chan'] };
   return { ...CHARACTER_VOICE_DEFAULTS['default-character'] };
 }
 

@@ -34,21 +34,21 @@ describe('characterVoice', () => {
   });
 
   it('ships distinct softer defaults per character', () => {
-    expect(CHARACTER_VOICE_DEFAULTS['soft-face'].rate).toBeLessThan(
+    expect(CHARACTER_VOICE_DEFAULTS['sakura-chan'].rate).toBeLessThan(
       CHARACTER_VOICE_DEFAULTS['kenney-panda'].rate!,
     );
     expect(defaultsForCharacter('kenney-panda').voiceHint).toBe('yaoyao');
   });
 
   it('merges config then override', async () => {
-    const merged = resolveCharacterVoice('soft-face', { voice: { rate: 0.8 } });
+    const merged = resolveCharacterVoice('sakura-chan', { voice: { rate: 0.8 } });
     expect(merged.rate).toBe(0.8);
     expect(merged.voiceHint).toBe('yunxia');
-    await saveCharacterVoice('soft-face', { pitch: 1.2 });
-    expect(resolveCharacterVoice('soft-face', { voice: { rate: 0.8 } }).pitch).toBe(1.2);
-    clearCharacterVoiceOverride('soft-face');
-    expect(resolveCharacterVoice('soft-face').pitch).toBe(
-      CHARACTER_VOICE_DEFAULTS['soft-face'].pitch,
+    await saveCharacterVoice('sakura-chan', { pitch: 1.2 });
+    expect(resolveCharacterVoice('sakura-chan', { voice: { rate: 0.8 } }).pitch).toBe(1.2);
+    clearCharacterVoiceOverride('sakura-chan');
+    expect(resolveCharacterVoice('sakura-chan').pitch).toBe(
+      CHARACTER_VOICE_DEFAULTS['sakura-chan'].pitch,
     );
   });
 

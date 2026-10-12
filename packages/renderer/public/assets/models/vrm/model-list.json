@@ -23,32 +23,9 @@
       }
     },
     {
-      "name": "soft-face",
-      "displayName": "Soft Face (2D)",
-      "description": "Original CC0 anime-adjacent expression plate — sprite spike (no Live2D).",
-      "path": "./assets/models/sprite/soft-face/manifest.json",
-      "thumbnail": "./assets/models/sprite/soft-face/thumb.png",
-      "author": "Companion Desk",
-      "license": "CC0-1.0",
-      "source": "in-repo procedural art",
-      "tags": [
-        "sprite",
-        "2d",
-        "soft",
-        "cc0"
-      ],
-      "config": {
-        "voice": {
-          "voiceHint": "yunxia",
-          "rate": 0.85,
-          "pitch": 1.08
-        }
-      }
-    },
-    {
       "name": "sakura-chan",
       "displayName": "Sakura Chan (2D)",
-      "description": "Softer VN-style pink-haired bust — CC0 procedural (cuter Soft Face sibling).",
+      "description": "Softer VN-style pink-haired bust — CC0 procedural.",
       "path": "./assets/models/sprite/sakura-chan/manifest.json",
       "thumbnail": "./assets/models/sprite/sakura-chan/thumb.png",
       "author": "Companion Desk",
