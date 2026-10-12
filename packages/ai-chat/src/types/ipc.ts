@@ -3,13 +3,22 @@ import { type AIModelConfig } from './config';
 
 export interface IPCClient {
   // 消息相关：history 为本轮之前的会话消息，与本轮输入一起发给模型（多轮上下文）
-  sendMessage(message: string, modelId?: string, history?: ChatMessage[]): Promise<string>;
+  sendMessage(
+    message: string,
+    modelId?: string,
+    history?: ChatMessage[],
+    extraSystem?: string,
+  ): Promise<string>;
+  /** extraSystem：追加在 system prompt 后的上下文（长期记忆召回等） */
   sendStreamMessage(
     message: string,
     modelId?: string,
     onChunk?: (chunk: string) => void,
     history?: ChatMessage[],
+    extraSystem?: string,
   ): Promise<void>;
+  /** 当前会话 id（长期记忆按会话摘要） */
+  currentConversationId?(): string | undefined;
   /** 当前会话的消息 */
   getChatHistory(): Promise<ChatMessage[]>;
   /** 清空当前会话 */

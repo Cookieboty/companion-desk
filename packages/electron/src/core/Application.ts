@@ -15,6 +15,7 @@ import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { getDesktopService } from '../desktop/DesktopService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
+import { getMemoryService, initMemoryService } from '../memory/MemoryService';
 import { getModelService } from '../models/ModelService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
@@ -143,6 +144,26 @@ export class Application implements IApplication {
       });
       kb.registerIpc();
 
+      // 长期记忆：对话摘要 + 召回（复用知识库的 BM25 / 向量服务），工具随桌面工具注册
+      const mem = initMemoryService({
+        root: path.join(app.getPath('userData'), 'memory'),
+        logger: this.logger as never,
+        desktop,
+        complete: async (messages, signal) => {
+          const rt = this.aiRuntime;
+          if (!rt) throw new Error('AI 服务未就绪');
+          const resp = await rt.client.chat.sendMessage({
+            role: 'chat',
+            messages,
+            signal,
+          } as never);
+          return typeof resp?.content === 'string' ? resp.content : '';
+        },
+        embed: (texts) => kb.embedTexts(texts),
+        facade: () => (this.aiRuntime?.client.memory as never) ?? null,
+      });
+      mem.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -184,6 +205,7 @@ export class Application implements IApplication {
       // 提醒调度：主窗口创建后开始（错过的提醒要在看板娘气泡里播报）
       desktop.startReminders();
       kb.start();
+      mem.start();
 
       // 托盘：一键切换 AI provider
       this.startTray();
@@ -258,6 +280,7 @@ export class Application implements IApplication {
    * 停止 AI runtime；幂等。
    */
   async stopAIRuntime(): Promise<void> {
+    getMemoryService()?.flush();
     this.trayManager?.dispose();
     this.trayManager = undefined;
     if (!this.aiRuntime) return;

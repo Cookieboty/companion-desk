@@ -31,6 +31,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         <span className={styles.role}>{isUser ? '你' : 'AI助手'}</span>
         <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
         {message.kb && <span className={styles.kbTag}>📚 知识库</span>}
+        {!!message.memories?.length && (
+          <span
+            className={styles.kbTag}
+            title={message.memories.map((m) => `· ${m.title}`).join('\n')}
+            data-testid="memory-tag"
+          >
+            🧠 参考了 {message.memories.length} 条记忆
+          </span>
+        )}
         {message.modelId && <span className={styles.model}>{message.modelId}</span>}
       </div>
 

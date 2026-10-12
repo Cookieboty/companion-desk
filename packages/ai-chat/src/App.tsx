@@ -6,6 +6,7 @@ import { ConfigPanel } from './components/ConfigPanel';
 import { DesktopPanel } from './components/DesktopPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { KnowledgePanel } from './components/KnowledgePanel';
+import { MemoryPanel } from './components/MemoryPanel';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { ProviderPanel } from './components/ProviderPanel';
@@ -33,6 +34,18 @@ const AiChatContent: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         setShowKb((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const [showMem, setShowMem] = useState(false);
+  // Ctrl/Cmd+Shift+M 打开长期记忆
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        setShowMem((v) => !v);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -120,6 +133,7 @@ const AiChatContent: React.FC = () => {
             onProvidersClick={() => setShowProviders(true)}
             onDesktopClick={() => setShowDesktop(true)}
             onKnowledgeClick={() => setShowKb(true)}
+            onMemoryClick={() => setShowMem(true)}
           />
         </footer>
       </div>
@@ -129,6 +143,7 @@ const AiChatContent: React.FC = () => {
       <ProviderPanel isVisible={showProviders} onClose={() => setShowProviders(false)} />
       <DesktopPanel isVisible={showDesktop} onClose={() => setShowDesktop(false)} />
       <KnowledgePanel isVisible={showKb} onClose={() => setShowKb(false)} />
+      <MemoryPanel isVisible={showMem} onClose={() => setShowMem(false)} />
     </div>
   );
 };

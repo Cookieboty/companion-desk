@@ -5,12 +5,14 @@ import React, {
   useReducer,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 
 import { desktopClient } from '../services/desktopClient';
 import { createIPCClient } from '../services/IPCClient';
 import { kbClient } from '../services/kbClient';
+import { ingestConversation, memoryContext } from '../services/memClient';
 import { effectiveProviderLabel, providerClientAvailable } from '../services/providerClient';
 import { type ChatMessage, type ChatConfig } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
@@ -159,6 +161,31 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ipcClient]);
 
+  // 长期记忆：最新消息的引用（窗口隐藏 / 新建会话时拿来做摘要）
+  const ingestCurrent = (msgs: ChatMessage[] = state.messages) =>
+    ingestConversation(
+      state.ipcClient.currentConversationId?.(),
+      msgs.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content })),
+    );
+  const ingestRef = useRef(ingestCurrent);
+  useEffect(() => {
+    ingestRef.current = ingestCurrent;
+  });
+  useEffect(() => {
+    // 对话窗口被隐藏 / 关闭 → 把这段对话整理进记忆（主进程会跳过没有新内容的会话）
+    const onHide = () => document.visibilityState === 'hidden' && ingestRef.current();
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, []);
+  /** 每积累 10 条消息自动摘要一次 */
+  const maybeIngest = (msgs: ChatMessage[]) => {
+    if (msgs.length >= 4 && msgs.length % 10 < 2) ingestCurrent(msgs);
+  };
+
   // 把文件拖到看板娘身上 → 主进程总结完成后推送到对话窗口
   useEffect(
     () =>
@@ -199,7 +226,13 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
 
-      const response = await state.ipcClient.sendMessage(content, state.currentModelId, history);
+      const mem = await memoryContext(content);
+      const response = await state.ipcClient.sendMessage(
+        content,
+        state.currentModelId,
+        history,
+        mem.text,
+      );
 
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -207,11 +240,13 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         content: response,
         timestamp: Date.now(),
         modelId: messageModelTag(state.currentModelId),
+        ...(mem.used.length ? { memories: mem.used } : {}),
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
       await state.ipcClient.saveMessage(userMessage);
       await state.ipcClient.saveMessage(aiMessage);
+      maybeIngest([...history, userMessage, aiMessage]);
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     } finally {
@@ -272,6 +307,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
 
+      const mem = await memoryContext(content);
       const aiMessageId = (Date.now() + 1).toString();
       const aiMessage: ChatMessage = {
         id: aiMessageId,
@@ -279,6 +315,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         content: '',
         timestamp: Date.now(),
         modelId: messageModelTag(state.currentModelId),
+        ...(mem.used.length ? { memories: mem.used } : {}),
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
@@ -294,11 +331,13 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
           });
         },
         history,
+        mem.text,
       );
 
       const finalAiMessage: ChatMessage = { ...aiMessage, content: accumulated };
       await state.ipcClient.saveMessage(userMessage);
       await state.ipcClient.saveMessage(finalAiMessage);
+      maybeIngest([...history, userMessage, finalAiMessage]);
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
     } finally {
@@ -329,6 +368,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
   // 新建会话（旧会话保留在本地存储中）
   const newConversation = async () => {
     try {
+      ingestCurrent();
       await state.ipcClient.newConversation();
       dispatch({ type: 'CLEAR_MESSAGES' });
     } catch (error) {

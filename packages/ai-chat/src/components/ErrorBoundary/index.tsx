@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+
 import styles from './index.module.css';
 
 interface Props {
@@ -37,9 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className={styles.errorContainer}>
             <div className={styles.errorIcon}>⚠️</div>
             <h2 className={styles.errorTitle}>出现了一些问题</h2>
-            <p className={styles.errorMessage}>
-              AI对话应用遇到了意外错误，请尝试重新加载。
-            </p>
+            <p className={styles.errorMessage}>AI对话应用遇到了意外错误，请尝试重新加载。</p>
 
             {this.state.error && (
               <details className={styles.errorDetails}>
@@ -52,16 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
 
             <div className={styles.errorActions}>
-              <button
-                className={styles.reloadButton}
-                onClick={this.handleReload}
-              >
+              <button className={styles.reloadButton} onClick={this.handleReload}>
                 重新加载
               </button>
-              <button
-                className={styles.refreshButton}
-                onClick={() => window.location.reload()}
-              >
+              <button className={styles.refreshButton} onClick={() => window.location.reload()}>
                 刷新页面
               </button>
             </div>
@@ -72,4 +65,4 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
-} 
+}
