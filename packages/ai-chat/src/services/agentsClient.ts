@@ -69,8 +69,11 @@ const on = (ch: string, fn: (p: unknown) => void) => bridge()?.on(ch, fn) ?? (()
 export const agentsClient = {
   available: () => !!bridge(),
   state: () => call<AgentWatchState>('state'),
-  setSettings: (p: Partial<AgentWatchSettings> & { tools?: Partial<Record<AgentKind, boolean>> }) =>
-    call<AgentWatchSettings>('set-settings', p),
+  setSettings: (
+    p: Omit<Partial<AgentWatchSettings>, 'tools'> & {
+      tools?: Partial<Record<AgentKind, boolean>>;
+    },
+  ) => call<AgentWatchSettings>('set-settings', p),
   scan: () => call<AgentWatchState>('scan'),
   onChanged: (fn: () => void) => on('ai:agents:changed', () => fn()),
 };

@@ -531,7 +531,11 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             disabled={!agents.settings.enabled}
                             onChange={(e) =>
                               void agentsClient
-                                .setSettings({ tools: { [k]: e.target.checked } })
+                                .setSettings({
+                                  tools: { [k]: e.target.checked } as Partial<
+                                    Record<AgentKind, boolean>
+                                  >,
+                                })
                                 .then(loadAgents)
                             }
                             data-testid={`agents-tool-${k}`}
