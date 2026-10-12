@@ -35,6 +35,8 @@ export interface ProviderPreset {
   modelsEndpoint?: boolean | null;
   /** 已按官方文档核对（核对日期见 docs/PROVIDERS.md） */
   verified: boolean;
+  /** 单独核对日期（缺省为 PRESETS_CHECKED_AT） */
+  checkedAt?: string;
   /** 品牌图标 id（packages/ui 的 BrandIcon，来源 @lobehub/icons-static-svg，MIT） */
   icon?: string;
 }
@@ -259,6 +261,27 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = Object.freeze([
     verified: true,
     icon: 'siliconcloud',
     keywords: ['硅基'],
+  }),
+  P({
+    // 核对 2026-10-12：https://amux.ai/api-reference （OpenAI SDK base_url = https://gateway.amux.ai/v1；
+    // 同一网关也提供 /v1/responses 与 Anthropic /v1/messages）；列表 GET /v1/models 见
+    // https://amux.ai/api-reference/models/list-models 。官方 logo 未声明可再分发许可，故不打包图标（首字母头像）。
+    id: 'amux',
+    name: 'Amux',
+    category: 'platform',
+    protocol: 'openai-chat',
+    baseURL: 'https://gateway.amux.ai/v1',
+    defaultModel: '',
+    models: [],
+    requiresApiKey: true,
+    websiteUrl: 'https://amux.ai',
+    docsUrl: 'https://amux.ai/api-reference',
+    modelsEndpoint: true,
+    verified: true,
+    checkedAt: '2026-10-12',
+    icon: 'amux',
+    keywords: ['amux', 'gateway'],
+    hint: 'amux.ai · 用「获取模型」选择（ID 形如 vendor/model）',
   }),
   P({
     id: 'ollama',

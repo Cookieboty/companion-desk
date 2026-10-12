@@ -268,7 +268,7 @@ export const ProviderEditor: React.FC<{
               preset?.docsUrl ? (
                 <span data-testid="preset-docs">
                   官方 API 文档：<span className="cd-code">{preset.docsUrl}</span>
-                  {preset.verified && ' · 预设已按文档核对（2026-10-11）'}
+                  {preset.verified && ` · 预设已按文档核对（${preset.checkedAt ?? '2026-10-11'}）`}
                 </span>
               ) : undefined
             }

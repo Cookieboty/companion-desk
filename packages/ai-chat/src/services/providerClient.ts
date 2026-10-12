@@ -36,6 +36,8 @@ export interface ProviderPreset {
   docsUrl?: string;
   modelsEndpoint?: boolean | null;
   verified?: boolean;
+  /** 单独核对日期（缺省用全局 2026-10-11） */
+  checkedAt?: string;
   icon?: string;
 }
 
