@@ -12,10 +12,19 @@ export interface AuditEntry {
   ms?: number;
   provider?: string;
   source?:
-    'agent' | 'drop' | 'settings' | 'undo' | 'scheduler' | 'voice' | 'memory' | 'mcp' | 'skill';
+    | 'agent'
+    | 'drop'
+    | 'settings'
+    | 'undo'
+    | 'scheduler'
+    | 'voice'
+    | 'memory'
+    | 'mcp'
+    | 'skill'
+    | 'sandbox';
 }
 
-const TEXT_KEYS = new Set(['text', 'content', 'body', 'notes']);
+const TEXT_KEYS = new Set(['text', 'content', 'body', 'notes', 'code', 'stdin']);
 
 /** 参数脱敏：文本内容只保留 sha256 前 12 位与长度，绝不记录文件 / 剪贴板内容 */
 export function redactArgs(args: unknown): Record<string, unknown> {

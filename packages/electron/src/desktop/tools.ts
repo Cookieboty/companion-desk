@@ -8,6 +8,7 @@ import type { AppTrash } from './AppTrash';
 import type { AuditLog } from './AuditLog';
 import type { Danger } from './consent';
 import { createP2Tools, P2_DANGER, type P2Deps } from './p2tools';
+import { createP3Tools, P3_DANGER, type P3Deps } from './p3tools';
 import { DOC_EXTS, extOf, isSupported } from './parse/extract';
 import type { ParseResult } from './parse/runParse';
 import { isInside } from './pathGuard';
@@ -35,6 +36,8 @@ export interface DesktopToolDeps {
   pickFolder: (suggested?: string) => Promise<string | null>;
   /** P2：笔记 / 提醒 / 剪贴板（缺省时不注册这些工具） */
   p2?: P2Deps;
+  /** P3：沙箱浏览器 / 代码执行（缺省时不注册） */
+  p3?: P3Deps;
 }
 
 export { ToolError };
@@ -59,6 +62,7 @@ export const TOOL_DANGER: Record<string, Danger> = {
   fs_trash: 'destructive',
   undo_last: 'write',
   ...P2_DANGER,
+  ...P3_DANGER,
 };
 
 const MAX_TEXT_PER_CALL = 60_000;
@@ -554,6 +558,15 @@ export function createDesktopTools(deps: DesktopToolDeps): ToolDefinition[] {
   if (deps.p2)
     tools.push(
       ...createP2Tools(deps.p2, { run, confirm, journal, markRead: (sg) => broker.markRead(sg) }),
+    );
+  if (deps.p3)
+    tools.push(
+      ...createP3Tools(deps.p3, {
+        run,
+        confirm,
+        markRead: (sg) => broker.markRead(sg),
+        beforeSend: (sg) => beforeSend('agent-tools', sg),
+      }),
     );
   return tools;
 }

@@ -176,6 +176,12 @@ export const TOOL_LABELS: Record<string, string> = {
   reminder_fire: '提醒触发',
   clipboard_read: '读取剪贴板',
   clipboard_write: '写入剪贴板',
+  browser_open: '沙箱浏览器：打开网页',
+  browser_read: '沙箱浏览器：读取页面',
+  browser_click: '沙箱浏览器：点击',
+  browser_type: '沙箱浏览器：输入文字',
+  browser_close: '沙箱浏览器：关闭',
+  code_run: '沙箱运行代码',
 };
 
 export const DANGER_LABELS: Record<Danger, string> = {

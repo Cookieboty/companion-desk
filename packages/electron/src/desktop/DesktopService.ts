@@ -13,6 +13,8 @@ import {
 } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { AgentBrowser } from '../sandbox/AgentBrowser';
+import { CodeSandbox } from '../sandbox/CodeSandbox';
 import { sanitizeRepeat } from '../schedule/recurrence';
 
 import { AppTrash } from './AppTrash';
@@ -296,6 +298,7 @@ export class DesktopService {
         },
         say: (t) => this.say(t),
       },
+      p3: { browser: new AgentBrowser(), code: new CodeSandbox() },
     });
     return this.toolDefs;
   }
