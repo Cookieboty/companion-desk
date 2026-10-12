@@ -16,6 +16,8 @@ export interface IPCClient {
     onChunk?: (chunk: string) => void,
     history?: ChatMessage[],
     extraSystem?: string,
+    /** 本轮附带的图片（base64） */
+    images?: Array<{ mime: string; data: string }>,
   ): Promise<void>;
   /** 当前会话 id（长期记忆按会话摘要） */
   currentConversationId?(): string | undefined;

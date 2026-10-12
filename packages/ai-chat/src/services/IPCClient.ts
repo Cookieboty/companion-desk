@@ -155,10 +155,15 @@ export class SdkIPCClient implements IPCClient {
     return fallback ?? readStorage<string>(LOCAL_CURRENT_MODEL_KEY);
   }
 
-  private async buildMessages(message: string, history: ChatMessage[] = [], extra?: string) {
+  private async buildMessages(
+    message: string,
+    history: ChatMessage[] = [],
+    extra?: string,
+    images?: Array<{ mime: string; data: string }>,
+  ) {
     const { systemPrompt } = await this.getConfig();
     const sys = [systemPrompt, extra].filter((s) => s && s.trim()).join('\n\n');
-    return buildProviderMessages(history, message, sys);
+    return buildProviderMessages(history, message, sys, images);
   }
 
   currentConversationId(): string | undefined {
@@ -194,11 +199,12 @@ export class SdkIPCClient implements IPCClient {
     onChunk?: (chunk: string) => void,
     history?: ChatMessage[],
     extraSystem?: string,
+    images?: Array<{ mime: string; data: string }>,
   ): Promise<void> {
     try {
       const opts = {
         provider: this.currentModelId(modelId),
-        messages: await this.buildMessages(message, history, extraSystem),
+        messages: await this.buildMessages(message, history, extraSystem, images),
       };
       // 对话走工具循环（role 仍是 chat，按 chat 路由选 provider）
       const iterable =

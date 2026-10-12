@@ -5,6 +5,13 @@ import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
 import { providerClientAvailable } from '../../services/providerClient';
 import { schedClient } from '../../services/schedClient';
+import {
+  MAX_ATTACHMENTS,
+  attachmentFromFile,
+  likelyVision,
+  screenClient,
+  type ImageAttachment,
+} from '../../services/screenClient';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
@@ -21,6 +28,7 @@ interface MessageInputProps {
   onKnowledgeClick?: () => void;
   onMemoryClick?: () => void;
   onScheduleClick?: () => void;
+  onScreenClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -33,6 +41,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onKnowledgeClick,
   onMemoryClick,
   onScheduleClick,
+  onScreenClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -70,13 +79,92 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [kbAvailable, toggleKb]);
 
+  // ───── 图片附件：粘贴 / 拖入 / 截图提问 ─────
+  const [images, setImages] = useState<ImageAttachment[]>([]);
+  const [imgErr, setImgErr] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [snipping, setSnipping] = useState(false);
+  const screenOk = screenClient.available();
+  const addImages = useCallback((list: ImageAttachment[]) => {
+    setImgErr('');
+    setImages((cur) => {
+      const next = [...cur, ...list];
+      if (next.length > MAX_ATTACHMENTS) setImgErr(`最多附 ${MAX_ATTACHMENTS} 张图片`);
+      return next.slice(0, MAX_ATTACHMENTS);
+    });
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      const imgs = files.filter((f) => f.type.startsWith('image/'));
+      if (!imgs.length) return false;
+      const out: ImageAttachment[] = [];
+      for (const f of imgs) {
+        try {
+          out.push(await attachmentFromFile(f));
+        } catch (e) {
+          setImgErr((e as Error).message);
+        }
+      }
+      if (out.length) addImages(out);
+      return true;
+    },
+    [addImages],
+  );
+  const snip = useCallback(async () => {
+    if (!screenOk || snipping) return;
+    setSnipping(true);
+    setImgErr('');
+    try {
+      const a = await screenClient.snip();
+      if (a) {
+        addImages([a]);
+        if (!textareaRef.current?.value) setMessage('这张截图里是什么？');
+      }
+    } catch (e) {
+      setImgErr((e as Error).message);
+    } finally {
+      setSnipping(false);
+    }
+  }, [screenOk, snipping, addImages]);
+  // 全局快捷键截图后，主进程把附件推过来
+  useEffect(
+    () =>
+      screenClient.onAttachment((a) => {
+        addImages([a]);
+        setMessage((m) => m || '这张截图里是什么？');
+      }),
+    [addImages],
+  );
+  useEffect(() => {
+    if (!screenOk) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void snip();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [screenOk, snip]);
+  const chatModel = state.currentModelId ?? '';
+  const visionWarn =
+    images.length > 0 &&
+    !likelyVision(chatModel) &&
+    !likelyVision(state.models.find((m) => m.id === chatModel)?.name);
+
   const handleSend = async () => {
-    const trimmedMessage = message.trim();
+    const trimmedMessage = message.trim() || (images.length ? '请看看这张图片。' : '');
     if (!trimmedMessage || state.isLoading) return;
+    const sendImages = images;
 
     try {
       setMessage('');
-      if (onSend) {
+      setImages([]);
+      setImgErr('');
+      if (sendImages.length) {
+        await actions.sendStreamMessage(trimmedMessage, sendImages);
+      } else if (onSend) {
         onSend(trimmedMessage);
       } else if (kbMode && kbAvailable) {
         await actions.askKnowledge(trimmedMessage);
@@ -155,7 +243,54 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       <div className={styles.voiceRow}>
         <VoiceStatusRow cv={cv} />
       </div>
-      <div className={styles.inputWrapper}>
+      {(images.length > 0 || imgErr) && (
+        <div className={styles.attachRow} data-testid="attach-row">
+          {images.map((i) => (
+            <div key={i.id} className={styles.attachItem} title={`${i.width}×${i.height}`}>
+              <img src={i.thumb} alt="附件图片" className={styles.attachThumb} />
+              <button
+                type="button"
+                className={styles.attachRemove}
+                aria-label="移除图片"
+                onClick={() => setImages((c) => c.filter((x) => x.id !== i.id))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <div className={styles.attachMeta}>
+            {imgErr ? (
+              <span className={styles.attachErr}>{imgErr}</span>
+            ) : visionWarn ? (
+              <span className={styles.attachWarn} data-testid="vision-warn">
+                当前模型可能不支持看图，建议切换到视觉模型（如 qwen2.5vl、llava、gpt-4o）
+              </span>
+            ) : (
+              <span className={styles.attachHint}>
+                图片将随这条消息发送 · 原图不会保存在聊天记录里
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      <div
+        className={`${styles.inputWrapper} ${dragOver ? styles.dragOver : ''}`}
+        onDragOver={(e) => {
+          if (Array.from(e.dataTransfer.items).some((it) => it.type.startsWith('image/'))) {
+            e.preventDefault();
+            setDragOver(true);
+          }
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          setDragOver(false);
+          const files = Array.from(e.dataTransfer.files);
+          if (files.some((f) => f.type.startsWith('image/'))) {
+            e.preventDefault();
+            void addFiles(files);
+          }
+        }}
+      >
         <textarea
           ref={textareaRef}
           value={message}
@@ -163,6 +298,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           onKeyDown={handleKeyDown}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData.files);
+            if (files.some((f) => f.type.startsWith('image/'))) {
+              e.preventDefault();
+              void addFiles(files);
+            }
+          }}
           placeholder={
             isDisabled
               ? '请先选择AI模型...'
@@ -191,10 +333,22 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             📚{kbMode && <span className={styles.kbToggleLabel}>知识库</span>}
           </button>
         )}
+        {screenOk && (
+          <button
+            type="button"
+            onClick={() => void snip()}
+            className={styles.kbToggle}
+            disabled={isDisabled || snipping}
+            title="截图提问（Ctrl/⌘+Shift+S；任意界面 Ctrl/⌘+Alt+A）"
+            data-testid="snip-button"
+          >
+            {snipping ? '…' : '✂️'}
+          </button>
+        )}
         <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
         <button
           onClick={handleSend}
-          disabled={isDisabled || !message.trim()}
+          disabled={isDisabled || (!message.trim() && !images.length)}
           className={styles.sendButton}
           title="发送消息 (Ctrl+Enter)"
         >
@@ -210,7 +364,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
       <div className={styles.inputHint}>
         <span className={styles.hintText}>
-          Enter 发送 · F2 说话
+          Enter 发送 · F2 说话{screenOk ? ' · ⌘/Ctrl+Shift+S 截图' : ''} · 可粘贴/拖入图片
           {kbAvailable ? ' · ⌘/Ctrl+Shift+K 知识库' : ''}
         </span>
         <div className={styles.modelStatus}>
@@ -265,6 +419,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               data-testid="open-sched-panel"
             >
               🗓
+            </button>
+          )}
+          {onScreenClick && screenOk && (
+            <button
+              className={styles.configButton}
+              onClick={onScreenClick}
+              title="截图与屏幕记忆（Ctrl/⌘+Shift+O）"
+              data-testid="open-screen-panel"
+            >
+              🖥
             </button>
           )}
           {onDesktopClick && (

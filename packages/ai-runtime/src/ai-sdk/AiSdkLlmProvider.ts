@@ -63,8 +63,12 @@ export interface AiSdkLlmProviderOptions {
   headers?: Record<string, string>;
 }
 
+/** 每条消息最多带几张图、总 base64 体积上限（约 12 MB 原图） */
+const MAX_IMAGES = 6;
+const MAX_IMAGE_BASE64 = 16 * 1024 * 1024;
+
 /** AI SDK 7+ rejects role:system in `messages`; fold them into `instructions`. */
-function splitPrompt(messages: ChatMessage[]): {
+export function splitPrompt(messages: ChatMessage[]): {
   instructions: string | undefined;
   messages: ModelMessage[];
 } {
@@ -91,6 +95,23 @@ function splitPrompt(messages: ChatMessage[]): {
     }
     if (m.role === 'assistant') {
       rest.push({ role: 'assistant', content: m.content });
+      continue;
+    }
+    const images = (m.images ?? []).filter(
+      (i) => /^image\/(png|jpeg|webp|gif)$/.test(i.mime) && typeof i.data === 'string',
+    );
+    if (images.length) {
+      let budget = MAX_IMAGE_BASE64;
+      const parts: Array<
+        { type: 'text'; text: string } | { type: 'image'; image: string; mediaType: string }
+      > = [];
+      for (const i of images.slice(0, MAX_IMAGES)) {
+        if (i.data.length > budget) break;
+        budget -= i.data.length;
+        parts.push({ type: 'image', image: i.data, mediaType: i.mime });
+      }
+      parts.push({ type: 'text', text: m.content });
+      rest.push({ role: 'user', content: parts });
       continue;
     }
     rest.push({ role: 'user', content: m.content });

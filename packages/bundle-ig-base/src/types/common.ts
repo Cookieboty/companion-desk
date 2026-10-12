@@ -6,6 +6,8 @@ export interface ChatMessage {
   content: string;
   name?: string;
   toolCallId?: string;
+  /** 用户消息附带的图片（base64，不含 data: 前缀）；只对支持视觉的模型有意义 */
+  images?: Array<{ mime: string; data: string }>;
 }
 
 export interface ChatRequest {

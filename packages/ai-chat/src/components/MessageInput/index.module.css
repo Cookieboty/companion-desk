@@ -370,3 +370,61 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 图片附件 */
+.attachRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cd-space-2);
+  padding: 0 var(--cd-space-1) var(--cd-space-2);
+}
+.attachItem {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--cd-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-surface-sunken);
+}
+.attachThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.attachRemove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  padding: 0;
+}
+.attachMeta {
+  flex: 1;
+  min-width: 160px;
+  font-size: var(--cd-font-size-xs);
+  line-height: var(--cd-line-height-xs);
+}
+.attachHint {
+  color: var(--cd-color-text-muted);
+}
+.attachWarn {
+  color: var(--cd-color-warning);
+}
+.attachErr {
+  color: var(--cd-color-danger);
+}
+.dragOver {
+  outline: 2px dashed var(--cd-color-accent);
+  outline-offset: 2px;
+}

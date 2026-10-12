@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client';
 import '@ig-live/ui/styles.css';
 import '@ig-live/voice/styles.css';
 import App from './App';
+import { SnipOverlay } from './components/SnipOverlay';
 
 const hasAiIpc = typeof window !== 'undefined' && Boolean((window as { aiIPC?: unknown }).aiIPC);
 
@@ -14,7 +15,10 @@ if (!hasAiIpc) {
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 
-if (hasAiIpc) {
+if (window.location.hash === '#snip') {
+  // 截图框选遮罩：不加载对话应用本身
+  root.render(<SnipOverlay />);
+} else if (hasAiIpc) {
   root.render(
     <React.StrictMode>
       <AIProvider>

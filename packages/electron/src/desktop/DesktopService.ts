@@ -234,7 +234,14 @@ export class DesktopService {
   providerFor(role: Role): ProviderInfo | null {
     const p = this.runtime?.resolveProvider(role);
     if (!p) return null;
-    return { id: p.id, name: p.name, local: isLocalBaseURL(p.baseURL) };
+    return {
+      id: p.id,
+      name: p.name,
+      local: isLocalBaseURL(p.baseURL),
+      model:
+        (p as { defaultModel?: string; model?: string }).defaultModel ??
+        (p as { model?: string }).model,
+    };
   }
 
   private async summarize(

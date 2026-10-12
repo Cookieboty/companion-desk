@@ -20,7 +20,7 @@ export class EventBus implements IEventBus {
   emit(event: string, data?: any): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         try {
           handler(data);
         } catch (error) {

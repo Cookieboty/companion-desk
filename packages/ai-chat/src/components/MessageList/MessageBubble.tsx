@@ -44,6 +44,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       </div>
 
       <div className={`${styles.messageContent} ${isError ? styles.errorMessage : ''}`}>
+        {!!message.images?.length && (
+          <div className={styles.imageRow} data-testid="message-images">
+            {message.images.map((im, i) => (
+              <img
+                key={i}
+                src={im.thumb}
+                alt={im.source === 'snip' ? '截图' : '图片'}
+                className={styles.imageThumb}
+                title={`${im.width}×${im.height}`}
+              />
+            ))}
+          </div>
+        )}
         {isError ? (
           <div className={styles.errorText}>❌ {message.error}</div>
         ) : (

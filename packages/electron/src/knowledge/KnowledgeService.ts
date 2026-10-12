@@ -327,7 +327,8 @@ export class KnowledgeService {
     return true;
   }
 
-  private async ocr(file: string): Promise<string> {
+  /** OCR 一张图片（文件路径或 PNG/JPEG buffer）；需已下载语言数据 */
+  async ocr(file: string | Buffer): Promise<string> {
     const langs = this.ocrLangsReady();
     if (!langs.length) throw new KbError('ocr_missing', '还没有下载 OCR 语言数据');
     const key = langs.join('+');

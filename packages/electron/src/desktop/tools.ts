@@ -19,6 +19,7 @@ export interface ProviderInfo {
   id: string;
   name: string;
   local: boolean;
+  model?: string;
 }
 
 export interface DesktopToolDeps {
