@@ -52,7 +52,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
                 <span></span>
                 <span></span>
               </div>
-              <span>AI正在思考中...</span>
+              <span>正在思考…</span>
             </div>
           )}
         </div>
@@ -69,7 +69,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
         rowCount={messages.length}
         rowHeight={120} // 估算每条消息的高度
         rowProps={{ messages }}
-        style={{ height: 400, width: '100%' }}
+        style={{ height: '100%', width: '100%' }}
         className={styles.virtualList}
       />
       {isLoading && (
@@ -79,7 +79,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
             <span></span>
             <span></span>
           </div>
-          <span>AI正在思考中...</span>
+          <span>正在思考…</span>
         </div>
       )}
     </div>

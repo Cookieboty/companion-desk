@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { app, ipcMain, session } from 'electron';
 
+import { getAgentProgressService, initAgentProgressService } from '../agents/AgentProgressService';
 import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
 import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { SafeKeyProvider } from '../ai/SafeKeyProvider';
@@ -238,6 +239,15 @@ export class Application implements IApplication {
       });
       localLlm.registerIpc();
 
+      // 编程助手进度：监视本机 Codex / Claude Code 等会话文件，看板娘提醒完成/失败
+      const agents = initAgentProgressService({
+        root: path.join(app.getPath('userData'), 'agents'),
+        logger: this.logger as never,
+        desktop,
+      });
+      agents.registerIpc();
+      if (agents.state().settings.enabled) agents.start();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -372,6 +382,7 @@ export class Application implements IApplication {
     getScreenService()?.stop();
     getLocalHubService()?.stop();
     void getLocalModelService()?.stop();
+    getAgentProgressService()?.stop();
     this.trayManager?.dispose();
     this.trayManager = undefined;
     if (!this.aiRuntime) return;

@@ -44,15 +44,15 @@
   font-size: var(--cd-font-size-md);
 }
 .cd-btn--primary {
-  background: linear-gradient(135deg, var(--cd-color-accent), var(--cd-color-accent-3));
+  background: var(--cd-color-accent);
   border-color: transparent;
   color: var(--cd-color-text-on-accent);
   box-shadow: var(--cd-shadow-sm);
 }
 .cd-btn--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--cd-color-accent-hover), var(--cd-color-accent-3));
+  background: var(--cd-color-accent-hover);
   color: var(--cd-color-text-on-accent);
-  box-shadow: var(--cd-shadow-glow);
+  box-shadow: var(--cd-shadow-sm);
   border-color: transparent;
 }
 .cd-btn--ghost {

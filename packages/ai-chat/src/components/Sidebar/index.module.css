@@ -1,34 +1,20 @@
 .sidebar {
-  width: 280px;
+  width: 260px;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(var(--cd-accent-rgb), 0.2);
+  background: var(--cd-color-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid var(--cd-color-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.25s ease;
   flex-shrink: 0;
   z-index: 10;
   position: relative;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
 }
 
-/* 侧边栏发光边框 */
 .sidebar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    var(--cd-color-border-strong) 50%,
-    transparent 100%
-  );
-  animation: sidebarGlow 4s ease-in-out infinite;
+  display: none;
 }
 
 .sidebar.collapsed {

@@ -67,6 +67,7 @@ describe('LocalPanel', () => {
   it('shows RAM recommendation and downloads runtime + model after license consent', async () => {
     const invoke = mockIpc();
     const r = render(<LocalPanel isVisible onClose={() => undefined} />);
+    fireEvent.click(r.getByRole('tab', { name: /本机小模型/ }));
     await waitFor(() => expect(r.getByTestId('local-ram').textContent).toContain('8 GB'));
     const card = r.getByTestId('local-model-qwen3-1.7b-q8');
     expect(card.textContent).toContain('推荐');
@@ -84,6 +85,7 @@ describe('LocalPanel', () => {
   it('starts an installed model; running server offers use/stop', async () => {
     const invoke = mockIpc();
     const r = render(<LocalPanel isVisible onClose={() => undefined} />);
+    fireEvent.click(r.getByRole('tab', { name: /本机小模型/ }));
     await waitFor(() => r.getByTestId('local-model-qwen3-0.6b-q8'));
     fireEvent.click(
       r.getByTestId('local-model-qwen3-0.6b-q8').querySelector('[data-testid=local-start]')!,
@@ -100,6 +102,7 @@ describe('LocalPanel', () => {
       },
     });
     const r2 = render(<LocalPanel isVisible onClose={() => undefined} />);
+    fireEvent.click(r2.getByRole('tab', { name: /本机小模型/ }));
     await waitFor(() => expect(r2.getByTestId('local-server-status').textContent).toBe('运行中'));
     expect(r2.getByTestId('local-use')).toBeTruthy();
     expect(r2.getByTestId('local-stop')).toBeTruthy();
@@ -108,10 +111,8 @@ describe('LocalPanel', () => {
   it('calendar and clipboard empty states', async () => {
     mockIpc();
     const r = render(<LocalPanel isVisible onClose={() => undefined} />);
-    await waitFor(() => r.getByTestId('local-ram'));
-    fireEvent.click(r.getByText('日历'));
     await waitFor(() => expect(r.getByText('接下来两周没有日程')).toBeTruthy());
-    fireEvent.click(r.getByText('剪贴板'));
+    fireEvent.click(r.getByRole('tab', { name: '剪贴板' }));
     await waitFor(() => expect(r.getByText('剪贴板历史未开启')).toBeTruthy());
   });
 });
