@@ -8,7 +8,7 @@ import type { AppTrash } from './AppTrash';
 import type { AuditLog } from './AuditLog';
 import type { Danger } from './consent';
 import { createP2Tools, P2_DANGER, type P2Deps } from './p2tools';
-import { extOf, isSupported } from './parse/extract';
+import { DOC_EXTS, extOf, isSupported } from './parse/extract';
 import type { ParseResult } from './parse/runParse';
 import { isInside } from './pathGuard';
 import type { PermissionBroker } from './PermissionBroker';
@@ -366,11 +366,7 @@ export function createDesktopTools(deps: DesktopToolDeps): ToolDefinition[] {
               if (re && !re.test(d.name)) continue;
               const st = await fs.promises.stat(full);
               if (needle) {
-                if (
-                  st.size > 2 * 1024 * 1024 ||
-                  !isSupported(full) ||
-                  ['pdf', 'docx'].includes(extOf(full))
-                )
+                if (st.size > 2 * 1024 * 1024 || !isSupported(full) || DOC_EXTS.has(extOf(full)))
                   continue;
                 const txt = await fs.promises.readFile(full, 'utf8').catch(() => '');
                 if (!txt.toLowerCase().includes(needle)) continue;

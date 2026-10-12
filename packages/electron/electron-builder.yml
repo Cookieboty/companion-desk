@@ -43,6 +43,9 @@ asarUnpack:
   - '**/node_modules/node-global-key-listener/bin/**'
   # Silero VAD：onnxruntime-web 的 wasm / worker 模块需从磁盘加载
   - '**/node_modules/onnxruntime-web/dist/**'
+  # 知识库 OCR：tesseract.js 的 worker_threads 脚本与 tesseract.js-core WASM 需从磁盘加载
+  - '**/node_modules/tesseract.js/**'
+  - '**/node_modules/tesseract.js-core/**'
 
 extraResources:
   - from: ../renderer/dist

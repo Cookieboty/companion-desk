@@ -1,6 +1,7 @@
-import React, { useCallback, useState, useRef, type KeyboardEvent } from 'react';
+import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
+import { kbClient } from '../../services/kbClient';
 import { providerClientAvailable } from '../../services/providerClient';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
@@ -15,6 +16,7 @@ interface MessageInputProps {
   onConfigClick?: () => void;
   onProvidersClick?: () => void;
   onDesktopClick?: () => void;
+  onKnowledgeClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -24,11 +26,43 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onConfigClick,
   onProvidersClick,
   onDesktopClick,
+  onKnowledgeClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { state, actions } = useAiChat();
+  // 知识库问答模式（Ctrl/Cmd+Shift+K 切换），记住上次的选择
+  const [kbMode, setKbMode] = useState(() => {
+    try {
+      return localStorage.getItem('cd.chat.kbMode') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const kbAvailable = kbClient.available();
+  const toggleKb = useCallback(() => {
+    setKbMode((v) => {
+      try {
+        localStorage.setItem('cd.chat.kbMode', v ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, []);
+  useEffect(() => {
+    if (!kbAvailable) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleKb();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [kbAvailable, toggleKb]);
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();
@@ -38,6 +72,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       setMessage('');
       if (onSend) {
         onSend(trimmedMessage);
+      } else if (kbMode && kbAvailable) {
+        await actions.askKnowledge(trimmedMessage);
       } else {
         // 默认使用流式消息
         await actions.sendStreamMessage(trimmedMessage);
@@ -92,13 +128,17 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const onVoiceText = useCallback(
     (text: string, autoSend: boolean) => {
       if (autoSend && !busyRef.current) {
-        void (onSend ? Promise.resolve(onSend(text)) : actions.sendStreamMessage(text));
+        void (onSend
+          ? Promise.resolve(onSend(text))
+          : kbMode && kbAvailable
+            ? actions.askKnowledge(text)
+            : actions.sendStreamMessage(text));
         return;
       }
       setMessage((m) => (m ? `${m} ${text}` : text));
       requestAnimationFrame(() => textareaRef.current?.focus());
     },
-    [onSend, actions],
+    [onSend, actions, kbMode, kbAvailable],
   );
   const cv = useChatVoice({ disabled: disabled || !state.currentModelId, onText: onVoiceText });
 
@@ -117,12 +157,34 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           onKeyDown={handleKeyDown}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
-          placeholder={isDisabled ? '请先选择AI模型...' : placeholder}
+          placeholder={
+            isDisabled
+              ? '请先选择AI模型...'
+              : kbMode && kbAvailable
+                ? '向知识库提问，回答会标注出处…'
+                : placeholder
+          }
           disabled={isDisabled}
           className={styles.messageTextarea}
           rows={1}
         />
 
+        {kbAvailable && (
+          <button
+            type="button"
+            onClick={toggleKb}
+            className={`${styles.kbToggle} ${kbMode ? styles.kbToggleOn : ''}`}
+            aria-pressed={kbMode}
+            title={
+              kbMode
+                ? '知识库问答：开（Ctrl/⌘+Shift+K 关闭）'
+                : '知识库问答：关（Ctrl/⌘+Shift+K 开启）'
+            }
+            data-testid="kb-mode-toggle"
+          >
+            📚{kbMode && <span className={styles.kbToggleLabel}>知识库</span>}
+          </button>
+        )}
         <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
         <button
           onClick={handleSend}
@@ -141,7 +203,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       </div>
 
       <div className={styles.inputHint}>
-        <span>Enter 发送，Shift+Enter 换行 · 按住 F2 说话</span>
+        <span className={styles.hintText}>
+          Enter 发送 · F2 说话
+          {kbAvailable ? ' · ⌘/Ctrl+Shift+K 知识库' : ''}
+        </span>
         <div className={styles.modelStatus}>
           {providerClientAvailable() ? (
             <ProviderSwitcher
@@ -164,6 +229,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               data-testid="open-voice-settings"
             >
               🎙
+            </button>
+          )}
+          {onKnowledgeClick && kbAvailable && (
+            <button
+              className={styles.configButton}
+              onClick={onKnowledgeClick}
+              title="本地知识库（来源 / 索引 / OCR）"
+              data-testid="open-kb-panel"
+            >
+              📚
             </button>
           )}
           {onDesktopClick && (

@@ -328,3 +328,45 @@
 .voiceRow:empty {
   display: none;
 }
+
+/* 知识库问答开关 */
+.kbToggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 8px;
+  justify-content: center;
+  border-radius: var(--cd-radius-full);
+  border: 1px solid var(--cd-color-border);
+  background: transparent;
+  color: var(--cd-color-text-muted);
+  font-size: var(--cd-font-size-sm);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all var(--cd-transition);
+}
+.kbToggle:hover,
+.kbToggle:focus-visible {
+  opacity: 1;
+  border-color: var(--cd-color-border-strong);
+}
+.kbToggleOn {
+  opacity: 1;
+  color: var(--cd-color-accent);
+  border-color: var(--cd-color-accent);
+  background: var(--cd-color-accent-soft);
+}
+.kbToggleLabel {
+  font-size: var(--cd-font-size-xs);
+  font-weight: var(--cd-font-weight-medium);
+}
+
+.hintText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

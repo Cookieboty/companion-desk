@@ -10,6 +10,7 @@ import React, {
 
 import { desktopClient } from '../services/desktopClient';
 import { createIPCClient } from '../services/IPCClient';
+import { kbClient } from '../services/kbClient';
 import { effectiveProviderLabel, providerClientAvailable } from '../services/providerClient';
 import { type ChatMessage, type ChatConfig } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
@@ -119,6 +120,7 @@ interface AiChatContextType {
   actions: {
     sendMessage: (content: string) => Promise<void>;
     sendStreamMessage: (content: string) => Promise<void>;
+    askKnowledge: (content: string) => Promise<void>;
     loadChatHistory: () => Promise<void>;
     clearChatHistory: () => Promise<void>;
     newConversation: () => Promise<void>;
@@ -208,6 +210,43 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       };
       dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
 
+      await state.ipcClient.saveMessage(userMessage);
+      await state.ipcClient.saveMessage(aiMessage);
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: errorMessage(error) });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
+  // 知识库问答：主进程检索本地索引 → 模型带引用回答
+  const askKnowledge = async (content: string) => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: undefined });
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content,
+        timestamp: Date.now(),
+        kb: true,
+      };
+      const history = state.messages
+        .filter((m) => !m.error && (m.role === 'user' || m.role === 'assistant'))
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.content }));
+      dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+      const r = await kbClient.ask(content, history);
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: r.answer,
+        timestamp: Date.now(),
+        modelId: messageModelTag(state.currentModelId),
+        sources: r.sources,
+        kb: true,
+      };
+      dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
       await state.ipcClient.saveMessage(userMessage);
       await state.ipcClient.saveMessage(aiMessage);
     } catch (error) {
@@ -362,6 +401,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     actions: {
       sendMessage,
       sendStreamMessage,
+      askKnowledge,
       loadChatHistory,
       clearChatHistory,
       newConversation,

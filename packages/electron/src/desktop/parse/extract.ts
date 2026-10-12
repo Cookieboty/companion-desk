@@ -1,8 +1,11 @@
 /**
  * 文本提取（在受限的子进程里运行，见 worker.ts / runParse.ts）：
- * txt / md / csv / json / 代码 → UTF-8 文本；pdf → unpdf（pdf.js 无 worker 版）；docx → fflate 解 zip + 解析 word/document.xml。
+ * txt / md / csv / json / 代码 → UTF-8 文本；pdf → unpdf（pdf.js 无 worker 版）；docx → fflate 解 zip + 解析 word/document.xml；
+ * odt / xlsx / rtf → office.ts。
  */
 import { strFromU8, unzipSync } from 'fflate';
+
+import { extractOdt, extractXlsx, rtfToText } from './office';
 
 export const TEXT_EXTS = new Set([
   'txt',
@@ -48,7 +51,7 @@ export const TEXT_EXTS = new Set([
   'rst',
   'org',
 ]);
-export const DOC_EXTS = new Set(['pdf', 'docx']);
+export const DOC_EXTS = new Set(['pdf', 'docx', 'odt', 'rtf', 'xlsx']);
 
 export function extOf(p: string): string {
   const m = /\.([A-Za-z0-9]+)$/.exec(p);
@@ -127,6 +130,15 @@ export async function extract(buf: Uint8Array, filePath: string): Promise<Extrac
   const e = extOf(filePath);
   if (e === 'pdf') return extractPdf(buf);
   if (e === 'docx') return extractDocx(buf);
+  if (e === 'odt')
+    return { text: extractOdt(buf), mime: 'application/vnd.oasis.opendocument.text' };
+  if (e === 'xlsx')
+    return {
+      text: extractXlsx(buf),
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+  if (e === 'rtf')
+    return { text: rtfToText(new TextDecoder('latin1').decode(buf)), mime: 'application/rtf' };
   if (TEXT_EXTS.has(e))
     return {
       text: decodeText(buf),

@@ -5,6 +5,18 @@ export interface ChatMessage {
   timestamp: number;
   modelId?: string;
   error?: string;
+  /** 知识库问答：本条回答引用的来源（[n] 对应 n） */
+  sources?: Array<{
+    n: number;
+    docId: string;
+    chunkId: string;
+    path: string;
+    title: string;
+    page?: number;
+    snippet: string;
+  }>;
+  /** 来自知识库问答 */
+  kb?: boolean;
 }
 
 export interface ChatSession {
