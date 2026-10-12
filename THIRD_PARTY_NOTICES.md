@@ -70,6 +70,13 @@ Nothing here is bundled. The runtime and the model weights download on demand fr
 
 Ollama is optional. The user installs it separately (MIT); the app only calls its local HTTP API. The calendar (ICS/CalDAV), clipboard history and data export add no new dependencies; the zip export uses the existing `fflate` (MIT).
 
+## Sandboxed browser & code execution
+
+Clean-room implementation on Electron (`BrowserWindow` sandbox + memory partition) and the
+Node.js permission model (both MIT, already listed). No code from Open Interpreter (AGPL-3.0)
+or other copyleft agents was used; no new dependencies were added. Python, when used, is the
+user's own system interpreter and is not redistributed.
+
 ## Reviewed weak-copyleft dependencies
 
 | Package                               | Licence           | Usage                                                                            |
