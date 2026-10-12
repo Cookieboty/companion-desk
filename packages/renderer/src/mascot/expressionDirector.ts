@@ -1,3 +1,4 @@
+import { analyzeEmotion, motionForEmotion, type EmotionResult } from './emotion';
 import type { MascotExpression } from './MascotBackend';
 
 /**
@@ -19,6 +20,9 @@ const RULES: Array<{ expr: MascotExpression; re: RegExp }> = [
 
 export function expressionForText(text: string | null | undefined): MascotExpression {
   if (!text) return 'neutral';
+  // 「不开心」「没有很高兴」之类：正面词被否定 → 不能笑
+  const a = analyzeEmotion(text);
+  if (a.negated && a.emotion === 'sad') return 'sad';
   for (const { expr, re } of RULES) {
     if (re.test(text)) return expr;
   }
@@ -54,7 +58,15 @@ export type MascotEvent =
   | { kind: 'message:complete'; text?: string }
   | { kind: 'tool:executed'; ok: boolean }
   | { kind: 'error' }
-  | { kind: 'tts:end' };
+  | { kind: 'tts:end' }
+  /** 流式回复中途出现的强烈情绪 */
+  | { kind: 'message:early'; emotion: EmotionResult }
+  /** 用户开口打断了正在朗读的回复 */
+  | { kind: 'barge-in' }
+  /** 用户点了停止生成 */
+  | { kind: 'stopped-by-user' }
+  /** 智能体在等用户确认一个操作 */
+  | { kind: 'confirm-required' };
 
 export interface ExpressionDirective {
   expression: MascotExpression;
@@ -62,6 +74,8 @@ export interface ExpressionDirective {
   holdMs: number;
   /** 可选的身体动作（由 mood.applyDirective 节流播放） */
   motion?: string;
+  /** 打断类反应：不受自动动作冷却限制，立即播放 */
+  force?: boolean;
 }
 
 export function directiveForEvent(evt: MascotEvent): ExpressionDirective | null {
@@ -70,12 +84,31 @@ export function directiveForEvent(evt: MascotEvent): ExpressionDirective | null 
       return { expression: 'relaxed', holdMs: 4000, motion: 'think' };
     case 'message:delta':
       return { expression: 'relaxed', holdMs: 4000 };
-    case 'message:complete':
+    case 'message:complete': {
+      const a = analyzeEmotion(evt.text);
+      // 强烈情绪升级动作（如「太好了！！」→ 欢呼），否则用关键词动作
+      const motion =
+        a.intensity >= 0.7
+          ? (motionForEmotion(a) ?? motionForText(evt.text))
+          : motionForText(evt.text);
       return {
         expression: expressionForText(evt.text),
-        holdMs: 3500,
-        motion: motionForText(evt.text),
+        holdMs: a.intensity >= 0.7 ? 5000 : 3500,
+        motion,
       };
+    }
+    case 'message:early':
+      return {
+        expression: evt.emotion.emotion === 'neutral' ? 'relaxed' : evt.emotion.emotion,
+        holdMs: 4000,
+        motion: motionForEmotion(evt.emotion),
+      };
+    case 'barge-in':
+      return { expression: 'surprised', holdMs: 1200, motion: 'flinch', force: true };
+    case 'stopped-by-user':
+      return { expression: 'neutral', holdMs: 0, motion: 'nod', force: true };
+    case 'confirm-required':
+      return { expression: 'relaxed', holdMs: 0, motion: 'interact' };
     case 'tool:executed':
       return evt.ok
         ? { expression: 'happy', holdMs: 1500, motion: 'nod' }
