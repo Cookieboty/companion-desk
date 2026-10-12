@@ -32,6 +32,15 @@ and keyword voice clips of unknown licence.
 | `unpdf`   | MIT     | PDF text extraction in a sandboxed utility process; bundles Mozilla pdf.js (Apache-2.0) |
 | `fflate`  | MIT     | Unzips `.docx` to read `word/document.xml`                                              |
 
+## Local knowledge base
+
+BM25 tokenizer/index, chunking, ODT/RTF/XLSX text extraction and the cited-answer prompt are original project code (MIT). Optional embeddings / rerank call any OpenAI-compatible endpoint the user configures (e.g. a local Ollama); no model is bundled.
+
+| Component                                                                 | Licence    | Notes                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tesseract.js` 7.0.0 (+ `tesseract.js-core` WASM)                         | Apache-2.0 | Offline OCR of images in indexed folders. Deps: `bmp-js`, `is-url`, `node-fetch`, `regenerator-runtime`, `zlibjs` (MIT); `idb-keyval`, `wasm-feature-detect` (Apache-2.0); `opencollective-postinstall` (MIT) |
+| Tesseract `tessdata_fast` `eng` / `chi_sim` (on demand, commit `8741641`) | Apache-2.0 | © Google / Tesseract contributors — https://github.com/tesseract-ocr/tessdata_fast — pinned URLs + SHA-256 in `packages/electron/src/knowledge/catalog.ts`                                                    |
+
 ## Voice input (speech-to-text)
 
 Model files and binaries are **not bundled**: they are downloaded on demand from the pinned URLs in `packages/electron/src/voice/catalog.ts`, verified by SHA-256, and the licence is shown before download.

@@ -8,13 +8,13 @@ import path from 'node:path';
 import { app, ipcMain, session } from 'electron';
 
 import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
-import { getVoiceService } from '../voice/VoiceService';
 import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { SafeKeyProvider } from '../ai/SafeKeyProvider';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { getDesktopService } from '../desktop/DesktopService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
+import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getModelService } from '../models/ModelService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
@@ -22,6 +22,7 @@ import { ConfigService } from '../services/ConfigService';
 import { LoggerService, LogLevel } from '../services/LoggerService';
 import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { perfMark } from '../utils/perfMarks';
+import { getVoiceService } from '../voice/VoiceService';
 
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
@@ -121,6 +122,27 @@ export class Application implements IApplication {
         openChat: () => this.windowManager.createAiChatWindow(),
       });
 
+      // 本地知识库：先于 AI runtime 创建（kb_search 工具随桌面工具注册），LLM 调用延迟绑定
+      const kb = initKnowledgeService({
+        root: path.join(app.getPath('userData'), 'knowledge'),
+        logger: this.logger as never,
+        desktop,
+        listProviders: () => this.aiRuntime?.listProviders() ?? [],
+        credentials: (id) => this.aiRuntime?.providerCredentials(id) ?? null,
+        chatProvider: () => desktop.providerFor('chat'),
+        complete: async (messages, signal) => {
+          const rt = this.aiRuntime;
+          if (!rt) throw new Error('AI 服务未就绪');
+          const resp = await rt.client.chat.sendMessage({
+            role: 'chat',
+            messages,
+            signal,
+          } as never);
+          return typeof resp?.content === 'string' ? resp.content : '';
+        },
+      });
+      kb.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -161,6 +183,7 @@ export class Application implements IApplication {
       await this.windowManager.createMainWindow();
       // 提醒调度：主窗口创建后开始（错过的提醒要在看板娘气泡里播报）
       desktop.startReminders();
+      kb.start();
 
       // 托盘：一键切换 AI provider
       this.startTray();

@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { ConfigPanel } from './components/ConfigPanel';
 import { DesktopPanel } from './components/DesktopPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { KnowledgePanel } from './components/KnowledgePanel';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { ProviderPanel } from './components/ProviderPanel';
@@ -25,6 +26,18 @@ const AiChatContent: React.FC = () => {
   const [showDesktop, setShowDesktop] = useState(false);
   // 托盘「桌面能力…」→ 打开桌面能力面板
   useEffect(() => desktopClient.onOpenPanel(() => setShowDesktop(true)), []);
+  const [showKb, setShowKb] = useState(false);
+  // Ctrl/Cmd+Shift+L 打开知识库管理
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        setShowKb((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleNewChat = () => {
@@ -106,6 +119,7 @@ const AiChatContent: React.FC = () => {
             onConfigClick={() => setShowConfig(true)}
             onProvidersClick={() => setShowProviders(true)}
             onDesktopClick={() => setShowDesktop(true)}
+            onKnowledgeClick={() => setShowKb(true)}
           />
         </footer>
       </div>
@@ -114,6 +128,7 @@ const AiChatContent: React.FC = () => {
       <ConfigPanel isVisible={showConfig} onClose={() => setShowConfig(false)} />
       <ProviderPanel isVisible={showProviders} onClose={() => setShowProviders(false)} />
       <DesktopPanel isVisible={showDesktop} onClose={() => setShowDesktop(false)} />
+      <KnowledgePanel isVisible={showKb} onClose={() => setShowKb(false)} />
     </div>
   );
 };

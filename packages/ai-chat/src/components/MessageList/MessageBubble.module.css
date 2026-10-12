@@ -281,3 +281,109 @@
     padding: 3px 8px;
   }
 }
+
+/* ---------- 知识库引用 ---------- */
+.kbTag {
+  font-size: var(--cd-font-size-xs);
+  color: var(--cd-color-accent);
+  background: var(--cd-color-accent-soft);
+  padding: 2px 8px;
+  border-radius: var(--cd-radius-full);
+}
+.cite {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin: 0 1px;
+  vertical-align: super;
+  font-size: 10px;
+  font-weight: var(--cd-font-weight-bold);
+  line-height: 1;
+  color: var(--cd-color-text-on-accent);
+  background: var(--cd-color-accent);
+  border-radius: var(--cd-radius-full);
+  transition: transform var(--cd-transition);
+}
+.cite:hover,
+.cite:focus-visible {
+  transform: scale(1.15);
+  box-shadow: var(--cd-focus-ring);
+}
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--cd-color-border);
+}
+.sourcesLabel {
+  font-size: var(--cd-font-size-xs);
+  color: var(--cd-color-text-muted);
+}
+.sourceChip {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  padding: 3px 10px 3px 4px;
+  font-size: var(--cd-font-size-xs);
+  color: var(--cd-color-text);
+  background: var(--cd-color-surface-sunken);
+  border: 1px solid var(--cd-color-border);
+  border-radius: var(--cd-radius-full);
+  transition: border-color var(--cd-transition);
+}
+.sourceChip:hover,
+.sourceChip:focus-visible {
+  border-color: var(--cd-color-accent);
+}
+.sourceNum {
+  min-width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--cd-radius-full);
+  background: var(--cd-color-accent-soft);
+  color: var(--cd-color-accent);
+  font-weight: var(--cd-font-weight-bold);
+}
+.sourceTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sourceMeta {
+  color: var(--cd-color-text-muted);
+}
+.previewBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.previewPath {
+  font-size: var(--cd-font-size-xs);
+  color: var(--cd-color-text-muted);
+  font-family: var(--cd-font-mono);
+}
+.previewQuote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--cd-color-accent);
+  background: var(--cd-color-surface-sunken);
+  border-radius: var(--cd-radius-sm);
+  font-size: var(--cd-font-size-sm);
+  line-height: var(--cd-line-height-md);
+  white-space: pre-wrap;
+  max-height: 50vh;
+  overflow: auto;
+}
