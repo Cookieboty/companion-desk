@@ -17,6 +17,7 @@
   "dependencies": {
     "@ig-live/ai-sdk-client": "workspace:*",
     "@ig-live/ui": "workspace:*",
+    "@ig-live/voice": "workspace:*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-window": "^2.3.3"

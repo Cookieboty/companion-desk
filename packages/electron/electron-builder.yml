@@ -41,6 +41,8 @@ asarUnpack:
   - '**/mcp/**/*'
   # 全局按键监听的原生 key server（WinKeyServer.exe 等）不能从 asar 内启动
   - '**/node_modules/node-global-key-listener/bin/**'
+  # Silero VAD：onnxruntime-web 的 wasm / worker 模块需从磁盘加载
+  - '**/node_modules/onnxruntime-web/dist/**'
 
 extraResources:
   - from: ../renderer/dist

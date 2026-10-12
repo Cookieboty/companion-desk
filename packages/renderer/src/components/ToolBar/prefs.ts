@@ -12,7 +12,14 @@ export const PALETTES: Array<{ id: PaletteId; label: string; swatch: string }> =
 ];
 
 /** 常驻在工具栏上的按钮；其余进入「更多」菜单 */
-export const PRIMARY_TOOLS = ['ai-chat', 'switch-model', 'motion', 'voice-settings', 'toggle-top'];
+export const PRIMARY_TOOLS = [
+  'ai-chat',
+  'voice-input',
+  'switch-model',
+  'motion',
+  'voice-settings',
+  'toggle-top',
+];
 
 const KEY = 'mascot-toolbar-prefs';
 const DEFAULTS: ToolbarPrefs = { compact: false, palette: 'calm' };

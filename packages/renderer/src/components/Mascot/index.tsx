@@ -24,6 +24,7 @@ import MascotDriver from '@/mascot/MascotDriver';
 const VirtualCharacter3D = lazy(() => import('../VirtualCharacter3D'));
 const SpriteCanvas = lazy(() => import('../SpriteMascot/SpriteCanvas'));
 const MascotAIBridge = lazy(() => import('@/mascot/MascotAIBridge'));
+const MascotVoiceBridge = lazy(() => import('@/mascot/voice/MascotVoice'));
 
 /**
  * 看板娘宿主：气泡 + 工具栏 + 角色画布（VRM 或 2D sprite）。
@@ -41,6 +42,7 @@ export const MascotHost: React.FC = () => {
       {aiReady && (
         <Suspense fallback={null}>
           <MascotAIBridge />
+          <MascotVoiceBridge />
         </Suspense>
       )}
       <MascotDriver />

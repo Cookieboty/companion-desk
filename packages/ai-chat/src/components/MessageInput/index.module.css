@@ -318,3 +318,13 @@
     gap: 10px;
   }
 }
+
+.voiceRow {
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+  margin-bottom: 6px;
+}
+.voiceRow:empty {
+  display: none;
+}

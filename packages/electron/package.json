@@ -48,6 +48,7 @@
     "@modelcontextprotocol/sdk": "^1.32.1",
     "ai": "^7.0.136",
     "fflate": "^0.8.3",
+    "onnxruntime-web": "1.30.0",
     "node-global-key-listener": "^0.3.0",
     "unpdf": "^1.8.1"
   },

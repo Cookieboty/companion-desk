@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import '@ig-live/ui/styles.css';
+import '@ig-live/voice/styles.css';
 import App from './App';
 
 const hasAiIpc = typeof window !== 'undefined' && Boolean((window as { aiIPC?: unknown }).aiIPC);

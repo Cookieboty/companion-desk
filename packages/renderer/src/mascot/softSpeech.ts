@@ -107,7 +107,20 @@ export interface SpeakSoftOptions {
 /**
  * Speak with soft defaults. Returns false if Speech Synthesis is unavailable.
  */
+let generation = 0;
+
+/** 立即停止系统朗读（语音打断用）：作废尚未开始的分句 */
+export function stopSoftSpeech(): void {
+  generation++;
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {
+    /* ignore */
+  }
+}
+
 export function speakSoft(text: string, opts: SpeakSoftOptions = {}): boolean {
+  const gen = ++generation;
   try {
     const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
     if (!synth || typeof SpeechSynthesisUtterance === 'undefined' || !text.trim()) return false;
@@ -121,6 +134,7 @@ export function speakSoft(text: string, opts: SpeakSoftOptions = {}): boolean {
     let i = 0;
 
     const speakNext = () => {
+      if (gen !== generation) return;
       if (i >= parts.length) {
         opts.onEnd?.();
         return;
@@ -133,6 +147,7 @@ export function speakSoft(text: string, opts: SpeakSoftOptions = {}): boolean {
       u.volume = prefs.volume;
       u.onend = () => {
         // Short breath between clauses (~120–180ms)
+        if (gen !== generation) return;
         if (i < parts.length) setTimeout(speakNext, 140);
         else opts.onEnd?.();
       };

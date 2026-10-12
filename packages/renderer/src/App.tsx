@@ -7,6 +7,7 @@ const MASCOT_CONFIG: MascotConfig = {
   tools: [
     'switch-model',
     'ai-chat',
+    'voice-input',
     'info',
     'voice-settings',
     'voice-mode-toggle',
