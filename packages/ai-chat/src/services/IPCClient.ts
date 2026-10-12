@@ -155,16 +155,30 @@ export class SdkIPCClient implements IPCClient {
     return fallback ?? readStorage<string>(LOCAL_CURRENT_MODEL_KEY);
   }
 
-  private async buildMessages(message: string, history: ChatMessage[] = []) {
+  private async buildMessages(message: string, history: ChatMessage[] = [], extra?: string) {
     const { systemPrompt } = await this.getConfig();
-    return buildProviderMessages(history, message, systemPrompt);
+    const sys = [systemPrompt, extra].filter((s) => s && s.trim()).join('\n\n');
+    return buildProviderMessages(history, message, sys);
   }
 
-  async sendMessage(message: string, modelId?: string, history?: ChatMessage[]): Promise<string> {
+  currentConversationId(): string | undefined {
+    try {
+      return this.store.currentId();
+    } catch {
+      return undefined;
+    }
+  }
+
+  async sendMessage(
+    message: string,
+    modelId?: string,
+    history?: ChatMessage[],
+    extraSystem?: string,
+  ): Promise<string> {
     try {
       const resp = await this.chat.sendMessage({
         provider: this.currentModelId(modelId),
-        messages: await this.buildMessages(message, history),
+        messages: await this.buildMessages(message, history, extraSystem),
       });
       return typeof resp?.content === 'string' ? resp.content : '';
     } catch (error) {
@@ -179,11 +193,12 @@ export class SdkIPCClient implements IPCClient {
     modelId?: string,
     onChunk?: (chunk: string) => void,
     history?: ChatMessage[],
+    extraSystem?: string,
   ): Promise<void> {
     try {
       const opts = {
         provider: this.currentModelId(modelId),
-        messages: await this.buildMessages(message, history),
+        messages: await this.buildMessages(message, history, extraSystem),
       };
       // 对话走工具循环（role 仍是 chat，按 chat 路由选 provider）
       const iterable =

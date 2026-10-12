@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } f
 
 import { useAiChat } from '../../contexts/AiChatContext';
 import { kbClient } from '../../services/kbClient';
+import { memClient } from '../../services/memClient';
 import { providerClientAvailable } from '../../services/providerClient';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
@@ -17,6 +18,7 @@ interface MessageInputProps {
   onProvidersClick?: () => void;
   onDesktopClick?: () => void;
   onKnowledgeClick?: () => void;
+  onMemoryClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -27,6 +29,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onProvidersClick,
   onDesktopClick,
   onKnowledgeClick,
+  onMemoryClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -239,6 +242,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               data-testid="open-kb-panel"
             >
               📚
+            </button>
+          )}
+          {onMemoryClick && memClient.available() && (
+            <button
+              className={styles.configButton}
+              onClick={onMemoryClick}
+              title="长期记忆（Ctrl/⌘+Shift+M）"
+              data-testid="open-mem-panel"
+            >
+              🧠
             </button>
           )}
           {onDesktopClick && (

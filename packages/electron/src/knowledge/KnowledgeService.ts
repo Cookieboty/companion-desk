@@ -391,6 +391,18 @@ export class KnowledgeService {
     return this.allowRemote(ep, this.settings.embed.providerId) ? null : ep;
   }
 
+  /** 供其它本地模块（长期记忆）复用同一向量服务；未启用 / 未同意云端时返回 null */
+  async embedTexts(texts: string[], signal?: AbortSignal): Promise<Float32Array[] | null> {
+    const ep = this.embedEndpoint();
+    if (!ep || !texts.length) return null;
+    try {
+      return await embed(ep, texts, { signal: signal ?? AbortSignal.timeout(20_000) });
+    } catch (e) {
+      this.d.logger.warn('embedTexts failed', e instanceof Error ? e.message : e);
+      return null;
+    }
+  }
+
   embedStatus(): { active: boolean; reason?: string } {
     if (!this.settings.embed.enabled) return { active: false };
     const ep = this.endpoint(this.settings.embed);

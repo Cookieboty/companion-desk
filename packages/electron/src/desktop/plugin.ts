@@ -1,6 +1,7 @@
 import { ToolRegistryKey, definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
 
 import { getKnowledgeService } from '../knowledge/KnowledgeService';
+import { getMemoryService } from '../memory/MemoryService';
 
 import { getDesktopService } from './DesktopService';
 
@@ -17,6 +18,8 @@ export const DesktopToolsPlugin = definePlugin<Record<string, never>>({
     for (const t of getDesktopService().tools()) registry.register(t);
     // 本地知识库检索（kb_search）
     for (const t of getKnowledgeService()?.tools() ?? []) registry.register(t);
+    // 长期记忆（memory_search / memory_remember）
+    for (const t of getMemoryService()?.tools() ?? []) registry.register(t);
   },
 });
 

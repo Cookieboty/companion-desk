@@ -17,6 +17,8 @@ export interface ChatMessage {
   }>;
   /** 来自知识库问答 */
   kb?: boolean;
+  /** 回答时参考了哪些长期记忆 */
+  memories?: Array<{ id: string; kind: 'episode' | 'fact'; title: string }>;
 }
 
 export interface ChatSession {
