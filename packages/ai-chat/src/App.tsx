@@ -7,6 +7,7 @@ import { DesktopPanel } from './components/DesktopPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExtensionsPanel } from './components/ExtensionsPanel';
 import { KnowledgePanel } from './components/KnowledgePanel';
+import { LocalPanel } from './components/LocalPanel';
 import { MemoryPanel } from './components/MemoryPanel';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
@@ -62,6 +63,7 @@ const AiChatContent: React.FC = () => {
   }, []);
   const [showScreen, setShowScreen] = useState(false);
   const [showExt, setShowExt] = useState(false);
+  const [showLocal, setShowLocal] = useState(false);
   const [screenSt, setScreenSt] = useState<ScreenState | null>(null);
   useEffect(() => {
     if (!screenClient.available()) return;
@@ -75,6 +77,10 @@ const AiChatContent: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
         e.preventDefault();
         setShowExt((v) => !v);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setShowLocal((v) => !v);
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
@@ -187,6 +193,7 @@ const AiChatContent: React.FC = () => {
             onScheduleClick={() => setShowSched(true)}
             onScreenClick={() => setShowScreen(true)}
             onExtClick={() => setShowExt(true)}
+            onLocalClick={() => setShowLocal(true)}
           />
         </footer>
       </div>
@@ -200,6 +207,7 @@ const AiChatContent: React.FC = () => {
       <SchedulePanel isVisible={showSched} onClose={() => setShowSched(false)} />
       <ScreenPanel isVisible={showScreen} onClose={() => setShowScreen(false)} />
       <ExtensionsPanel isVisible={showExt} onClose={() => setShowExt(false)} />
+      <LocalPanel isVisible={showLocal} onClose={() => setShowLocal(false)} />
     </div>
   );
 };

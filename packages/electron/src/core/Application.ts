@@ -16,6 +16,8 @@ import { getDesktopService } from '../desktop/DesktopService';
 import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
+import { getLocalHubService, initLocalHubService } from '../local/LocalHubService';
+import { getLocalModelService, initLocalModelService } from '../local/LocalModelService';
 import { getMemoryService, initMemoryService } from '../memory/MemoryService';
 import { getModelService } from '../models/ModelService';
 import { getSchedulerService, initSchedulerService } from '../schedule/SchedulerService';
@@ -182,7 +184,18 @@ export class Application implements IApplication {
           } as never);
           return typeof resp?.content === 'string' ? resp.content : '';
         },
-        memory: async (q) => (await mem.context(q)).text,
+        // 记忆 + 今日日历（日历服务在下方创建，这里按需读取）
+        memory: async (q) => {
+          const cal = (getLocalHubService()?.today() ?? [])
+            .map(
+              (o) =>
+                `- ${o.allDay ? '全天' : new Date(o.start).toTimeString().slice(0, 5)} ${o.summary}`,
+            )
+            .join('\n');
+          return [(await mem.context(q)).text, cal && `今日日历：\n${cal}`]
+            .filter(Boolean)
+            .join('\n\n');
+        },
         openChat: () => void this.windowManager.createAiChatWindow(),
       });
       sched.registerIpc();
@@ -209,6 +222,22 @@ export class Application implements IApplication {
       });
       ext.registerIpc();
 
+      // 本地中心：日历 / 剪贴板历史 / 数据导出；本地模型管理（llama.cpp + Ollama）
+      const hub = initLocalHubService({
+        root: path.join(app.getPath('userData'), 'local'),
+        userData: app.getPath('userData'),
+        logger: this.logger as never,
+        desktop,
+      });
+      hub.registerIpc();
+      const localLlm = initLocalModelService({
+        root: path.join(app.getPath('userData'), 'local'),
+        logger: this.logger as never,
+        desktop,
+        providers: () => this.aiRuntime?.providers as never,
+      });
+      localLlm.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -223,6 +252,8 @@ export class Application implements IApplication {
       }
       perfMark('ai-runtime-ready');
       void ext.start();
+      hub.start();
+      void localLlm.autoStart();
 
       // 语音输入：本地 whisper.cpp / OpenAI 兼容识别、按需下载模型、打断 TTS、唤醒词
       const rtv = this.aiRuntime;
@@ -339,6 +370,8 @@ export class Application implements IApplication {
     getMemoryService()?.flush();
     getSchedulerService()?.stop();
     getScreenService()?.stop();
+    getLocalHubService()?.stop();
+    void getLocalModelService()?.stop();
     this.trayManager?.dispose();
     this.trayManager = undefined;
     if (!this.aiRuntime) return;

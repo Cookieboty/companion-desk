@@ -54,6 +54,22 @@ Model files and binaries are **not bundled**: they are downloaded on demand from
 
 openWakeWord pretrained models (CC BY-NC-SA 4.0) are **not** used.
 
+## Local models (llama.cpp)
+
+Nothing here is bundled. The runtime and the model weights download on demand from the pinned URLs in `packages/electron/src/local/llmCatalog.ts`. Each download is checked against its SHA-256, and the licence is shown before it starts. We checked every licence on the official model card. Models with custom licences (Llama, Gemma) or an "other" licence (Qwen2.5-3B) are not listed.
+
+| Component                                                              | Source                                                                                                                                          | Licence    |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| llama.cpp release b11565 `llama-server` binaries (on demand)           | https://github.com/ggml-org/llama.cpp (© The ggml authors)                                                                                      | MIT        |
+| Qwen3 0.6B                                                             | [Qwen/Qwen3-0.6B-GGUF](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF) `Qwen3-0.6B-Q8_0.gguf`                                                      | Apache-2.0 |
+| Qwen2.5 1.5B Instruct                                                  | [Qwen/Qwen2.5-1.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF) `qwen2.5-1.5b-instruct-q4_k_m.gguf`                   | Apache-2.0 |
+| SmolLM2 1.7B Instruct                                                  | [HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF](https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF) `smollm2-1.7b-instruct-q4_k_m.gguf` | Apache-2.0 |
+| Qwen3 1.7B                                                             | [Qwen/Qwen3-1.7B-GGUF](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF) `Qwen3-1.7B-Q8_0.gguf`                                                      | Apache-2.0 |
+| Qwen3 4B                                                               | [Qwen/Qwen3-4B-GGUF](https://huggingface.co/Qwen/Qwen3-4B-GGUF) `Qwen3-4B-Q4_K_M.gguf`                                                          | Apache-2.0 |
+| Phi-4 mini Instruct (GGUF by Unsloth of microsoft/Phi-4-mini-instruct) | [unsloth/Phi-4-mini-instruct-GGUF](https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF) `Phi-4-mini-instruct-Q4_K_M.gguf`                   | MIT        |
+
+Ollama is optional. The user installs it separately (MIT); the app only calls its local HTTP API. The calendar (ICS/CalDAV), clipboard history and data export add no new dependencies; the zip export uses the existing `fflate` (MIT).
+
 ## Reviewed weak-copyleft dependencies
 
 | Package                               | Licence           | Usage                                                                            |
