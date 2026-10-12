@@ -37,7 +37,7 @@ import {
 import styles from './index.module.css';
 
 type Tab = 'models' | 'ollama' | 'calendar' | 'clipboard' | 'export';
-const TABS: Tab[] = ['models', 'ollama', 'calendar', 'clipboard', 'export'];
+const TABS: Tab[] = ['calendar', 'clipboard', 'export', 'models', 'ollama'];
 const EXPORT_ITEMS: Array<{ key: string; label: string }> = [
   { key: 'conversations', label: '聊天记录' },
   { key: 'memory', label: '记忆' },
@@ -77,7 +77,7 @@ export const LocalPanel: React.FC<{ isVisible: boolean; onClose: () => void }> =
   isVisible,
   onClose,
 }) => {
-  const [tab, setTab] = useState<Tab>('models');
+  const [tab, setTab] = useState<Tab>('calendar');
   const [st, setSt] = useState<LocalState | null>(null);
   const [prog, setProg] = useState<Record<string, Progress>>({});
   const [err, setErr] = useState('');
@@ -959,18 +959,18 @@ export const LocalPanel: React.FC<{ isVisible: boolean; onClose: () => void }> =
         if (confirm) return setConfirm(null);
         onClose();
       }}
-      title="本地中心"
+      title="本地中心（日历 / 剪贴板；本机小模型为辅助）"
       size="lg"
       data-testid="local-panel"
     >
       <div className={styles.stack}>
         <Tabs<Tab>
           items={[
-            { value: 'models', label: running ? '本机模型 · 运行中' : '本机模型' },
-            { value: 'ollama', label: 'Ollama' },
             { value: 'calendar', label: '日历' },
             { value: 'clipboard', label: '剪贴板' },
             { value: 'export', label: '数据导出' },
+            { value: 'models', label: running ? '本机小模型 · 运行中' : '本机小模型（辅助）' },
+            { value: 'ollama', label: 'Ollama（可选）' },
           ]}
           value={tab}
           onChange={setTab}

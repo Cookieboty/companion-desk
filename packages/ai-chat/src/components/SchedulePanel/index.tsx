@@ -17,6 +17,13 @@ import {
 } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
+import {
+  AGENT_LABEL,
+  STATUS_LABEL,
+  agentsClient,
+  type AgentKind,
+  type AgentWatchState,
+} from '../../services/agentsClient';
 import { describeRepeat, type RepeatRule } from '../../services/desktopClient';
 import {
   BRIEFING_PROMPT,
@@ -30,7 +37,7 @@ import { RemindersTab } from '../DesktopPanel/RemindersTab';
 
 import styles from './index.module.css';
 
-type Tab = 'reminders' | 'tasks' | 'proactive' | 'quiet';
+type Tab = 'reminders' | 'tasks' | 'proactive' | 'agents' | 'quiet';
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const fmt = (t?: number) =>
   t
@@ -176,6 +183,18 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [tab, setTab] = useState<Tab>('reminders');
+  const [agents, setAgents] = useState<AgentWatchState | null>(null);
+  const loadAgents = useCallback(() => {
+    if (!agentsClient.available()) return;
+    void agentsClient
+      .state()
+      .then(setAgents)
+      .catch((e) => {
+        // 主进程未就绪时不污染整页错误条
+        console.warn('[agents]', errText(e));
+      });
+  }, []);
+
   const [editing, setEditing] = useState<SchedTask | 'new' | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -200,9 +219,11 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, [refresh]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
+      if (e.altKey && ['1', '2', '3', '4', '5'].includes(e.key)) {
         e.preventDefault();
-        setTab((['reminders', 'tasks', 'proactive', 'quiet'] as Tab[])[Number(e.key) - 1]);
+        setTab(
+          (['reminders', 'tasks', 'proactive', 'agents', 'quiet'] as Tab[])[Number(e.key) - 1],
+        );
       }
     };
     window.addEventListener('keydown', onKey);
@@ -240,6 +261,11 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   };
 
+  useEffect(() => {
+    loadAgents();
+    return agentsClient.onChanged(() => loadAgents());
+  }, [loadAgents]);
+
   return (
     <Modal open onClose={onClose} title="🗓️ 日程与主动提醒" size="lg" data-testid="sched-panel">
       <div className={styles.stack}>
@@ -269,6 +295,7 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 { value: 'reminders', label: '提醒' },
                 { value: 'tasks', label: '定时任务' },
                 { value: 'proactive', label: '主动聊天' },
+                { value: 'agents', label: '编程助手' },
                 { value: 'quiet', label: '免打扰与通知' },
               ]}
             />
@@ -464,6 +491,104 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </div>
             )}
 
+            {tab === 'agents' && (
+              <div className={styles.stack} data-testid="sched-agents">
+                <p className={styles.hint}>
+                  监视本机已安装的编程助手会话文件（Codex / Claude Code / Aider / Cline / Continue /
+                  Cursor），进度变化时看板娘气泡提醒。只读本地日志，不登录、不刮取任何账号。
+                </p>
+                {!agentsClient.available() && (
+                  <Notice tone="warning">当前环境无法访问主进程监视器。</Notice>
+                )}
+                {agents && (
+                  <>
+                    <Switch
+                      checked={agents.settings.enabled}
+                      onChange={(v) =>
+                        void agentsClient.setSettings({ enabled: v }).then(loadAgents)
+                      }
+                      label="监视编程助手进度"
+                      data-testid="agents-enabled"
+                    />
+                    <Switch
+                      checked={agents.settings.osNotify}
+                      onChange={(v) =>
+                        void agentsClient.setSettings({ osNotify: v }).then(loadAgents)
+                      }
+                      label="同时发送系统通知"
+                      data-testid="agents-os-notify"
+                    />
+                    <div className={styles.row} style={{ flexWrap: 'wrap', gap: 8 }}>
+                      {(Object.keys(AGENT_LABEL) as AgentKind[]).map((k) => (
+                        <label
+                          key={k}
+                          className={styles.hint}
+                          style={{ display: 'inline-flex', gap: 4 }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={agents.settings.tools[k]}
+                            disabled={!agents.settings.enabled}
+                            onChange={(e) =>
+                              void agentsClient
+                                .setSettings({ tools: { [k]: e.target.checked } })
+                                .then(loadAgents)
+                            }
+                            data-testid={`agents-tool-${k}`}
+                          />
+                          {AGENT_LABEL[k]}
+                          {agents.detected.includes(k) ? ' ✓' : ''}
+                        </label>
+                      ))}
+                    </div>
+                    <div className={styles.row}>
+                      <Button
+                        size="sm"
+                        onClick={() => void agentsClient.scan().then(setAgents)}
+                        data-testid="agents-scan"
+                      >
+                        立即扫描
+                      </Button>
+                      <span className={styles.hint}>
+                        已检测：
+                        {agents.detected.length
+                          ? agents.detected.map((k) => AGENT_LABEL[k]).join('、')
+                          : '无'}
+                      </span>
+                    </div>
+                    {agents.sessions.length === 0 ? (
+                      <EmptyState
+                        title="暂无活跃会话"
+                        description="启动 Codex 或 Claude Code 等工具后会出现在这里。"
+                      />
+                    ) : (
+                      <div className={styles.stack} data-testid="agents-sessions">
+                        {agents.sessions.slice(0, 12).map((s) => (
+                          <Card key={s.id} flat>
+                            <div className={styles.row}>
+                              <strong>{s.label}</strong>
+                              <Badge
+                                tone={
+                                  s.status === 'failed' || s.status === 'stalled'
+                                    ? 'warning'
+                                    : s.status === 'completed'
+                                      ? 'success'
+                                      : undefined
+                                }
+                              >
+                                {STATUS_LABEL[s.status]}
+                              </Badge>
+                            </div>
+                            <p className={styles.hint}>{s.summary || s.path}</p>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {tab === 'quiet' && (
               <div className={styles.stack} data-testid="sched-quiet">
                 <Switch
@@ -508,7 +633,7 @@ const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 )}
                 <p className={styles.hint}>
                   快捷键：<span className={styles.kbd}>Ctrl/⌘ + Shift + D</span> 打开日程 ·{' '}
-                  <span className={styles.kbd}>Alt + 1~4</span> 切换标签
+                  <span className={styles.kbd}>Alt + 1~5</span> 切换标签
                 </p>
               </div>
             )}
