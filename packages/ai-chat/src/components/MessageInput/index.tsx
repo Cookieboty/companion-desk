@@ -4,6 +4,7 @@ import { useAiChat } from '../../contexts/AiChatContext';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
 import { providerClientAvailable } from '../../services/providerClient';
+import { schedClient } from '../../services/schedClient';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
@@ -19,6 +20,7 @@ interface MessageInputProps {
   onDesktopClick?: () => void;
   onKnowledgeClick?: () => void;
   onMemoryClick?: () => void;
+  onScheduleClick?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -30,6 +32,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onDesktopClick,
   onKnowledgeClick,
   onMemoryClick,
+  onScheduleClick,
 }) => {
   const [message, setMessage] = useState('');
   const [isComposing, setIsComposing] = useState(false);
@@ -252,6 +255,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               data-testid="open-mem-panel"
             >
               🧠
+            </button>
+          )}
+          {onScheduleClick && schedClient.available() && (
+            <button
+              className={styles.configButton}
+              onClick={onScheduleClick}
+              title="日程与主动提醒（Ctrl/⌘+Shift+D）"
+              data-testid="open-sched-panel"
+            >
+              🗓
             </button>
           )}
           {onDesktopClick && (

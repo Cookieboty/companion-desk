@@ -17,6 +17,7 @@ import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getMemoryService, initMemoryService } from '../memory/MemoryService';
 import { getModelService } from '../models/ModelService';
+import { getSchedulerService, initSchedulerService } from '../schedule/SchedulerService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
@@ -164,6 +165,26 @@ export class Application implements IApplication {
       });
       mem.registerIpc();
 
+      // 主动日程：免打扰 / 系统通知策略、定时任务（每日简报）、主动聊天（默认关闭）
+      const sched = initSchedulerService({
+        root: path.join(app.getPath('userData'), 'schedule'),
+        logger: this.logger as never,
+        desktop,
+        complete: async (messages, signal) => {
+          const rt = this.aiRuntime;
+          if (!rt) throw new Error('AI 服务未就绪');
+          const resp = await rt.client.chat.sendMessage({
+            role: 'chat',
+            messages,
+            signal,
+          } as never);
+          return typeof resp?.content === 'string' ? resp.content : '';
+        },
+        memory: async (q) => (await mem.context(q)).text,
+        openChat: () => void this.windowManager.createAiChatWindow(),
+      });
+      sched.registerIpc();
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -206,6 +227,7 @@ export class Application implements IApplication {
       desktop.startReminders();
       kb.start();
       mem.start();
+      sched.start();
 
       // 托盘：一键切换 AI provider
       this.startTray();
@@ -281,6 +303,7 @@ export class Application implements IApplication {
    */
   async stopAIRuntime(): Promise<void> {
     getMemoryService()?.flush();
+    getSchedulerService()?.stop();
     this.trayManager?.dispose();
     this.trayManager = undefined;
     if (!this.aiRuntime) return;

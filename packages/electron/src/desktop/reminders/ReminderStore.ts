@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { nextOccurrence, sanitizeRepeat, type Repeat } from '../../schedule/recurrence';
+
 /**
  * 提醒：持久化在 <root>/reminders.json；调度器在主进程里跑（应用运行时到点触发）。
  * 应用关闭期间到期的提醒，下次启动时标记为 missed 并由看板娘一次性播报。
@@ -18,6 +20,12 @@ export interface Reminder {
   snoozes?: number;
   /** missed 是否已经播报过 */
   announced?: boolean;
+  /** 重复规则：触发后自动排到下一次（保持 pending） */
+  repeat?: Repeat;
+  /** 重复提醒的首次时间（计算后续时间的锚点） */
+  anchorAt?: number;
+  /** 重复提醒累计触发次数 */
+  fireCount?: number;
 }
 
 export const REMINDER_ID = /^r[0-9a-z]{6,24}$/;
@@ -53,14 +61,16 @@ export class ReminderStore {
     try {
       const raw = JSON.parse(fs.readFileSync(this.file, 'utf8')) as { reminders?: unknown };
       if (!Array.isArray(raw.reminders)) return [];
-      return raw.reminders.filter(
-        (r): r is Reminder =>
-          !!r &&
-          typeof (r as Reminder).id === 'string' &&
-          REMINDER_ID.test((r as Reminder).id) &&
-          typeof (r as Reminder).text === 'string' &&
-          typeof (r as Reminder).dueAt === 'number',
-      );
+      return raw.reminders
+        .filter(
+          (r): r is Reminder =>
+            !!r &&
+            typeof (r as Reminder).id === 'string' &&
+            REMINDER_ID.test((r as Reminder).id) &&
+            typeof (r as Reminder).text === 'string' &&
+            typeof (r as Reminder).dueAt === 'number',
+        )
+        .map((r) => ({ ...r, repeat: sanitizeRepeat(r.repeat) }));
     } catch {
       return [];
     }
@@ -92,15 +102,20 @@ export class ReminderStore {
   start(): Reminder[] {
     const t = this.now();
     let changed = false;
+    const missedRepeats: Reminder[] = [];
     for (const r of this.items) {
       if (r.status === 'pending' && r.dueAt < t - MISSED_GRACE_MS) {
-        r.status = 'missed';
         changed = true;
+        if (r.repeat) {
+          // 重复提醒：只补报一次（不管错过几次），然后排到下一次
+          missedRepeats.push({ ...r, status: 'missed' });
+          r.dueAt = nextOccurrence(r.repeat, r.anchorAt ?? r.dueAt, t);
+        } else r.status = 'missed';
       }
     }
     if (changed) this.save();
     this.schedule();
-    return this.items.filter((r) => r.status === 'missed' && !r.announced);
+    return [...this.items.filter((r) => r.status === 'missed' && !r.announced), ...missedRepeats];
   }
 
   markAnnounced(ids: string[]): void {
@@ -133,12 +148,20 @@ export class ReminderStore {
     this.timer = null;
     const t = this.now();
     const due = this.items.filter((r) => r.status === 'pending' && r.dueAt <= t);
+    const fired: Reminder[] = [];
     for (const r of due) {
-      r.status = 'fired';
       r.firedAt = t;
+      if (r.repeat) {
+        fired.push({ ...r, status: 'fired' });
+        r.fireCount = (r.fireCount ?? 0) + 1;
+        r.dueAt = nextOccurrence(r.repeat, r.anchorAt ?? r.dueAt, t);
+      } else {
+        r.status = 'fired';
+        fired.push(r);
+      }
     }
     if (due.length) this.save();
-    for (const r of due) {
+    for (const r of fired) {
       try {
         this.onFire?.(r);
       } catch {
@@ -148,7 +171,7 @@ export class ReminderStore {
     this.schedule();
   }
 
-  create(text: string, dueAt: number): Reminder {
+  create(text: string, dueAt: number, repeat?: Repeat): Reminder {
     const t = this.now();
     const r: Reminder = {
       id: `r${t.toString(36)}${randomBytes(3).toString('hex')}`,
@@ -156,6 +179,7 @@ export class ReminderStore {
       dueAt: Math.round(dueAt),
       createdAt: t,
       status: 'pending',
+      ...(repeat ? { repeat, anchorAt: Math.round(dueAt) } : {}),
     };
     this.items.push(r);
     this.save();
@@ -211,6 +235,34 @@ export class ReminderStore {
     return this.mutate(id, (r) => {
       if (r.status === 'fired' || r.status === 'missed') r.status = 'done';
     });
+  }
+
+  /** 修改文字 / 时间 / 重复（只限待触发的） */
+  update(id: string, p: { text?: string; dueAt?: number; repeat?: Repeat | null }) {
+    return this.mutate(id, (r) => {
+      if (r.status !== 'pending')
+        throw Object.assign(new Error('只能修改尚未触发的提醒'), { code: 'invalid_state' });
+      if (p.text?.trim()) r.text = p.text.trim().slice(0, 500);
+      if (typeof p.dueAt === 'number' && Number.isFinite(p.dueAt)) r.dueAt = Math.round(p.dueAt);
+      if (p.repeat === null) {
+        delete r.repeat;
+        delete r.anchorAt;
+      } else if (p.repeat) {
+        r.repeat = p.repeat;
+        r.anchorAt = r.dueAt;
+      } else if (r.repeat && typeof p.dueAt === 'number') r.anchorAt = r.dueAt;
+    });
+  }
+
+  /** 今天（本地时区）内还要触发的提醒，供每日简报用 */
+  today(): Reminder[] {
+    const t = this.now();
+    const d = new Date(t);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+    return this.items
+      .filter((r) => r.status === 'pending' && r.dueAt < end)
+      .sort((a, b) => a.dueAt - b.dueAt)
+      .map((r) => ({ ...r }));
   }
 
   /** 原样写回（撤销用） */

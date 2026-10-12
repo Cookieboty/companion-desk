@@ -13,6 +13,7 @@ import {
 } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { sanitizeRepeat } from '../schedule/recurrence';
 
 import { AppTrash } from './AppTrash';
 import { AuditLog } from './AuditLog';
@@ -62,6 +63,10 @@ export class DesktopService {
   readonly notes: NotesStore;
   readonly reminders: ReminderStore;
   private remindersStarted = false;
+  /** 免打扰 / 系统通知策略（由 SchedulerService 注入；未注入时始终提醒 + 系统通知） */
+  notifyPolicy: { quiet(): boolean; quietEndsAt(): number; osNotify(): boolean } | null = null;
+  private deferred: Reminder[] = [];
+  private deferTimer: ReturnType<typeof setTimeout> | null = null;
   private runtime: DesktopRuntimeHooks | null = null;
   private windows: DesktopWindows | null = null;
   private toolDefs: ToolDefinition[] | null = null;
@@ -129,12 +134,48 @@ export class DesktopService {
     });
   }
 
-  private say(text: string): void {
+  say(text: string): void {
     this.main()?.webContents.send('desktop:bubble', { text });
   }
 
   /** 到点：看板娘挥手 + 提醒卡片（气泡）+ 系统通知 */
   private fireReminder(r: Reminder): void {
+    const pol = this.notifyPolicy;
+    if (pol?.quiet()) {
+      // 免打扰：先攒着，结束时一起播报
+      this.deferred.push(r);
+      if (!this.deferTimer) {
+        const wait = Math.max(1000, pol.quietEndsAt() - Date.now());
+        this.deferTimer = setTimeout(() => this.flushDeferred(), Math.min(wait, 2 ** 31 - 1));
+      }
+      this.audit.append({
+        tool: 'reminder_deferred',
+        args: { id: r.id, text: r.text },
+        decision: 'auto',
+        result: 'ok',
+        source: 'scheduler',
+      });
+      return;
+    }
+    this.deliverReminder(r, pol?.osNotify() ?? true);
+  }
+
+  /** 免打扰结束：一次性补报 */
+  flushDeferred(): void {
+    if (this.deferTimer) clearTimeout(this.deferTimer);
+    this.deferTimer = null;
+    const items = this.deferred;
+    this.deferred = [];
+    if (!items.length) return;
+    if (items.length > 1) this.say(`免打扰期间有 ${items.length} 条提醒，我一条条告诉你～`);
+    for (const r of items) this.deliverReminder(r, this.notifyPolicy?.osNotify() ?? true);
+  }
+
+  deferredCount(): number {
+    return this.deferred.length;
+  }
+
+  private deliverReminder(r: Reminder, osNotify: boolean): void {
     const w = this.main();
     this.logger.info('提醒触发', { id: r.id, hasWindow: !!w });
     if (w) {
@@ -149,8 +190,14 @@ export class DesktopService {
     broadcastMascotCommand({ type: 'motion', name: 'wave' });
     broadcastMascotCommand({ type: 'expression', name: 'happy' });
     try {
-      if (Notification.isSupported())
-        new Notification({ title: '提醒', body: r.text, silent: false }).show();
+      if (osNotify && Notification.isSupported()) {
+        const n = new Notification({ title: '⏰ 提醒', body: r.text, silent: false });
+        n.on('click', () => {
+          const mw = this.main();
+          if (mw && !mw.isVisible()) mw.showInactive();
+        });
+        n.show();
+      }
     } catch (e) {
       this.logger.warn('系统通知失败', { error: String(e) });
     }
@@ -481,7 +528,12 @@ export class DesktopService {
       this.reminders.list({ includeEnded: all === true, limit: 200 }),
     );
     handle('ai:desktop:reminders-create', (_e, raw) => {
-      const o = (raw ?? {}) as { text?: unknown; at?: unknown; inMinutes?: unknown };
+      const o = (raw ?? {}) as {
+        text?: unknown;
+        at?: unknown;
+        inMinutes?: unknown;
+        repeat?: unknown;
+      };
       const text = str(o.text, 500).trim();
       const due = resolveDue(
         {
@@ -491,9 +543,24 @@ export class DesktopService {
         Date.now(),
       );
       if (!text || due === null || due < Date.now() - 1000) return null;
-      const r = this.reminders.create(text, due);
-      userAudit('reminder_create', { id: r.id, text: r.text });
+      const r = this.reminders.create(text, due, sanitizeRepeat(o.repeat));
+      userAudit('reminder_create', { id: r.id, text: r.text, repeat: r.repeat?.kind });
       return r;
+    });
+    handle('ai:desktop:reminders-update', (_e, id, raw) => {
+      const o = (raw ?? {}) as { text?: unknown; at?: unknown; repeat?: unknown };
+      const due = typeof o.at === 'string' ? Date.parse(o.at) : undefined;
+      try {
+        const { after } = this.reminders.update(String(id), {
+          text: typeof o.text === 'string' ? str(o.text, 500) : undefined,
+          dueAt: Number.isFinite(due) ? due : undefined,
+          repeat: o.repeat === null ? null : sanitizeRepeat(o.repeat),
+        });
+        userAudit('reminder_update', { id: after.id });
+        return after;
+      } catch {
+        return null;
+      }
     });
     handle('ai:desktop:reminders-cancel', (_e, id) => {
       try {

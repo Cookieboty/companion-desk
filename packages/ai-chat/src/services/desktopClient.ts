@@ -65,6 +65,35 @@ export interface ReminderView {
   createdAt: number;
   status: 'pending' | 'fired' | 'missed' | 'cancelled' | 'done';
   snoozes?: number;
+  repeat?: RepeatRule;
+  fireCount?: number;
+}
+
+export type RepeatRule =
+  | { kind: 'daily' }
+  | { kind: 'weekdays' }
+  | { kind: 'weekly'; days: number[] }
+  | { kind: 'monthly' }
+  | { kind: 'interval'; minutes: number };
+
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+export function describeRepeat(r?: RepeatRule): string {
+  if (!r) return '不重复';
+  switch (r.kind) {
+    case 'daily':
+      return '每天';
+    case 'weekdays':
+      return '工作日';
+    case 'monthly':
+      return '每月';
+    case 'weekly':
+      return `每周${[...r.days]
+        .sort()
+        .map((d) => WEEK[d])
+        .join('、')}`;
+    case 'interval':
+      return r.minutes % 60 === 0 ? `每 ${r.minutes / 60} 小时` : `每 ${r.minutes} 分钟`;
+  }
 }
 
 interface AiBridge {
@@ -108,8 +137,10 @@ export const desktopClient = {
     call<NoteView>('notes-save', n),
   trashNote: (id: string) => call<boolean>('notes-trash', id),
   reminders: (all = false) => call<ReminderView[]>('reminders-list', all),
-  createReminder: (r: { text: string; at?: string; inMinutes?: number }) =>
+  createReminder: (r: { text: string; at?: string; inMinutes?: number; repeat?: RepeatRule }) =>
     call<ReminderView | null>('reminders-create', r),
+  updateReminder: (id: string, p: { text?: string; at?: string; repeat?: RepeatRule | null }) =>
+    call<ReminderView | null>('reminders-update', id, p),
   cancelReminder: (id: string) => call<boolean>('reminders-cancel', id),
   snoozeReminder: (id: string, minutes = 10) => call<boolean>('reminders-snooze', id, minutes),
   onP2Changed: (fn: (kind: 'notes' | 'reminders') => void) =>

@@ -14,6 +14,7 @@ import { createIPCClient } from '../services/IPCClient';
 import { kbClient } from '../services/kbClient';
 import { ingestConversation, memoryContext } from '../services/memClient';
 import { effectiveProviderLabel, providerClientAvailable } from '../services/providerClient';
+import { schedClient } from '../services/schedClient';
 import { type ChatMessage, type ChatConfig } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
 import { type IPCClient } from '../types/ipc';
@@ -186,6 +187,23 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     if (msgs.length >= 4 && msgs.length % 10 < 2) ingestCurrent(msgs);
   };
 
+  // 定时任务结果（每日简报等）→ 写进当前对话
+  useEffect(
+    () =>
+      schedClient.onResult((r) => {
+        if (!r.ok) return;
+        const m: ChatMessage = {
+          id: `sched-${r.id}`,
+          role: 'assistant',
+          content: `📋 ${r.name}${r.catchUp ? '（补上）' : ''}\n\n${r.text}`,
+          timestamp: r.at,
+        };
+        dispatch({ type: 'ADD_MESSAGE', payload: m });
+        void ipcClient.saveMessage(m);
+      }),
+    [ipcClient],
+  );
+
   // 把文件拖到看板娘身上 → 主进程总结完成后推送到对话窗口
   useEffect(
     () =>
@@ -225,6 +243,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       // 本轮之前的会话消息作为多轮上下文（state.messages 尚未包含本轮 userMessage）
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+      schedClient.activity();
 
       const mem = await memoryContext(content);
       const response = await state.ipcClient.sendMessage(
@@ -306,6 +325,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       };
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+      schedClient.activity();
 
       const mem = await memoryContext(content);
       const aiMessageId = (Date.now() + 1).toString();

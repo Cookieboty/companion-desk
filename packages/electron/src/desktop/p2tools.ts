@@ -1,6 +1,8 @@
 import type { ToolDefinition } from '@ig-live/bundle-ig-base';
 import { z } from 'zod';
 
+import { describeRepeat, sanitizeRepeat } from '../schedule/recurrence';
+
 import type { Danger } from './consent';
 import { NOTE_ID, type Note, type NotesStore } from './notes/NotesStore';
 import {
@@ -147,6 +149,18 @@ export function createP2Tools(
         .max(60 * 24 * 366)
         .optional(),
       inSeconds: z.number().int().min(1).max(86_400).optional(),
+      repeat: z
+        .object({
+          kind: z.enum(['daily', 'weekdays', 'weekly', 'monthly', 'interval']),
+          days: z
+            .array(z.number().int().min(0).max(6))
+            .optional()
+            .describe('weekly：0=周日…6=周六'),
+          minutes: z.number().int().min(5).max(10_080).optional().describe('interval：间隔分钟'),
+        })
+        .strict()
+        .optional()
+        .describe('重复规则（可选），例如每天 / 工作日 / 每周一三五'),
     })
     .strict()
     .refine(
@@ -317,11 +331,12 @@ export function createP2Tools(
         if (due < now() - 1000) throw new ToolError('invalid_input', '到期时间已经过去了');
         const decision = await confirm(
           'reminder_create',
-          `在 ${fmtTime(due)} 提醒「${i.text}」？`,
+          `在 ${fmtTime(due)}${i.repeat ? `（${describeRepeat(sanitizeRepeat(i.repeat))}）` : ''} 提醒「${i.text}」？`,
           { text: i.text, dueAt: new Date(due).toISOString() },
           signal,
         );
-        const r = d.reminders.create(i.text, due);
+        const repeat = sanitizeRepeat(i.repeat);
+        const r = d.reminders.create(i.text, due, repeat);
         const e = journal.record('reminder_create', `提醒「${r.text}」`, [
           { op: 'custom', kind: 'reminder-restore', payload: { ...r, status: 'cancelled' } },
         ]);
