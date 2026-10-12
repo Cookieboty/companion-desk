@@ -223,6 +223,15 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
           await expect(chat.locator('[data-testid="fetch-models-prompt"]')).toBeVisible();
           await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue('');
           await chat.click('[data-testid="editor-back"]');
+          // Amux：第三方平台分组，预填官方 gateway，不预填模型
+          await chat.fill('[data-testid="preset-search"]', 'amux');
+          await chat.click('[data-testid="preset-amux"]');
+          await expect(chat.locator('[data-testid="draft-baseurl"]')).toHaveValue(
+            'https://gateway.amux.ai/v1',
+          );
+          await expect(chat.locator('[data-testid="draft-model"]')).toHaveValue('');
+          await chat.click('[data-testid="editor-back"]');
+          await chat.fill('[data-testid="preset-search"]', '');
         }
         await chat.click('[data-testid="preset-custom"]');
         await expect(chat.locator('[data-testid="provider-editor"]')).toBeVisible();

@@ -176,6 +176,7 @@ describe('ProviderStore', () => {
       'ollama',
       'openrouter',
       'siliconflow',
+      'amux',
       'qwen',
       'kimi',
       'zhipu',

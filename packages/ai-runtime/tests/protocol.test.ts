@@ -114,6 +114,7 @@ describe('preset search', () => {
     expect(searchPresets('智谱').map((p) => p.id)).toContain('zhipu');
     expect(searchPresets('claude').map((p) => p.id)).toContain('anthropic');
     expect(searchPresets('openrouter.ai').map((p) => p.id)).toEqual(['openrouter']);
+    expect(searchPresets('gateway.amux').map((p) => p.id)).toEqual(['amux']);
     expect(searchPresets('').length).toBeGreaterThan(10);
   });
 });
@@ -221,6 +222,23 @@ describe('preset verification metadata', () => {
       expect(p.verified, p.id).toBe(true);
       expect(p.icon, p.id).toBeTruthy();
     }
+  });
+
+  it('amux preset matches official docs (gateway, OpenAI Chat, /v1/models)', async () => {
+    const { findPreset } = await import('../src/providers');
+    const p = findPreset('amux')!;
+    expect(p).toMatchObject({
+      category: 'platform',
+      protocol: 'openai-chat',
+      baseURL: 'https://gateway.amux.ai/v1',
+      modelsEndpoint: true,
+      requiresApiKey: true,
+      checkedAt: '2026-10-12',
+    });
+    expect(modelsURL('openai-chat', p.baseURL)).toBe('https://gateway.amux.ai/v1/models');
+    expect(endpointURL('openai-chat', p.baseURL)).toBe(
+      'https://gateway.amux.ai/v1/chat/completions',
+    );
   });
 
   it('no preset ships a defaultModel — user must fetch and pick', async () => {
