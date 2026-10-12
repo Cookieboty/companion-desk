@@ -34,6 +34,7 @@ test.describe('E6 · real app · AI chat history', () => {
   let server: Server | null = null;
   let userData = '';
   const requests: MockBody[] = [];
+  const summaries: MockBody[] = [];
 
   test.beforeAll(async () => {
     if (existsSync(aiChatBuild)) {
@@ -46,8 +47,15 @@ test.describe('E6 · real app · AI chat history', () => {
       req.on('data', (d) => (raw += d));
       req.on('end', () => {
         const body = JSON.parse(raw || '{}') as MockBody;
-        requests.push(body);
-        const text = `answer${requests.length}`;
+        // 长期记忆的后台摘要（新建对话时触发）单独应答，不计入对话请求序列
+        const isSummary = (body.messages ?? []).some(
+          (m) => m.role === 'system' && String(m.content).includes('整理长期记忆'),
+        );
+        if (isSummary) summaries.push(body);
+        else requests.push(body);
+        const text = isSummary
+          ? JSON.stringify({ title: '自我介绍', summary: '用户叫小明。', keywords: [], facts: [] })
+          : `answer${requests.length}`;
         if (body.stream) {
           res.writeHead(200, { 'content-type': 'text/event-stream' });
           res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`);
@@ -158,8 +166,16 @@ test.describe('E6 · real app · AI chat history', () => {
     await chat.waitForFunction(() => document.body.innerText.includes('answer3'));
     await send('继续', 'answer4');
 
+    // 新建对话时，上一段对话被整理进长期记忆
+    expect(summaries.length).toBeGreaterThanOrEqual(1);
     expect(requests[2]!.stream).toBeFalsy(); // AI SDK omit stream on generateText
-    expect(requests[2]!.messages.map((m) => m.content).join('|')).not.toContain('小明');
+    // 对话历史不串会话；上一段对话只会以「长期记忆」的形式出现在 system 背景里
+    expect(
+      requests[2]!.messages
+        .filter((m) => m.role !== 'system')
+        .map((m) => m.content)
+        .join('|'),
+    ).not.toContain('小明');
     expect(requests[3]!.messages.slice(1)).toEqual([
       { role: 'user', content: '你好，请介绍一下自己' },
       { role: 'assistant', content: 'answer3' },
