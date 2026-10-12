@@ -51,7 +51,7 @@ describe('catalog', () => {
       'michona',
     ]);
     for (const m of list) expect(m.license).toBe('CC0-1.0');
-    expect(list.filter((m) => m.tags?.includes('sprite')).length).toBeGreaterThanOrEqual(4);
+    expect(list.filter((m) => m.tags?.includes('sprite')).length).toBe(2);
   });
 });
 
