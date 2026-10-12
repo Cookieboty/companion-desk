@@ -21,7 +21,7 @@ export function applyDirective(d: ExpressionDirective | null, now = Date.now()):
       revertTimer = null;
     }, d.holdMs);
   }
-  if (d.motion && now - lastAutoMotionAt >= AUTO_MOTION_COOLDOWN_MS) {
+  if (d.motion && (d.force || now - lastAutoMotionAt >= AUTO_MOTION_COOLDOWN_MS)) {
     if (backend.playMotion(d.motion)) lastAutoMotionAt = now;
   }
 }

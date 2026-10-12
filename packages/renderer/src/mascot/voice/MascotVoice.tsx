@@ -6,6 +6,7 @@
 import { MicButton, VoiceStatus, useVoice } from '@ig-live/voice';
 import React, { useCallback, useEffect, useRef } from 'react';
 
+import { directiveForEvent } from '../expressionDirector';
 import { applyDirective } from '../mood';
 import { stopAllSpeech } from '../speechStop';
 
@@ -99,7 +100,17 @@ export const MascotVoiceBridge: React.FC = () => {
   }, [v.state.phase, showMessage]);
 
   // 语音打断：开口说话即停止朗读
-  useEffect(() => (v.api ? v.api.onBargeIn(() => stopAllSpeech()) : undefined), [v.api]);
+  useEffect(
+    () =>
+      v.api
+        ? v.api.onBargeIn(() => {
+            stopAllSpeech();
+            // 被打断：轻微受惊，然后专心听
+            applyDirective(directiveForEvent({ kind: 'barge-in' }));
+          })
+        : undefined,
+    [v.api],
+  );
 
   // 唤醒词（默认关闭）：开启后看板娘常驻监听
   const wake = v.config?.settings.wakeWord.enabled ?? false;
