@@ -190,7 +190,7 @@ export class ScreenService {
       decision: 'user',
       result: 'ok',
       ms: 0,
-      source: 'ui',
+      source: 'settings',
     } as never);
     this.changed();
     return this.settings;
@@ -309,7 +309,7 @@ export class ScreenService {
         decision: 'user',
         result: 'ok',
         ms: 0,
-        source: 'ui',
+        source: 'settings',
       } as never);
     }
   }
@@ -444,7 +444,7 @@ export class ScreenService {
       decision: 'user',
       result: 'ok',
       ms: 0,
-      source: 'ui',
+      source: 'settings',
     } as never);
     this.changed();
     return n;

@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { ConfigPanel } from './components/ConfigPanel';
 import { DesktopPanel } from './components/DesktopPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ExtensionsPanel } from './components/ExtensionsPanel';
 import { KnowledgePanel } from './components/KnowledgePanel';
 import { MemoryPanel } from './components/MemoryPanel';
 import { MessageInput } from './components/MessageInput';
@@ -60,6 +61,7 @@ const AiChatContent: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
   const [showScreen, setShowScreen] = useState(false);
+  const [showExt, setShowExt] = useState(false);
   const [screenSt, setScreenSt] = useState<ScreenState | null>(null);
   useEffect(() => {
     if (!screenClient.available()) return;
@@ -70,6 +72,10 @@ const AiChatContent: React.FC = () => {
     const off1 = screenClient.onChanged(setScreenSt);
     const off2 = screenClient.onOpenPanel(() => setShowScreen(true));
     const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setShowExt((v) => !v);
+      }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         setShowScreen((v) => !v);
@@ -180,6 +186,7 @@ const AiChatContent: React.FC = () => {
             onMemoryClick={() => setShowMem(true)}
             onScheduleClick={() => setShowSched(true)}
             onScreenClick={() => setShowScreen(true)}
+            onExtClick={() => setShowExt(true)}
           />
         </footer>
       </div>
@@ -192,6 +199,7 @@ const AiChatContent: React.FC = () => {
       <MemoryPanel isVisible={showMem} onClose={() => setShowMem(false)} />
       <SchedulePanel isVisible={showSched} onClose={() => setShowSched(false)} />
       <ScreenPanel isVisible={showScreen} onClose={() => setShowScreen(false)} />
+      <ExtensionsPanel isVisible={showExt} onClose={() => setShowExt(false)} />
     </div>
   );
 };

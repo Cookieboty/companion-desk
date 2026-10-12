@@ -10,6 +10,7 @@ import React, {
 } from 'react';
 
 import { desktopClient } from '../services/desktopClient';
+import { extClient } from '../services/extClient';
 import { createIPCClient } from '../services/IPCClient';
 import { kbClient } from '../services/kbClient';
 import { ingestConversation, memoryContext } from '../services/memClient';
@@ -348,7 +349,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
       schedClient.activity();
 
-      const mem = await memoryContext(content);
+      const [mem, skills] = await Promise.all([memoryContext(content), extClient.context()]);
       const aiMessageId = (Date.now() + 1).toString();
       const aiMessage: ChatMessage = {
         id: aiMessageId,
@@ -372,7 +373,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
           });
         },
         history,
-        mem.text,
+        [mem.text, skills].filter(Boolean).join('\n\n'),
         images?.map((i) => ({ mime: i.mime, data: i.data })),
       );
 
