@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSpriteBackend, type SpriteManifest } from '../../src/mascot/backends/sprite';
-import { EXPRESSION_STYLES, RigAnimator, type RigInput } from '../../src/mascot/layeredRig';
+import {
+  BLINK_DURATION,
+  blinkCurve,
+  EXPRESSION_STYLES,
+  noise1,
+  RigAnimator,
+  type RigInput,
+  type RigPose,
+} from '../../src/mascot/layeredRig';
 
 const base: RigInput = {
   expression: 'neutral',
@@ -34,29 +42,131 @@ describe('layered rig animator', () => {
     }
   });
 
-  it('breathes and sways in idle, but not with reduced motion', () => {
+  it('breathes in idle, but holds still with reduced motion', () => {
     const a = new RigAnimator();
-    const ys = [0.2, 0.6, 1.0, 1.4].map((t) => a.step(1 / 60, t, base).bodyY);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(0.5);
+    const ps: RigPose[] = [];
+    for (let i = 0; i < 300; i++) ps.push(a.step(1 / 60, i / 60, base));
+    const sh = ps.map((p) => p.shoulderL);
+    const sc = ps.map((p) => p.bodyScaleY);
+    expect(Math.max(...sh) - Math.min(...sh)).toBeGreaterThan(1.5);
+    expect(Math.max(...sc) - Math.min(...sc)).toBeGreaterThan(0.004);
     const r = new RigAnimator();
     const rs = [0.2, 0.6, 1.0].map((t) => r.step(1 / 60, t, { ...base, reducedMotion: true }));
-    expect(rs.every((p) => p.bodyY === 0 && p.hairRotL === 0)).toBe(true);
+    expect(rs.every((p) => p.bodyY === 0 && Math.abs(p.hairRotL) < 1e-6 && p.torsoX === 0)).toBe(
+      true,
+    );
   });
 
-  it('closes eyes on blink and shows the lid line', () => {
+  it('blinks over several frames with a slower reopen', () => {
+    expect(blinkCurve(0)).toBe(0);
+    const half = blinkCurve(0.03);
+    expect(half).toBeGreaterThan(0.2);
+    expect(half).toBeLessThan(0.8);
+    expect(blinkCurve(0.07)).toBe(1);
+    expect(blinkCurve(BLINK_DURATION + 0.01)).toBe(0);
+    expect(BLINK_DURATION).toBeGreaterThanOrEqual(0.12);
+    expect(BLINK_DURATION).toBeLessThanOrEqual(0.18);
+    // reopen (85 ms) is slower than closing (60 ms)
+    expect(blinkCurve(0.085 + 0.04)).toBeGreaterThan(1 - blinkCurve(0.04) - 0.2);
+    const frames: number[] = [];
+    for (let i = 0; i <= 10; i++) frames.push(blinkCurve(i / 60));
+    expect(frames.filter((v) => v > 0.05 && v < 0.95).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('closes eyes on an external blink and blinks on its own', () => {
     const p = run(new RigAnimator(), { blink: 1 }, 0.5);
-    expect(p.eyeOpen).toBeLessThan(0.1);
+    expect(p.lidClose).toBeGreaterThan(0.95);
     expect(p.lidAlpha).toBeGreaterThan(0.9);
+    const a = new RigAnimator(3);
+    let mx = 0;
+    for (let i = 0; i < 60 * 7; i++) mx = Math.max(mx, a.step(1 / 60, i / 60, base).lidClose);
+    expect(mx).toBeGreaterThan(0.9);
   });
 
-  it('follows the cursor with head + extra feature parallax', () => {
+  it('head follows the cursor without overshoot while the eyes lead', () => {
+    const a = new RigAnimator();
+    run(a, {}, 1);
+    const early = run(a, { lookX: 1 }, 0.1, 1);
+    expect(early.irisX).toBeGreaterThan(0.8);
+    const xs: number[] = [];
+    for (let i = 0; i < 180; i++)
+      xs.push(a.step(1 / 60, 1.1 + i / 60, { ...base, lookX: 1, reducedMotion: true }).headX);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(4.001);
+    expect(xs[0]).toBeLessThan(xs[xs.length - 1]);
     const p = run(new RigAnimator(), { lookX: 1, lookY: 0 }, 2);
-    expect(p.headX).toBeGreaterThan(5);
-    expect(p.featX).toBeGreaterThan(2);
+    expect(p.headX + p.torsoX).toBeGreaterThan(5);
     expect(p.headRot).toBeGreaterThan(0);
-    expect(p.irisX).toBeGreaterThan(0.5);
     const q = run(new RigAnimator(), { lookX: 0, lookY: -1 }, 2);
     expect(q.irisY).toBeGreaterThan(0.5);
+  });
+
+  it('plays body gestures and holds a thinking tilt', () => {
+    const a = new RigAnimator();
+    run(a, {}, 1);
+    let minY = 0;
+    for (let i = 0; i < 30; i++)
+      minY = Math.min(
+        minY,
+        a.step(1 / 60, 1 + i / 60, { ...base, gesture: { name: 'jump', id: 1 } }).bodyY,
+      );
+    expect(minY).toBeLessThan(-5);
+    const t = run(new RigAnimator(), { thinking: true }, 3);
+    expect(t.headRot).toBeLessThan(-2 * (Math.PI / 180));
+    const sad = run(new RigAnimator(), { expression: 'sad' }, 3);
+    expect(sad.shoulderL).toBeGreaterThan(2);
+  });
+
+  it('drives every head motion through the body (never a head over a frozen torso)', () => {
+    const a = new RigAnimator(9);
+    const steps: Partial<RigInput>[] = [];
+    const push = (inp: Partial<RigInput>, secs: number) => {
+      for (let i = 0; i < secs * 60; i++) steps.push(inp);
+    };
+    push({}, 6);
+    push({ lookX: 1, lookY: 0.4 }, 2);
+    push({ lookX: -1, lookY: -0.3 }, 2);
+    push({ gesture: { name: 'nod', id: 1 } }, 1.5);
+    push({ gesture: { name: 'wave', id: 2 } }, 1.5);
+    push({ expression: 'happy' }, 2);
+    push({ expression: 'sad' }, 2);
+    push({ expression: 'angry' }, 2);
+    push({ expression: 'surprised' }, 2);
+    push({ thinking: true }, 2);
+    push({ talking: true, mouth: 0.6 }, 2);
+    let prev: RigPose | null = null;
+    let still = 0;
+    let worst = Infinity;
+    steps.forEach((inp, i) => {
+      const p = a.step(1 / 60, i / 60, { ...base, ...inp });
+      if (prev) {
+        const dHead =
+          Math.abs(p.headRot - prev.headRot) * 120 +
+          Math.abs(p.headX - prev.headX) +
+          Math.abs(p.headY - prev.headY);
+        const dBody =
+          Math.abs(p.torsoRot - prev.torsoRot) * 725 +
+          Math.abs(p.torsoX - prev.torsoX) +
+          Math.abs(p.bodyY - prev.bodyY) +
+          Math.abs(p.shoulderL - prev.shoulderL);
+        if (dHead > 0.02 && dBody / dHead < worst) {
+          worst = dBody / dHead;
+        }
+        still = dBody < 1e-4 ? still + 1 : 0;
+        expect(still).toBeLessThan(6);
+      }
+      prev = p;
+    });
+    expect(worst).toBeGreaterThan(0.25);
+  });
+
+  it('noise is bounded and continuous', () => {
+    let prev = noise1(0);
+    for (let x = 0.01; x < 20; x += 0.01) {
+      const v = noise1(x);
+      expect(Math.abs(v)).toBeLessThan(1.2);
+      expect(Math.abs(v - prev)).toBeLessThan(0.06);
+      prev = v;
+    }
   });
 
   it('opens the mouth while talking', () => {
@@ -109,5 +219,20 @@ describe('sprite backend with rig', () => {
     b.setExpression('blink');
     b.update(0.05, 0.2);
     expect(b.snapshot().blinkOpacity).toBeGreaterThan(0);
+  });
+  it('routes motions to rig gestures and the thinking flag', () => {
+    const b = createSpriteBackend(manifest, '/x/');
+    expect(b.playMotion('wave')).toBe(true);
+    const g1 = b.snapshot().gesture;
+    expect(g1?.name).toBe('wave');
+    b.playMotion('wave');
+    expect(b.snapshot().gesture?.id).not.toBe(g1?.id);
+    b.playMotion('think-on');
+    expect(b.snapshot().thinking).toBe(true);
+    b.playMotion('think-off');
+    expect(b.snapshot().thinking).toBe(false);
+    // the rig blinks on its own: no backend auto blink
+    for (let i = 0; i < 100; i++) b.update(0.1, i * 0.1);
+    expect(b.snapshot().blinkOpacity).toBe(0);
   });
 });

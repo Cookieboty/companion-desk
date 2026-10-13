@@ -43,6 +43,10 @@ export interface SpriteFrame {
   talking: boolean;
   /** raw lip-sync level 0..1 */
   mouth: number;
+  /** last body gesture request (rig only); `id` bumps on every trigger */
+  gesture: { name: string; id: number } | null;
+  /** AI is generating a reply (rig holds a thinking pose) */
+  thinking: boolean;
 }
 
 function approach(current: number, target: number, rate: number, dt: number): number {
@@ -73,6 +77,11 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
   let lookGoalX = 0;
   let lookGoalY = 0;
   let talking = false;
+  let gesture: { name: string; id: number } | null = null;
+  let gestureSeq = 0;
+  let thinking = false;
+  // the layered rig schedules its own (multi-frame, double, gaze-shift) blinks
+  if (manifest.rig) nextBlinkAt = Number.POSITIVE_INFINITY;
 
   const backend: SpriteBackend = {
     kind: 'sprite',
@@ -104,6 +113,30 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
       blinkT = 0;
     },
     playMotion(_name) {
+      if (manifest.rig) {
+        if (_name === 'think-on' || _name === 'think-off') {
+          thinking = _name === 'think-on';
+          return true;
+        }
+        const map: Record<string, string> = {
+          wave: 'wave',
+          greet: 'wave',
+          nod: 'nod',
+          bow: 'bow',
+          cheer: 'hop',
+          clap: 'hop',
+          hop: 'hop',
+          shake: 'jump',
+          flinch: 'jump',
+          jump: 'jump',
+          stomp: 'stomp',
+          think: 'think',
+        };
+        const g = map[_name];
+        if (!g) return false;
+        gesture = { name: g, id: ++gestureSeq };
+        return true;
+      }
       // Sprites have no skeletal motions; treat as soft expression pulse
       if (_name === 'wave' || _name === 'cheer' || _name === 'clap') backend.setExpression('happy');
       else if (_name === 'shake' || _name === 'flinch') backend.setExpression('surprised');
@@ -122,7 +155,9 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         lipSync: !!manifest.mouthOpen || !!manifest.rig,
         lookAt: true,
         blink: !!manifest.blink || !!manifest.rig,
-        motions: ['wave', 'cheer', 'clap', 'shake', 'bow', 'think'],
+        motions: manifest.rig
+          ? ['wave', 'nod', 'cheer', 'clap', 'shake', 'bow', 'think', 'jump', 'stomp']
+          : ['wave', 'cheer', 'clap', 'shake', 'bow', 'think'],
       };
     },
     dispose() {
@@ -161,6 +196,8 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         expression: expr,
         talking,
         mouth,
+        gesture,
+        thinking,
       };
     },
   };

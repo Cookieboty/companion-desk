@@ -7,6 +7,7 @@ import {
 } from '../../mascot/backends/sprite';
 import {
   drawRig,
+  paintRigFrame,
   RigAnimator,
   RIG_LAYERS,
   type RigImages,
@@ -67,6 +68,16 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           const rig = manifest.rig;
           rigRef.current = rig;
           animRef.current = new RigAnimator();
+          if (process.env.NODE_ENV === 'development') {
+            // dev-only: deterministic offscreen rendering for demo videos
+            (globalThis as { __nomiRig?: unknown }).__nomiRig = {
+              rig,
+              imgs: rigImgs.current,
+              RigAnimator,
+              paintRigFrame,
+              drawRig,
+            };
+          }
           const dir = rig.dir ?? 'layers/';
           const rigLoads = RIG_LAYERS.filter((n) => rig.layers[n]).map(
             (n) =>
@@ -130,6 +141,8 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
         ? window.matchMedia('(prefers-reduced-motion: reduce)')
         : null;
     let last = performance.now();
+    let activeAt = last;
+    let lastSig = '';
     const tick = (now: number) => {
       // pause entirely while the window is hidden / minimised (resumed by visibilitychange)
       if (document.hidden) {
@@ -138,8 +151,11 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       }
       raf = requestAnimationFrame(tick);
       const reduced = !!reduceMq?.matches;
-      // reduced motion: 30fps is plenty for blink + lip sync
-      if (reduced && now - last < 30) return;
+      // reduced motion: 30fps is plenty for blink + lip sync. Idle rig (no speech, gesture or
+      // cursor movement for 2 s) also drops to ~30fps: slow noise/breath motion stays smooth
+      // and CPU use halves.
+      const idle = !!rigRef.current && now - activeAt > 2000;
+      if ((reduced || idle) && now - last < 30) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const backend = backendRef.current;
@@ -147,6 +163,11 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       if (!backend || !canvas) return;
       backend.update(dt, now / 1000);
       const frame = backend.snapshot();
+      const sig = `${frame.talking}|${frame.expression}|${frame.gesture?.id}|${frame.thinking}|${frame.lookX.toFixed(2)}|${frame.lookY.toFixed(2)}`;
+      if (sig !== lastSig || frame.mouth > 0.02) {
+        lastSig = sig;
+        activeAt = now;
+      }
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -169,26 +190,10 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           lookX: frame.lookX,
           lookY: frame.lookY,
           reducedMotion: reduced,
+          gesture: frame.gesture,
+          thinking: frame.thinking,
         });
-        const [rw, rh] = rig.size;
-        // bust framing: show the top ~85% of the rig with a little headroom
-        const sc = Math.min((w * 0.98) / rw, h / (rh * 0.86));
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.save();
-        ctx.translate((w - rw * sc) / 2, rh * 0.03 * sc);
-        ctx.scale(sc, sc);
-        drawRig(ctx, rig, rigImgs.current, pose);
-        ctx.restore();
-        // soft fade at the bottom edge so the cut-off waist doesn't end in a hard line
-        const fadeH = h * 0.14;
-        const g = ctx.createLinearGradient(0, h - fadeH, 0, h);
-        g.addColorStop(0, 'rgba(0,0,0,0)');
-        g.addColorStop(1, 'rgba(0,0,0,1)');
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = g;
-        ctx.fillRect(0, h - fadeH, w, fadeH);
-        ctx.globalCompositeOperation = 'source-over';
+        paintRigFrame(ctx, rig, rigImgs.current, pose, w, h);
         return;
       }
       const img = imgs.current.get(frame.expressionUrl);

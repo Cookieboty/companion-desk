@@ -11,7 +11,8 @@ export interface Character {
 export type MascotCmd =
   | { type: 'say'; text: string; motion?: string }
   | { type: 'voice-style'; style: VoiceStyle; preview?: string }
-  | { type: 'select-model'; id: string };
+  | { type: 'select-model'; id: string }
+  | { type: 'motion'; name: string };
 export type VoiceStyle = 'soft' | 'lively' | 'calm' | 'off';
 
 interface Bridge {
