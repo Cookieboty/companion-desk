@@ -28,6 +28,22 @@
     visibility 0s linear 0s;
 }
 
+/* 跟随应用主题（默认）：全部取自 @ig-live/ui 主题令牌 */
+.root[data-palette='theme'] {
+  --tb-bg: color-mix(in srgb, var(--cd-color-surface-raised) 86%, transparent);
+  --tb-pop-bg: var(--cd-color-surface-raised);
+  --tb-border: var(--cd-color-border);
+  --tb-fg: var(--cd-color-text);
+  --tb-fg-muted: var(--cd-color-text-muted);
+  --tb-hover: var(--cd-color-hover);
+  --tb-accent: var(--cd-color-accent);
+  --tb-active-bg: var(--cd-color-accent-soft);
+  --tb-ring: rgba(var(--cd-accent-rgb), 0.6);
+  --tb-danger: var(--cd-color-danger-text);
+  --tb-danger-bg: var(--cd-color-danger-soft);
+  --tb-shadow: var(--cd-shadow-md);
+}
+
 .root[data-palette='light'] {
   --tb-bg: rgba(248, 250, 252, 0.74);
   --tb-pop-bg: rgba(255, 255, 255, 0.96);

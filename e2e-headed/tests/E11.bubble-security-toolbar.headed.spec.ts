@@ -285,6 +285,10 @@ test.describe('E11 · bubble security + toolbar', () => {
       await main.screenshot(shot(`05-toolbar-palette-${p}.png`));
     }
     await main.click('[data-testid="toolbar-palette-calm"]');
+    await expect(bar).toHaveAttribute('data-palette', 'calm');
+    // 默认：跟随应用主题令牌
+    await main.click('[data-testid="toolbar-palette-theme"]');
+    await expect(bar).toHaveAttribute('data-palette', 'theme');
 
     // 收起为单个「更多」按钮
     await main.click('[data-testid="toolbar-compact"]');
