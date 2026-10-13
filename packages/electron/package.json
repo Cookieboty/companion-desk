@@ -30,23 +30,28 @@
     "test:integration": "jest tests/integration",
     "test:e2e": "jest tests/e2e --passWithNoTests",
     "lint": "eslint src tests",
-    "lint:fix": "eslint src tests --fix"
+    "lint:fix": "eslint src tests --fix",
+    "package:publish": "electron-builder build --publish always",
+    "package:publish:mac": "electron-builder build --mac --publish always",
+    "package:publish:win": "electron-builder build --win --publish always",
+    "package:publish:linux": "electron-builder build --linux --publish always"
   },
-  "author": "",
+  "author": "Cookieboty",
   "license": "MIT",
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.78",
     "@ai-sdk/mcp": "^2.0.73",
     "@ai-sdk/openai": "^4.0.91",
     "@ai-sdk/openai-compatible": "^3.0.67",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@nomi-ai/ai-runtime": "workspace:*",
     "@nomi-ai/ai-sdk": "workspace:*",
     "@nomi-ai/ai-sdk-client": "workspace:*",
     "@nomi-ai/bundle-ig-base": "workspace:*",
     "@nomi-ai/bundle-ig-electron-caps": "workspace:*",
     "@nomi-ai/bundle-ig-mascot": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.32.1",
     "ai": "^7.0.136",
+    "electron-updater": "^6.6.2",
     "fflate": "^0.8.3",
     "node-global-key-listener": "^0.3.0",
     "onnxruntime-web": "1.30.0",
@@ -65,5 +70,10 @@
     "ts-jest": "^29.4.14",
     "typescript": "^6.0.3"
   },
-  "desktopName": "nomi.desktop"
+  "desktopName": "nomi.desktop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cookieboty/nomi-ai.git"
+  },
+  "homepage": "https://github.com/Cookieboty/nomi-ai"
 }

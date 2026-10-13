@@ -9,6 +9,21 @@ const aiChatAPI = {
   // 消息相关
   invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
 
+  updates: {
+    get: () => ipcRenderer.invoke('updates:get'),
+    check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
+    install: () => ipcRenderer.invoke('updates:install'),
+    setAutoCheck: (on: boolean) => ipcRenderer.invoke('updates:set-auto-check', on),
+    onChanged: (cb: (s: unknown) => void) => {
+      const l = (_: unknown, s: unknown) => cb(s);
+      ipcRenderer.on('updates:changed', l);
+      return () => {
+        ipcRenderer.removeListener('updates:changed', l);
+      };
+    },
+  },
+
   // 监听事件
   on: (channel: string, callback: Function) => {
     const subscription = (_event: any, ...args: any[]) => callback(...args);

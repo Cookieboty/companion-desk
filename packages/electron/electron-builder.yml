@@ -107,3 +107,16 @@ linux:
   # electron-builder 26+: derive .desktop / WM_CLASS from package.json desktopName
   syncDesktopName: true
   icon: assets/icons
+
+# ---------------------------------------------------------------
+# Publish · GitHub Releases (Cookieboty/nomi-ai)
+# electron-updater reads latest*.yml from the Release assets.
+# CI sets GH_TOKEN=$GITHUB_TOKEN and runs --publish always on tags.
+# ---------------------------------------------------------------
+publish:
+  provider: github
+  owner: Cookieboty
+  repo: nomi-ai
+  # v* tags create a published Release so installed apps can update.
+  # Do not push a tag until you are ready for users to receive it (see docs/RELEASE.md).
+  releaseType: release

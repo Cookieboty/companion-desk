@@ -24,6 +24,7 @@ import styles from './index.module.css';
 import { LanguageSettings } from './LanguageSettings';
 import { PinsSettings } from './PinsSettings';
 import { ThemeSettings } from './ThemeSettings';
+import { UpdateSettings } from './UpdateSettings';
 
 export type SettingsSection =
   | 'general'
@@ -37,7 +38,8 @@ export type SettingsSection =
   | 'ext'
   | 'desktop'
   | 'local'
-  | 'privacy';
+  | 'privacy'
+  | 'updates';
 
 export const SETTINGS_SECTIONS: Array<{ id: SettingsSection; icon: string; label: string }> = [
   { id: 'general', icon: '⚙️', label: '通用' },
@@ -52,6 +54,7 @@ export const SETTINGS_SECTIONS: Array<{ id: SettingsSection; icon: string; label
   { id: 'desktop', icon: '📁', label: '桌面权限' },
   { id: 'local', icon: '🏠', label: '本机小模型（辅助）' },
   { id: 'privacy', icon: '🔒', label: '隐私与数据' },
+  { id: 'updates', icon: '⬆️', label: '更新' },
 ];
 
 const SHORTCUTS: Array<[string, string]> = [
@@ -108,6 +111,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return (
           <>
             <LanguageSettings />
+            <UpdateSettings />
             <section className={styles.block}>
               <h2 className={styles.h2}>{t('新手引导')}</h2>
               <p className={styles.muted}>
@@ -172,6 +176,8 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             initialTab={localTab ?? 'models'}
           />
         );
+      case 'updates':
+        return <UpdateSettings />;
       case 'privacy':
         return (
           <section className={styles.block} data-testid="settings-privacy">

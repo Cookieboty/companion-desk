@@ -44,8 +44,28 @@ export interface IPCClient {
   testModelConnection(modelId: string): Promise<boolean>;
 }
 
+export interface UpdateStateView {
+  status: string;
+  currentVersion: string;
+  availableVersion?: string;
+  releaseName?: string | null;
+  releaseNotes?: string | null;
+  percent?: number;
+  error?: string;
+  checkedAt?: number;
+  autoCheck: boolean;
+}
+
 export interface ElectronAPI {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
   removeAllListeners: (channel: string) => void;
+  updates?: {
+    get: () => Promise<UpdateStateView>;
+    check: () => Promise<UpdateStateView>;
+    download: () => Promise<UpdateStateView>;
+    install: () => Promise<UpdateStateView>;
+    setAutoCheck: (on: boolean) => Promise<UpdateStateView>;
+    onChanged: (cb: (s: UpdateStateView) => void) => () => void;
+  };
 }
