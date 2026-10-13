@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import { Badge, Button, EmptyState, Input, Select } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -113,8 +114,13 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
     });
     onMsg(
       r
-        ? `好的，${fmtDue(r.dueAt)}${r.repeat ? `起${describeRepeat(r.repeat)}` : ''}提醒你「${r.text}」`
-        : '设置失败：时间可能已经过去了',
+        ? tr(
+            '好的，{0}{1}提醒你「{2}」',
+            fmtDue(r.dueAt),
+            r.repeat ? tr('起{0}', describeRepeat(r.repeat)) : '',
+            r.text,
+          )
+        : tr('设置失败：时间可能已经过去了'),
     );
     if (r) setText('');
   };
@@ -123,7 +129,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
     <div className={styles.stack}>
       <div className={styles.row}>
         <Input
-          placeholder="提醒我……（回车添加）"
+          placeholder={tr('提醒我……（回车添加）')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && void add()}
@@ -147,7 +153,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
           />
         </span>
         <Button variant="primary" onClick={() => void add()} data-testid="reminder-add">
-          添加
+          {tr('添加')}
         </Button>
       </div>
       {(minutes === 'at' || rep === 'weekly' || rep === 'interval') && (
@@ -173,7 +179,8 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
                   setDays((d) => (d.includes(i) ? d.filter((x) => x !== i) : [...d, i].sort()))
                 }
               >
-                周{w}
+                {tr('周')}
+                {w}
               </Button>
             ))}
           {rep === 'interval' && (
@@ -184,7 +191,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
                 onChange={(e) => setEvery(e.target.value)}
                 options={[30, 45, 60, 90, 120, 180, 240].map((m) => ({
                   value: String(m),
-                  label: m % 60 === 0 ? `${m / 60} 小时` : `${m} 分钟`,
+                  label: m % 60 === 0 ? tr('{0} 小时', m / 60) : tr('{0} 分钟', m),
                 }))}
               />
             </span>
@@ -193,14 +200,14 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
       )}
       <label className={styles.hint}>
         <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />{' '}
-        显示已结束的提醒
+        {tr('显示已结束的提醒')}
       </label>
       {err && <span className={styles.hint}>{err}</span>}
       {items === null ? null : items.length === 0 ? (
         <EmptyState
           icon="⏰"
-          title="没有提醒"
-          description="也可以在对话里说：「每个工作日早上 9 点提醒我站会」"
+          title={tr('没有提醒')}
+          description={tr('也可以在对话里说：「每个工作日早上 9 点提醒我站会」')}
         />
       ) : (
         <table className={styles.table} data-testid="reminders-list">
@@ -209,7 +216,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
               <tr key={r.id}>
                 <td>{fmtDue(r.dueAt)}</td>
                 <td>
-                  {r.text}
+                  {tr(r.text)}
                   {r.repeat && (
                     <>
                       {' '}
@@ -218,7 +225,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
                   )}
                 </td>
                 <td>
-                  <Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge>
+                  <Badge tone={STATUS[r.status].tone}>{tr(STATUS[r.status].label)}</Badge>
                 </td>
                 <td className={styles.row}>
                   {r.status !== 'cancelled' && (
@@ -227,7 +234,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
                       variant="ghost"
                       onClick={() => void desktopClient.snoozeReminder(r.id, 10)}
                     >
-                      推迟 10 分钟
+                      {tr('推迟 10 分钟')}
                     </Button>
                   )}
                   {r.status === 'pending' && (
@@ -236,7 +243,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
                       variant="danger"
                       onClick={() => void desktopClient.cancelReminder(r.id)}
                     >
-                      {r.repeat ? '停止' : '取消'}
+                      {r.repeat ? tr('停止') : tr('取消')}
                     </Button>
                   )}
                 </td>

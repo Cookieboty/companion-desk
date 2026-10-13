@@ -1,3 +1,4 @@
+import { t as tr } from '../i18n';
 /**
  * 最小 iCalendar（RFC 5545）解析 / 生成：VEVENT 的 UID、SUMMARY、DTSTART/DTEND（含 VALUE=DATE、
  * UTC「Z」、TZID 视为本地时间）、LOCATION、DESCRIPTION、RRULE（FREQ=DAILY/WEEKLY/MONTHLY/YEARLY，
@@ -69,7 +70,7 @@ export function parseIcs(text: string, cal: string): CalEvent[] {
         const end = cur.end ?? cur.start + (durMs || (cur.allDay ? 86_400_000 : 3_600_000));
         out.push({
           uid: cur.uid || `${cal}-${cur.start}-${out.length}`,
-          summary: cur.summary || '（无标题）',
+          summary: cur.summary || tr('（无标题）'),
           start: cur.start,
           end,
           allDay: !!cur.allDay,

@@ -9,6 +9,8 @@
  */
 import * as nodePath from 'path';
 
+import { t } from '../i18n';
+
 export type GuardCode =
   'invalid_path' | 'outside_scope' | 'denied' | 'symlink_escape' | 'read_only' | 'not_found';
 
@@ -108,19 +110,20 @@ export function normalizeInput(
   platform: NodeJS.Platform,
 ): string | GuardErr {
   const bad = (message: string): GuardErr => ({ ok: false, code: 'invalid_path', message });
-  if (typeof input !== 'string' || !input.trim()) return bad('路径为空');
+  if (typeof input !== 'string' || !input.trim()) return bad(t('路径为空'));
   let p = input.trim();
-  if (p.length > MAX_PATH) return bad('路径过长');
-  if (p.includes('\0')) return bad('路径包含非法字符');
-  if (/^[\\/]{2}/.test(p)) return bad('不支持网络 / 设备路径（UNC）');
-  if (/^[\\/]{2}[?.][\\/]/.test(p)) return bad('不支持设备路径');
+  if (p.length > MAX_PATH) return bad(t('路径过长'));
+  if (p.includes('\0')) return bad(t('路径包含非法字符'));
+  if (/^[\\/]{2}/.test(p)) return bad(t('不支持网络 / 设备路径（UNC）'));
+  if (/^[\\/]{2}[?.][\\/]/.test(p)) return bad(t('不支持设备路径'));
   if (p === '~' || p.startsWith('~/') || p.startsWith('~\\')) p = home + p.slice(1);
   const P = lib(platform);
-  if (!P.isAbsolute(p)) return bad('必须是绝对路径或以 ~ 开头');
-  if (platform === 'win32' && !/^[a-zA-Z]:[\\/]/.test(p)) return bad('Windows 路径必须带盘符');
+  if (!P.isAbsolute(p)) return bad(t('必须是绝对路径或以 ~ 开头'));
+  if (platform === 'win32' && !/^[a-zA-Z]:[\\/]/.test(p)) return bad(t('Windows 路径必须带盘符'));
   const norm = P.resolve(p);
   const lower = norm.replace(/\\/g, '/').toLowerCase();
-  if (platform !== 'win32' && /^\/(dev|proc|sys)(\/|$)/.test(lower)) return bad('不支持设备路径');
+  if (platform !== 'win32' && /^\/(dev|proc|sys)(\/|$)/.test(lower))
+    return bad(t('不支持设备路径'));
   return norm;
 }
 
@@ -144,13 +147,14 @@ export function denyReason(
   platform: NodeJS.Platform,
   denyRoots: string[] = [],
 ): string | null {
-  for (const root of denyRoots) if (root && isInside(p, root, platform)) return '应用私有数据目录';
+  for (const root of denyRoots)
+    if (root && isInside(p, root, platform)) return t('应用私有数据目录');
   const norm = p.replace(/\\/g, '/').toLowerCase();
   const segs = norm.split('/').filter(Boolean);
-  for (const s of segs) if (DENY_SEGMENTS.includes(s)) return `受保护目录（${s}）`;
-  for (const f of DENY_FRAGMENTS) if (norm.includes(f)) return '浏览器 / 系统凭据目录';
+  for (const s of segs) if (DENY_SEGMENTS.includes(s)) return t('受保护目录（{0}）', s);
+  for (const f of DENY_FRAGMENTS) if (norm.includes(f)) return t('浏览器 / 系统凭据目录');
   const name = segs[segs.length - 1] ?? '';
-  for (const re of DENY_NAMES) if (re.test(name)) return `受保护文件（${name}）`;
+  for (const re of DENY_NAMES) if (re.test(name)) return t('受保护文件（{0}）', name);
   return null;
 }
 
@@ -181,7 +185,7 @@ export async function guardPath(
   const norm = normalizeInput(input, env.home, env.platform);
   if (typeof norm !== 'string') return norm;
   const lexicalDeny = denyReason(norm, env.platform, env.denyRoots);
-  if (lexicalDeny) return { ok: false, code: 'denied', message: `拒绝访问：${lexicalDeny}` };
+  if (lexicalDeny) return { ok: false, code: 'denied', message: t('拒绝访问：{0}', lexicalDeny) };
 
   const lexicalScope = env.scopes.find((s) =>
     s.kind === 'file'
@@ -191,16 +195,16 @@ export async function guardPath(
   const resolved = await realOrParent(norm, env);
   if (!resolved) {
     return lexicalScope
-      ? { ok: false, code: 'not_found', message: '文件或其父目录不存在' }
-      : { ok: false, code: 'outside_scope', message: '路径不在已授权的文件夹内' };
+      ? { ok: false, code: 'not_found', message: t('文件或其父目录不存在') }
+      : { ok: false, code: 'outside_scope', message: t('路径不在已授权的文件夹内') };
   }
   if (!resolved.exists && !opts.allowMissing) {
     return lexicalScope
-      ? { ok: false, code: 'not_found', message: '文件不存在' }
-      : { ok: false, code: 'outside_scope', message: '路径不在已授权的文件夹内' };
+      ? { ok: false, code: 'not_found', message: t('文件不存在') }
+      : { ok: false, code: 'outside_scope', message: t('路径不在已授权的文件夹内') };
   }
   const realDeny = denyReason(resolved.real, env.platform, env.denyRoots);
-  if (realDeny) return { ok: false, code: 'denied', message: `拒绝访问：${realDeny}` };
+  if (realDeny) return { ok: false, code: 'denied', message: t('拒绝访问：{0}', realDeny) };
 
   for (const s of env.scopes) {
     let scopeReal: string;
@@ -216,12 +220,12 @@ export async function guardPath(
         : isInside(resolved.real, scopeReal, env.platform);
     if (!inside) continue;
     if (opts.need === 'write' && s.mode !== 'read-write') {
-      return { ok: false, code: 'read_only', message: '该文件夹只授权了读取' };
+      return { ok: false, code: 'read_only', message: t('该文件夹只授权了读取') };
     }
     return { ok: true, real: resolved.real, scope: s, exists: resolved.exists };
   }
   if (lexicalScope) {
-    return { ok: false, code: 'symlink_escape', message: '符号链接指向了授权范围之外' };
+    return { ok: false, code: 'symlink_escape', message: t('符号链接指向了授权范围之外') };
   }
-  return { ok: false, code: 'outside_scope', message: '路径不在已授权的文件夹内' };
+  return { ok: false, code: 'outside_scope', message: t('路径不在已授权的文件夹内') };
 }

@@ -11,6 +11,8 @@ import path from 'node:path';
 
 import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 
+import { t as tr } from '../i18n';
+
 import { assetsFor, findAsset, type VoiceAsset } from './catalog';
 import { transcribeOpenAICompat } from './cloudAsr';
 import { downloadVerified, extractTarGz, extractZip } from './download';
@@ -161,30 +163,32 @@ export class VoiceService {
           code: 'no_engine',
           message:
             process.platform === 'darwin'
-              ? '未找到 whisper.cpp：请先 `brew install whisper-cpp`，或在设置里指定 whisper-cli 路径。'
-              : '还没有下载 whisper.cpp 引擎。',
+              ? tr(
+                  '未找到 whisper.cpp：请先 `brew install whisper-cpp`，或在设置里指定 whisper-cli 路径。',
+                )
+              : tr('还没有下载 whisper.cpp 引擎。'),
         };
       const m = findAsset(s.whisperModel);
       if (!m || !this.installed(m))
-        return { ok: false, local: true, code: 'no_model', message: '还没有下载识别模型。' };
+        return { ok: false, local: true, code: 'no_model', message: tr('还没有下载识别模型。') };
       return { ok: true, local: true };
     }
     const target = this.cloudTarget();
     if (!target)
-      return { ok: false, local: false, code: 'no_provider', message: '请选择识别服务。' };
+      return { ok: false, local: false, code: 'no_provider', message: tr('请选择识别服务。') };
     if (!target.local && this.d.localOnly?.())
       return {
         ok: false,
         local: false,
         code: 'local_only',
-        message: '已开启「仅本地模型」，不能把录音发送到云端。',
+        message: tr('已开启「仅本地模型」，不能把录音发送到云端。'),
       };
     if (!target.local && !s.cloudAcked.includes(cloudTargetId(s)))
       return {
         ok: false,
         local: false,
         code: 'cloud_not_acked',
-        message: `录音将发送给「${target.name}」识别，需要你确认一次。`,
+        message: tr('录音将发送给「{0}」识别，需要你确认一次。', target.name),
       };
     return { ok: true, local: target.local };
   }
@@ -257,8 +261,8 @@ export class VoiceService {
 
   async download(id: string): Promise<{ ok: boolean; error?: string }> {
     const a = findAsset(id);
-    if (!a || !assetsFor().includes(a)) return { ok: false, error: '未知或不适用于本机的资源' };
-    if (this.downloads.has(id)) return { ok: false, error: '正在下载' };
+    if (!a || !assetsFor().includes(a)) return { ok: false, error: tr('未知或不适用于本机的资源') };
+    if (this.downloads.has(id)) return { ok: false, error: tr('正在下载') };
     const ctrl = new AbortController();
     const rec = { ctrl, received: 0, total: a.bytes };
     this.downloads.set(id, rec);
@@ -285,7 +289,7 @@ export class VoiceService {
         if (a.archive === 'zip') extractZip(buf, dir);
         else extractTarGz(buf, dir);
         fs.rmSync(dest, { force: true });
-        if (!findCliIn(dir)) throw new Error('解包后没有找到 whisper-cli');
+        if (!findCliIn(dir)) throw new Error(tr('解包后没有找到 whisper-cli'));
       }
       this.d.audit?.({
         tool: 'voice_model_download',
@@ -303,7 +307,7 @@ export class VoiceService {
       return { ok: true };
     } catch (e) {
       const aborted = ctrl.signal.aborted;
-      const msg = aborted ? '已取消' : e instanceof Error ? e.message : String(e);
+      const msg = aborted ? tr('已取消') : e instanceof Error ? e.message : String(e);
       this.progress(id, rec.received, rec.total, aborted ? 'cancelled' : 'error', msg);
       if (!aborted) this.d.logger.warn('语音模型下载失败', { id, error: msg } as never);
       return { ok: false, error: msg };
@@ -337,15 +341,15 @@ export class VoiceService {
     // 唤醒词检测只走本地，绝不上传
     const engine = opts.purpose === 'wake' ? 'whisper-cpp' : s.engine;
     if (!(wav instanceof Uint8Array) || wav.byteLength < 44 + 3200)
-      throw new VoiceError('empty', '录音太短了');
+      throw new VoiceError('empty', tr('录音太短了'));
     if (wav.byteLength > 25 * 1024 * 1024)
-      throw new VoiceError('failed', '录音太长了（上限约 13 分钟）');
+      throw new VoiceError('failed', tr('录音太长了（上限约 13 分钟）'));
     let text: string;
     if (engine === 'whisper-cpp') {
       const cli = this.locateCli();
-      if (!cli) throw new VoiceError('no_engine', '未找到 whisper.cpp 引擎');
+      if (!cli) throw new VoiceError('no_engine', tr('未找到 whisper.cpp 引擎'));
       const m = findAsset(s.whisperModel);
-      if (!m || !this.installed(m)) throw new VoiceError('no_model', '还没有下载识别模型');
+      if (!m || !this.installed(m)) throw new VoiceError('no_model', tr('还没有下载识别模型'));
       text = await runWhisperCli({
         cli: cli.path,
         model: this.assetPath(m),
@@ -360,13 +364,13 @@ export class VoiceService {
         prompt:
           s.language === 'zh' ||
           (opts.purpose === 'wake' && /[\u4e00-\u9fff]/.test(s.wakeWord.phrase))
-            ? '以下是普通话的句子。'
+            ? tr('以下是普通话的句子。')
             : undefined,
         timeoutMs: opts.purpose === 'wake' ? 20_000 : 120_000,
       });
     } else {
       const r = this.readiness();
-      if (!r.ok) throw new VoiceError(r.code ?? 'failed', r.message ?? '识别服务不可用');
+      if (!r.ok) throw new VoiceError(r.code ?? 'failed', r.message ?? tr('识别服务不可用'));
       const t = this.cloudTarget()!;
       text = await transcribeOpenAICompat({
         baseURL: t.baseURL,

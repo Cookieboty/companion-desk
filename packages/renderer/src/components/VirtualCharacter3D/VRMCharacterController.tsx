@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
+import { t } from '@ig-live/ui';
 import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useState } from 'react';
@@ -55,7 +56,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
           if (vrm) VRMUtils.deepDispose(vrm.scene);
           return;
         }
-        if (!vrm) throw new Error('文件不包含 VRM 扩展');
+        if (!vrm) throw new Error(t('文件不包含 VRM 扩展'));
 
         VRMUtils.removeUnnecessaryVertices(gltf.scene);
         VRMUtils.combineSkeletons(gltf.scene);

@@ -1,8 +1,10 @@
 /** 语音状态条：聆听 / 识别中 / 等待唤醒…；出错时给出可操作的提示。麦克风打开时始终可见（隐私指示）。 */
+import { t } from '@ig-live/ui';
 import { cx } from '@ig-live/ui';
 import React from 'react';
 
 import type { VoiceState } from '../controller';
+
 import { phaseLabel } from './useVoice';
 
 export interface VoiceStatusProps {
@@ -46,14 +48,14 @@ export const VoiceStatus: React.FC<VoiceStatusProps> = ({
             onClick={onOpenSettings}
             data-testid="voice-error-setup"
           >
-            去设置
+            {t('去设置')}
           </button>
         )}
         {onDismissError && (
           <button
             type="button"
             className="cd-voice-link"
-            aria-label="关闭提示"
+            aria-label={t('关闭提示')}
             onClick={onDismissError}
           >
             ✕
@@ -75,13 +77,16 @@ export const VoiceStatus: React.FC<VoiceStatusProps> = ({
       <span className="cd-voice-dot" aria-hidden />
       <span className="cd-voice-status__text">{text}</span>
       {state.mode !== 'ptt' && state.vad === 'energy' && (
-        <span className="cd-voice-status__hint" title="下载 Silero VAD 可更准确地判断你何时说完">
-          基础检测
+        <span
+          className="cd-voice-status__hint"
+          title={t('下载 Silero VAD 可更准确地判断你何时说完')}
+        >
+          {t('基础检测')}
         </span>
       )}
       {continuous && onStop && (
         <button type="button" className="cd-voice-link" onClick={onStop} data-testid="voice-stop">
-          停止
+          {t('停止')}
         </button>
       )}
     </div>

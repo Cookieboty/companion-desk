@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { cx } from './cx';
+import { t } from './i18n';
 
 export interface TabItem<T extends string = string> {
   value: T;
@@ -45,7 +46,7 @@ export function Tabs<T extends string = string>({
           className="cd-tab"
           onClick={() => onChange(it.value)}
         >
-          {it.label}
+          {t(it.label)}
         </button>
       ))}
     </div>

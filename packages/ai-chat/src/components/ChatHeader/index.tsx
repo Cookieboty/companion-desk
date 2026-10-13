@@ -2,6 +2,7 @@
  * 对话窗口顶栏（参考 Codex app：右上角放常用入口，下面是对话）。
  * 图标打开右侧快速视图（抽屉），详细配置在「设置」里。
  */
+import { t } from '@ig-live/ui';
 import { Tooltip } from '@ig-live/ui';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
@@ -58,7 +59,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
   const items = [
     {
       k: 'memory',
-      tip: '记忆',
+      tip: t('记忆'),
       key: '⌘/Ctrl+Shift+M',
       id: 'open-mem-panel',
       pin: 'memory',
@@ -67,7 +68,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'kb',
-      tip: '知识库',
+      tip: t('知识库'),
       key: '⌘/Ctrl+Shift+L',
       id: 'open-kb-panel',
       pin: 'kbm',
@@ -76,7 +77,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'sched',
-      tip: '日程 · 编程助手进度',
+      tip: t('日程 · 编程助手进度'),
       key: '⌘/Ctrl+Shift+D',
       id: 'open-sched-panel',
       pin: 'schedule',
@@ -85,7 +86,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'ext',
-      tip: '扩展 / MCP',
+      tip: t('扩展 / MCP'),
       key: '⌘/Ctrl+Shift+E',
       id: 'open-ext-panel',
       pin: 'ext',
@@ -94,7 +95,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'local',
-      tip: '本机管理（日历 · 剪贴板 · 小模型）',
+      tip: t('本机管理（日历 · 剪贴板 · 小模型）'),
       key: '⌘/Ctrl+Shift+J',
       id: 'open-local-panel',
       pin: 'local',
@@ -103,7 +104,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'settings',
-      tip: '设置',
+      tip: t('设置'),
       key: '⌘/Ctrl+,',
       id: 'open-settings',
       pin: 'settings',
@@ -170,14 +171,14 @@ export const ChatHeader: React.FC<Props> = (p) => {
             <Tooltip
               key={id}
               placement="bottom"
-              content={d.shortcut ? `${d.label}  ${d.shortcut}` : d.label}
+              content={d.shortcut ? `${t(d.label)}  ${t(d.shortcut)}` : t(d.label)}
             >
               <button
                 type="button"
                 className={`${styles.btn} ${styles.pin}`}
                 onClick={() => run(id)}
                 onContextMenu={ctx(id)}
-                aria-label={d.label}
+                aria-label={t(d.label)}
                 data-testid={`pin-${id}`}
               >
                 <span aria-hidden>{d.icon}</span>
@@ -191,9 +192,9 @@ export const ChatHeader: React.FC<Props> = (p) => {
               type="button"
               className={styles.btn}
               onClick={() => setMore((v) => !v)}
-              aria-label={`更多入口（${hidden.length}）`}
+              aria-label={t('更多入口（{0}）', hidden.length)}
               aria-expanded={more}
-              title="更多入口"
+              title={t('更多入口')}
               data-testid="pins-overflow"
             >
               ⋯
@@ -213,8 +214,8 @@ export const ChatHeader: React.FC<Props> = (p) => {
                       data-testid={`pin-overflow-${id}`}
                     >
                       <span aria-hidden>{d.icon}</span>
-                      <span className={styles.popLabel}>{d.label}</span>
-                      {d.shortcut && <span className={styles.popHint}>{d.shortcut}</span>}
+                      <span className={styles.popLabel}>{t(d.label)}</span>
+                      {d.shortcut && <span className={styles.popHint}>{t(d.shortcut)}</span>}
                     </button>
                   );
                 })}
@@ -245,10 +246,10 @@ export const ChatHeader: React.FC<Props> = (p) => {
           >
             📌{' '}
             {ctxPinned
-              ? '取消固定'
+              ? t('取消固定')
               : ctxFull
-                ? `左上角已满（最多 ${MAX_PINS} 个）`
-                : '固定到左上角'}
+                ? t('左上角已满（最多 {0} 个）', MAX_PINS)
+                : t('固定到左上角')}
           </button>
           <button
             type="button"
@@ -260,7 +261,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
             }}
             data-testid="pin-customize"
           >
-            ⚙️ 自定义常驻入口…
+            {t('⚙️ 自定义常驻入口…')}
           </button>
         </div>
       )}
@@ -272,7 +273,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
               className={styles.btn}
               onClick={i.on}
               onContextMenu={ctx(i.pin)}
-              aria-label={i.tip}
+              aria-label={t(i.tip)}
               data-testid={i.id}
             >
               <svg

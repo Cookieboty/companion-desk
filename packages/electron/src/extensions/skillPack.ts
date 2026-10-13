@@ -5,6 +5,8 @@
  */
 import path from 'node:path';
 
+import { t } from '../i18n';
+
 export interface SkillMeta {
   name: string;
   description: string;
@@ -19,7 +21,7 @@ export class SkillError extends Error {}
 export function parseSkillMd(text: string): { meta: SkillMeta; body: string } {
   const src = text.replace(/^\uFEFF/, '');
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(src);
-  if (!m) throw new SkillError('SKILL.md 需要以 --- 包裹的头部信息开头（name / description）');
+  if (!m) throw new SkillError(t('SKILL.md 需要以 --- 包裹的头部信息开头（name / description）'));
   const meta: Record<string, string> = {};
   for (const line of m[1].split(/\r?\n/)) {
     const kv = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/.exec(line.trim());
@@ -29,8 +31,8 @@ export function parseSkillMd(text: string): { meta: SkillMeta; body: string } {
   const name = (meta.name ?? '').trim();
   const description = (meta.description ?? '').trim();
   if (!validSkillName(name))
-    throw new SkillError('name 只能用小写字母、数字和连字符（1~64 个字符）');
-  if (!description) throw new SkillError('缺少 description（一句话说明何时使用这个技能）');
+    throw new SkillError(t('name 只能用小写字母、数字和连字符（1~64 个字符）'));
+  if (!description) throw new SkillError(t('缺少 description（一句话说明何时使用这个技能）'));
   return {
     meta: {
       name,
@@ -59,10 +61,10 @@ export function buildSkillMd(meta: SkillMeta, body: string): string {
 /** 技能目录内的相对路径 → 绝对路径；越界（../、绝对路径、符号链接名）一律拒绝 */
 export function safeJoin(root: string, rel: string): string {
   if (!rel || path.isAbsolute(rel) || /(^|[\\/])\.\.([\\/]|$)/.test(rel))
-    throw new SkillError('只能读取技能文件夹内的文件');
+    throw new SkillError(t('只能读取技能文件夹内的文件'));
   const abs = path.resolve(root, rel);
   const r = path.resolve(root) + path.sep;
-  if (!abs.startsWith(r)) throw new SkillError('只能读取技能文件夹内的文件');
+  if (!abs.startsWith(r)) throw new SkillError(t('只能读取技能文件夹内的文件'));
   return abs;
 }
 
@@ -70,8 +72,10 @@ export function safeJoin(root: string, rel: string): string {
 export function skillsContext(list: SkillMeta[]): string {
   if (!list.length) return '';
   return [
-    '## 可用技能',
-    '下列技能可按需使用。当用户的请求符合某个技能的描述时，先调用 skill_load 读取它的完整说明，再按说明完成任务；不相关时不要加载。',
+    t('## 可用技能'),
+    t(
+      '下列技能可按需使用。当用户的请求符合某个技能的描述时，先调用 skill_load 读取它的完整说明，再按说明完成任务；不相关时不要加载。',
+    ),
     ...list.map((s) => `- ${s.name}：${s.description}`),
   ].join('\n');
 }

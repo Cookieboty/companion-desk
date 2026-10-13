@@ -6,6 +6,8 @@
  * token 预算裁剪由主进程 ChatFacade（ai-sdk `fitMessagesToBudget`）负责。
  */
 
+import { t } from '@ig-live/ui';
+
 import type { ChatMessage } from '../types/chat';
 
 export interface ProviderMessage {
@@ -26,7 +28,7 @@ export function buildProviderMessages(
   for (const m of history) {
     if (m.error || ((!m.content || !m.content.trim()) && !m.images?.length)) continue;
     // 历史里的图片不再重发（只有缩略图），用文字占位让模型知道上下文
-    const tag = m.images?.length ? `[此前附了 ${m.images.length} 张图片] ` : '';
+    const tag = m.images?.length ? t('[此前附了 {0} 张图片] ', m.images.length) : '';
     out.push({ role: m.role, content: tag + m.content });
   }
   out.push(

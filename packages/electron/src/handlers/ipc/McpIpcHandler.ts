@@ -3,8 +3,10 @@
  * 处理MCP工具调用、资源读取等相关的IPC通信
  */
 
+import { t as tr } from '../../i18n';
+import { type ILoggerService } from '../../services/LoggerService';
+
 import { BaseIpcHandler } from './BaseIpcHandler';
-import { ILoggerService } from '../../services/LoggerService';
 
 // MCP服务接口（简化版）
 interface MCPService {
@@ -35,13 +37,12 @@ export class McpIpcHandler extends BaseIpcHandler {
       try {
         if (!this.mcpService) {
           this.logger.warn('MCP服务不可用');
-          return { isRunning: false, error: 'MCP服务未初始化' };
+          return { isRunning: false, error: tr('MCP服务未初始化') };
         }
 
         const status = this.mcpService.getStatus();
         this.logger.debug('获取MCP状态', { status });
         return status;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP状态失败', { error: errorMessage });
@@ -54,13 +55,12 @@ export class McpIpcHandler extends BaseIpcHandler {
       try {
         if (!this.mcpService) {
           this.logger.warn('MCP服务不可用');
-          return { error: 'MCP服务未初始化' };
+          return { error: tr('MCP服务未初始化') };
         }
 
         const diagnostics = await this.mcpService.getDiagnostics();
         this.logger.debug('获取MCP诊断信息', { diagnostics });
         return diagnostics;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP诊断信息失败', { error: errorMessage });
@@ -74,7 +74,7 @@ export class McpIpcHandler extends BaseIpcHandler {
 
       try {
         if (!this.mcpService) {
-          throw new Error('MCP服务未初始化');
+          throw new Error(tr('MCP服务未初始化'));
         }
 
         this.logger.info(`调用MCP工具: ${toolName}`, { args });
@@ -82,7 +82,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         this.logger.info(`MCP工具调用完成: ${toolName}`);
 
         return result;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(`MCP工具调用失败: ${toolName}`, { error: errorMessage, args });
@@ -96,7 +95,7 @@ export class McpIpcHandler extends BaseIpcHandler {
 
       try {
         if (!this.mcpService) {
-          throw new Error('MCP服务未初始化');
+          throw new Error(tr('MCP服务未初始化'));
         }
 
         this.logger.info(`读取MCP资源: ${uri}`);
@@ -104,7 +103,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         this.logger.info(`MCP资源读取完成: ${uri}`);
 
         return result;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(`MCP资源读取失败: ${uri}`, { error: errorMessage });
@@ -123,7 +121,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         const tools = this.mcpService.getAvailableTools();
         this.logger.debug('获取可用MCP工具列表', { toolCount: tools.length });
         return tools;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP工具列表失败', { error: errorMessage });
@@ -142,7 +139,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         const resources = this.mcpService.getAvailableResources();
         this.logger.debug('获取可用MCP资源列表', { resourceCount: resources.length });
         return resources;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP资源列表失败', { error: errorMessage });
@@ -154,7 +150,7 @@ export class McpIpcHandler extends BaseIpcHandler {
     this.registerHandler('mcp:restart', async () => {
       try {
         if (!this.mcpService) {
-          throw new Error('MCP服务未初始化');
+          throw new Error(tr('MCP服务未初始化'));
         }
 
         this.logger.info('重启MCP服务...');
@@ -162,7 +158,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         this.logger.info('MCP服务重启完成');
 
         return this.createSuccessResponse();
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('MCP服务重启失败', { error: errorMessage });
@@ -175,13 +170,12 @@ export class McpIpcHandler extends BaseIpcHandler {
       try {
         if (!this.mcpService) {
           this.logger.warn('MCP服务不可用');
-          return { isValid: false, errors: ['MCP服务未初始化'], warnings: [] };
+          return { isValid: false, errors: [tr('MCP服务未初始化')], warnings: [] };
         }
 
         const validation = await this.mcpService.validateConfiguration();
         this.logger.debug('MCP配置验证结果', { validation });
         return validation;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('MCP配置验证失败', { error: errorMessage });
@@ -201,13 +195,12 @@ export class McpIpcHandler extends BaseIpcHandler {
 
         this.logger.info('Cursor MCP配置注入完成', { result });
         return result;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('Cursor MCP配置注入失败', { error: errorMessage });
         return {
           success: false,
-          error: errorMessage
+          error: errorMessage,
         };
       }
     });
@@ -222,7 +215,7 @@ export class McpIpcHandler extends BaseIpcHandler {
         }
 
         const tools = this.mcpService.getAvailableTools();
-        const tool = tools.find(t => t.name === toolName);
+        const tool = tools.find((t) => t.name === toolName);
 
         if (tool) {
           this.logger.debug('获取MCP工具详细信息', { toolName, tool });
@@ -231,7 +224,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         }
 
         return tool || null;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP工具详细信息失败', { error: errorMessage, toolName });
@@ -249,7 +241,7 @@ export class McpIpcHandler extends BaseIpcHandler {
         }
 
         const resources = this.mcpService.getAvailableResources();
-        const resource = resources.find(r => r.name === resourceName);
+        const resource = resources.find((r) => r.name === resourceName);
 
         if (resource) {
           this.logger.debug('获取MCP资源详细信息', { resourceName, resource });
@@ -258,7 +250,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         }
 
         return resource || null;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP资源详细信息失败', { error: errorMessage, resourceName });
@@ -272,8 +263,8 @@ export class McpIpcHandler extends BaseIpcHandler {
         if (!this.mcpService) {
           return {
             healthy: false,
-            issues: ['MCP服务未初始化'],
-            timestamp: Date.now()
+            issues: [tr('MCP服务未初始化')],
+            timestamp: Date.now(),
           };
         }
 
@@ -284,11 +275,11 @@ export class McpIpcHandler extends BaseIpcHandler {
         const issues: string[] = [];
 
         if (!status.isRunning) {
-          issues.push('MCP服务未运行');
+          issues.push(tr('MCP服务未运行'));
         }
 
         if (diagnostics.error) {
-          issues.push(`诊断错误: ${diagnostics.error}`);
+          issues.push(tr('诊断错误: {0}', diagnostics.error));
         }
 
         const health = {
@@ -296,19 +287,18 @@ export class McpIpcHandler extends BaseIpcHandler {
           issues,
           status,
           diagnostics,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
 
         this.logger.debug('MCP服务健康检查', { health });
         return health;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('MCP健康检查失败', { error: errorMessage });
         return {
           healthy: false,
-          issues: [`健康检查失败: ${errorMessage}`],
-          timestamp: Date.now()
+          issues: [tr('健康检查失败: {0}', errorMessage)],
+          timestamp: Date.now(),
         };
       }
     });
@@ -320,7 +310,7 @@ export class McpIpcHandler extends BaseIpcHandler {
           return {
             toolCount: 0,
             resourceCount: 0,
-            isAvailable: false
+            isAvailable: false,
           };
         }
 
@@ -331,12 +321,11 @@ export class McpIpcHandler extends BaseIpcHandler {
           toolCount: tools.length,
           resourceCount: resources.length,
           isAvailable: true,
-          uptime: Date.now() // 简化的运行时间
+          uptime: Date.now(), // 简化的运行时间
         };
 
         this.logger.debug('获取MCP服务统计信息', { stats });
         return stats;
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP统计信息失败', { error: errorMessage });
@@ -344,14 +333,14 @@ export class McpIpcHandler extends BaseIpcHandler {
           toolCount: 0,
           resourceCount: 0,
           isAvailable: false,
-          error: errorMessage
+          error: errorMessage,
         };
       }
     });
 
     this.logger.info('McpIpcHandler 初始化完成', {
       registeredChannels: this.getRegisteredChannels().length,
-      mcpServiceAvailable: !!this.mcpService
+      mcpServiceAvailable: !!this.mcpService,
     });
   }
 

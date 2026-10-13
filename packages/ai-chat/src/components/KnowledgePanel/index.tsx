@@ -2,6 +2,7 @@
  * KnowledgePanel —— 本地知识库管理：来源（文件夹 / 笔记）、索引进度、文档列表、检索测试、
  * 向量 / 重排模型（可选，OpenAI 兼容）、OCR 语言数据（按需下载，显示许可、进度、可取消）。
  */
+import { t as tr } from '@ig-live/ui';
 import {
   Badge,
   Button,
@@ -69,12 +70,12 @@ const ProgressBox: React.FC<{ p: KbProgress }> = ({ p }) => {
             onClick={() => void kbClient.cancel()}
             data-testid="kb-cancel"
           >
-            取消
+            {tr('取消')}
           </Button>
         ) : (
           <span className={styles.hint}>
-            新增 {p.added} · 更新 {p.updated} · 移除 {p.removed}
-            {p.failed ? ` · 失败 ${p.failed}` : ''}
+            {tr('新增')} {p.added} {tr('· 更新')} {p.updated} {tr('· 移除')} {p.removed}
+            {p.failed ? tr(' · 失败 {0}', p.failed) : ''}
           </span>
         )}
       </div>
@@ -113,7 +114,7 @@ const DocList: React.FC<{ sourceId: string; onMsg: (m: string) => void }> = ({
     <div className={styles.stack}>
       <Input
         size="sm"
-        placeholder="按文件名筛选"
+        placeholder={tr('按文件名筛选')}
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         data-testid="kb-doc-filter"
@@ -121,7 +122,7 @@ const DocList: React.FC<{ sourceId: string; onMsg: (m: string) => void }> = ({
       {!docs ? (
         <Skeleton height={60} />
       ) : docs.length === 0 ? (
-        <p className={styles.hint}>{filter ? '没有匹配的文件' : '还没有索引到文件'}</p>
+        <p className={styles.hint}>{filter ? tr('没有匹配的文件') : tr('还没有索引到文件')}</p>
       ) : (
         <ul className={styles.docList} data-testid="kb-docs">
           {docs.map((d) => (
@@ -131,19 +132,21 @@ const DocList: React.FC<{ sourceId: string; onMsg: (m: string) => void }> = ({
                 className={styles.docBtn}
                 title={d.error ? `${d.path}\n${d.error}` : d.path}
                 onClick={() =>
-                  void kbClient.open(d.id).then((r) => !r.ok && onMsg(r.error ?? '打开失败'))
+                  void kbClient.open(d.id).then((r) => !r.ok && onMsg(r.error ?? tr('打开失败')))
                 }
               >
-                {d.title}
+                {tr(d.title)}
               </button>
               {d.ocr && <Badge>OCR</Badge>}
-              {d.vectors && <Badge tone="accent">向量</Badge>}
+              {d.vectors && <Badge tone="accent">{tr('向量')}</Badge>}
               {d.status === 'error' ? (
-                <Badge tone="danger">失败</Badge>
+                <Badge tone="danger">{tr('失败')}</Badge>
               ) : d.status === 'empty' ? (
-                <Badge tone="warning">无文本</Badge>
+                <Badge tone="warning">{tr('无文本')}</Badge>
               ) : (
-                <span className={styles.hint}>{d.chunks} 段</span>
+                <span className={styles.hint}>
+                  {d.chunks} {tr('段')}
+                </span>
               )}
             </li>
           ))}
@@ -167,11 +170,15 @@ const ModelSection: React.FC<{
   const blocked = !!provider && !provider.local && st.localOnly;
   const save = (patch: Partial<KbModelRef>) =>
     void kbClient.setSettings({ [kind]: { ...ref, model, ...patch } } as never);
-  const title = kind === 'embed' ? '向量检索（可选）' : '重排序（可选）';
+  const title = kind === 'embed' ? tr('向量检索（可选）') : tr('重排序（可选）');
   const desc =
     kind === 'embed'
-      ? '在关键词（BM25）之外按语义召回。推荐本机 Ollama：ollama pull nomic-embed-text 或 bge-m3。开启后会重新建立索引。'
-      : '对候选片段再打分排序。需要支持 /rerank 接口的服务（如 llama.cpp server、TEI、Jina 兼容服务）。';
+      ? tr(
+          '在关键词（BM25）之外按语义召回。推荐本机 Ollama：ollama pull nomic-embed-text 或 bge-m3。开启后会重新建立索引。',
+        )
+      : tr(
+          '对候选片段再打分排序。需要支持 /rerank 接口的服务（如 llama.cpp server、TEI、Jina 兼容服务）。',
+        );
   return (
     <section className={styles.section} data-testid={`kb-${kind}`}>
       <div className={styles.row}>
@@ -179,7 +186,7 @@ const ModelSection: React.FC<{
         <Switch
           checked={ref.enabled}
           onChange={(v) => save({ enabled: v })}
-          label="启用"
+          label={tr('启用')}
           data-testid={`kb-${kind}-enabled`}
         />
       </div>
@@ -188,20 +195,20 @@ const ModelSection: React.FC<{
         <Select
           size="sm"
           value={ref.providerId}
-          placeholder="选择服务"
+          placeholder={tr('选择服务')}
           onChange={(e) => save({ providerId: e.target.value })}
           options={st.providers.map((p) => ({
             value: p.id,
             label: p.name,
-            description: p.local ? '本机' : '云端',
-            group: p.local ? '本机服务' : '云端服务',
+            description: p.local ? tr('本机') : tr('云端'),
+            group: p.local ? tr('本机服务') : tr('云端服务'),
           }))}
           data-testid={`kb-${kind}-provider`}
         />
         <Input
           size="sm"
           placeholder={
-            kind === 'embed' ? '模型，如 nomic-embed-text' : '模型，如 bge-reranker-v2-m3'
+            kind === 'embed' ? tr('模型，如 nomic-embed-text') : tr('模型，如 bge-reranker-v2-m3')
           }
           value={model}
           onChange={(e) => setModel(e.target.value)}
@@ -219,7 +226,7 @@ const ModelSection: React.FC<{
             setTest(await kbClient.test(kind));
           }}
         >
-          {test === 'busy' ? '测试中…' : '测试连接'}
+          {test === 'busy' ? tr('测试中…') : tr('测试连接')}
         </Button>
       </div>
       {test && test !== 'busy' && (
@@ -227,20 +234,23 @@ const ModelSection: React.FC<{
       )}
       {st.providers.length === 0 && (
         <p className={styles.hint}>
-          还没有可用的服务。先在「供应商与模型」里添加 Ollama 或其他 OpenAI 兼容服务。
+          {tr('还没有可用的服务。先在「供应商与模型」里添加 Ollama 或其他 OpenAI 兼容服务。')}
         </p>
       )}
       {blocked && (
         <Notice tone="warning">
-          已开启「仅本地模型可读文件」，不会把文件片段发送给云端服务「{provider!.name}」。
+          {tr('已开启「仅本地模型可读文件」，不会把文件片段发送给云端服务「')}
+          {tr(provider!.name)}」。
         </Notice>
       )}
       {!blocked && needsConsent && (
         <Notice tone="warning">
           <div className={styles.stack}>
             <span>
-              「{provider!.name}」是云端服务：{kind === 'embed' ? '建立索引和检索时' : '检索时'}
-              会把文件内容片段发送给它。确认后才会使用。
+              「{tr(provider!.name)}
+              {tr('」是云端服务：')}
+              {kind === 'embed' ? tr('建立索引和检索时') : tr('检索时')}
+              {tr('会把文件内容片段发送给它。确认后才会使用。')}
             </span>
             <div>
               <Button
@@ -249,11 +259,11 @@ const ModelSection: React.FC<{
                 onClick={() =>
                   void kbClient
                     .consentCloud(provider!.id)
-                    .then(() => onMsg(`已同意使用「${provider!.name}」`))
+                    .then(() => onMsg(tr('已同意使用「{0}」', provider!.name)))
                 }
                 data-testid={`kb-${kind}-consent`}
               >
-                我同意发送文件片段
+                {tr('我同意发送文件片段')}
               </Button>
             </div>
           </div>
@@ -279,14 +289,14 @@ const OcrRow: React.FC<{
     <>
       <Card
         data-testid={`kb-ocr-${a.lang}`}
-        title={a.name}
+        title={tr(a.name)}
         subtitle={`${fmtBytes(a.bytes)} · ${a.license}`}
         actions={
           a.installed ? (
             <>
-              <Badge tone="success">已安装</Badge>
+              <Badge tone="success">{tr('已安装')}</Badge>
               <Button size="sm" variant="ghost" onClick={() => void kbClient.ocrRemove(a.id)}>
-                删除
+                {tr('删除')}
               </Button>
             </>
           ) : dl ? (
@@ -296,7 +306,7 @@ const OcrRow: React.FC<{
               onClick={() => void kbClient.ocrCancel(a.id)}
               data-testid="kb-ocr-cancel"
             >
-              取消
+              {tr('取消')}
             </Button>
           ) : (
             <Button
@@ -305,12 +315,12 @@ const OcrRow: React.FC<{
               onClick={() => setConfirm(true)}
               data-testid="kb-ocr-download"
             >
-              下载
+              {tr('下载')}
             </Button>
           )
         }
       >
-        <p className={styles.hint}>{a.description}</p>
+        <p className={styles.hint}>{tr(a.description)}</p>
         {dl && (
           <div className={styles.stack} style={{ gap: 4 }}>
             <div className={styles.bar}>
@@ -322,7 +332,7 @@ const OcrRow: React.FC<{
           </div>
         )}
         {live?.phase === 'error' && <span className={styles.err}>{live.error}</span>}
-        {live?.phase === 'cancelled' && <span className={styles.hint}>已取消下载</span>}
+        {live?.phase === 'cancelled' && <span className={styles.hint}>{tr('已取消下载')}</span>}
       </Card>
       {/* 弹层挂到 body：外层 Modal / Card 的 backdrop-filter 会让 fixed 定位失效 */}
       {confirm &&
@@ -330,36 +340,42 @@ const OcrRow: React.FC<{
           <Modal
             open={confirm}
             onClose={() => setConfirm(false)}
-            title="下载前请确认许可"
+            title={tr('下载前请确认许可')}
             footer={
               <>
-                <Button onClick={() => setConfirm(false)}>取消</Button>
+                <Button onClick={() => setConfirm(false)}>{tr('取消')}</Button>
                 <Button
                   variant="primary"
                   data-testid="kb-ocr-accept"
                   onClick={() => {
                     setConfirm(false);
-                    void kbClient.ocrDownload(a.id).then((r) => r.ok && onMsg(`${a.name} 已就绪`));
+                    void kbClient
+                      .ocrDownload(a.id)
+                      .then((r) => r.ok && onMsg(tr('{0} 已就绪', a.name)));
                   }}
                 >
-                  同意并下载
+                  {tr('同意并下载')}
                 </Button>
               </>
             }
           >
             <div className={styles.stack}>
               <p>
-                <strong>{a.name}</strong>（{fmtBytes(a.bytes)}）
+                <strong>{tr(a.name)}</strong>（{fmtBytes(a.bytes)}）
               </p>
               <p>
-                许可：<strong>{a.license}</strong> ·{' '}
+                {tr('许可：')}
+                <strong>{a.license}</strong> ·{' '}
                 <a className={styles.link} href={a.licenseUrl} target="_blank" rel="noreferrer">
-                  查看许可全文
+                  {tr('查看许可全文')}
                 </a>
               </p>
-              <p className={styles.mono}>来源：{a.sourceUrl}</p>
+              <p className={styles.mono}>
+                {tr('来源：')}
+                {a.sourceUrl}
+              </p>
               <p className={styles.hint}>
-                文件下载后会校验 SHA-256，只保存在本机，识别完全离线进行。
+                {tr('文件下载后会校验 SHA-256，只保存在本机，识别完全离线进行。')}
               </p>
             </div>
           </Modal>,
@@ -425,7 +441,7 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
   const addFolder = async () => {
     try {
       const s = await kbClient.addFolder();
-      setMsg(s ? `已加入：${s.path}，正在建立索引…` : '');
+      setMsg(s ? tr('已加入：{0}，正在建立索引…', s.path) : '');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     }
@@ -445,11 +461,12 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
   const hasNotes = st?.sources.some((s) => s.kind === 'notes');
 
   return (
-    <Modal open onClose={onClose} title="📚 本地知识库" size="lg" data-testid="kb-panel">
+    <Modal open onClose={onClose} title={tr('📚 本地知识库')} size="lg" data-testid="kb-panel">
       <div className={styles.stack}>
         <Notice>
-          🔒
-          索引只保存在本机。只会读取你在这里加入的文件夹（同时授予只读权限）和本地笔记；云端模型参与前会先征求同意。
+          {tr(
+            '🔒 索引只保存在本机。只会读取你在这里加入的文件夹（同时授予只读权限）和本地笔记；云端模型参与前会先征求同意。',
+          )}
         </Notice>
         {err && <Notice tone="danger">{err}</Notice>}
         {!st && !err && <Skeleton height={120} />}
@@ -457,10 +474,10 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
           <>
             <div className={styles.stats}>
               {[
-                ['文档', st.stats.docs],
-                ['片段', st.stats.chunks],
-                ['向量', st.stats.vectors],
-                ['失败', st.stats.errors],
+                [tr('文档'), st.stats.docs],
+                [tr('片段'), st.stats.chunks],
+                [tr('向量'), st.stats.vectors],
+                [tr('失败'), st.stats.errors],
               ].map(([l, n]) => (
                 <div key={l} className={styles.stat}>
                   <span className={styles.statNum}>{n}</span>
@@ -476,10 +493,10 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 setMsg('');
               }}
               items={[
-                { value: 'sources', label: '来源' },
-                { value: 'search', label: '检索测试' },
-                { value: 'models', label: '向量与重排' },
-                { value: 'ocr', label: 'OCR 识别' },
+                { value: 'sources', label: tr('来源') },
+                { value: 'search', label: tr('检索测试') },
+                { value: 'models', label: tr('向量与重排') },
+                { value: 'ocr', label: tr('OCR 识别') },
               ]}
             />
             {msg && (
@@ -496,7 +513,7 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     onClick={() => void addFolder()}
                     data-testid="kb-add-folder"
                   >
-                    ＋ 加入文件夹
+                    {tr('＋ 加入文件夹')}
                   </Button>
                   {!hasNotes && (
                     <Button
@@ -504,7 +521,7 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                       onClick={() => void kbClient.addNotes()}
                       data-testid="kb-add-notes"
                     >
-                      ＋ 加入我的笔记
+                      {tr('＋ 加入我的笔记')}
                     </Button>
                   )}
                   <span className={styles.grow} />
@@ -516,7 +533,7 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     title="Ctrl/Cmd+R"
                     data-testid="kb-reindex"
                   >
-                    ↻ 更新索引
+                    {tr('↻ 更新索引')}
                   </Button>
                   <Button
                     size="sm"
@@ -524,17 +541,19 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     disabled={st.progress.running || !st.sources.length}
                     onClick={() => void kbClient.reindex(true)}
                   >
-                    全部重建
+                    {tr('全部重建')}
                   </Button>
                 </div>
                 {st.sources.length === 0 ? (
                   <EmptyState
                     icon="📂"
-                    title="知识库还是空的"
-                    description="加入一个文件夹（支持 txt / md / pdf / docx / odt / rtf / xlsx / csv，开启 OCR 后还能识别图片），看板娘就能基于你的资料回答并标注出处。"
+                    title={tr('知识库还是空的')}
+                    description={tr(
+                      '加入一个文件夹（支持 txt / md / pdf / docx / odt / rtf / xlsx / csv，开启 OCR 后还能识别图片），看板娘就能基于你的资料回答并标注出处。',
+                    )}
                     action={
                       <Button variant="primary" onClick={() => void addFolder()}>
-                        选择文件夹
+                        {tr('选择文件夹')}
                       </Button>
                     }
                   />
@@ -543,21 +562,29 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     <Card
                       key={s.id}
                       data-testid="kb-source"
-                      title={s.kind === 'notes' ? '📝 我的笔记' : `📁 ${shortPath(s.path ?? '')}`}
-                      subtitle={`${s.docs} 个文件 · ${s.chunks} 段${s.errors ? ` · ${s.errors} 个失败` : ''} · 最近索引 ${fmt(s.lastIndexed)}`}
+                      title={
+                        s.kind === 'notes' ? tr('📝 我的笔记') : `📁 ${shortPath(s.path ?? '')}`
+                      }
+                      subtitle={tr(
+                        '{0} 个文件 · {1} 段{2} · 最近索引 {3}',
+                        s.docs,
+                        s.chunks,
+                        s.errors ? tr(' · {0} 个失败', s.errors) : '',
+                        fmt(s.lastIndexed),
+                      )}
                       actions={
                         <>
                           <Switch
                             checked={s.enabled}
                             onChange={(v) => void kbClient.toggleSource(s.id, v)}
-                            label={s.enabled ? '启用' : '停用'}
+                            label={s.enabled ? tr('启用') : tr('停用')}
                           />
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => setOpen(open === s.id ? null : s.id)}
                           >
-                            {open === s.id ? '收起' : '文件'}
+                            {open === s.id ? tr('收起') : tr('文件')}
                           </Button>
                           <Button
                             size="sm"
@@ -565,11 +592,11 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                             onClick={() =>
                               void kbClient
                                 .removeSource(s.id)
-                                .then(() => setMsg('已移除来源及其索引'))
+                                .then(() => setMsg(tr('已移除来源及其索引')))
                             }
                             data-testid="kb-remove-source"
                           >
-                            移除
+                            {tr('移除')}
                           </Button>
                         </>
                       }
@@ -580,8 +607,8 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   ))
                 )}
                 <p className={styles.hint}>
-                  在对话框里按 <span className={styles.kbd}>Ctrl/⌘ + Shift + K</span>{' '}
-                  切换「知识库问答」，回答会附上可点击的出处。
+                  {tr('在对话框里按')} <span className={styles.kbd}>Ctrl/⌘ + Shift + K</span>{' '}
+                  {tr('切换「知识库问答」，回答会附上可点击的出处。')}
                 </p>
               </div>
             )}
@@ -592,7 +619,7 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   <Input
                     ref={searchRef}
                     className={styles.grow}
-                    placeholder="输入问题或关键词，看看能检索到哪些片段"
+                    placeholder={tr('输入问题或关键词，看看能检索到哪些片段')}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && void runSearch()}
@@ -603,23 +630,26 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     onClick={() => void runSearch()}
                     disabled={!query.trim()}
                   >
-                    检索
+                    {tr('检索')}
                   </Button>
                 </div>
                 {hits === 'busy' ? (
                   <Skeleton height={80} />
                 ) : hits === null ? (
                   <p className={styles.hint}>
-                    检索只在本机进行（开启向量检索时，查询语句会发给所选的向量服务）。
+                    {tr('检索只在本机进行（开启向量检索时，查询语句会发给所选的向量服务）。')}
                   </p>
                 ) : hits.hits.length === 0 ? (
                   <EmptyState
-                    title="没有找到相关片段"
-                    description="换个关键词，或检查来源是否已建立索引。"
+                    title={tr('没有找到相关片段')}
+                    description={tr('换个关键词，或检查来源是否已建立索引。')}
                   />
                 ) : (
                   <>
-                    <span className={styles.hint}>检索方式：{hits.mode}</span>
+                    <span className={styles.hint}>
+                      {tr('检索方式：')}
+                      {hits.mode}
+                    </span>
                     {hits.hits.map((h, i) => (
                       <div key={h.chunkId} className={styles.hit} data-testid="kb-hit">
                         <div className={styles.row}>
@@ -633,11 +663,11 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                                 .then((r) => !r.ok && setMsg(r.error ?? ''))
                             }
                           >
-                            {h.title}
-                            {h.page ? ` · 第 ${h.page} 页` : ''}
+                            {tr(h.title)}
+                            {h.page ? tr(' · 第 {0} 页', h.page) : ''}
                           </button>
                         </div>
-                        <span className={styles.hitText}>{h.text}</span>
+                        <span className={styles.hitText}>{tr(h.text)}</span>
                       </div>
                     ))}
                   </>
@@ -661,12 +691,17 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 />
                 <section className={styles.section}>
                   <div className={styles.row}>
-                    <h4 className={`${styles.sectionTitle} ${styles.grow}`}>每次引用片段数</h4>
+                    <h4 className={`${styles.sectionTitle} ${styles.grow}`}>
+                      {tr('每次引用片段数')}
+                    </h4>
                     <Select
                       size="sm"
                       value={String(st.settings.topK)}
                       onChange={(e) => void kbClient.setSettings({ topK: Number(e.target.value) })}
-                      options={[4, 6, 8, 10].map((n) => ({ value: String(n), label: `${n} 段` }))}
+                      options={[4, 6, 8, 10].map((n) => ({
+                        value: String(n),
+                        label: tr('{0} 段', n),
+                      }))}
                       data-testid="kb-topk"
                     />
                   </div>
@@ -681,12 +716,13 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   onChange={(v) =>
                     void kbClient.setSettings({ ocr: { ...st.settings.ocr, enabled: v } })
                   }
-                  label="索引图片中的文字（png / jpg / webp / bmp / tiff）"
+                  label={tr('索引图片中的文字（png / jpg / webp / bmp / tiff）')}
                   data-testid="kb-ocr-enabled"
                 />
                 <p className={styles.hint}>
-                  使用 tesseract.js
-                  在本机离线识别。需要先下载对应语言的识别数据；开启后点「更新索引」。
+                  {tr(
+                    '使用 tesseract.js 在本机离线识别。需要先下载对应语言的识别数据；开启后点「更新索引」。',
+                  )}
                 </p>
                 {st.ocr.map((a) => (
                   <OcrRow key={a.id} a={a} live={dl[a.id]} onMsg={setMsg} />

@@ -4,6 +4,7 @@
  *   任务路由：chat / agent-tools / summary 从各供应商已启用（或已获取）的模型里选。
  * 明文 key 只单向提交给主进程；界面只显示掩码。
  */
+import { t } from '@ig-live/ui';
 import { Badge, Button, Card, EmptyState, Modal, Notice, Select, ToastProvider } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -54,10 +55,10 @@ const ProviderRow: React.FC<{
       data-testid={`provider-card-${p.id}`}
       title={
         <span className={styles.inline}>
-          <Monogram name={p.name} brand={p.presetId} size={28} />
-          <span>{p.name}</span>
-          {current && <Badge data-testid="current-badge">当前</Badge>}
-          {!p.enabled && <Badge tone="neutral">已停用</Badge>}
+          <Monogram name={t(p.name)} brand={p.presetId} size={28} />
+          <span>{t(p.name)}</span>
+          {current && <Badge data-testid="current-badge">{t('当前')}</Badge>}
+          {!p.enabled && <Badge tone="neutral">{t('已停用')}</Badge>}
           {p.note && <span className="cd-muted">{p.note}</span>}
         </span>
       }
@@ -66,7 +67,7 @@ const ProviderRow: React.FC<{
           {PROTOCOL_LABELS[p.protocol]} ·{' '}
           <code className="cd-code">{endpointPreview(p.protocol, p.baseURL, p.fullUrl)}</code> ·{' '}
           {p.defaultModel}
-          {p.models.length > 1 && ` 等 ${p.models.length} 个模型`}
+          {p.models.length > 1 && t(' 等 {0} 个模型', p.models.length)}
         </span>
       }
       actions={
@@ -80,7 +81,7 @@ const ProviderRow: React.FC<{
               data-testid={`activate-${p.id}`}
               onClick={run(() => providerClient.setActive(p.id))}
             >
-              启用
+              {t('启用')}
             </Button>
           )}
           <Button
@@ -91,20 +92,20 @@ const ProviderRow: React.FC<{
               setTest(await providerClient.test(p.id));
             })}
           >
-            ⚡ 测速
+            {t('⚡ 测速')}
           </Button>
           <Button size="sm" data-testid={`edit-${p.id}`} onClick={onEdit}>
-            编辑
+            {t('编辑')}
           </Button>
           <Button
             size="sm"
             variant="danger"
             onClick={run(async () => {
-              if (window.confirm(`删除供应商「${p.name}」及其所有 Token？`))
+              if (window.confirm(t('删除供应商「{0}」及其所有 Token？', p.name)))
                 await providerClient.remove(p.id);
             })}
           >
-            删除
+            {t('删除')}
           </Button>
         </>
       }
@@ -112,11 +113,11 @@ const ProviderRow: React.FC<{
       <div className="cd-muted" data-testid={`usage-${p.id}`}>
         {p.keys.length > 0
           ? `Token ${p.keys[0]!.masked}${p.keys.length > 1 ? ` +${p.keys.length - 1}` : ''}`
-          : '无 Token'}{' '}
-        · 用量（本地统计）：
-        {p.usage.requests} 次请求 · 输入 {fmt(p.usage.inputTokens)} · 输出{' '}
+          : t('无 Token')}{' '}
+        {t('· 用量（本地统计）：')}
+        {p.usage.requests} {t('次请求 · 输入')} {fmt(p.usage.inputTokens)} {t('· 输出')}{' '}
         {fmt(p.usage.outputTokens)} tokens
-        {p.usage.errors ? ` · ${p.usage.errors} 次失败` : ''}
+        {p.usage.errors ? t(' · {0} 次失败', p.usage.errors) : ''}
       </div>
     </Card>
   );
@@ -131,9 +132,9 @@ const RoutesTable: React.FC<{ state: ProviderState; onError: (e: unknown) => voi
     <table className="cd-table" data-testid="routes-table">
       <thead>
         <tr>
-          <th>任务</th>
-          <th>供应商</th>
-          <th>模型</th>
+          <th>{t('任务')}</th>
+          <th>{t('供应商')}</th>
+          <th>{t('模型')}</th>
         </tr>
       </thead>
       <tbody>
@@ -155,13 +156,13 @@ const RoutesTable: React.FC<{ state: ProviderState; onError: (e: unknown) => voi
                   }
                   menuMinWidth={220}
                   options={[
-                    { value: '', label: '跟随当前' },
+                    { value: '', label: t('跟随当前') },
                     ...options.map((o) => ({
                       value: o.id,
                       label: o.label,
                       disabled: o.disabled,
                       group: o.group,
-                      icon: <Monogram name={o.label} brand={o.brand} size={18} />,
+                      icon: <Monogram name={t(o.label)} brand={o.brand} size={18} />,
                     })),
                   ]}
                 />
@@ -183,7 +184,7 @@ const RoutesTable: React.FC<{ state: ProviderState; onError: (e: unknown) => voi
                   }
                   menuMinWidth={220}
                   options={[
-                    { value: '', label: '默认模型' },
+                    { value: '', label: t('默认模型') },
                     ...models.map((m) => ({ value: m, label: m })),
                   ]}
                 />
@@ -228,7 +229,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
   const locked = Boolean(state?.overrideId);
   const current = state?.effectiveProviderId;
   const title =
-    view.kind === 'add' ? '添加供应商' : view.kind === 'edit' ? '供应商设置' : 'AI 供应商';
+    view.kind === 'add' ? t('添加供应商') : view.kind === 'edit' ? t('供应商设置') : t('AI 供应商');
 
   return (
     <ToastProvider>
@@ -245,7 +246,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
             <Notice
               tone="danger"
               onClick={() => setError(null)}
-              title="点击关闭"
+              title={t('点击关闭')}
               data-testid="provider-error"
             >
               {error}
@@ -253,13 +254,15 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           )}
           {state?.encryption === 'none' && (
             <Notice tone="warning" data-testid="encryption-warning">
-              ⚠️ 当前系统不支持安全存储（safeStorage 不可用），Token
-              仅以编码形式保存在本机，未加密。
+              {t(
+                '⚠️ 当前系统不支持安全存储（safeStorage 不可用），Token 仅以编码形式保存在本机，未加密。',
+              )}
             </Notice>
           )}
           {locked && view.kind === 'list' && (
             <Notice tone="warning">
-              环境变量 COMPANION_PROVIDER={state!.overrideId} 已锁定对话供应商，此处切换不会生效。
+              {t('环境变量 COMPANION_PROVIDER=')}
+              {state!.overrideId} {t('已锁定对话供应商，此处切换不会生效。')}
             </Notice>
           )}
 
@@ -272,7 +275,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   data-testid="add-back"
                   onClick={() => setView({ kind: 'list' })}
                 >
-                  ‹ 返回
+                  {t('‹ 返回')}
                 </Button>
               </div>
               <AddProvider
@@ -310,9 +313,9 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
             <>
               <div className={styles.inline}>
                 <span className="cd-muted">
-                  当前：
+                  {t('当前：')}
                   <b data-testid="current-provider">
-                    {selectableProviders(state).find((o) => o.id === current)?.label ?? '未选择'}
+                    {selectableProviders(state).find((o) => o.id === current)?.label ?? t('未选择')}
                   </b>
                   {state.effectiveModel && (
                     <>
@@ -327,14 +330,14 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   data-testid="add-provider-btn"
                   onClick={() => setView({ kind: 'add' })}
                 >
-                  ＋ 添加供应商
+                  {t('＋ 添加供应商')}
                 </Button>
               </div>
               {state.providers.length + state.envProviders.length === 0 && (
                 <EmptyState
                   icon="🔌"
-                  title="还没有供应商"
-                  description="点「添加供应商」，选择预设或自定义配置"
+                  title={t('还没有供应商')}
+                  description={t('点「添加供应商」，选择预设或自定义配置')}
                 />
               )}
               {state.providers.map((p) => (
@@ -356,18 +359,22 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     active={current === e.id}
                     title={
                       <span className={styles.inline}>
-                        <Monogram name={e.name} brand={e.id} size={28} />
-                        {e.name}
-                        {current === e.id && <Badge>当前</Badge>}
+                        <Monogram name={t(e.name)} brand={e.id} size={28} />
+                        {t(e.name)}
+                        {current === e.id && <Badge>{t('当前')}</Badge>}
                       </span>
                     }
-                    subtitle={`${PROTOCOL_LABELS[e.protocol]} · ${e.baseURL ?? ''} · ${e.defaultModel ?? ''} · ${
+                    subtitle={t(
+                      '{0} · {1} · {2} · {3}',
+                      PROTOCOL_LABELS[e.protocol],
+                      e.baseURL ?? '',
+                      e.defaultModel ?? '',
                       e.keyless
-                        ? '本地服务，无需 key'
+                        ? t('本地服务，无需 key')
                         : e.hasKey
-                          ? 'key 由环境变量提供'
-                          : '未设置 key'
-                    }`}
+                          ? t('key 由环境变量提供')
+                          : t('未设置 key'),
+                    )}
                     actions={
                       current !== e.id && e.hasKey ? (
                         <Button
@@ -375,18 +382,19 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                           disabled={locked}
                           onClick={() => void providerClient.setActive(e.id).catch(onError)}
                         >
-                          启用
+                          {t('启用')}
                         </Button>
                       ) : undefined
                     }
                   />
                 ))}
               <section>
-                <h3 className="cd-section-title">任务路由（可选，默认都跟随当前供应商）</h3>
+                <h3 className="cd-section-title">{t('任务路由（可选，默认都跟随当前供应商）')}</h3>
                 <RoutesTable state={state} onError={onError} />
                 <p className="cd-muted">
-                  优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前供应商。工具栏 /
-                  托盘一键切换会让「对话」立即改用所选供应商。
+                  {t(
+                    '优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
+                  )}
                 </p>
               </section>
             </>

@@ -4,6 +4,7 @@
  * 快捷键：按住 F2 说话（Esc 取消）；Ctrl/⌘+Shift+H 开关免按键。
  * 看板娘那边说的话（ai:voice:inject）也从这里进入输入框 / 直接发送。
  */
+import { t } from '@ig-live/ui';
 import { Modal, Tooltip } from '@ig-live/ui';
 import {
   MicButton,
@@ -101,15 +102,17 @@ export const VoiceButtons: React.FC<{ cv: ChatVoice; disabled?: boolean }> = ({ 
         disabled={disabled || handsFree}
         onStart={() => void v.pttStart()}
         onStop={(cancel) => void v.pttStop(cancel)}
-        tooltip="按住说话（F2）"
+        tooltip={t('按住说话（F2）')}
         data-testid="voice-mic"
       />
       <Tooltip
-        content={handsFree ? '关闭免按键（Ctrl+Shift+H）' : '免按键：说完自动识别（Ctrl+Shift+H）'}
+        content={
+          handsFree ? t('关闭免按键（Ctrl+Shift+H）') : t('免按键：说完自动识别（Ctrl+Shift+H）')
+        }
       >
         <button
           type="button"
-          aria-label={handsFree ? '关闭免按键' : '开启免按键'}
+          aria-label={handsFree ? t('关闭免按键') : t('开启免按键')}
           aria-pressed={handsFree}
           className={`cd-voice-mic cd-voice-toggle ${handsFree ? 'is-on' : ''}`}
           onClick={toggleHandsFree}
@@ -143,7 +146,7 @@ export const VoiceSettingsModal: React.FC<{ cv: ChatVoice }> = ({ cv }) => {
     <Modal
       open={cv.showSettings}
       onClose={() => cv.setShowSettings(false)}
-      title="语音输入"
+      title={t('语音输入')}
       size="lg"
     >
       {v.api && (

@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import type { RegistryModel } from '@ig-live/types';
 
+import { t } from '../i18n';
+
 import { isAllowedLicense } from './licenses';
 import type { ModelStore } from './ModelStore';
 import type { UserModels } from './UserModels';
@@ -107,9 +109,9 @@ export class ModelRegistry {
         thumbnail: u.thumbnail
           ? `cdmodel://user/${u.id}/${u.thumbnail}?v=${u.updatedAt}`
           : undefined,
-        author: u.meta.author ?? '（未知）',
+        author: u.meta.author ?? t('（未知）'),
         license: u.meta.license ?? 'user-provided',
-        credit: `用户导入：${u.originalFileName}`,
+        credit: t('用户导入：{0}', u.originalFileName),
         vrmVersion: u.meta.version,
         config: u.config,
         meta: u.meta,

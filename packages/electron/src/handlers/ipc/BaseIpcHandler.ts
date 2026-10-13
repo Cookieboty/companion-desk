@@ -3,8 +3,10 @@
  * 提供统一的IPC处理器接口和公共功能
  */
 
-import { ipcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
-import { ILoggerService } from '../../services/LoggerService';
+import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+
+import { t } from '../../i18n';
+import { type ILoggerService } from '../../services/LoggerService';
 
 export abstract class BaseIpcHandler {
   protected logger: ILoggerService;
@@ -35,7 +37,7 @@ export abstract class BaseIpcHandler {
    */
   protected registerHandler(
     channel: string,
-    handler: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<any>
+    handler: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<any>,
   ): void {
     ipcMain.handle(channel, async (event, ...args) => {
       try {
@@ -47,7 +49,7 @@ export abstract class BaseIpcHandler {
         this.logger.error(`IPC处理失败: ${channel}`, {
           error: error instanceof Error ? error.message : String(error),
           args,
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
         throw error;
       }
@@ -61,7 +63,7 @@ export abstract class BaseIpcHandler {
    */
   protected registerListener(
     channel: string,
-    handler: (event: IpcMainEvent, ...args: any[]) => void
+    handler: (event: IpcMainEvent, ...args: any[]) => void,
   ): void {
     ipcMain.on(channel, (event, ...args) => {
       try {
@@ -71,7 +73,7 @@ export abstract class BaseIpcHandler {
         this.logger.error(`IPC事件处理失败: ${channel}`, {
           error: error instanceof Error ? error.message : String(error),
           args,
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         });
       }
     });
@@ -84,7 +86,7 @@ export abstract class BaseIpcHandler {
    */
   protected validateArgs(args: any[], requiredCount: number, types?: string[]): void {
     if (args.length < requiredCount) {
-      throw new Error(`参数不足，需要${requiredCount}个参数，实际${args.length}个`);
+      throw new Error(t('参数不足，需要{0}个参数，实际{1}个', requiredCount, args.length));
     }
 
     if (types) {
@@ -92,7 +94,7 @@ export abstract class BaseIpcHandler {
         const expectedType = types[i];
         const actualType = typeof args[i];
         if (actualType !== expectedType) {
-          throw new Error(`参数${i}类型错误，期望${expectedType}，实际${actualType}`);
+          throw new Error(t('参数{0}类型错误，期望{1}，实际{2}', i, expectedType, actualType));
         }
       }
     }
@@ -104,7 +106,7 @@ export abstract class BaseIpcHandler {
   protected createErrorResponse(error: unknown): { success: false; error: string } {
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 
@@ -114,7 +116,7 @@ export abstract class BaseIpcHandler {
   protected createSuccessResponse<T>(data?: T): { success: true; data?: T } {
     return {
       success: true,
-      ...(data !== undefined && { data })
+      ...(data !== undefined && { data }),
     };
   }
 

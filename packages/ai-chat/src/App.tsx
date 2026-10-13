@@ -1,5 +1,6 @@
 import type { ClientAIClient } from '@ig-live/ai-sdk-client';
 import * as AISdkReact from '@ig-live/ai-sdk-client/react';
+import { t } from '@ig-live/ui';
 import { ModalHostContext, type ModalHost } from '@ig-live/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -201,11 +202,11 @@ const AiChatContent: React.FC = () => {
               type="button"
               className="screen-mem-indicator"
               onClick={() => setShowScreen(true)}
-              title="屏幕记忆开启中（仅保存在本机），点击管理或暂停"
+              title={t('屏幕记忆开启中（仅保存在本机），点击管理或暂停')}
               data-testid="screen-mem-indicator"
             >
               <span className="screen-mem-dot" />
-              屏幕记忆中
+              {t('屏幕记忆中')}
             </button>
           )}
         </ChatHeader>
@@ -214,12 +215,12 @@ const AiChatContent: React.FC = () => {
           {state.messages.length === 0 ? (
             <div className="welcome-screen" data-testid="welcome-screen">
               <div className="welcome-content">
-                <h2 className="welcome-title">今天想做点什么？</h2>
+                <h2 className="welcome-title">{t('今天想做点什么？')}</h2>
                 <div className="quick-actions">
                   {[
-                    ['你好，请介绍一下自己', '打个招呼'],
-                    ['帮我写一段代码', '写一段代码'],
-                    ['帮我整理今天的待办', '整理今天的待办'],
+                    [t('你好，请介绍一下自己'), t('打个招呼')],
+                    [t('帮我写一段代码'), t('写一段代码')],
+                    [t('帮我整理今天的待办'), t('整理今天的待办')],
                   ].map(([prompt, label]) => (
                     <button
                       key={label}
@@ -231,7 +232,7 @@ const AiChatContent: React.FC = () => {
                   ))}
                 </div>
                 <p className="welcome-subtitle">
-                  输入 / 查看命令 · ＋ 打开知识库、语音、模型与设置
+                  {t('输入 / 查看命令 · ＋ 打开知识库、语音、模型与设置')}
                 </p>
               </div>
             </div>

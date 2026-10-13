@@ -7,6 +7,8 @@
  *
  * 每次状态变化都上报主进程（ai:voice:activity），由主进程广播给看板娘（表情）并处理打断 TTS。
  */
+import { t } from '@ig-live/ui';
+
 import { concatFloat32, encodeWav } from './audio';
 import type { AsrErrorCode, VoiceApi } from './bridge';
 import { MicCapture, MicError } from './mic';
@@ -168,7 +170,7 @@ export class VoiceController {
         mode: 'off',
         phase: 'idle',
         level: 0,
-        error: { code: 'too_short', message: '说得太短了，按住按钮说话，说完再松开。' },
+        error: { code: 'too_short', message: t('说得太短了，按住按钮说话，说完再松开。') },
       });
       return '';
     }
@@ -302,7 +304,7 @@ export class VoiceController {
       if (r.ok) {
         if (!quiet) this.set({ lastText: r.text });
         if (!r.text && !quiet)
-          this.set({ error: { code: 'empty', message: '没听清，再说一次？' } });
+          this.set({ error: { code: 'empty', message: t('没听清，再说一次？') } });
         return r.text;
       }
       if (!quiet || r.code !== 'empty') this.set({ error: { code: r.code, message: r.error } });

@@ -1,4 +1,5 @@
 import type { MascotInteractionConfig } from '@ig-live/types';
+import { t } from '@ig-live/ui';
 import { Button, Modal, Switch } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
@@ -38,7 +39,7 @@ export const InteractionSettings: React.FC = () => {
     <Modal
       open
       onClose={() => dispatch({ type: 'SET_PANEL', payload: null })}
-      title="互动设置"
+      title={t('互动设置')}
       data-testid="interaction-settings"
     >
       <ul className={styles.settingsList}>
@@ -47,10 +48,10 @@ export const InteractionSettings: React.FC = () => {
             <Switch
               checked={cfg[it.key]}
               onChange={(v) => interactionSettings.set({ [it.key]: v })}
-              label={it.label}
+              label={t(it.label)}
               data-testid={`interaction-${it.key}`}
             />
-            <p className={styles.settingsHint}>{it.hint}</p>
+            <p className={styles.settingsHint}>{t(it.hint)}</p>
           </li>
         ))}
       </ul>
@@ -61,7 +62,7 @@ export const InteractionSettings: React.FC = () => {
           data-testid="interaction-wander-now"
           onClick={() => window.electronAPI?.mascotWindow?.wanderNow()}
         >
-          现在走一走
+          {t('现在走一走')}
         </Button>
       </div>
     </Modal>

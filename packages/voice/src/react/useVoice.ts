@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -119,19 +120,19 @@ export function useVoice(
 export function phaseLabel(s: VoiceState, wakePhrase = ''): string {
   switch (s.phase) {
     case 'starting':
-      return '正在打开麦克风…';
+      return t('正在打开麦克风…');
     case 'recording':
-      return `正在聆听… ${(s.elapsedMs / 1000).toFixed(1)}s`;
+      return t('正在聆听… {0}s', (s.elapsedMs / 1000).toFixed(1));
     case 'listening':
-      return '免按键：直接说话即可';
+      return t('免按键：直接说话即可');
     case 'hearing':
-      return '在听你说…';
+      return t('在听你说…');
     case 'transcribing':
-      return '识别中…';
+      return t('识别中…');
     case 'wake-armed':
-      return `等待唤醒词「${wakePhrase}」`;
+      return t('等待唤醒词「{0}」', wakePhrase);
     case 'awake':
-      return '我在，请说～';
+      return t('我在，请说～');
     default:
       return '';
   }

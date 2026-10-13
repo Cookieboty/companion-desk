@@ -4,14 +4,16 @@
  */
 
 import { dialog, app } from 'electron';
-import { ILoggerService } from '../services/LoggerService';
+
 import { eventBus } from '../core/EventBus';
+import { t } from '../i18n';
+import { type ILoggerService } from '../services/LoggerService';
 
 export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 export interface ErrorContext {
@@ -87,13 +89,13 @@ export class GlobalErrorHandler implements IErrorHandler {
       error,
       { component: 'unhandledRejection' },
       ErrorSeverity.HIGH,
-      false
+      false,
     );
 
     this.recordError(errorInfo);
     this.logger.error('未处理的Promise拒绝', {
       errorId: errorInfo.id,
-      reason: reason
+      reason: reason,
     });
 
     // 发送到渲染进程（如果需要）
@@ -108,14 +110,14 @@ export class GlobalErrorHandler implements IErrorHandler {
       error,
       { component: 'uncaughtException' },
       ErrorSeverity.CRITICAL,
-      false
+      false,
     );
 
     this.recordError(errorInfo);
     this.logger.error('未捕获的异常', {
       errorId: errorInfo.id,
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
 
     // 关键错误，显示错误对话框
@@ -161,7 +163,7 @@ export class GlobalErrorHandler implements IErrorHandler {
     error: Error,
     context?: ErrorContext,
     severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-    handled: boolean = true
+    handled: boolean = true,
   ): ErrorInfo {
     return {
       id: this.generateErrorId(),
@@ -170,7 +172,7 @@ export class GlobalErrorHandler implements IErrorHandler {
       severity,
       context,
       timestamp: Date.now(),
-      handled
+      handled,
     };
   }
 
@@ -192,7 +194,7 @@ export class GlobalErrorHandler implements IErrorHandler {
       message: errorInfo.message,
       severity: errorInfo.severity,
       context: errorInfo.context,
-      handled: errorInfo.handled
+      handled: errorInfo.handled,
     });
 
     // 发送事件
@@ -237,8 +239,12 @@ export class GlobalErrorHandler implements IErrorHandler {
   private showCriticalErrorDialog(errorInfo: ErrorInfo): void {
     try {
       dialog.showErrorBox(
-        '应用错误',
-        `应用遇到了严重错误，即将退出。\n\n错误信息: ${errorInfo.message}\n错误ID: ${errorInfo.id}`
+        t('应用错误'),
+        t(
+          '应用遇到了严重错误，即将退出。\n\n错误信息: {0}\n错误ID: {1}',
+          errorInfo.message,
+          errorInfo.id,
+        ),
       );
     } catch (error) {
       console.error('显示错误对话框失败:', error);
@@ -253,9 +259,9 @@ export class GlobalErrorHandler implements IErrorHandler {
       // 发送到渲染进程显示通知
       eventBus.emit('notification:show', {
         type: 'error',
-        title: '操作失败',
+        title: t('操作失败'),
         message: this.getUserFriendlyMessage(errorInfo.message),
-        timeout: 5000
+        timeout: 5000,
       });
     } catch (error) {
       console.error('显示错误通知失败:', error);
@@ -268,11 +274,11 @@ export class GlobalErrorHandler implements IErrorHandler {
   private getUserFriendlyMessage(errorMessage: string): string {
     // 错误消息映射表
     const messageMap: { [key: string]: string } = {
-      'ENOENT': '文件或目录不存在',
-      'EACCES': '没有访问权限',
-      'ECONNREFUSED': '网络连接被拒绝',
-      'ETIMEDOUT': '操作超时',
-      'ENOTFOUND': '网络地址不存在'
+      ENOENT: t('文件或目录不存在'),
+      EACCES: t('没有访问权限'),
+      ECONNREFUSED: t('网络连接被拒绝'),
+      ETIMEDOUT: t('操作超时'),
+      ENOTFOUND: t('网络地址不存在'),
     };
 
     // 查找匹配的友好消息
@@ -321,7 +327,7 @@ export class GlobalErrorHandler implements IErrorHandler {
       [ErrorSeverity.MEDIUM]: 0,
       [ErrorSeverity.HIGH]: 0,
       [ErrorSeverity.CRITICAL]: 0,
-      total: this.errorHistory.length
+      total: this.errorHistory.length,
     };
 
     for (const error of this.errorHistory) {
@@ -340,22 +346,21 @@ export class GlobalErrorHandler implements IErrorHandler {
 
     // 检查关键错误
     if (stats.critical > 0) {
-      issues.push(`检测到 ${stats.critical} 个关键错误`);
+      issues.push(t('检测到 {0} 个关键错误', stats.critical));
     }
 
     // 检查高级错误频率
     const recentHighErrors = this.errorHistory.filter(
-      e => e.severity === ErrorSeverity.HIGH &&
-        Date.now() - e.timestamp < 5 * 60 * 1000 // 5分钟内
+      (e) => e.severity === ErrorSeverity.HIGH && Date.now() - e.timestamp < 5 * 60 * 1000, // 5分钟内
     ).length;
 
     if (recentHighErrors > 5) {
-      issues.push(`最近5分钟内有 ${recentHighErrors} 个高级错误`);
+      issues.push(t('最近5分钟内有 {0} 个高级错误', recentHighErrors));
     }
 
     return {
       healthy: issues.length === 0,
-      issues
+      issues,
     };
   }
 

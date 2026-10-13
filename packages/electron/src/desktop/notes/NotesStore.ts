@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { t as tr } from '../../i18n';
+
 /**
  * 本地 markdown 笔记库：<root>/<id>.md，头部是 JSON 值的 front matter（title / tags / created / updated）。
  * 笔记由应用自己管理（按 id 访问，不接受路径），所以不经过文件夹授权；删除一律进应用回收站。
@@ -64,7 +66,7 @@ export function parseNote(id: string, raw: string): Note {
     title:
       typeof meta.title === 'string' && meta.title
         ? meta.title
-        : firstLine.replace(/^#+\s*/, '').slice(0, 80) || '无标题',
+        : firstLine.replace(/^#+\s*/, '').slice(0, 80) || tr('无标题'),
     tags: Array.isArray(meta.tags) ? meta.tags.filter((t) => typeof t === 'string') : [],
     created: time(meta.created),
     updated: time(meta.updated),
@@ -127,7 +129,7 @@ export class NotesStore {
   ) {}
 
   fileOf(id: string): string {
-    if (!NOTE_ID.test(id)) throw Object.assign(new Error('无效的笔记 id'), { code: 'invalid' });
+    if (!NOTE_ID.test(id)) throw Object.assign(new Error(tr('无效的笔记 id')), { code: 'invalid' });
     return path.join(this.root, `${id}.md`);
   }
 
@@ -167,7 +169,7 @@ export class NotesStore {
     const t = this.now();
     const n: Note = {
       id: `n${t.toString(36)}${randomBytes(3).toString('hex')}`,
-      title: i.title.trim().slice(0, 200) || '无标题',
+      title: i.title.trim().slice(0, 200) || tr('无标题'),
       tags: cleanTags(i.tags),
       created: t,
       updated: t,
@@ -187,7 +189,7 @@ export class NotesStore {
     p: { title?: string; body?: string; append?: string; tags?: string[] },
   ): { before: Note; after: Note } {
     const before = this.get(id);
-    if (!before) throw Object.assign(new Error('笔记不存在'), { code: 'not_found' });
+    if (!before) throw Object.assign(new Error(tr('笔记不存在')), { code: 'not_found' });
     const body =
       p.append !== undefined
         ? `${before.body.replace(/\s*$/, '')}\n\n${p.append}`

@@ -8,6 +8,8 @@ import { gunzipSync } from 'node:zlib';
 
 import { unzipSync } from 'fflate';
 
+import { t } from '../i18n';
+
 export interface DownloadProgress {
   received: number;
   total: number;
@@ -18,7 +20,7 @@ export class ChecksumError extends Error {
     readonly expected: string,
     readonly actual: string,
   ) {
-    super(`校验失败：期望 ${expected.slice(0, 12)}…，实际 ${actual.slice(0, 12)}…`);
+    super(t('校验失败：期望 {0}…，实际 {1}…', expected.slice(0, 12), actual.slice(0, 12)));
   }
 }
 
@@ -35,7 +37,7 @@ export async function downloadVerified(opts: {
 }): Promise<void> {
   const f = opts.fetchImpl ?? ((u, i) => fetch(u, { ...i, redirect: 'follow' }));
   const res = await f(opts.url, { signal: opts.signal });
-  if (!res.ok || !res.body) throw new Error(`下载失败：HTTP ${res.status}`);
+  if (!res.ok || !res.body) throw new Error(t('下载失败：HTTP {0}', res.status));
   const total = Number(res.headers.get('content-length')) || opts.expectedBytes || 0;
   fs.mkdirSync(path.dirname(opts.dest), { recursive: true });
   const tmp = `${opts.dest}.part`;

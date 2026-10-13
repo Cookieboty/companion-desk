@@ -1,4 +1,5 @@
 import type { DesktopReminderEvent } from '@ig-live/types';
+import { t as tr } from '@ig-live/ui';
 import { Button } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
@@ -23,17 +24,22 @@ export const ReminderCard: React.FC = () => {
       window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text, ms, priority: 11 } }));
     const off1 = api.onReminder((r) => {
       setQueue((q) => [...q.filter((x) => x.id !== r.id), r]);
-      say(`⏰ 提醒：${r.text}`);
+      say(tr('⏰ 提醒：{0}', r.text));
     });
     // 关闭期间错过的提醒：挂载后拉取一次
     void api.takeMissedReminders().then((items) => {
       if (!items?.length) return;
       setQueue((q) => [...q, ...items.map((r) => ({ ...r, missed: true }))]);
       say(
-        `你不在的时候错过了 ${items.length} 个提醒：${items
-          .slice(0, 3)
-          .map((r) => `「${r.text}」`)
-          .join('、')}${items.length > 3 ? '…' : ''}`,
+        tr(
+          '你不在的时候错过了 {0} 个提醒：{1}{2}',
+          items.length,
+          items
+            .slice(0, 3)
+            .map((r) => `「${r.text}」`)
+            .join('、'),
+          items.length > 3 ? '…' : '',
+        ),
         20000,
       );
     });
@@ -54,20 +60,24 @@ export const ReminderCard: React.FC = () => {
       data-testid="reminder-card"
       data-missed={cur.missed ? '1' : '0'}
       role="alertdialog"
-      aria-label="提醒"
+      aria-label={tr('提醒')}
     >
       <p className={styles.text}>
-        {cur.missed ? '错过的提醒' : '⏰ 提醒'}（{time(cur.dueAt)}）：{cur.text}
+        {cur.missed ? tr('错过的提醒') : tr('⏰ 提醒')}（{time(cur.dueAt)}）：{tr(cur.text)}
       </p>
       <div className={styles.actions}>
-        {queue.length > 1 && <span className={styles.more}>还有 {queue.length - 1} 个</span>}
+        {queue.length > 1 && (
+          <span className={styles.more}>
+            {tr('还有')} {queue.length - 1} {tr('个')}
+          </span>
+        )}
         <Button
           size="sm"
           variant="ghost"
           data-testid="reminder-snooze"
           onClick={() => act('snooze')}
         >
-          10 分钟后
+          {tr('10 分钟后')}
         </Button>
         <Button
           size="sm"
@@ -75,7 +85,7 @@ export const ReminderCard: React.FC = () => {
           data-testid="reminder-dismiss"
           onClick={() => act('dismiss')}
         >
-          好的
+          {tr('好的')}
         </Button>
       </div>
     </div>

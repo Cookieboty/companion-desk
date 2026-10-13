@@ -2,6 +2,8 @@ import { spawn, type ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { t } from '../i18n';
+
 /**
  * TTS音色配置接口
  */
@@ -95,7 +97,7 @@ export class AdvancedTTSEngine {
       currentVoice: 'soft-zh-female',
       voices: {
         'soft-zh-female': {
-          name: '柔和中文女声',
+          name: t('柔和中文女声'),
           systemVoice,
           platform: process.platform as 'darwin' | 'win32' | 'linux',
           language: 'zh-CN',
@@ -103,7 +105,7 @@ export class AdvancedTTSEngine {
           style: 'soft',
         },
         default: {
-          name: '系统默认',
+          name: t('系统默认'),
           systemVoice: process.platform === 'darwin' ? 'Meijia' : systemVoice,
           platform: process.platform as 'darwin' | 'win32' | 'linux',
           language: 'zh-CN',
@@ -366,7 +368,10 @@ export class AdvancedTTSEngine {
   /**
    * 测试音色
    */
-  public async testVoice(voiceId: string, testText: string = '这是一个语音测试'): Promise<boolean> {
+  public async testVoice(
+    voiceId: string,
+    testText: string = t('这是一个语音测试'),
+  ): Promise<boolean> {
     if (!this.config || !this.config.voices[voiceId]) {
       return false;
     }

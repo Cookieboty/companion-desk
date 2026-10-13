@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /** 扩展客户端：MCP 服务器 + 技能包（`ai:ext:*` IPC） */
 export type Transport = 'stdio' | 'http' | 'sse';
 export type Trust = 'ask' | 'read-auto' | 'auto';
@@ -80,7 +81,7 @@ const bridge = (): AiBridge | undefined => {
 };
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new Error('扩展功能需要在桌面应用中使用');
+  if (!b) throw new Error(t('扩展功能需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:ext:${method}`, ...args)) as T & {
     __error?: { code: string; message: string };
   };

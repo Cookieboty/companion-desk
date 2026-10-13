@@ -7,6 +7,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { t } from '../i18n';
+
 export const CLI_NAMES =
   process.platform === 'win32' ? ['whisper-cli.exe', 'main.exe'] : ['whisper-cli', 'main'];
 
@@ -86,7 +88,7 @@ export async function runWhisperCli(o: {
         },
         (err, stdout, stderr) =>
           err
-            ? reject(new Error(`whisper.cpp 运行失败：${(stderr || err.message).slice(-300)}`))
+            ? reject(new Error(t('whisper.cpp 运行失败：{0}', (stderr || err.message).slice(-300))))
             : resolve(stdout),
       );
     });

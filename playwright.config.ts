@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+// e2e 断言使用中文原文：固定界面语言（各用例启动 Electron 时透传 process.env）
+process.env.CD_LOCALE ||= 'zh-CN';
+
 export default defineConfig({
   testDir: './e2e-headed/tests',
   timeout: 60_000,

@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { t } from '../i18n';
+
 import { type AppTrash, moveNoOverwrite } from './AppTrash';
 
 /** 逆操作 */
@@ -91,19 +93,19 @@ export class UndoJournal {
   check(e: JournalEntry): string | null {
     for (const op of e.inverse) {
       if (op.op === 'move' && (!fs.existsSync(op.from) || fs.existsSync(op.to)))
-        return `无法移回：${op.from}`;
+        return t('无法移回：{0}', op.from);
       if (op.op === 'restore' && (!fs.existsSync(op.stored) || fs.existsSync(op.original)))
-        return `无法恢复：${op.original}`;
-      if (op.op === 'trash' && !fs.existsSync(op.path)) return `文件已不存在：${op.path}`;
+        return t('无法恢复：{0}', op.original);
+      if (op.op === 'trash' && !fs.existsSync(op.path)) return t('文件已不存在：{0}', op.path);
       if (op.op === 'custom') {
         const h = this.custom.get(op.kind);
-        if (!h) return `无法撤销：${op.kind}`;
+        if (!h) return t('无法撤销：{0}', op.kind);
         const p = h.check(op.payload);
         if (p) return p;
       }
       if (op.op === 'truncate') {
         if (!fs.existsSync(op.path) || fs.statSync(op.path).size !== op.expectSize)
-          return `文件在此之后被修改过：${op.path}`;
+          return t('文件在此之后被修改过：{0}', op.path);
       }
     }
     return null;

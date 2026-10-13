@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import React, { useState } from 'react';
 
 import type { KbSource } from '../../services/kbClient';
@@ -31,11 +32,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       {!isUser && !!message.memories?.length && (
         <details className={styles.stepRow} data-testid="memory-tag">
           <summary>
-            <span className={styles.stepIcon}>›</span>参考了 {message.memories.length} 条记忆
+            <span className={styles.stepIcon}>›</span>
+            {t('参考了')} {message.memories.length} {t('条记忆')}
           </summary>
           <ul className={styles.stepBody}>
             {message.memories.map((m) => (
-              <li key={m.id}>{m.title}</li>
+              <li key={m.id}>{t(m.title)}</li>
             ))}
           </ul>
         </details>
@@ -48,7 +50,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               <img
                 key={i}
                 src={im.thumb}
-                alt={im.source === 'snip' ? '截图' : '图片'}
+                alt={im.source === 'snip' ? t('截图') : t('图片')}
                 className={styles.imageThumb}
                 title={`${im.width}×${im.height}`}
               />
@@ -70,16 +72,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           <details className={styles.stepRow} open>
             <summary>
               <span className={styles.stepIcon}>›</span>
-              {message.kb ? '知识库' : '来源'} · {sources.length} 处出处
+              {message.kb ? t('知识库') : t('来源')} · {sources.length} {t('处出处')}
             </summary>
             <SourceList sources={sources} onPick={setPick} />
           </details>
         )}
       </div>
       <div className={styles.messageHeader}>
-        <span className={styles.role}>{isUser ? '你' : 'AI助手'}</span>
+        <span className={styles.role}>{isUser ? t('你') : t('AI助手')}</span>
         <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
-        {message.kb && !sources.length && <span className={styles.kbTag}>知识库</span>}
+        {message.kb && !sources.length && <span className={styles.kbTag}>{t('知识库')}</span>}
         {message.modelId && <span className={styles.model}>{message.modelId}</span>}
       </div>
       <SourcePreview source={pick} onClose={() => setPick(null)} />

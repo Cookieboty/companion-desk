@@ -1,6 +1,7 @@
 /**
  * 工具栏上的 provider 一键切换（与托盘菜单、面板共享主进程状态，实时同步）。
  */
+import { t } from '@ig-live/ui';
 import { IconButton, Select } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
@@ -47,47 +48,47 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
         size="sm"
         style={{ width: 'auto', maxWidth: 200 }}
         data-testid="provider-switch"
-        aria-label="供应商"
+        aria-label={t('供应商')}
         value={current ?? ''}
         disabled={Boolean(state.overrideId)}
-        title={state.overrideId ? '已被 COMPANION_PROVIDER 锁定' : '切换供应商（立即生效）'}
+        title={state.overrideId ? t('已被 COMPANION_PROVIDER 锁定') : t('切换供应商（立即生效）')}
         onChange={(e) =>
           void providerClient.setActive(e.target.value || null).catch(() => undefined)
         }
-        placeholder="（未配置）"
+        placeholder={t('（未配置）')}
         menuMinWidth={220}
         options={options.map((o) => ({
           value: o.id,
           label: o.label,
           disabled: o.disabled,
           group: o.group,
-          icon: <Monogram name={o.label} brand={o.brand} size={18} />,
+          icon: <Monogram name={t(o.label)} brand={o.brand} size={18} />,
         }))}
       />
       <Select
         size="sm"
         style={{ width: 'auto', maxWidth: 220 }}
         data-testid="model-switch"
-        aria-label="模型"
-        title="切换模型（立即生效）"
+        aria-label={t('模型')}
+        title={t('切换模型（立即生效）')}
         value={model}
         disabled={!current || Boolean(state.overrideId) || models.length === 0}
         onChange={(e) =>
           current && void providerClient.setActive(current, e.target.value).catch(() => undefined)
         }
-        placeholder="（默认）"
+        placeholder={t('（默认）')}
         menuMinWidth={240}
         options={models.map((m) => ({
           value: m,
           label: m,
-          description: m === defaultModel ? '默认' : undefined,
+          description: m === defaultModel ? t('默认') : undefined,
         }))}
       />
       <IconButton
         size="sm"
         data-testid="open-provider-panel"
         onClick={onManage}
-        label="供应商与 Token 管理"
+        label={t('供应商与 Token 管理')}
         icon="🔑"
       />
     </span>

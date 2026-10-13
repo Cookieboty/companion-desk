@@ -21,6 +21,7 @@ import { z } from 'zod';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
+import { t as tr } from '../i18n';
 
 import { caldavQuery, expand, extractCalendarData, parseIcs, toIcs, type CalEvent } from './ics';
 
@@ -103,7 +104,7 @@ export class LocalHubService {
     if (!this.sources.some((s) => s.kind === 'local'))
       this.sources.unshift({
         id: 'local',
-        name: '我的日历',
+        name: tr('我的日历'),
         kind: 'local',
         color: COLORS[0],
         enabled: true,
@@ -178,10 +179,10 @@ export class LocalHubService {
   }
   upsertEvent(p: Partial<CalEvent>) {
     const summary = String(p.summary ?? '').trim();
-    if (!summary) throw new Error('请填写事件标题');
+    if (!summary) throw new Error(tr('请填写事件标题'));
     const start = Number(p.start);
     const end = Number(p.end ?? start + 3_600_000);
-    if (!Number.isFinite(start) || !(end > start)) throw new Error('结束时间要晚于开始时间');
+    if (!Number.isFinite(start) || !(end > start)) throw new Error(tr('结束时间要晚于开始时间'));
     const prev = p.uid ? this.events.find((e) => e.uid === p.uid && e.cal === 'local') : undefined;
     const e: CalEvent = {
       uid: prev?.uid ?? `${randomUUID()}@companion-desk`,
@@ -219,7 +220,7 @@ export class LocalHubService {
   }
   async importIcsDialog() {
     const r = await dialog.showOpenDialog({
-      title: '导入日历（.ics）',
+      title: tr('导入日历（.ics）'),
       filters: [{ name: 'iCalendar', extensions: ['ics'] }],
       properties: ['openFile'],
     });
@@ -232,10 +233,10 @@ export class LocalHubService {
   importIcsText(text: string, name: string) {
     const id = `file-${randomUUID().slice(0, 8)}`;
     const list = parseIcs(text, id);
-    if (!list.length) throw new Error('文件里没有找到日程（VEVENT）');
+    if (!list.length) throw new Error(tr('文件里没有找到日程（VEVENT）'));
     this.sources.push({
       id,
-      name: name.slice(0, 60) || '导入的日历',
+      name: name.slice(0, 60) || tr('导入的日历'),
       kind: 'file',
       color: COLORS[this.sources.length % COLORS.length],
       enabled: true,
@@ -255,9 +256,9 @@ export class LocalHubService {
     try {
       u = new URL(String(p.url).replace(/^webcal:/i, 'https:'));
     } catch {
-      throw new Error('请填写有效的地址');
+      throw new Error(tr('请填写有效的地址'));
     }
-    if (!/^https?:$/.test(u.protocol)) throw new Error('只支持 http / https / webcal 地址');
+    if (!/^https?:$/.test(u.protocol)) throw new Error(tr('只支持 http / https / webcal 地址'));
     const s: CalSource = {
       id: `${p.kind}-${randomUUID().slice(0, 8)}`,
       name: String(p.name || u.hostname).slice(0, 60),
@@ -312,12 +313,12 @@ export class LocalHubService {
           headers: { ...headers, Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
           body: caldavQuery(now - 30 * 86_400_000, now + 180 * 86_400_000),
         });
-        if (r.status === 401) throw new Error('用户名或密码不对');
-        if (!r.ok) throw new Error(`服务器返回 HTTP ${r.status}`);
+        if (r.status === 401) throw new Error(tr('用户名或密码不对'));
+        if (!r.ok) throw new Error(tr('服务器返回 HTTP {0}', r.status));
         texts = extractCalendarData(await r.text());
       } else {
         const r = await f(s.url, { headers });
-        if (!r.ok) throw new Error(`服务器返回 HTTP ${r.status}`);
+        if (!r.ok) throw new Error(tr('服务器返回 HTTP {0}', r.status));
         texts = [await r.text()];
       }
       const list = texts.flatMap((t) => parseIcs(t, s.id));
@@ -344,7 +345,7 @@ export class LocalHubService {
     return true;
   }
   removeSource(id: string) {
-    if (id === 'local') throw new Error('本地日历不能删除');
+    if (id === 'local') throw new Error(tr('本地日历不能删除'));
     this.sources = this.sources.filter((s) => s.id !== id);
     this.events = this.events.filter((e) => e.cal !== id);
     this.saveCal();
@@ -353,7 +354,7 @@ export class LocalHubService {
   }
   async exportIcs() {
     const r = await dialog.showSaveDialog({
-      title: '导出本地日历',
+      title: tr('导出本地日历'),
       defaultPath: 'companion-desk.ics',
       filters: [{ name: 'iCalendar', extensions: ['ics'] }],
     });
@@ -387,7 +388,7 @@ export class LocalHubService {
     this.saveClips();
     this.applyClipWatch();
     if (!was && this.clipSettings.enabled) {
-      this.d.desktop.say('好的，我会记住最近复制的内容（只在本机），像密码的内容会自动跳过～');
+      this.d.desktop.say(tr('好的，我会记住最近复制的内容（只在本机），像密码的内容会自动跳过～'));
       broadcastMascotCommand({ type: 'motion', name: 'nod' });
     }
     this.audit('clipboard_history_settings', { enabled: this.clipSettings.enabled });
@@ -488,7 +489,7 @@ export class LocalHubService {
   }
   clipImage(id: string) {
     const c = this.clips.find((x) => x.id === id && x.kind === 'image');
-    if (!c) throw new Error('没有这张图片');
+    if (!c) throw new Error(tr('没有这张图片'));
     const img = nativeImage.createFromPath(path.join(this.clipDir, c.file!));
     const s = img.getSize();
     return {
@@ -525,7 +526,7 @@ export class LocalHubService {
   /** 打包 userData 下的本地数据（不含模型、索引、缓存；密钥类文件只导出脱敏版本） */
   async exportAll(opts: { conversations?: unknown; include?: string[] } = {}) {
     const r = await dialog.showSaveDialog({
-      title: '导出全部本地数据',
+      title: tr('导出全部本地数据'),
       defaultPath: `companion-desk-export-${new Date().toISOString().slice(0, 10)}.zip`,
       filters: [{ name: 'Zip', extensions: ['zip'] }],
     });
@@ -610,7 +611,10 @@ export class LocalHubService {
         const strip = (m?: Record<string, string>) =>
           m &&
           Object.fromEntries(
-            Object.entries(m).map(([k, v]) => [k, String(v).startsWith('enc:') ? '<已移除>' : v]),
+            Object.entries(m).map(([k, v]) => [
+              k,
+              String(v).startsWith('enc:') ? tr('<已移除>') : v,
+            ]),
           );
         add(
           'settings/mcp.json',
@@ -630,9 +634,11 @@ export class LocalHubService {
     }
     add(
       'README.txt',
-      `Companion Desk 数据导出 ${new Date().toLocaleString('zh-CN')}\n\n` +
-        '包含：对话、长期记忆、日程与提醒、日历（.ics）、剪贴板历史、技能、屏幕记忆文字、设置。\n' +
-        '不含：API Key 等密钥（已移除或保持加密）、下载的模型、知识库索引与缓存。\n',
+      tr('Companion Desk 数据导出 {0}\n\n', new Date().toLocaleString('zh-CN')) +
+        tr(
+          '包含：对话、长期记忆、日程与提醒、日历（.ics）、剪贴板历史、技能、屏幕记忆文字、设置。\n',
+        ) +
+        tr('不含：API Key 等密钥（已移除或保持加密）、下载的模型、知识库索引与缓存。\n'),
     );
     const zip = zipSync(files, { level: 6 });
     fs.writeFileSync(file, zip);
@@ -644,13 +650,13 @@ export class LocalHubService {
   tools(): ToolDefinition[] {
     const input = z
       .object({
-        days: z.number().int().min(1).max(31).default(1).describe('从今天起查看几天的日程'),
+        days: z.number().int().min(1).max(31).default(1).describe(tr('从今天起查看几天的日程')),
       })
       .strict();
     return [
       {
         name: 'calendar_list',
-        description: '查看用户本地日历（含订阅的 ICS / CalDAV）从今天起若干天的日程。',
+        description: tr('查看用户本地日历（含订阅的 ICS / CalDAV）从今天起若干天的日程。'),
         input,
         readOnly: true,
         execute: async (raw: unknown) => {

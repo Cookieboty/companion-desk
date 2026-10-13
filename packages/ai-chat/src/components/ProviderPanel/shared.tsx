@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import { Badge, BrandIcon, hasBrandIcon } from '@ig-live/ui';
 import React from 'react';
 
@@ -35,10 +36,10 @@ export const hostOf = (u?: string): string => {
 
 export const TestBadge: React.FC<{ r?: TestResult | 'pending' }> = ({ r }) => {
   if (!r) return null;
-  if (r === 'pending') return <Badge tone="neutral">测速中…</Badge>;
+  if (r === 'pending') return <Badge tone="neutral">{tr('测速中…')}</Badge>;
   return r.ok ? (
     <Badge tone="success" data-testid="test-ok" title={r.endpoint}>
-      ✓ 连通 {r.latencyMs}ms
+      {tr('✓ 连通')} {r.latencyMs}ms
     </Badge>
   ) : (
     <Badge tone="danger" data-testid="test-fail" title={r.error}>
@@ -49,14 +50,15 @@ export const TestBadge: React.FC<{ r?: TestResult | 'pending' }> = ({ r }) => {
 
 export const FetchBadge: React.FC<{ r?: FetchModelsResult | 'pending' }> = ({ r }) => {
   if (!r) return null;
-  if (r === 'pending') return <Badge tone="neutral">获取中…</Badge>;
+  if (r === 'pending') return <Badge tone="neutral">{tr('获取中…')}</Badge>;
   return r.ok ? (
     <Badge tone="success" data-testid="fetch-ok" title={r.url}>
-      ✓ {r.models.length} 个模型 · {r.latencyMs}ms
+      ✓ {r.models.length} {tr('个模型 ·')} {r.latencyMs}ms
     </Badge>
   ) : (
     <Badge tone="danger" data-testid="fetch-fail" title={`${r.url}\n${r.error ?? ''}`}>
-      ✗ 获取失败：{r.error?.slice(0, 60)}
+      {tr('✗ 获取失败：')}
+      {r.error?.slice(0, 60)}
     </Badge>
   );
 };

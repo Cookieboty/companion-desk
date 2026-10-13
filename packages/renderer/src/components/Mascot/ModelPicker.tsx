@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import { Badge, Button, Modal, Tabs } from '@ig-live/ui';
 import React, { useState } from 'react';
 
@@ -31,10 +32,10 @@ export const ModelPicker: React.FC = () => {
   const editingModel = editing ? state.modelList.find((m) => m.name === editing) : undefined;
 
   return (
-    <Modal open onClose={close} title="选择角色" size="lg" data-testid="model-picker">
+    <Modal open onClose={close} title={tr('选择角色')} size="lg" data-testid="model-picker">
       {hasModelsApi && (
         <Tabs<Tab>
-          aria-label="角色来源"
+          aria-label={tr('角色来源')}
           className={styles.tabs}
           value={tab}
           onChange={(t) => {
@@ -42,9 +43,9 @@ export const ModelPicker: React.FC = () => {
             setEditing(null);
           }}
           items={[
-            { value: 'mine', label: '我的角色' },
-            { value: 'store', label: '模型商店' },
-            { value: 'import', label: '导入 VRM' },
+            { value: 'mine', label: tr('我的角色') },
+            { value: 'store', label: tr('模型商店') },
+            { value: 'import', label: tr('导入 VRM') },
           ]}
         />
       )}
@@ -82,7 +83,7 @@ export const ModelPicker: React.FC = () => {
                   <span className={styles.name}>{m.displayName}</span>
                   <span className={styles.badges}>
                     <Badge tone={m.origin === 'user' ? 'warning' : active ? 'accent' : 'neutral'}>
-                      {m.origin === 'user' ? '自备' : licenseLabel(m.license)}
+                      {m.origin === 'user' ? tr('自备') : licenseLabel(m.license)}
                     </Badge>
                     {m.origin && m.origin !== 'bundled' && (
                       <Badge tone="neutral">{ORIGIN[m.origin]}</Badge>
@@ -94,7 +95,7 @@ export const ModelPicker: React.FC = () => {
                     type="button"
                     className={styles.cardAction}
                     data-testid={`model-edit-${m.name}`}
-                    title="设置 / 替换 / 删除"
+                    title={tr('设置 / 替换 / 删除')}
                     onClick={() => setEditing(m.name)}
                   >
                     ⚙
@@ -108,14 +109,14 @@ export const ModelPicker: React.FC = () => {
       {tab === 'store' && <ModelStoreTab />}
       {tab === 'import' && <ImportTab onImported={() => setTab('mine')} />}
       <div className={styles.footer}>
-        <p className={styles.credit}>每个角色的作者与许可见「致谢」。</p>
+        <p className={styles.credit}>{tr('每个角色的作者与许可见「致谢」。')}</p>
         <Button
           size="sm"
           variant="ghost"
           data-testid="open-credits"
           onClick={() => dispatch({ type: 'SET_PANEL', payload: 'credits' })}
         >
-          致谢 / Credits
+          {tr('致谢 / Credits')}
         </Button>
         <Button
           size="sm"
@@ -123,7 +124,7 @@ export const ModelPicker: React.FC = () => {
           data-testid="open-interaction"
           onClick={() => dispatch({ type: 'SET_PANEL', payload: 'interaction' })}
         >
-          互动设置
+          {tr('互动设置')}
         </Button>
       </div>
     </Modal>

@@ -1,4 +1,5 @@
 /** 设置 → 通用 → 主题：四套配色 + 跟随系统，点选即时生效（对话窗口与看板娘同步）。 */
+import { t as tr } from '@ig-live/ui';
 import { THEMES, currentTheme, setTheme, type ThemeState } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
@@ -13,8 +14,8 @@ export const ThemeSettings: React.FC = () => {
   }, []);
   return (
     <section className={styles.block} data-testid="theme-settings">
-      <h2 className={styles.h2}>主题</h2>
-      <div className={styles.themes} role="radiogroup" aria-label="主题">
+      <h2 className={styles.h2}>{tr('主题')}</h2>
+      <div className={styles.themes} role="radiogroup" aria-label={tr('主题')}>
         {THEMES.map((t) => {
           const on = cur.pref === t.id;
           const sys = t.id === 'system';
@@ -49,11 +50,15 @@ export const ThemeSettings: React.FC = () => {
                   </span>
                 )}
               </span>
-              <span className={styles.themeName}>{t.name}</span>
+              <span className={styles.themeName}>{tr(t.name)}</span>
               <span className={styles.themeDesc}>
                 {sys && on
-                  ? `${t.desc}（当前：${cur.resolved === 'paper' ? '纸白' : '石墨'}）`
-                  : t.desc}
+                  ? tr(
+                      '{0}（当前：{1}）',
+                      tr(t.desc),
+                      cur.resolved === 'paper' ? tr('纸白') : tr('石墨'),
+                    )
+                  : tr(t.desc)}
               </span>
             </button>
           );

@@ -5,6 +5,7 @@ import {
   type KeyboardEvent,
   type VoiceContribute,
 } from '@ig-live/types';
+import { t } from '@ig-live/ui';
 
 import { HOURLY_LINES, KEYWORD_LINES } from '../mascot/tips';
 import { toFileUrl } from '../utils/fileUrl';
@@ -117,7 +118,7 @@ export class VoiceService {
           resolve();
         } else if (attempts >= maxAttempts) {
           console.error('VoiceService: 等待electronAPI超时');
-          reject(new Error('electronAPI准备超时'));
+          reject(new Error(t('electronAPI准备超时')));
         } else {
           setTimeout(checkAPI, 100);
         }

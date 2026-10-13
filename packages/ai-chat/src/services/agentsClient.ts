@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /** 编程助手进度客户端：`ai:agents:*` IPC（经 preload 的 window.aiIPC） */
 export type AgentKind = 'codex' | 'claude' | 'aider' | 'cline' | 'continue' | 'cursor';
 export type AgentStatus = 'running' | 'completed' | 'failed' | 'stalled' | 'idle';
@@ -57,7 +58,7 @@ const bridge = (): AiBridge | undefined => {
 
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new Error('编程助手监视需要在桌面应用中使用');
+  if (!b) throw new Error(t('编程助手监视需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:agents:${method}`, ...args)) as T & {
     __error?: { message: string };
   };

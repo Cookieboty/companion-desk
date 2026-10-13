@@ -1,4 +1,5 @@
 import type { DesktopConfirmRequest } from '@ig-live/types';
+import { t as tr } from '@ig-live/ui';
 import { Badge, Button, Modal } from '@ig-live/ui';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
@@ -159,10 +160,13 @@ export const DesktopConfirm: React.FC = () => {
         data-danger={cur.danger}
         data-tool={cur.tool}
       >
-        <div className={styles.text}>{cur.summary}</div>
+        <div className={styles.text}>{tr(cur.summary)}</div>
         <div className={styles.meta}>
-          <Badge tone={d.tone}>{d.label}</Badge>
-          <span>{left}s 后自动拒绝</span>
+          <Badge tone={d.tone}>{tr(d.label)}</Badge>
+          <span>
+            {left}
+            {tr('s 后自动拒绝')}
+          </span>
         </div>
         <div className={styles.actions}>
           {!cur.dialog && (
@@ -172,11 +176,11 @@ export const DesktopConfirm: React.FC = () => {
               onClick={() => answer(true)}
               data-testid="desktop-confirm-allow"
             >
-              允许
+              {tr('允许')}
             </Button>
           )}
           <Button size="sm" onClick={() => setDetail(true)} data-testid="desktop-confirm-details">
-            查看详情
+            {tr('查看详情')}
           </Button>
           <Button
             size="sm"
@@ -184,7 +188,7 @@ export const DesktopConfirm: React.FC = () => {
             onClick={() => answer(false)}
             data-testid="desktop-confirm-deny"
           >
-            拒绝
+            {tr('拒绝')}
           </Button>
         </div>
       </div>
@@ -192,25 +196,25 @@ export const DesktopConfirm: React.FC = () => {
         <Modal
           open
           onClose={() => setDetail(false)}
-          title="确认操作"
+          title={tr('确认操作')}
           data-testid="desktop-confirm-dialog"
         >
           <div className={styles.dialog}>
             <div className={styles.meta}>
-              <Badge tone={d.tone}>{d.label}</Badge>
+              <Badge tone={d.tone}>{tr(d.label)}</Badge>
               <code>{cur.tool}</code>
             </div>
-            <p className={styles.text}>{cur.summary}</p>
+            <p className={styles.text}>{tr(cur.summary)}</p>
             {REASON[cur.reason] && <p className={styles.hint}>{REASON[cur.reason]}</p>}
             {cur.preview && (
               <>
-                <div className={styles.label}>预览（尚未执行）</div>
+                <div className={styles.label}>{tr('预览（尚未执行）')}</div>
                 <pre className={styles.pre} data-testid="desktop-confirm-preview">
                   {cur.preview}
                 </pre>
               </>
             )}
-            <div className={styles.label}>参数</div>
+            <div className={styles.label}>{tr('参数')}</div>
             <pre className={styles.pre}>{cur.argsJson}</pre>
             {cur.rememberable && (
               <label className={styles.remember}>
@@ -220,7 +224,7 @@ export const DesktopConfirm: React.FC = () => {
                   onChange={(e) => setRemember(e.target.checked)}
                   data-testid="desktop-remember"
                 />
-                本次运行不再询问这个工具
+                {tr('本次运行不再询问这个工具')}
               </label>
             )}
             <div className={styles.actions}>
@@ -229,7 +233,7 @@ export const DesktopConfirm: React.FC = () => {
                 onClick={() => answer(false)}
                 data-testid="desktop-dialog-deny"
               >
-                拒绝
+                {tr('拒绝')}
               </Button>
               <Button
                 variant={cur.danger === 'destructive' ? 'danger' : 'primary'}
@@ -237,7 +241,7 @@ export const DesktopConfirm: React.FC = () => {
                 onClick={() => answer(true)}
                 data-testid="desktop-dialog-allow"
               >
-                {cur.danger === 'destructive' ? '确认执行' : '允许'}
+                {cur.danger === 'destructive' ? tr('确认执行') : tr('允许')}
               </Button>
             </div>
           </div>

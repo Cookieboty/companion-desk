@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import styles from './style.module.css';
@@ -29,7 +30,8 @@ export const MessageBubble: React.FC = () => {
   const measureRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [scrolls, setScrolls] = useState(false);
-  const text = toBubbleText(state.currentMessage);
+  // 模块常量里的台词（tips / 触摸反应）在显示时晚翻译
+  const text = tr(toBubbleText(state.currentMessage));
   const more = state.messageMore === true;
 
   useEffect(() => {
@@ -134,7 +136,7 @@ export const MessageBubble: React.FC = () => {
           tabIndex={measure ? -1 : undefined}
           onClick={openChat}
         >
-          查看全文
+          {tr('查看全文')}
         </button>
       )}
     </div>

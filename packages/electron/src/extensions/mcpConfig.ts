@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /**
  * MCP 服务器配置（GUI 管理）：校验、导入（通用 `mcpServers` JSON / 数组）、预设与脱敏。
  */
@@ -50,7 +51,7 @@ export function sanitizeServer(raw: unknown, taken = new Set<string>()): McpServ
   const name = String(o.name ?? o.id ?? '')
     .trim()
     .slice(0, 60);
-  if (!name) throw new McpConfigError('请填写名称');
+  if (!name) throw new McpConfigError(t('请填写名称'));
   let transport: Transport =
     o.transport === 'http' || o.transport === 'sse' ? o.transport : 'stdio';
   if (!o.transport && typeof o.url === 'string')
@@ -66,8 +67,8 @@ export function sanitizeServer(raw: unknown, taken = new Set<string>()): McpServ
   };
   if (transport === 'stdio') {
     const command = String(o.command ?? '').trim();
-    if (!command) throw new McpConfigError('本地（stdio）服务器需要填写启动命令');
-    if (/[\n\r]/.test(command)) throw new McpConfigError('命令不能包含换行');
+    if (!command) throw new McpConfigError(t('本地（stdio）服务器需要填写启动命令'));
+    if (/[\n\r]/.test(command)) throw new McpConfigError(t('命令不能包含换行'));
     e.command = command;
     e.args = Array.isArray(o.args) ? o.args.map(String).slice(0, 64) : [];
     e.env = strMap(o.env);
@@ -77,10 +78,10 @@ export function sanitizeServer(raw: unknown, taken = new Set<string>()): McpServ
     try {
       u = new URL(url);
     } catch {
-      throw new McpConfigError('请填写有效的服务器地址（http/https）');
+      throw new McpConfigError(t('请填写有效的服务器地址（http/https）'));
     }
     if (u.protocol !== 'http:' && u.protocol !== 'https:')
-      throw new McpConfigError('服务器地址只支持 http / https');
+      throw new McpConfigError(t('服务器地址只支持 http / https'));
     e.url = u.toString();
     e.headers = strMap(o.headers);
   }
@@ -93,7 +94,7 @@ export function parseImport(text: string, existing: string[] = []): McpServerEnt
   try {
     j = JSON.parse(text);
   } catch {
-    throw new McpConfigError('不是有效的 JSON');
+    throw new McpConfigError(t('不是有效的 JSON'));
   }
   const taken = new Set(existing);
   const items: Array<Record<string, unknown>> = [];
@@ -104,7 +105,7 @@ export function parseImport(text: string, existing: string[] = []): McpServerEnt
       for (const [name, v] of Object.entries(root as Record<string, unknown>))
         if (v && typeof v === 'object') items.push({ name, ...(v as Record<string, unknown>) });
   }
-  if (!items.length) throw new McpConfigError('没有找到服务器配置');
+  if (!items.length) throw new McpConfigError(t('没有找到服务器配置'));
   const out: McpServerEntry[] = [];
   for (const it of items) {
     const e = sanitizeServer({ ...it, origin: 'user', trust: 'ask' }, taken);

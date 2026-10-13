@@ -249,3 +249,33 @@
   font-size: 11px;
   color: var(--cd-color-text-subtle);
 }
+
+/* 语言 */
+.langs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-surface);
+  color: var(--cd-color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.lang:hover {
+  background: var(--cd-color-hover);
+}
+.langOn {
+  border-color: var(--cd-color-primary);
+  box-shadow: 0 0 0 1px var(--cd-color-primary) inset;
+}
+.langHint {
+  font-size: 11px;
+  color: var(--cd-color-text-secondary);
+}

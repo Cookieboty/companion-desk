@@ -1,4 +1,5 @@
 import type { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { t } from '@ig-live/ui';
 import React, {
   createContext,
   useContext,
@@ -197,7 +198,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         const m: ChatMessage = {
           id: `sched-${r.id}`,
           role: 'assistant',
-          content: `📋 ${r.name}${r.catchUp ? '（补上）' : ''}\n\n${r.text}`,
+          content: t('📋 {0}{1}\n\n{2}', r.name, r.catchUp ? t('（补上）') : '', r.text),
           timestamp: r.at,
         };
         dispatch({ type: 'ADD_MESSAGE', payload: m });
@@ -213,7 +214,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         const userMessage: ChatMessage = {
           id: `desk-${e.at}`,
           role: 'user',
-          content: `📄 总结文件：${e.name}`,
+          content: t('📄 总结文件：{0}', e.name),
           timestamp: e.at,
         };
         const aiMessage: ChatMessage = {
@@ -323,9 +324,11 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         const r = await screenClient.checkSend();
         if (r === 'local_only')
           throw new Error(
-            '已开启「仅本地模型」，当前对话模型在云端，不能发送图片。可切换到本地视觉模型（如 Ollama）',
+            t(
+              '已开启「仅本地模型」，当前对话模型在云端，不能发送图片。可切换到本地视觉模型（如 Ollama）',
+            ),
           );
-        if (r === 'user_denied') throw new Error('已取消：图片没有发送给云端模型');
+        if (r === 'user_denied') throw new Error(t('已取消：图片没有发送给云端模型'));
       }
 
       const userMessage: ChatMessage = {

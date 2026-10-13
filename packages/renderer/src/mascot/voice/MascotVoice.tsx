@@ -3,6 +3,7 @@
  * 识别文本经主进程转交 AI 对话窗口（ai:voice:sendToChat）。
  * 状态胶囊固定在窗口底部，不遮挡角色面部。
  */
+import { t } from '@ig-live/ui';
 import { MicButton, VoiceStatus, useVoice } from '@ig-live/voice';
 import React, { useCallback, useEffect, useRef } from 'react';
 
@@ -50,7 +51,7 @@ export const MascotMicTool: React.FC<{
         data-testid="tool-voice-input"
         onStart={() => void v.pttStart()}
         onStop={(cancel) => void v.pttStop(cancel)}
-        tooltip={continuous ? '免按键对话中（右键关闭）' : '按住说话（右键：免按键对话）'}
+        tooltip={continuous ? t('免按键对话中（右键关闭）') : t('按住说话（右键：免按键对话）')}
         tooltipPlacement={tipSide}
       />
     </span>
@@ -96,7 +97,7 @@ export const MascotVoiceBridge: React.FC = () => {
     const d = voiceDirective(v.state.phase, prev.current);
     prev.current = v.state.phase;
     if (d) applyDirective(d);
-    if (v.state.phase === 'awake') showMessage('我在～请说', 2500, 9);
+    if (v.state.phase === 'awake') showMessage(t('我在～请说'), 2500, 9);
   }, [v.state.phase, showMessage]);
 
   // 语音打断：开口说话即停止朗读
