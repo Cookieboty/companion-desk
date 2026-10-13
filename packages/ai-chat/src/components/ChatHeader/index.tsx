@@ -3,11 +3,12 @@
  * 图标打开右侧快速视图（抽屉），详细配置在「设置」里。
  */
 import { Tooltip } from '@ig-live/ui';
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { extClient } from '../../services/extClient';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
+import { MAX_PINS, pinDef, runPinCommand, togglePin, usePins } from '../../services/pins';
 import { schedClient } from '../../services/schedClient';
 
 import styles from './index.module.css';
@@ -47,6 +48,9 @@ interface Props {
   onExt: () => void;
   onLocal: () => void;
   onSettings: () => void;
+  onNewChat: () => void;
+  /** 打开 设置 → 通用 → 常驻入口 */
+  onCustomize?: () => void;
   children?: React.ReactNode;
 }
 
@@ -57,6 +61,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
       tip: '记忆',
       key: '⌘/Ctrl+Shift+M',
       id: 'open-mem-panel',
+      pin: 'memory',
       on: p.onMemory,
       show: memClient.available(),
     },
@@ -65,6 +70,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
       tip: '知识库',
       key: '⌘/Ctrl+Shift+L',
       id: 'open-kb-panel',
+      pin: 'kbm',
       on: p.onKnowledge,
       show: kbClient.available(),
     },
@@ -73,6 +79,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
       tip: '日程 · 编程助手进度',
       key: '⌘/Ctrl+Shift+D',
       id: 'open-sched-panel',
+      pin: 'schedule',
       on: p.onSchedule,
       show: schedClient.available(),
     },
@@ -81,6 +88,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
       tip: '扩展 / MCP',
       key: '⌘/Ctrl+Shift+E',
       id: 'open-ext-panel',
+      pin: 'ext',
       on: p.onExt,
       show: extClient.available(),
     },
@@ -89,6 +97,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
       tip: '本机管理（日历 · 剪贴板 · 小模型）',
       key: '⌘/Ctrl+Shift+J',
       id: 'open-local-panel',
+      pin: 'local',
       on: p.onLocal,
       show: extClient.available(),
     },
@@ -97,13 +106,164 @@ export const ChatHeader: React.FC<Props> = (p) => {
       tip: '设置',
       key: '⌘/Ctrl+,',
       id: 'open-settings',
+      pin: 'settings',
       on: p.onSettings,
       show: true,
     },
   ].filter((i) => i.show);
+  const { pins, update } = usePins();
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [more, setMore] = useState(false);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(1000);
+  useLayoutEffect(() => {
+    const el = leftRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWidth(e!.contentRect.width));
+    ro.observe(el);
+    setWidth(el.getBoundingClientRect().width || 1000);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!menu && !more) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+      if (e instanceof MouseEvent && (e.target as Element).closest?.('[data-pin-popup]')) return;
+      setMenu(null);
+      setMore(false);
+    };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('keydown', close);
+    window.addEventListener('blur', close);
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('keydown', close);
+      window.removeEventListener('blur', close);
+    };
+  }, [menu, more]);
+
+  // 窄窗口：放不下的入口收进「⋯」
+  const SLOT = 34;
+  const fit =
+    pins.length * SLOT <= width ? pins.length : Math.max(0, Math.floor((width - SLOT) / SLOT));
+  const shown = pins.slice(0, fit);
+  const hidden = pins.slice(fit);
+  const run = (id: string) => {
+    setMore(false);
+    if (id === 'newchat') p.onNewChat();
+    else runPinCommand(id);
+  };
+  const ctx = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMore(false);
+    setMenu({ id, x: e.clientX, y: e.clientY });
+  };
+  const ctxPinned = menu ? pins.includes(menu.id) : false;
+  const ctxFull = !ctxPinned && pins.length >= MAX_PINS;
+
   return (
     <header className={styles.header} data-testid="chat-header">
-      <div className={styles.left}>{p.children}</div>
+      <div className={styles.left} ref={leftRef} data-testid="header-pins">
+        {shown.map((id) => {
+          const d = pinDef(id)!;
+          return (
+            <Tooltip
+              key={id}
+              placement="bottom"
+              content={d.shortcut ? `${d.label}  ${d.shortcut}` : d.label}
+            >
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.pin}`}
+                onClick={() => run(id)}
+                onContextMenu={ctx(id)}
+                aria-label={d.label}
+                data-testid={`pin-${id}`}
+              >
+                <span aria-hidden>{d.icon}</span>
+              </button>
+            </Tooltip>
+          );
+        })}
+        {hidden.length > 0 && (
+          <div className={styles.moreWrap}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => setMore((v) => !v)}
+              aria-label={`更多入口（${hidden.length}）`}
+              aria-expanded={more}
+              title="更多入口"
+              data-testid="pins-overflow"
+            >
+              ⋯
+            </button>
+            {more && (
+              <div className={styles.popup} role="menu" data-pin-popup>
+                {hidden.map((id) => {
+                  const d = pinDef(id)!;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="menuitem"
+                      className={styles.popItem}
+                      onClick={() => run(id)}
+                      onContextMenu={ctx(id)}
+                      data-testid={`pin-overflow-${id}`}
+                    >
+                      <span aria-hidden>{d.icon}</span>
+                      <span className={styles.popLabel}>{d.label}</span>
+                      {d.shortcut && <span className={styles.popHint}>{d.shortcut}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {p.children}
+      {menu && (
+        <div
+          className={`${styles.popup} ${styles.ctx}`}
+          style={{ left: menu.x, top: menu.y }}
+          role="menu"
+          data-pin-popup
+          data-testid="pin-context-menu"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.popItem}
+            disabled={ctxFull}
+            onClick={() => {
+              update(togglePin(pins, menu.id));
+              setMenu(null);
+            }}
+            data-testid={ctxPinned ? 'pin-unpin' : 'pin-pin'}
+          >
+            📌{' '}
+            {ctxPinned
+              ? '取消固定'
+              : ctxFull
+                ? `左上角已满（最多 ${MAX_PINS} 个）`
+                : '固定到左上角'}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.popItem}
+            onClick={() => {
+              setMenu(null);
+              p.onCustomize?.();
+            }}
+            data-testid="pin-customize"
+          >
+            ⚙️ 自定义常驻入口…
+          </button>
+        </div>
+      )}
       <div className={styles.actions}>
         {items.map((i) => (
           <Tooltip key={i.id} placement="bottom" content={`${i.tip}  ${i.key}`}>
@@ -111,6 +271,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
               type="button"
               className={styles.btn}
               onClick={i.on}
+              onContextMenu={ctx(i.pin)}
               aria-label={i.tip}
               data-testid={i.id}
             >

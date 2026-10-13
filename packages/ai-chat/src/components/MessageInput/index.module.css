@@ -531,3 +531,41 @@
   font-size: 11px;
   color: var(--cd-color-text-subtle);
 }
+.menuRow {
+  display: flex;
+  align-items: center;
+}
+.menuRow > .menuItem {
+  flex: 1;
+}
+.pinBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.25;
+  filter: grayscale(1);
+  font-size: 12px;
+}
+.menuRow:hover .pinBtn,
+.pinBtn:focus-visible {
+  opacity: 0.7;
+}
+.pinOn {
+  opacity: 1 !important;
+  filter: none;
+}
+.pinBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.1 !important;
+}
+/* 窄窗口：模型切换器先收缩，不压住语音 / 发送按钮 */
+.composerBar .modelStatus {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+.composerBar > :not(.modelStatus):not(.spacer) {
+  flex-shrink: 0;
+}

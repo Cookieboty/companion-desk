@@ -19,6 +19,7 @@ import { SchedulePanel } from '../SchedulePanel';
 import { ScreenPanel } from '../ScreenPanel';
 
 import styles from './index.module.css';
+import { PinsSettings } from './PinsSettings';
 
 export type SettingsSection =
   | 'general'
@@ -102,6 +103,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
       case 'general':
         return (
           <>
+            <PinsSettings />
             <ConfigPanel isVisible onClose={noop} />
             <section className={styles.block}>
               <h2 className={styles.h2}>快捷键</h2>
