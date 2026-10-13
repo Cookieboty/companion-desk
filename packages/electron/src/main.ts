@@ -3,19 +3,35 @@
  * 简化架构，使用Application类管理应用生命周期
  */
 
+import * as path from 'path';
+
 import { app } from 'electron';
 
 import { Application } from './core/Application';
 import { registerModelSchemePrivileges } from './models/ModelService';
-import { migrateLegacyUserData } from './utils/legacyUserData';
+import {
+  LEGACY_DEV_NAMES,
+  LEGACY_PRODUCT_NAMES,
+  migrateLegacyUserData,
+} from './utils/legacyUserData';
 import { perfMark } from './utils/perfMarks';
 
 perfMark('main-entry');
 
-// 品牌更名后沿用旧 userData（仅打包产物；需在 ready 之前）
-if (app.isPackaged) {
+// 品牌更名后沿用旧 userData（需在 ready 之前）。仅当 userData 是默认目录时迁移
+// （测试 / --user-data-dir 指定的目录不动）。
+{
+  const appData = app.getPath('appData');
+  const userData = app.getPath('userData');
   try {
-    const res = migrateLegacyUserData(app.getPath('appData'), app.getPath('userData'));
+    const isDefault = path.resolve(userData) === path.resolve(appData, app.getName());
+    const res = isDefault
+      ? migrateLegacyUserData(
+          appData,
+          userData,
+          app.isPackaged ? LEGACY_PRODUCT_NAMES : LEGACY_DEV_NAMES,
+        )
+      : { migrated: false as const, from: '', to: userData };
     if (res.migrated) console.log(`📦 已迁移旧版用户数据: ${res.from} → ${res.to}`);
   } catch (error) {
     console.warn('旧版用户数据迁移失败:', error);
@@ -40,7 +56,7 @@ async function main(): Promise<void> {
     await application.initialize();
     await application.start();
 
-    console.log('✅ Companion Desk 启动成功');
+    console.log('✅ Nomi 启动成功');
   } catch (error) {
     console.error('❌ 应用启动失败:', error);
     process.exit(1);

@@ -261,7 +261,7 @@ export function exportMarkdown(d: {
   exportedAt: number;
 }): string {
   const lines = [
-    `# Companion Desk 记忆导出`,
+    `# Nomi 记忆导出`,
     ``,
     `导出时间：${new Date(d.exportedAt).toLocaleString('zh-CN')}`,
     ``,

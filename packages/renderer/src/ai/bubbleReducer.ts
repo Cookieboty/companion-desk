@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 
 import { shortReply } from '@/mascot/bubblePlacement';
 

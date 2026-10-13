@@ -1,5 +1,5 @@
 {
-  "name": "@ig-live/renderer",
+  "name": "@nomi-ai/renderer",
   "version": "1.0.0",
   "description": "基于React的前端UI",
   "scripts": {
@@ -12,9 +12,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@ig-live/ai-sdk-client": "workspace:*",
-    "@ig-live/ui": "workspace:*",
-    "@ig-live/voice": "workspace:*",
+    "@nomi-ai/ai-sdk-client": "workspace:*",
+    "@nomi-ai/ui": "workspace:*",
+    "@nomi-ai/voice": "workspace:*",
     "@pixiv/three-vrm": "^3.5.5",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
@@ -27,7 +27,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@ig-live/types": "workspace:*",
+    "@nomi-ai/types": "workspace:*",
     "@types/node": "^24.13.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

@@ -1,6 +1,6 @@
 # 三端消费方接入 Checklist
 
-> P8-9 交付物。适用于把「主进程 / renderer（看板娘） / ai-chat」三端接入 dsh + `@ig-live/ai-sdk-client` 的最短路径。
+> P8-9 交付物。适用于把「主进程 / renderer（看板娘） / ai-chat」三端接入 dsh + `@nomi-ai/ai-sdk-client` 的最短路径。
 >
 > 迁移总纲：[P8-consumer-migration.md](plans/P8-consumer-migration.md)　·　变更时间线：[docs/plans/CHANGELOG.md](plans/CHANGELOG.md)　·　旧通道映射：[legacy-channel-mapping.md](legacy-channel-mapping.md)
 
@@ -36,16 +36,16 @@
 
 关键包：
 
-- [@ig-live/ai-runtime](../packages/ai-runtime) —— 主进程装配（dsh Booter + IPCTransportServer + EventBroadcaster + CapabilityIpcServer + AiChatCompat）。
-- [@ig-live/ai-sdk](../packages/ai-sdk) —— 主进程 `AIClient` 门面（P5）。
-- [@ig-live/ai-sdk-client](../packages/ai-sdk-client) —— 渲染进程 `ClientAIClient`（IPC Proxy）+ 5 个 React Hook + preload 模板。
+- [@nomi-ai/ai-runtime](../packages/ai-runtime) —— 主进程装配（dsh Booter + IPCTransportServer + EventBroadcaster + CapabilityIpcServer + AiChatCompat）。
+- [@nomi-ai/ai-sdk](../packages/ai-sdk) —— 主进程 `AIClient` 门面（P5）。
+- [@nomi-ai/ai-sdk-client](../packages/ai-sdk-client) —— 渲染进程 `ClientAIClient`（IPC Proxy）+ 5 个 React Hook + preload 模板。
 - [profiles/](../profiles) —— `waifu` / `chat-only` / `mcp-headless` 三份 dsh profile，装载不同的 seam & bundle。
 
 ## 1. 主进程（Electron main）
 
 ### 1.1 预检
 
-- [ ] `pnpm --filter @ig-live/electron install`：依赖已含 `@ig-live/ai-runtime`、`@ig-live/ai-sdk`、`@deepseek-ai/dsh*`（版本三处锁死，见 [README.md#dsh-基座版本策略](../README.md#-dsh-基座版本策略)）。
+- [ ] `pnpm --filter @nomi-ai/electron install`：依赖已含 `@nomi-ai/ai-runtime`、`@nomi-ai/ai-sdk`、`@deepseek-ai/dsh*`（版本三处锁死，见 [README.md#dsh-基座版本策略](../README.md#-dsh-基座版本策略)）。
 - [ ] `pnpm run doctor:dsh <profile>` 装配诊断通过（[scripts/dsh-doctor.ts](../scripts/dsh-doctor.ts)）。
 - [ ] 明确 profile：`waifu`（看板娘 + TTS + VRM） / `chat-only`（纯聊天）/ `mcp-headless`（CLI）。
 
@@ -54,10 +54,10 @@
 在 [Application.start()](../packages/electron/src/core/Application.ts#L100-L112) 里 `app.whenReady()` 之后调用一次：
 
 ```ts
-import { startAIRuntime } from '@ig-live/electron/ai';
-import { SafeKeyProvider, ClipboardGateway, ScreenCapture } from '@ig-live/electron/ai/seams';
-import { AdvancedTTSEngine } from '@ig-live/electron/services/AdvancedTTSEngine';
-import { TtsElectronNativeProvider } from '@ig-live/electron/ai/TtsElectronNativeProvider';
+import { startAIRuntime } from '@nomi-ai/electron/ai';
+import { SafeKeyProvider, ClipboardGateway, ScreenCapture } from '@nomi-ai/electron/ai/seams';
+import { AdvancedTTSEngine } from '@nomi-ai/electron/services/AdvancedTTSEngine';
+import { TtsElectronNativeProvider } from '@nomi-ai/electron/ai/TtsElectronNativeProvider';
 
 const handle = await startAIRuntime(logger, {
   profile: 'waifu', // 或 chat-only / mcp-headless
@@ -94,7 +94,7 @@ const handle = await startAIRuntime(logger, {
 
   ```ts
   import { contextBridge, ipcRenderer } from 'electron';
-  import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+  import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
 
   mkAiPreload({ contextBridge, ipcRenderer }); // window.aiIPC
   // 多窗口冲突时：mkAiPreload({ contextBridge, ipcRenderer, bridgeName: 'aiChatIPC' });
@@ -108,7 +108,7 @@ const handle = await startAIRuntime(logger, {
 ### 3.1 挂载 Provider
 
 ```tsx
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
 
 export function Root() {
   // 未传 bridge，Provider 会读取 window.aiIPC；生产环境仅当 window.aiIPC 就绪时挂载
@@ -135,7 +135,7 @@ export function Root() {
 
 ### 3.3 校验点
 
-- [ ] `pnpm --filter @ig-live/<renderer|ai-chat> typecheck build test` 全绿。
+- [ ] `pnpm --filter @nomi-ai/<renderer|ai-chat> typecheck build test` 全绿。
 - [ ] devtools 里 `useChat().send('你好')` 能看到 chunks 追加到 `messages`。
 - [ ] `useTTSLipSync()` 在 waifu profile 下 rms 波动 > 0；chat-only 下恒为 0（无 TTS 是预期）。
 - [ ] `useUserProfile().set({ preferences: { … } })` 后所有订阅者立即 rerender。
@@ -148,7 +148,7 @@ export function Root() {
 ## 4. 迁移遗留数据 / 配置
 
 旧版（Live2D 时代）的一次性迁移脚本 `scripts/migrate-*.ts` 已移除：应用启动时会自动把旧的
-userData 目录迁到 Companion Desk 目录（见 `packages/electron/src/utils/legacyUserData.ts`），
+userData 目录迁到 Nomi 目录（见 `packages/electron/src/utils/legacyUserData.ts`），
 服务商配置改由「AI 服务商」面板管理。需要旧脚本时请从 git 历史取回，见 [HISTORY.md](HISTORY.md)。
 
 ## 5. 三 profile 能力矩阵
@@ -169,7 +169,7 @@ userData 目录迁到 Companion Desk 目录（见 `packages/electron/src/utils/l
 
 - [ ] `pnpm typecheck && pnpm lint && pnpm test && pnpm build` 全绿。
 - [ ] `pnpm run doctor:dsh waifu && pnpm run doctor:dsh chat-only && pnpm run doctor:dsh mcp-headless`。
-- [ ] `pnpm --filter @ig-live/electron dev` 启动，控制台无 `AIService` / `Mock` 关键字，出现 `AI runtime ready`。
+- [ ] `pnpm --filter @nomi-ai/electron dev` 启动，控制台无 `AIService` / `Mock` 关键字，出现 `AI runtime ready`。
 - [ ] E2E 冒烟（P8-8）：Playwright electron 用例矩阵 E1~E4；waifu 视觉断言只做数值断言。
 - [ ] 迁移脚本 dry-run 无异常，`.legacy.json` 备份齐全。
 - [ ] 观察生产日志 `deprecated: ai:legacy:*` 出现频率 → 决定何时把 `enableLegacyCompat` 切 false。

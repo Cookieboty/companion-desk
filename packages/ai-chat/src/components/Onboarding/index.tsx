@@ -14,7 +14,7 @@ import {
   useLocale,
   type LocalePref,
   type ThemePref,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { ProviderPanel } from '../ProviderPanel';

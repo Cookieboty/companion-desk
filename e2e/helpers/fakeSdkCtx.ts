@@ -10,8 +10,8 @@
  * e2e 属于仓库根级别的顶层测试目录，独立持有自己的 helpers。
  */
 
-import type { SdkContext } from '@ig-live/ai-sdk';
-import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@ig-live/bundle-ig-base';
+import type { SdkContext } from '@nomi-ai/ai-sdk';
+import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@nomi-ai/bundle-ig-base';
 
 export interface FakeSdkCtx extends SdkContext {
   provide<T>(key: ServiceKey<T>, impl: T): void;

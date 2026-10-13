@@ -17,7 +17,7 @@ import {
   type PluginContext,
   type ToolDefinition,
   type ToolRegistry,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 import { jsonSchema } from 'ai';
 
 export type CreateMcpClient = typeof createMCPClient;

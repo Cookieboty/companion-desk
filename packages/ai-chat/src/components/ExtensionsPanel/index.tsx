@@ -2,7 +2,7 @@
  * ExtensionsPanel —— 扩展：MCP 服务器（添加 / 预设 / 导入 JSON / 连接 / 工具与信任级别）
  * 和 SKILL.md 技能包（启用、编辑、新建、从文件夹导入）。
  */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Switch,
   Tabs,
   Textarea,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {

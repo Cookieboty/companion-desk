@@ -12,7 +12,7 @@
  *   3. 一个 second 渲染窗口也能收到 userProfile:changed。
  */
 
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 
 import { createE2eRuntime, type E2eRuntimeHandle } from '../helpers/e2eRuntime';

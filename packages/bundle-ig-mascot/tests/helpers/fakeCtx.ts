@@ -4,7 +4,7 @@ import type {
   HookHandler,
   PluginContext,
   ServiceKey,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 /**
  * FakePluginContext —— vitest 单测用的最小可注入上下文。

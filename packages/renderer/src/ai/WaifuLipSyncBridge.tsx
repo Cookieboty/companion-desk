@@ -1,4 +1,4 @@
-import { useTTSLipSync } from '@ig-live/ai-sdk-client/react';
+import { useTTSLipSync } from '@nomi-ai/ai-sdk-client/react';
 import { useEffect } from 'react';
 import type { FC } from 'react';
 

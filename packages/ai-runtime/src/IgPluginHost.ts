@@ -1,5 +1,5 @@
 /**
- * IgPluginHost —— 在主进程里承载 `@ig-live/bundle-ig-*` 插件的最小宿主。
+ * IgPluginHost —— 在主进程里承载 `@nomi-ai/bundle-ig-*` 插件的最小宿主。
  *
  * 背景：ig bundles 使用 `bundle-ig-base/types/dsh.ts` 定义的轻量插件契约
  * （`definePlugin({ name, apply(ctx, cfg) })` + `ctx.provide/inject/on/emit`），
@@ -21,7 +21,7 @@ import type {
   PluginContext,
   PluginDefinition,
   ServiceKey,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import type { RuntimeLogger } from './logger';
 

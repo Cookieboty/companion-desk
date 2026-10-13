@@ -2,8 +2,8 @@
  * 截图框选遮罩（对话页 #snip 路由，在全屏无边框窗口里运行）。
  * 拖拽框选 → Enter / 「提问」确认；F / 「整屏」；Esc / 右键取消。
  */
-import { t } from '@ig-live/ui';
-import { Button } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Button } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { screenClient } from '../../services/screenClient';

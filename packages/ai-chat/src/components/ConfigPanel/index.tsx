@@ -1,5 +1,5 @@
-import { t } from '@ig-live/ui';
-import { Badge, Button, Card, EmptyState, FormField, Input, Modal, Switch } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Badge, Button, Card, EmptyState, FormField, Input, Modal, Switch } from '@nomi-ai/ui';
 import React, { useState, useEffect } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';

@@ -7,7 +7,7 @@
  *
  * 每次状态变化都上报主进程（ai:voice:activity），由主进程广播给看板娘（表情）并处理打断 TTS。
  */
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 
 import { concatFloat32, encodeWav } from './audio';
 import type { AsrErrorCode, VoiceApi } from './bridge';

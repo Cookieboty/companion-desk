@@ -1,4 +1,4 @@
-import { definePlugin, type HookContext, type PluginContext } from '@ig-live/bundle-ig-base';
+import { definePlugin, type HookContext, type PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import { Live2dKey, type Live2dService } from '../seams/live2d';
 

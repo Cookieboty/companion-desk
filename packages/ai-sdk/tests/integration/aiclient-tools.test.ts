@@ -3,7 +3,7 @@
  * 且 setEnabled/register/list 走 ToolRegistry。
  */
 
-import { ToolRegistryKey } from '@ig-live/bundle-ig-base';
+import { ToolRegistryKey } from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 

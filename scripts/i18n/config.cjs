@@ -6,17 +6,17 @@ module.exports = {
   packages: [
     {
       dir: 'packages/ai-chat/src',
-      importFrom: '@ig-live/ui',
+      importFrom: '@nomi-ai/ui',
       dict: 'packages/ui/src/locales/en.json',
     },
     {
       dir: 'packages/renderer/src',
-      importFrom: '@ig-live/ui',
+      importFrom: '@nomi-ai/ui',
       dict: 'packages/ui/src/locales/en.json',
     },
     {
       dir: 'packages/voice/src',
-      importFrom: '@ig-live/ui',
+      importFrom: '@nomi-ai/ui',
       dict: 'packages/ui/src/locales/en.json',
     },
     { dir: 'packages/ui/src', importFrom: './i18n', dict: 'packages/ui/src/locales/en.json' },

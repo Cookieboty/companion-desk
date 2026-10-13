@@ -29,7 +29,7 @@
 ### P3-1 · 包骨架
 
 - 从 template 复制到 [packages/bundle-ig-electron-caps](../../packages/bundle-ig-electron-caps)
-- `package.json.dsh.bundle`、`peerDependencies: electron @ig-live/bundle-ig-base @deepseek-ai/dsh`
+- `package.json.dsh.bundle`、`peerDependencies: electron @nomi-ai/bundle-ig-base @deepseek-ai/dsh`
 - [src/patch.yml](../../packages/bundle-ig-electron-caps/src/patch.yml) 默认配置
 - **仅在主进程加载**：`index.ts` 顶部 `if (!process.versions.electron || process.type !== 'browser') throw`
 - 验收：`chat-only.yml` 挂上后 `pnpm doctor chat-only` 通过（在 Electron main 上下文里）
@@ -103,13 +103,13 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/bundle-ig-electron-caps](../../packages/bundle-ig-electron-caps)
+- 1 个可发布 npm 包 [@nomi-ai/bundle-ig-electron-caps](../../packages/bundle-ig-electron-caps)
 - 4 个新 seam（keyStore / screen / clipboard / asr / tts）
 - 8 个 provider（1 keyStore + 3 asr + 4 tts）
 
 ## 退出准则（自动化）
 
-1. `pnpm --filter @ig-live/bundle-ig-electron-caps build test` 全绿
+1. `pnpm --filter @nomi-ai/bundle-ig-electron-caps build test` 全绿
 2. Electron 主进程集成测试通过（macos + windows）
 3. `chat-only.yml` 加载后 `ctx.asr.list().length===3 && ctx.tts.list().length===4`
 4. `ctx.keyStore.set/get` 加密路径生效（`safeStorage.isEncryptionAvailable()===true` 场景）

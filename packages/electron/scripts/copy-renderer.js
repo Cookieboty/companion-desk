@@ -7,7 +7,7 @@ const copydir = require('fs-extra').copy;
 // 路径设置
 const srcDir = path.join(__dirname, '../../renderer/dist');
 const destDir = path.join(__dirname, '../dist/renderer');
-// AI 对话窗口（@ig-live/ai-chat）构建产物：WindowManager 在未打包的生产模式下从 dist/ai-chat 加载
+// AI 对话窗口（@nomi-ai/ai-chat）构建产物：WindowManager 在未打包的生产模式下从 dist/ai-chat 加载
 const aiChatSrcDir = path.join(__dirname, '../../ai-chat/dist');
 const aiChatDestDir = path.join(__dirname, '../dist/ai-chat');
 
@@ -36,7 +36,7 @@ async function copyRenderer() {
       await copydir(aiChatSrcDir, aiChatDestDir);
       console.log(`✅ 已复制 AI 对话窗口构建产物到 ${aiChatDestDir}`);
     } else {
-      console.warn(`⚠️  AI 对话窗口构建产物不存在: ${aiChatSrcDir}（请先构建 @ig-live/ai-chat）`);
+      console.warn(`⚠️  AI 对话窗口构建产物不存在: ${aiChatSrcDir}（请先构建 @nomi-ai/ai-chat）`);
     }
   } catch (err) {
     console.error('复制渲染器构建产物时出错:', err);

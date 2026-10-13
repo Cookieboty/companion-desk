@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /** 本地中心客户端：本机模型（llama.cpp / Ollama）、日历、剪贴板历史、数据导出（`ai:local:*` / `ai:hub:*`） */
 export type Fit = 'ok' | 'tight' | 'too-big';
 export interface Progress {

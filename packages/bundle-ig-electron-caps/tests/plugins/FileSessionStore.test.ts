@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { UserProfile } from '@ig-live/bundle-ig-base';
+import type { UserProfile } from '@nomi-ai/bundle-ig-base';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FileProfileStorage, FileSessionStore } from '../../src/plugins/FileSessionStorePlugin';

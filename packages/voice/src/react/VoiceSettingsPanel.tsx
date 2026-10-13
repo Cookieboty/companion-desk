@@ -2,8 +2,8 @@
  * 语音输入设置：识别引擎 / 语言、本地模型管理（按需下载：进度、许可、来源、校验）、
  * 云端识别同意、免按键灵敏度、打断、唤醒词。全部只存本机。
  */
-import { t } from '@ig-live/ui';
-import { Badge, Button, FormField, Input, Notice, Select, Switch } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Badge, Button, FormField, Input, Notice, Select, Switch } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import type { VoiceApi, VoiceAssetView, VoiceSettingsView, VoiceStateView } from '../bridge';

@@ -14,8 +14,8 @@ import type {
   UserProfile,
   UserProfileEvent,
   UserProfileService,
-} from '@ig-live/bundle-ig-base';
-import { makeDefaultUserProfile } from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
+import { makeDefaultUserProfile } from '@nomi-ai/bundle-ig-base';
 
 export interface FakeLLM extends LLMProvider {
   chatCalls: ChatRequest[];

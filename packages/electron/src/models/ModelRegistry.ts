@@ -1,7 +1,7 @@
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 
-import type { RegistryModel } from '@ig-live/types';
+import type { RegistryModel } from '@nomi-ai/types';
 
 import { t } from '../i18n';
 

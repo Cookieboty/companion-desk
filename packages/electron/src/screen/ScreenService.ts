@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import {
   BrowserWindow,
   desktopCapturer,
@@ -364,7 +364,7 @@ export class ScreenService {
         types: ['window'],
         thumbnailSize: { width: 0, height: 0 },
       });
-      const names = wins.map((w) => w.name).filter((n) => n && !/Companion Desk/i.test(n));
+      const names = wins.map((w) => w.name).filter((n) => n && !/Nomi|Companion Desk/i.test(n));
       const hit = matchExclusion(names, this.settings.exclusions);
       if (hit) return { saved: false, reason: `excluded:${hit}` };
       const img = await this.grab();

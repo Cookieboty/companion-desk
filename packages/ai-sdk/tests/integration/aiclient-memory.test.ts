@@ -4,7 +4,7 @@
  * **userProfile.set 后 subscribe 能拿到新值 + get() 返回新值**，确保 tone 已入库。
  */
 
-import { UserProfileKey } from '@ig-live/bundle-ig-base';
+import { UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it } from 'vitest';
 
 import { AIClient } from '../../src/AIClient';

@@ -1,4 +1,4 @@
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import styles from './style.module.css';

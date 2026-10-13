@@ -5,7 +5,7 @@ import {
   type ToolRegistry,
   type UserProfile,
   type UserProfileService,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it } from 'vitest';
 
 import { Live2dSeamPlugin } from '../../src/plugins/Live2dSeamPlugin';

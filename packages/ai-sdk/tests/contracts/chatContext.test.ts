@@ -1,5 +1,5 @@
-import type { ChatMessage } from '@ig-live/bundle-ig-base';
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
+import type { ChatMessage } from '@nomi-ai/bundle-ig-base';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it } from 'vitest';
 
 import { AIClient } from '../../src/AIClient';

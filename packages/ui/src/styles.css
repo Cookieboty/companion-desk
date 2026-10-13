@@ -1,4 +1,4 @@
-/* Companion Desk 共享组件样式（依赖 tokens.css）。类名统一 `cd-` 前缀。 */
+/* Nomi 共享组件样式（依赖 tokens.css）。类名统一 `cd-` 前缀。 */
 @import './tokens.css';
 
 /* ---------- Button / IconButton ---------- */

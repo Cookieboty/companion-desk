@@ -1,5 +1,5 @@
-import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
-import { type IpcApi } from '@ig-live/types';
+import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
+import { type IpcApi } from '@nomi-ai/types';
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 // 挂载 ai IPC 桥：`window.aiIPC.invoke/on/off` 走白名单校验的 `ai:` 通道。

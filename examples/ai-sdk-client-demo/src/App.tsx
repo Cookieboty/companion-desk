@@ -1,4 +1,4 @@
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
 
 import { AgentPanel } from './panels/AgentPanel';
 import { ChatPanel } from './panels/ChatPanel';

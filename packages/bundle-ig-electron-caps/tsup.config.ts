@@ -5,7 +5,7 @@ export default createTsup({
   entry: ['src/index.ts', 'src/seams/index.ts'],
   external: [
     '@deepseek-ai/dsh',
-    '@ig-live/bundle-ig-base',
+    '@nomi-ai/bundle-ig-base',
     'electron',
     '@picovoice/porcupine-node',
     'nodejs-whisper',

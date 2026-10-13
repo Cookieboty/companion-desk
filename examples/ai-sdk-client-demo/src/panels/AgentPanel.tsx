@@ -1,4 +1,4 @@
-import { useAgent } from '@ig-live/ai-sdk-client/react';
+import { useAgent } from '@nomi-ai/ai-sdk-client/react';
 
 export function AgentPanel() {
   const { lastStep, pendingConfirms, confirm } = useAgent();

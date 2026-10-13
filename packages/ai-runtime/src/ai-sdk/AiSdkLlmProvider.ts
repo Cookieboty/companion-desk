@@ -20,8 +20,8 @@ import type {
   ChatUsage,
   LLMProvider,
   ToolDefinition,
-} from '@ig-live/bundle-ig-base';
-import { ENV_ENDPOINT_DEFAULTS } from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
+import { ENV_ENDPOINT_DEFAULTS } from '@nomi-ai/bundle-ig-base';
 import {
   generateText,
   stepCountIs,

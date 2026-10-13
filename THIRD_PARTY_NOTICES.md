@@ -1,6 +1,6 @@
 # Third-party notices
 
-Companion Desk itself is MIT-licensed. This file lists the third-party components it ships.
+Nomi itself is MIT-licensed. This file lists the third-party components it ships.
 The licence gate `pnpm check:licenses` (scripts/check-licenses.mjs, run in CI) enforces that
 production dependencies use allow-listed licences and that every bundled asset has an open-licence
 entry in `assets-licenses.json`.

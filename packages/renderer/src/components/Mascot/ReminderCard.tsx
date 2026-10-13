@@ -1,6 +1,6 @@
-import type { DesktopReminderEvent } from '@ig-live/types';
-import { t as tr } from '@ig-live/ui';
-import { Button } from '@ig-live/ui';
+import type { DesktopReminderEvent } from '@nomi-ai/types';
+import { t as tr } from '@nomi-ai/ui';
+import { Button } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './DesktopConfirm.module.css';

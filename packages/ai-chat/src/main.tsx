@@ -1,10 +1,10 @@
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
-import { LocaleRoot, initLocale, initTheme } from '@ig-live/ui';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
+import { LocaleRoot, initLocale, initTheme } from '@nomi-ai/ui';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
-import '@ig-live/ui/styles.css';
-import '@ig-live/voice/styles.css';
+import '@nomi-ai/ui/styles.css';
+import '@nomi-ai/voice/styles.css';
 import App from './App';
 import { SnipOverlay } from './components/SnipOverlay';
 

@@ -69,7 +69,7 @@ for (const pkg of cfg.packages) {
         ? require('path')
             .relative(require('path').dirname(file), pkg.dir + '/i18n')
             .replace(/^(?!\.)/, './')
-        : '@ig-live/ui';
+        : '@nomi-ai/ui';
       const imp = `import { ${fn === 't' ? 't' : 't as tr'} } from '${from}';\n`;
       const at = first ? first.getStart() : 0;
       text = text.slice(0, at) + imp + text.slice(at);

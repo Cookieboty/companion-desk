@@ -3,8 +3,8 @@
  * Merge order: global soft prefs → built-in character defaults → model.config.voice → user override.
  * Overrides persist in localStorage; user-imported models also try models.updateConfig({ voice }).
  */
-import type { ModelConfig, ModelVoiceConfig } from '@ig-live/types';
-import { t } from '@ig-live/ui';
+import type { ModelConfig, ModelVoiceConfig } from '@nomi-ai/types';
+import { t } from '@nomi-ai/ui';
 
 import {
   DEFAULT_SOFT_SPEECH,

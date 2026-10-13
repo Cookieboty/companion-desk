@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /** 扩展客户端：MCP 服务器 + 技能包（`ai:ext:*` IPC） */
 export type Transport = 'stdio' | 'http' | 'sse';
 export type Trust = 'ask' | 'read-auto' | 'auto';

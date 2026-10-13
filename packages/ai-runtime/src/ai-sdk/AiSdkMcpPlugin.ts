@@ -10,7 +10,7 @@ import {
   definePlugin,
   type McpServerConfig,
   type PluginContext,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import { AiSdkMcpService, provideAiSdkMcpService } from './mcpBridge';
 

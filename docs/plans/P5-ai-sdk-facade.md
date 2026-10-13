@@ -30,8 +30,8 @@
 
 - 目录 [packages/ai-sdk](../../packages/ai-sdk)
 - [package.json](../../packages/ai-sdk/package.json)：
-  - `"name": "@ig-live/ai-sdk"`
-  - `"peerDependencies": { "@deepseek-ai/dsh": "^0.1.2", "@ig-live/bundle-ig-base": "workspace:*" }`
+  - `"name": "@nomi-ai/ai-sdk"`
+  - `"peerDependencies": { "@deepseek-ai/dsh": "^0.1.2", "@nomi-ai/bundle-ig-base": "workspace:*" }`
   - `"dependencies": { "zod": "^3" }`
 - tsup 双出 esm/cjs；`sideEffects: false`
 - 验收：`pnpm build` 产出 dts + esm + cjs
@@ -44,7 +44,7 @@
   - [Session.ts](../../packages/ai-sdk/src/types/Session.ts)：`{ id, title, createdAt, meta, agentPreset? }`
   - [ToolSpec.ts](../../packages/ai-sdk/src/types/ToolSpec.ts)：`{ name, description, schema: zod.ZodType, dangerous?: boolean }`
   - [MemoryFact.ts](../../packages/ai-sdk/src/types/MemoryFact.ts)：`{ id, kind, text, source, at }`
-  - [UserProfile.ts](../../packages/ai-sdk/src/types/UserProfile.ts)：**re-export from `@ig-live/bundle-ig-base`**（避免类型漂移）
+  - [UserProfile.ts](../../packages/ai-sdk/src/types/UserProfile.ts)：**re-export from `@nomi-ai/bundle-ig-base`**（避免类型漂移）
   - [events.ts](../../packages/ai-sdk/src/types/events.ts)：`AIClientEvent` 枚举 + payload map（`message:delta` / `agent:step` / `tool:confirm-required` / `tts:chunk` / `userProfile:changed` ...）
 - 所有 DTO 必须 **structuredClone-safe**（准备 IPC 序列化）
 - 验收：`tsc --noEmit` 通过；DTO 快照测试锁字段
@@ -106,12 +106,12 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/ai-sdk](../../packages/ai-sdk)
+- 1 个可发布 npm 包 [@nomi-ai/ai-sdk](../../packages/ai-sdk)
 - 7 个 Facade + AIClient + 完整 DTO + zod 校验器
 
 ## 退出准则（自动化）
 
-1. `pnpm --filter @ig-live/ai-sdk build test lint typecheck` 全绿
+1. `pnpm --filter @nomi-ai/ai-sdk build test lint typecheck` 全绿
 2. 覆盖率 ≥ 85%
 3. `new AIClient(ctx).chat.stream(...)` 集成测试通过
 4. `AIClient` 类型签名快照评审通过并锁定

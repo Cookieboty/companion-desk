@@ -13,7 +13,7 @@
 
 ## 0. 文档说明
 
-本文档面向 **Companion Desk**（原 ai-live2d-client，本地桌面 AI 助手 + 可选 Live2D 桌面伙伴）项目，规划一套：
+本文档面向 **Nomi**（原 ai-live2d-client，本地桌面 AI 助手 + 可选 Live2D 桌面伙伴）项目，规划一套：
 
 1. **多模态 AI 服务矩阵**（LLM / ASR / TTS / Vision / ImageGen，本地+远端并存）
 2. **Agent Harness（智能体运行时）**：让 LLM 从"只会说话"升级为"能规划、能调用工具、能感知环境"的桌面 AI 伴侣
@@ -120,10 +120,10 @@
 │         │                 │                       │                │
 │         └────────┬────────┴───────────────────────┘                │
 └──────────────────┼─────────────────────────────────────────────────┘
-                   │  统一 API：import { AIClient } from '@ig-live/ai-sdk'
+                   │  统一 API：import { AIClient } from '@nomi-ai/ai-sdk'
                    ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│  @ig-live/ai-sdk  ⭐ Layer 1 · 独立 SDK（纯 TS，环境无关）           │
+│  @nomi-ai/ai-sdk  ⭐ Layer 1 · 独立 SDK（纯 TS，环境无关）           │
 │  ├── modalities/    Provider 抽象 + 各家实现（LLM/ASR/TTS/Vision）  │
 │  ├── harness/       Agent 运行时（Planner/Executor/Memory/Guard）   │
 │  ├── tools/         工具注册中心（BaseTool + Registry）             │
@@ -137,7 +137,7 @@
                    │
                    ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│  @ig-live/ai-runtime  ⭐ Layer 2 · Electron 主进程运行时             │
+│  @nomi-ai/ai-runtime  ⭐ Layer 2 · Electron 主进程运行时             │
 │  持有 SDK 单例，负责状态、持久化、跨窗口协调                        │
 │  ├── AIRuntimeService.ts   全局单例 + 生命周期                      │
 │  ├── IPCTransportServer.ts 把 SDK 全部 API 自动暴露为 IPC 通道       │
@@ -150,7 +150,7 @@
                    │
                    ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│  @ig-live/ai-sdk-client  ⭐ Layer 3 · 渲染进程薄客户端                │
+│  @nomi-ai/ai-sdk-client  ⭐ Layer 3 · 渲染进程薄客户端                │
 │  通过 IPC Transport 消费 SDK，API 与直调 SDK 100% 一致              │
 │  ├── IPCTransportClient.ts  渲染进程 IPC 客户端                      │
 │  ├── ClientAIClient.ts      与 AIClient 同接口的透明代理             │
@@ -170,9 +170,9 @@
 
 | 包 | 环境 | 状态 | 职责 | 依赖 |
 |---|---|---|---|---|
-| `@ig-live/ai-sdk` | 纯 TS，可跑 Node / 浏览器 / Electron | 无 | 定义接口、Provider 实现、Agent 逻辑 | 仅 fetch + zod 等纯库 |
-| `@ig-live/ai-runtime` | Electron 主进程 | 单例 | 密钥、记忆持久化、IPC 服务端、跨窗口协调 | ai-sdk + electron + fs |
-| `@ig-live/ai-sdk-client` | Electron 渲染进程 | 无 | IPC 客户端 + React Hooks | ai-sdk (types only) + react |
+| `@nomi-ai/ai-sdk` | 纯 TS，可跑 Node / 浏览器 / Electron | 无 | 定义接口、Provider 实现、Agent 逻辑 | 仅 fetch + zod 等纯库 |
+| `@nomi-ai/ai-runtime` | Electron 主进程 | 单例 | 密钥、记忆持久化、IPC 服务端、跨窗口协调 | ai-sdk + electron + fs |
+| `@nomi-ai/ai-sdk-client` | Electron 渲染进程 | 无 | IPC 客户端 + React Hooks | ai-sdk (types only) + react |
 
 ### 2.4 AI 基座：直接使用开源 DeepSeek Harness (dsh)
 
@@ -227,8 +227,8 @@
 {
   "dependencies": {
     "@deepseek-ai/dsh": "^0.1.2-alpha.2",
-    "@ig-live/bundle-ig-base": "workspace:*",
-    "@ig-live/bundle-ig-electron-caps": "workspace:*"
+    "@nomi-ai/bundle-ig-base": "workspace:*",
+    "@nomi-ai/bundle-ig-electron-caps": "workspace:*"
   }
 }
 
@@ -236,8 +236,8 @@
 {
   "dependencies": {
     "@deepseek-ai/dsh": "^0.1.2-alpha.2",   // 仅用类型和 seam key
-    "@ig-live/bundle-ig-mascot": "workspace:*",
-    "@ig-live/ai-sdk-client": "workspace:*"
+    "@nomi-ai/bundle-ig-mascot": "workspace:*",
+    "@nomi-ai/ai-sdk-client": "workspace:*"
   }
 }
 ```
@@ -376,9 +376,9 @@ profiles/                                 ⭐ 项目根级 profile YAML
 name: waifu
 bundles:
   - dsh-base                                        # dsh 自带
-  - '@ig-live/bundle-ig-base'                       # 本仓库
-  - '@ig-live/bundle-ig-mascot'                     # 本仓库
-  - '@ig-live/bundle-ig-electron-caps'              # 本仓库
+  - '@nomi-ai/bundle-ig-base'                       # 本仓库
+  - '@nomi-ai/bundle-ig-mascot'                     # 本仓库
+  - '@nomi-ai/bundle-ig-electron-caps'              # 本仓库
 patch:                                              # row id 覆盖
   - id: llm.default
     config: { provider: 'ollama', model: 'qwen2.5:7b' }
@@ -394,8 +394,8 @@ patch:                                              # row id 覆盖
 name: chat-only
 bundles:
   - dsh-base
-  - '@ig-live/bundle-ig-base'
-  - '@ig-live/bundle-ig-electron-caps'
+  - '@nomi-ai/bundle-ig-base'
+  - '@nomi-ai/bundle-ig-electron-caps'
 patch:
   - id: llm.default
     config: { provider: 'openai', model: 'gpt-4o-mini' }
@@ -407,7 +407,7 @@ patch:
 name: mcp-headless
 bundles:
   - dsh-headless                                    # dsh 自带的 one-shot bundle
-  - '@ig-live/bundle-ig-base'                       # 只挂 LLM/工具/MCP 桥接
+  - '@nomi-ai/bundle-ig-base'                       # 只挂 LLM/工具/MCP 桥接
 ```
 
 装配（一行代码）：
@@ -436,18 +436,18 @@ const ctx = await boot({ profile: 'waifu', home: app.getPath('userData') + '/dsh
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│  Layer 3 · @ig-live/ai-sdk-client（渲染 IPC + Hooks） │
+│  Layer 3 · @nomi-ai/ai-sdk-client（渲染 IPC + Hooks） │
 └──────────────────────┬────────────────────────────────┘
                        │ IPC
 ┌──────────────────────▼────────────────────────────────┐
-│  Layer 2 · @ig-live/ai-runtime（Electron 主进程桥接） │
+│  Layer 2 · @nomi-ai/ai-runtime（Electron 主进程桥接） │
 │  • dsh.boot('waifu') 装配 ctx                         │
 │  • 挂载 bundle-ig-base + bundle-ig-electron-caps      │
 │  • registerIpcHandlers(ctx) 把 seam 桥给渲染进程      │
 └──────────────────────┬────────────────────────────────┘
                        │ 使用
 ┌──────────────────────▼────────────────────────────────┐
-│  Layer 1 · @ig-live/ai-sdk（业务门面 AIClient）        │
+│  Layer 1 · @nomi-ai/ai-sdk（业务门面 AIClient）        │
 │  • 内部通过 ctx.use(seam) 消费 dsh + 自定义 seam       │
 │  • 保持 API 稳定，屏蔽 dsh 版本升级的表面变动          │
 └──────────────────────┬────────────────────────────────┘
@@ -502,7 +502,7 @@ packages/ai-sdk/                          ⭐ 新建包（纯 TS，仅业务门�
 │   └── index.ts                            导出 AIClient / facades / types
 │
 ├── tests/                                  单元测试（用 dsh 提供的 test context）
-├── package.json                            dependencies: '@deepseek-ai/dsh', '@ig-live/bundle-ig-base'
+├── package.json                            dependencies: '@deepseek-ai/dsh', '@nomi-ai/bundle-ig-base'
 ├── tsconfig.json
 └── README.md
 ```
@@ -550,7 +550,7 @@ packages/ai-runtime/                     ⭐ 新建包（仅在 Electron 主进�
 │   │
 │   └── index.ts
 │
-├── package.json                          依赖：@ig-live/ai-sdk + electron
+├── package.json                          依赖：@nomi-ai/ai-sdk + electron
 └── tsconfig.json
 ```
 
@@ -576,7 +576,7 @@ packages/ai-sdk-client/                  ⭐ 新建包（渲染进程使用）
 │   │
 │   └── index.ts
 │
-├── package.json                          依赖：@ig-live/ai-sdk (types) + react
+├── package.json                          依赖：@nomi-ai/ai-sdk (types) + react
 └── tsconfig.json
 ```
 
@@ -628,14 +628,14 @@ packages/electron/                       [改造] 注入 ai-runtime 并保留原
 
 ```
                      ┌─────────────────┐
-                     │  @ig-live/      │
+                     │  @nomi-ai/      │
                      │    ai-sdk       │◄──────────────┐
                      └────────▲────────┘               │
                               │                        │
               ┌───────────────┴───────────────┐        │
               │                               │        │
     ┌─────────┴─────────┐          ┌─────────┴───────┴──┐
-    │  @ig-live/        │          │  @ig-live/          │
+    │  @nomi-ai/        │          │  @nomi-ai/          │
     │    ai-runtime     │          │    ai-sdk-client    │
     └─────────▲─────────┘          └─────────▲───────────┘
               │                              │
@@ -946,7 +946,7 @@ export interface AppConfig {
 ### 4.9 AIClient 顶层入口（SDK 唯一门面）
 
 ```typescript
-// @ig-live/ai-sdk/AIClient.ts
+// @nomi-ai/ai-sdk/AIClient.ts
 export interface AIClientOptions {
   config?: AppConfig;                        // 初始配置（可后续通过 setConfig 更新）
   memoryStorage?: IMemoryStorage;            // 默认 InMemoryStorage
@@ -1094,8 +1094,8 @@ export interface IClock { now(): number; }
 
 ```tsx
 // packages/ai-chat/src/main.tsx
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
 
 const client = new ClientAIClient({ ipc: window.aiChatAPI });
 
@@ -1106,7 +1106,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // packages/ai-chat/src/components/MessageList/index.tsx
-import { useChat } from '@ig-live/ai-sdk-client/react';
+import { useChat } from '@nomi-ai/ai-sdk-client/react';
 export function MessageList({ sessionId }) {
   const { messages, isStreaming } = useChat({ sessionId });
   return messages.map(m => <MessageBubble key={m.id} msg={m} />);
@@ -1117,8 +1117,8 @@ export function MessageList({ sessionId }) {
 
 ```tsx
 // packages/renderer/src/App.tsx
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
 
 const client = new ClientAIClient({ ipc: window.waifuAPI });   // 同一份 IPC，桥接同一个 Runtime
 
@@ -1129,7 +1129,7 @@ const client = new ClientAIClient({ ipc: window.waifuAPI });   // 同一份 IPC�
 </AIProvider>
 
 // packages/renderer/src/hooks/useWaifuAgent.ts  ⭐ 看板娘专属 Agent 封装
-import { useAgent, useAIEvents } from '@ig-live/ai-sdk-client/react';
+import { useAgent, useAIEvents } from '@nomi-ai/ai-sdk-client/react';
 
 export function useWaifuAgent() {
   const { run, steps, isRunning } = useAgent({ sessionId: 'waifu-default', mode: 'agent' });
@@ -1148,7 +1148,7 @@ export function useWaifuAgent() {
 }
 
 // packages/renderer/src/hooks/useTTSLipSync.ts  ⭐ 联动 Live2D
-import { useAIEvents } from '@ig-live/ai-sdk-client/react';
+import { useAIEvents } from '@nomi-ai/ai-sdk-client/react';
 export function useTTSLipSync(model) {
   useAIEvents('tts:start', () => model.playMotion('speaking'));
   useAIEvents('tts:end',   () => model.playMotion('idle'));
@@ -1165,7 +1165,7 @@ export function useTTSLipSync(model) {
 
 ```typescript
 // packages/electron/src/main.ts
-import { AIRuntimeService } from '@ig-live/ai-runtime';
+import { AIRuntimeService } from '@nomi-ai/ai-runtime';
 
 const runtime = await AIRuntimeService.create({
   userDataPath: app.getPath('userData'),
@@ -1173,7 +1173,7 @@ const runtime = await AIRuntimeService.create({
 await runtime.initialize();          // 加载 config、注册 IPC、启动降级链等
 
 // packages/electron/src/mcp/VirtualCharacterMCPServer.ts
-import { AIRuntimeService } from '@ig-live/ai-runtime';
+import { AIRuntimeService } from '@nomi-ai/ai-runtime';
 
 async function handleMcpCall(toolName, args) {
   const client = AIRuntimeService.instance.client;
@@ -1739,7 +1739,7 @@ userData/
 | P2-7 | **用户偏好薄层记忆**（对齐 §6.3.1）：新增 [preference/](../packages/bundle-ig-base/src/plugins/preference)：`UserProfileStorePlugin` / `PreferenceExtractor` / `PreferenceDistiller` / `HabitStatCollector` / `migrate.ts` + [seams/userProfile.ts](../packages/bundle-ig-base/src/seams/userProfile.ts) | L3 记忆闭环 |
 | P2-8 | 单元测试：mock ctx + 每个 plugin 独立 spec | 覆盖率 ≥ 80% |
 
-**退出准则**：`waifu.yml` 追加 `@ig-live/bundle-ig-base` 后，`ctx.llm.list()` 返回 8 项、`ctx.tools.list()` 返回内置工具、`ctx.userProfile.get()` 返回默认 profile。
+**退出准则**：`waifu.yml` 追加 `@nomi-ai/bundle-ig-base` 后，`ctx.llm.list()` 返回 8 项、`ctx.tools.list()` 返回内置工具、`ctx.userProfile.get()` 返回默认 profile。
 
 ---
 
@@ -1787,7 +1787,7 @@ userData/
 
 | # | 任务 | 交付物 |
 |---|---|---|
-| P5-1 | 包骨架（tsup 双出 esm/cjs），`peerDependencies: @deepseek-ai/dsh, @ig-live/bundle-ig-base` | 可发布 |
+| P5-1 | 包骨架（tsup 双出 esm/cjs），`peerDependencies: @deepseek-ai/dsh, @nomi-ai/bundle-ig-base` | 可发布 |
 | P5-2 | [types/](../packages/ai-sdk/src/types)：Message / Session / ToolSpec / MemoryFact / **UserProfile**（§6.3.1）/ events | 跨端 DTO 定稿 |
 | P5-3 | [AIClient](../packages/ai-sdk/src/AIClient.ts)：接收 dsh `Context`，组合各 Facade | 门面稳定 |
 | P5-4 | Facade 全量：Chat / Session / Tools / Memory（含 `userProfile.*`）/ Asr / Tts / Live2d | 6 个 Facade |

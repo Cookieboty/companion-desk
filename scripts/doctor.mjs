@@ -21,7 +21,7 @@ const bad = (m, fix) => {
   console.log(`  ✖ ${m}${fix ? `\n      → ${fix}` : ''}`);
 };
 
-console.log(quick ? 'Preflight' : 'Companion Desk doctor');
+console.log(quick ? 'Preflight' : 'Nomi doctor');
 
 // 1. Node
 const v = process.versions.node.split('.').map(Number);

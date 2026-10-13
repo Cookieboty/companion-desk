@@ -6,7 +6,7 @@
  * 在 Electron preload 里挂载 —— 此文件仅供 demo。
  */
 
-import type { IPCBridge, IpcEventListener, IpcUnsubscribe } from '@ig-live/ai-sdk-client';
+import type { IPCBridge, IpcEventListener, IpcUnsubscribe } from '@nomi-ai/ai-sdk-client';
 
 type Handler = (...args: unknown[]) => unknown | Promise<unknown>;
 

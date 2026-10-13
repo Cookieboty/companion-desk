@@ -24,7 +24,7 @@
  * - `ai.asr.latency.final` 目前没有独立事件源，留待 ASR provider 集成时接线。
  */
 
-import type { AIClientEvent, AIClientEventMap } from '@ig-live/ai-sdk';
+import type { AIClientEvent, AIClientEventMap } from '@nomi-ai/ai-sdk';
 
 import { AI_METRICS } from './observability/metrics';
 import { getTracer, type Tracer, type Span } from './observability/tracing';

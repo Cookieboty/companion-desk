@@ -1,6 +1,6 @@
-import type { ModelDownloadProgress, StoreEntryView, StoreStateView } from '@ig-live/types';
-import { t } from '@ig-live/ui';
-import { Badge, Button, EmptyState, Notice } from '@ig-live/ui';
+import type { ModelDownloadProgress, StoreEntryView, StoreStateView } from '@nomi-ai/types';
+import { t } from '@nomi-ai/ui';
+import { Badge, Button, EmptyState, Notice } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import styles from './style.module.css';

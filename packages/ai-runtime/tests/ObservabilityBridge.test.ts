@@ -4,8 +4,8 @@
  * 通过 EventBroadcaster 触发真实 dsh → AIClient 事件桥接，断言 metrics/tracing 埋点。
  */
 
-import { AIClient } from '@ig-live/ai-sdk';
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
+import { AIClient } from '@nomi-ai/ai-sdk';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { EventBroadcaster } from '../src/EventBroadcaster';

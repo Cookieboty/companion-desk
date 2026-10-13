@@ -4,15 +4,15 @@
  * 快捷键：按住 F2 说话（Esc 取消）；Ctrl/⌘+Shift+H 开关免按键。
  * 看板娘那边说的话（ai:voice:inject）也从这里进入输入框 / 直接发送。
  */
-import { t } from '@ig-live/ui';
-import { Modal, Tooltip } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Modal, Tooltip } from '@nomi-ai/ui';
 import {
   MicButton,
   VoiceSettingsPanel,
   VoiceStatus,
   useVoice,
   type UseVoice,
-} from '@ig-live/voice';
+} from '@nomi-ai/voice';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 

@@ -22,7 +22,7 @@ import {
 
 afterEach(cleanup);
 
-describe('@ig-live/ui', () => {
+describe('@nomi-ai/ui', () => {
   it('Button: variants map to classes, default type=button, passes data-testid', () => {
     render(
       <Button variant="primary" size="sm" data-testid="b">

@@ -2,7 +2,7 @@
 
 > Status: **P0 (foundations), P1 (read & summarize) and P2 (notes, reminders, clipboard) are implemented**. See [../DESKTOP_TOOLS.md](../DESKTOP_TOOLS.md). P3+ are still design only.
 > P1 differences from this design: PDFs are parsed with `unpdf` (pdf.js) and docx with `fflate` instead of mammoth; minimal `fs_write_text` / `fs_trash` / `undo_last` landed early to exercise consent, journal and trash; there is no feature flag yet.
-> Owner: Companion Desk. Last updated: 2026-10-10.
+> Owner: Nomi. Last updated: 2026-10-10.
 
 ## 1. Goals and non-goals
 
@@ -39,7 +39,7 @@ drag file onto mascot  ──────────▶     ▲   (built-in too
                                        │                     ├─ AuditLog          (append-only JSONL)
                                        │                     ├─ UndoJournal       (trash + inverse ops)
                                        │                     └─ Scheduler         (reminders → mascot)
-                                       └─ McpBridgePlugin ◀── also exposed as built-in MCP server "companion-desktop"
+                                       └─ McpBridgePlugin ◀── also exposed as built-in MCP server "nomitop"
 ```
 
 - **Main process only.** Tools are registered by a new `DesktopToolsPlugin`, in a new `bundle-ig-desktop` package or in `bundle-ig-electron-caps`. They use the existing `ToolRegistry` and `ToolDefinition` types (zod input, `dangerous` flag). The renderer never touches the filesystem. It only:
@@ -380,7 +380,7 @@ The confirmation is two-stage: the mascot bubble first, then a dialog.
 
 1. When a tool needs confirmation, the AI loop pauses: the tool's `execute` awaits `PermissionBroker.confirm()`.
 2. The mascot plays `think`, her expression changes to `surprised` for destructive tools, and the bubble shows a one-line summary such as "要把 23 个文件移到「下载/图片」吗？", with **[允许] [查看详情] [拒绝]** buttons.
-3. 查看详情 opens a modal (`@ig-live/ui` `Dialog`) that shows:
+3. 查看详情 opens a modal (`@nomi-ai/ui` `Dialog`) that shows:
    - the tool name and the exact JSON arguments;
    - a dry-run preview: the plan list, or the first lines of the text that would be written;
    - the scope;
@@ -438,8 +438,8 @@ The confirmation is two-stage: the mascot bubble first, then a dialog.
 
 ## 6. MCP alignment
 
-- The same `ToolDefinition`s are registered in the `ToolRegistry`, so the built-in agent can use them. They are **also** exposed as a built-in MCP server, `companion-desktop`, so external MCP clients can use them; Claude Desktop and Cursor are examples. The transports are:
-  - stdio, through `companion-desk --mcp-desktop`, which reuses the existing `--no-window` headless runtime from E3;
+- The same `ToolDefinition`s are registered in the `ToolRegistry`, so the built-in agent can use them. They are **also** exposed as a built-in MCP server, `nomitop`, so external MCP clients can use them; Claude Desktop and Cursor are examples. The transports are:
+  - stdio, through `nomi --mcp-desktop`, which reuses the existing `--no-window` headless runtime from E3;
   - streamable HTTP on `127.0.0.1` with a random port and a bearer token that is shown once in Settings.
 - Tool names, the input JSON Schema (from zod), and `annotations` follow the MCP 2025-06 spec. The annotations are `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` (true only for `open_url` and the calendar connectors).
 - External MCP calls go through the **same** PermissionBroker. The confirmation shows "来自 Cursor 的请求", taken from the client info. The MCP server is off by default and is enabled per client.
@@ -481,7 +481,7 @@ The confirmation is two-stage: the mascot bubble first, then a dialog.
 | P2 · notes + reminders + clipboard | notes store + search index, reminders scheduler + proactive mascot flow + missed-on-launch, clipboard tools with consent | 5 d |
 | P3 · organize + open/launch | `fs_mkdir/move/copy/write_text/trash`, organize plan/apply + batch undo, `open_path/open_url/reveal`, app registry per OS + `app_launch` | 6–7 d |
 | P4 · calendar | local ICS calendar + tools; then connectors: Google (OAuth loopback), Outlook (MSAL), CalDAV (tsdav); free-time finder; morning briefing | 4 d local + 3 d per connector |
-| P5 · MCP server | expose registry as `companion-desktop` MCP (stdio + localhost HTTP), annotations, client allowlist, resources/prompts | 3–4 d |
+| P5 · MCP server | expose registry as `nomitop` MCP (stdio + localhost HTTP), annotations, client allowlist, resources/prompts | 3–4 d |
 
 The total is roughly 6–7 weeks for one developer, or 3–4 weeks for two working in parallel: P1/P2 alongside P3/P4 once P0 has landed. Each phase ships behind a feature flag (`desktopTools.<phase>`) and goes through 3-OS CI e2e: Linux under xvfb, Windows and macOS with fixture folders.
 

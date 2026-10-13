@@ -4,11 +4,11 @@
  * 生产项目通常会用打包器构建；这里保留最原始的 CJS，便于直接 `electron .`。
  *
  * 使用方式：
- *   1. 先 `pnpm --filter @ig-live/ai-sdk-client-demo dev:renderer` 起 vite dev server
+ *   1. 先 `pnpm --filter @nomi-ai/ai-sdk-client-demo dev:renderer` 起 vite dev server
  *   2. 另开一个 shell：`VITE_DEV_URL=http://127.0.0.1:6129 electron examples/ai-sdk-client-demo`
  *
  * 或者：
- *   1. `pnpm --filter @ig-live/ai-sdk-client-demo build`
+ *   1. `pnpm --filter @nomi-ai/ai-sdk-client-demo build`
  *   2. `electron examples/ai-sdk-client-demo`（走本地 dist/index.html）
  */
 

@@ -31,7 +31,7 @@
 
 - 目录 [packages/ai-runtime](../../packages/ai-runtime)
 - `package.json`：
-  - `peerDependencies: electron @ig-live/ai-sdk @ig-live/bundle-ig-base @ig-live/bundle-ig-electron-caps @deepseek-ai/dsh`
+  - `peerDependencies: electron @nomi-ai/ai-sdk @nomi-ai/bundle-ig-base @nomi-ai/bundle-ig-electron-caps @deepseek-ai/dsh`
   - 仅 CJS 输出（Electron main 兼容性）
 - 顶部断言：`if (process.type !== 'browser') throw`
 - 验收：`pnpm build` 通过
@@ -98,13 +98,13 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/ai-runtime](../../packages/ai-runtime)
+- 1 个可发布 npm 包 [@nomi-ai/ai-runtime](../../packages/ai-runtime)
 - IPCTransportServer + EventBroadcaster + 兼容层
 - Legacy channel mapping 文档
 
 ## 退出准则（自动化）
 
-1. `pnpm --filter @ig-live/ai-runtime build test` 全绿
+1. `pnpm --filter @nomi-ai/ai-runtime build test` 全绿
 2. Electron 集成测试 4 场景通过（macos + windows）
 3. 主进程日志能看到 `dsh booted (<profile>)` 与通道注册数
 4. 旧通道 → 新 AIClient 兼容层的每条 mapping 均有集成测试

@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /**
  * 渲染进程侧的 provider 配置客户端：`ai:providers:*` IPC（经 preload 的 window.aiIPC）。
  *

@@ -2,8 +2,8 @@
  * 对话窗口顶栏（参考 Codex app：右上角放常用入口，下面是对话）。
  * 图标打开右侧快速视图（抽屉），详细配置在「设置」里。
  */
-import { t } from '@ig-live/ui';
-import { Tooltip } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Tooltip } from '@nomi-ai/ui';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { extClient } from '../../services/extClient';

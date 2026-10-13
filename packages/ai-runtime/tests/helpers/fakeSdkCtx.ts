@@ -7,8 +7,8 @@
  * - `emitted` 保留所有 `emit(...)` 的记录，便于断言 dsh 事件是否被发出。
  */
 
-import type { SdkContext } from '@ig-live/ai-sdk';
-import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@ig-live/bundle-ig-base';
+import type { SdkContext } from '@nomi-ai/ai-sdk';
+import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@nomi-ai/bundle-ig-base';
 
 export interface FakeSdkCtx extends SdkContext {
   provide<T>(key: ServiceKey<T>, impl: T): void;

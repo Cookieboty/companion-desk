@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { applyLocale, currentTheme, getLocale } from '@ig-live/ui';
+import { applyLocale, currentTheme, getLocale } from '@nomi-ai/ui';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';

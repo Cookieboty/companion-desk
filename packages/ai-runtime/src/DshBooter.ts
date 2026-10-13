@@ -6,7 +6,7 @@
  *    真正的启动 API 在 `@deepseek-ai/dsh-app-boot`：`loadProfile()` 读取
  *    `<home>/profiles/<name>`（bundle layers + profile patch），`boot()` 用一份空的根
  *    `cordis.yml` + 这些 patch 拉起 cordis 树。dsh 需要 Node ≥ 22（Electron ≥ 34）。
- * 2. **ig 插件宿主**：`@ig-live/bundle-ig-*` 不是 cordis bundle，由
+ * 2. **ig 插件宿主**：`@nomi-ai/bundle-ig-*` 不是 cordis bundle，由
  *    [IgPluginHost](./IgPluginHost.ts) 按清单 apply，得到 AIClient 使用的 `PluginContext`。
  *    dsh 内核 context 以 `ctx.dsh` 挂在宿主上，供后续桥接。
  *
@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { UserProfileKey, type PluginContext } from '@ig-live/bundle-ig-base';
+import { UserProfileKey, type PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import type { Booter, StartOptions } from './AIRuntimeService';
 import { createIgPluginHost, type IgPluginEntry, type IgPluginHost } from './IgPluginHost';

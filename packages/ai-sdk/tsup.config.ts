@@ -5,8 +5,8 @@ export default createTsup({
   entry: ['src/index.ts', 'src/types/index.ts', 'src/config/index.ts'],
   external: [
     '@deepseek-ai/dsh',
-    '@ig-live/bundle-ig-base',
-    '@ig-live/bundle-ig-mascot',
-    '@ig-live/bundle-ig-electron-caps',
+    '@nomi-ai/bundle-ig-base',
+    '@nomi-ai/bundle-ig-mascot',
+    '@nomi-ai/bundle-ig-electron-caps',
   ],
 });

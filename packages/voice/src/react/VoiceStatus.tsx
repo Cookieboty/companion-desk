@@ -1,6 +1,6 @@
 /** 语音状态条：聆听 / 识别中 / 等待唤醒…；出错时给出可操作的提示。麦克风打开时始终可见（隐私指示）。 */
-import { t } from '@ig-live/ui';
-import { cx } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { cx } from '@nomi-ai/ui';
 import React from 'react';
 
 import type { VoiceState } from '../controller';

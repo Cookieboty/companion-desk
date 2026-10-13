@@ -28,7 +28,7 @@ import {
   UserPreferenceMemoryPlugin,
   type LLMProviderEntry,
   type McpServerConfig,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import type { IgPluginEntry } from './IgPluginHost';
 

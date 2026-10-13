@@ -26,7 +26,7 @@
 
 ## 工具栏
 
-- 磨砂玻璃 + 低饱和配色，无霓虹辉光；Lucide（ISC）图标；`@ig-live/ui` Tooltip；键盘焦点有清晰焦点环。
+- 磨砂玻璃 + 低饱和配色，无霓虹辉光；Lucide（ISC）图标；`@nomi-ai/ui` Tooltip；键盘焦点有清晰焦点环。
 - 常驻按钮：AI 对话、切换角色、动作、语音、置顶；其余在「更多」菜单里。菜单里可以「收起为单个按钮」，
   以及在 静谧深色（默认）/ 浅色 / 暖色 三套配色间切换（保存在本机）。
 - 布局：独立图层（z-index 高于画布与气泡），放在角色包围盒旁的槽位（`placeGutter`，见 `mascot/layoutStore.ts`），
@@ -34,7 +34,7 @@
 - 空闲时淡出；光标靠近角色或工具栏（全局光标轮询，点击穿透状态下也有效）时出现。显示时带 `data-mascot-ui`，
   点击穿透的命中测试（Win/mac `elementFromPoint`、Linux `setShape`）都会算上它。
 
-`@ig-live/ui` 的强调色同时调柔：`--cd-color-accent` 为 `#55759f`（白字对比 4.7:1，AA），
+`@nomi-ai/ui` 的强调色同时调柔：`--cd-color-accent` 为 `#55759f`（白字对比 4.7:1，AA），
 `--cd-color-accent-2` 为 `#8db4c8`（深色背景上 8:1），去掉了霓虹蓝 / 青 / 紫辉光。对话窗口的硬编码颜色已改为引用这些 token。
 
 ## AI 回复气泡

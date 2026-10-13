@@ -1,5 +1,5 @@
 {
-  "name": "@ig-live/ai-chat",
+  "name": "@nomi-ai/ai-chat",
   "version": "1.0.0",
   "description": "AI对话客户端UI包",
   "main": "dist/index.js",
@@ -15,15 +15,15 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@ig-live/ai-sdk-client": "workspace:*",
-    "@ig-live/ui": "workspace:*",
-    "@ig-live/voice": "workspace:*",
+    "@nomi-ai/ai-sdk-client": "workspace:*",
+    "@nomi-ai/ui": "workspace:*",
+    "@nomi-ai/voice": "workspace:*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-window": "^2.3.3"
   },
   "devDependencies": {
-    "@ig-live/types": "workspace:*",
+    "@nomi-ai/types": "workspace:*",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",

@@ -1,6 +1,6 @@
-# @ig-live/ai-sdk-client-demo
+# @nomi-ai/ai-sdk-client-demo
 
-> P7-5 · 最小 demo：验证 `@ig-live/ai-sdk-client` 的 5 个 React Hook（`useChat / useAgent / useAIEvents / useTTSLipSync / useUserProfile`）+ AIProvider + preload 模板。
+> P7-5 · 最小 demo：验证 `@nomi-ai/ai-sdk-client` 的 5 个 React Hook（`useChat / useAgent / useAIEvents / useTTSLipSync / useUserProfile`）+ AIProvider + preload 模板。
 
 ## 目录
 
@@ -23,7 +23,7 @@ examples/ai-sdk-client-demo/
 ### 纯浏览器模式（推荐做 hooks 联调）
 
 ```bash
-pnpm --filter @ig-live/ai-sdk-client-demo dev:renderer
+pnpm --filter @nomi-ai/ai-sdk-client-demo dev:renderer
 # open http://127.0.0.1:6129
 ```
 
@@ -38,7 +38,7 @@ Demo 会自动执行 [`installMockBridge`](src/mockBridge.ts)，把 `window.aiIP
 
 ```bash
 # 1) 构建 renderer 静态资源
-pnpm --filter @ig-live/ai-sdk-client-demo build
+pnpm --filter @nomi-ai/ai-sdk-client-demo build
 
 # 2) 启动 Electron；配合真实主进程 AIRuntime 时把 aiIPC 换成 mkAiPreload
 electron examples/ai-sdk-client-demo
@@ -48,13 +48,13 @@ electron examples/ai-sdk-client-demo
 
 ```bash
 # terminal 1
-pnpm --filter @ig-live/ai-sdk-client-demo dev:renderer
+pnpm --filter @nomi-ai/ai-sdk-client-demo dev:renderer
 
 # terminal 2
 VITE_DEV_URL=http://127.0.0.1:6129 electron examples/ai-sdk-client-demo
 ```
 
-> ⚠️ demo 的 [preload.cjs](electron/preload.cjs) 只是最小演示；真实项目应当直接 `require('@ig-live/ai-sdk-client/preload').mkAiPreload({...})`，参见 [docs/preload-usage.md](../../docs/preload-usage.md)。
+> ⚠️ demo 的 [preload.cjs](electron/preload.cjs) 只是最小演示；真实项目应当直接 `require('@nomi-ai/ai-sdk-client/preload').mkAiPreload({...})`，参见 [docs/preload-usage.md](../../docs/preload-usage.md)。
 
 ## 覆盖矩阵
 

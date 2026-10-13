@@ -1,5 +1,5 @@
 /**
- * @ig-live/ai-sdk — 主入口。
+ * @nomi-ai/ai-sdk — 主入口。
  *
  * 环境无关的 AI 门面（P5 · L1）。三大消费方（renderer / main / CLI）
  * 通过 `new AIClient(ctx)` 拿到全部业务能力，屏蔽 dsh 表面变动。

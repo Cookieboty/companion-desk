@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
             <path d="M9 4v16" />
           </svg>
         </button>
-        {!collapsed && <span className={styles.brand}>Companion Desk</span>}
+        {!collapsed && <span className={styles.brand}>Nomi</span>}
       </div>
 
       <button

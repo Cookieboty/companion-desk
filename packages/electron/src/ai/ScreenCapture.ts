@@ -5,14 +5,13 @@
  * 的 thumbnail 转 PNG/JPEG buffer。区域截取通过 `crop` 完成。
  */
 
-import { desktopCapturer, nativeImage, screen } from 'electron';
-
 import type {
   CaptureOptions,
   CaptureResult,
   DisplayInfo,
   ScreenService,
-} from '@ig-live/bundle-ig-electron-caps';
+} from '@nomi-ai/bundle-ig-electron-caps';
+import { desktopCapturer, nativeImage, screen } from 'electron';
 
 export class ScreenCapture implements ScreenService {
   async listDisplays(): Promise<DisplayInfo[]> {
@@ -28,7 +27,7 @@ export class ScreenCapture implements ScreenService {
   async capture(opts: CaptureOptions = {}): Promise<CaptureResult> {
     const displays = screen.getAllDisplays();
     const targetDisplay = opts.displayId
-      ? displays.find((d) => String(d.id) === opts.displayId) ?? screen.getPrimaryDisplay()
+      ? (displays.find((d) => String(d.id) === opts.displayId) ?? screen.getPrimaryDisplay())
       : screen.getPrimaryDisplay();
 
     const maxWidth = opts.maxWidth ?? targetDisplay.bounds.width;
@@ -39,8 +38,7 @@ export class ScreenCapture implements ScreenService {
       thumbnailSize: { width: maxWidth, height: maxHeight },
     });
 
-    const source =
-      sources.find((s) => s.display_id === String(targetDisplay.id)) ?? sources[0];
+    const source = sources.find((s) => s.display_id === String(targetDisplay.id)) ?? sources[0];
     if (!source) {
       throw new Error('[ScreenCapture] desktopCapturer returned no sources');
     }

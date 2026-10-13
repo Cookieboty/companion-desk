@@ -1,6 +1,6 @@
 # Local ports
 
-All ports Companion Desk opens in development live in [`/dev-ports.json`](../dev-ports.json)
+All ports Nomi opens in development live in [`/dev-ports.json`](../dev-ports.json)
 (read by `scripts/ports.mjs`, the Vite configs, `scripts/dev.mjs`, `doctor`, `dev-smoke`).
 They are in the uncommon 6xxx/7xxx range to avoid clashes with common local services, and Vite
 uses `strictPort`, so a conflict fails loudly instead of silently hopping to another port.

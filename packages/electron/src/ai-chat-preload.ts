@@ -1,5 +1,5 @@
+import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
 import { contextBridge, ipcRenderer } from 'electron';
-import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
 
 // 为 AI 对话窗口注入 window.aiIPC（走 ai-sdk-client 的白名单桥）
 mkAiPreload({ contextBridge, ipcRenderer });
@@ -23,10 +23,10 @@ const aiChatAPI = {
   // 移除所有监听器
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
-  }
+  },
 };
 
 // 将API暴露给渲染进程
 contextBridge.exposeInMainWorld('electronAPI', aiChatAPI);
 
-console.log('AI Chat preload script loaded'); 
+console.log('AI Chat preload script loaded');

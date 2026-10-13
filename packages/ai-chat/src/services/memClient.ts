@@ -1,4 +1,4 @@
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 /**
  * 长期记忆客户端：`ai:mem:*` IPC（经 preload 的 window.aiIPC）。数据只在主进程 userData/memory。
  */

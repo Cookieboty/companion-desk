@@ -1,11 +1,11 @@
 /**
  * P7-5 · Electron preload —— 演示如何调用 `mkAiPreload`。
  *
- * 使用打包脚本时通常会引 `@ig-live/ai-sdk-client/preload`；这里为了保持 demo
+ * 使用打包脚本时通常会引 `@nomi-ai/ai-sdk-client/preload`；这里为了保持 demo
  * 的可运行性，仅内联最简 assertChannel 逻辑，与仓内实现语义一致。
  * 真实项目请直接：
  *   const { contextBridge, ipcRenderer } = require('electron');
- *   const { mkAiPreload } = require('@ig-live/ai-sdk-client/preload');
+ *   const { mkAiPreload } = require('@nomi-ai/ai-sdk-client/preload');
  *   mkAiPreload({ contextBridge, ipcRenderer });
  */
 

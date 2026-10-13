@@ -1,7 +1,7 @@
 /**
  * SchedulePanel —— 主动日程：提醒（含重复）、定时任务（每日简报等）、主动聊天、免打扰与通知。
  */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Switch,
   Tabs,
   Textarea,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {

@@ -11,7 +11,7 @@ import {
   UserProfileKey,
   type ProfilePatch,
   type UserProfileService,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import type { SdkContext } from '../di/SdkContext';
 import { AIClientError, ErrorCodes } from '../errors';

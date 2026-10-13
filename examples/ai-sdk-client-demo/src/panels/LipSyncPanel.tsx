@@ -1,4 +1,4 @@
-import { useAIClient, useTTSLipSync } from '@ig-live/ai-sdk-client/react';
+import { useAIClient, useTTSLipSync } from '@nomi-ai/ai-sdk-client/react';
 import { useState } from 'react';
 
 export function LipSyncPanel() {

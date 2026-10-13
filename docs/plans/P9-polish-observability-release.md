@@ -141,7 +141,7 @@
 
 ### P9-8 · SDK 版本化与发布 ✅（骨架 · Polish B）
 
-> **落地摘要**：`@changesets/cli` 已加入根 devDependencies；新建 [.changeset/config.json](../../.changeset/config.json) 配置 `fixed = [[@ig-live/ai-sdk, @ig-live/ai-runtime, @ig-live/ai-sdk-client]]`（三包同版本号 bump），其余包 ignore；根 `package.json` 增 `changeset` / `changeset:status` / `changeset:version` 三个 script；CI 上强制 PR 附 changeset。**首次实际发布**（内部 npm registry + GitHub Packages + `v0.1.0-alpha.1` tag）留在 Polish C。
+> **落地摘要**：`@changesets/cli` 已加入根 devDependencies；新建 [.changeset/config.json](../../.changeset/config.json) 配置 `fixed = [[@nomi-ai/ai-sdk, @nomi-ai/ai-runtime, @nomi-ai/ai-sdk-client]]`（三包同版本号 bump），其余包 ignore；根 `package.json` 增 `changeset` / `changeset:status` / `changeset:version` 三个 script；CI 上强制 PR 附 changeset。**首次实际发布**（内部 npm registry + GitHub Packages + `v0.1.0-alpha.1` tag）留在 Polish C。
 
 - 采用 [Changesets](https://github.com/changesets/changesets)：
   - 每个 PR 若涉及 [packages/ai-sdk](../../packages/ai-sdk) / [ai-runtime](../../packages/ai-runtime) / [ai-sdk-client](../../packages/ai-sdk-client) 必须附 changeset

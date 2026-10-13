@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import React, { useState } from 'react';
 
 import type { KbSource } from '../../services/kbClient';

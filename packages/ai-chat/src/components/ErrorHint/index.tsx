@@ -1,6 +1,6 @@
-import { toErrorHint, type ErrorAction } from '@ig-live/ai-sdk-client';
-import { t } from '@ig-live/ui';
-import { Button, IconButton } from '@ig-live/ui';
+import { toErrorHint, type ErrorAction } from '@nomi-ai/ai-sdk-client';
+import { t } from '@nomi-ai/ui';
+import { Button, IconButton } from '@nomi-ai/ui';
 import React from 'react';
 
 import styles from './index.module.css';

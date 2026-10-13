@@ -1,5 +1,5 @@
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
-import { t } from '@ig-live/ui';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
+import { t } from '@nomi-ai/ui';
 
 import { type ChatMessage, type ChatConfig, type ChatSession } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
@@ -73,7 +73,7 @@ const DEFAULT_CONFIG: ChatConfig = {
   autoSave: true,
   maxHistoryLength: 1000,
   systemPrompt:
-    '你是 Companion Desk，一个运行在用户电脑上的本地 AI 助手。请结合之前的对话内容，简洁、准确地回答。',
+    '你是 Nomi，一个运行在用户电脑上的本地 AI 助手。请结合之前的对话内容，简洁、准确地回答。',
 };
 
 const DEFAULT_MODELS: AIModelConfig[] = [

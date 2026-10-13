@@ -1,4 +1,4 @@
-import { useAgent, useAIEvents } from '@ig-live/ai-sdk-client/react';
+import { useAgent, useAIEvents } from '@nomi-ai/ai-sdk-client/react';
 import { useCallback, useEffect, useRef } from 'react';
 import type { FC } from 'react';
 

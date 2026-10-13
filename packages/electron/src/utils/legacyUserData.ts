@@ -1,5 +1,5 @@
 /**
- * 品牌更名（智能小助手 → Companion Desk）后，打包产物的 productName 变化会让
+ * 品牌更名（智能小助手 → Companion Desk → Nomi）后，打包产物的 productName 变化会让
  * Electron 的 userData 目录随之变化（`<appData>/<productName>`）。
  * 首次以新名称启动时，若新目录尚不存在而旧目录存在，则把旧目录**复制**过来
  * （不删除旧目录，便于回滚）。必须在 `app.whenReady()` 之前调用。
@@ -7,7 +7,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const LEGACY_PRODUCT_NAMES = ['智能小助手'] as const;
+/** 打包产物的历代 productName，新→旧依次尝试 */
+export const LEGACY_PRODUCT_NAMES = ['Companion Desk', '智能小助手'] as const;
+/** 未打包（开发）运行时 Electron 用 package.json name 作为目录名 */
+export const LEGACY_DEV_NAMES = ['@ig-live/electron'] as const;
 
 export interface MigrateResult {
   migrated: boolean;
@@ -20,7 +23,7 @@ export function migrateLegacyUserData(
   userDataDir: string,
   legacyNames: readonly string[] = LEGACY_PRODUCT_NAMES,
 ): MigrateResult {
-  if (fs.existsSync(userDataDir)) return { migrated: false, to: userDataDir };
+  if (hasUserData(userDataDir)) return { migrated: false, to: userDataDir };
   for (const name of legacyNames) {
     const from = path.join(appDataDir, name);
     if (from === userDataDir || !fs.existsSync(from)) continue;
@@ -28,4 +31,31 @@ export function migrateLegacyUserData(
     return { migrated: true, from, to: userDataDir };
   }
   return { migrated: false, to: userDataDir };
+}
+
+/**
+ * Chromium 在主脚本运行前就会在 userData 下建 Crashpad 等目录，因此不能用
+ * “目录是否存在”判断新目录是否已被使用；只要还没有任何应用自己的数据，就视为全新。
+ */
+const BOOT_ENTRIES = new Set([
+  'Crashpad',
+  'Cache',
+  'Code Cache',
+  'GPUCache',
+  'DawnCache',
+  'DawnGraphiteCache',
+  'DawnWebGPUCache',
+  'Dictionaries',
+  'Local State',
+  'Network Persistent State',
+  'Preferences',
+  'Shared Dictionary',
+  'SharedStorage',
+  'blob_storage',
+  'logs',
+]);
+
+export function hasUserData(dir: string): boolean {
+  if (!fs.existsSync(dir)) return false;
+  return fs.readdirSync(dir).some((e) => !BOOT_ENTRIES.has(e));
 }

@@ -2,9 +2,9 @@
  * 统一设置页（参考 Codex app 的 Settings：左侧分区导航，右侧内容）。
  * 各分区直接复用原有面板，通过 ModalHostContext 以「内嵌」方式渲染，功能与 test id 不变。
  */
-import { t } from '@ig-live/ui';
-import { ModalHostContext } from '@ig-live/ui';
-import { VoiceSettingsPanel, useVoice } from '@ig-live/voice';
+import { t } from '@nomi-ai/ui';
+import { ModalHostContext } from '@nomi-ai/ui';
+import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';

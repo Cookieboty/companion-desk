@@ -4,7 +4,7 @@
  * 通过 [`AsrKey`](file:///../../bundle-ig-electron-caps/src/seams/asr.ts) 取得 dsh 注入的
  * `AsrService`；未注入时抛 `SEAM_NOT_INJECTED`（例如渲染进程 profile 未挂 electron-caps）。
  *
- * 依赖仅停留在**类型**层：`AsrKey` 通过子入口 `@ig-live/bundle-ig-electron-caps/seams`
+ * 依赖仅停留在**类型**层：`AsrKey` 通过子入口 `@nomi-ai/bundle-ig-electron-caps/seams`
  * 引入，避开 electron-caps 主入口的 `assertElectronMainProcess` 运行时守卫，保证 SDK
  * 在渲染 / CLI / 测试环境中也能纯类型编译。
  */
@@ -18,7 +18,7 @@ import {
   type PcmChunk,
   type AsrService,
   type AsrProvider,
-} from '@ig-live/bundle-ig-electron-caps/seams';
+} from '@nomi-ai/bundle-ig-electron-caps/seams';
 
 import type { SdkContext } from '../di/SdkContext';
 import { AIClientError, ErrorCodes } from '../errors';

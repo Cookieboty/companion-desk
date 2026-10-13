@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import { z } from 'zod';
 
 import { describeRepeat, sanitizeRepeat } from '../schedule/recurrence';

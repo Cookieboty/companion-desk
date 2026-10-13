@@ -1,4 +1,4 @@
-import type { MascotInteractionConfig } from '@ig-live/types';
+import type { MascotInteractionConfig } from '@nomi-ai/types';
 
 const KEY = 'mascot.interaction.v2';
 

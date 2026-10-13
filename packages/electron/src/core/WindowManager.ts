@@ -137,7 +137,7 @@ export class WindowManager implements IWindowManager {
         alwaysOnTop: false,
         resizable: true,
         show: false,
-        title: 'Companion Desk',
+        title: 'Nomi',
         preloadScript: 'ai-chat-preload.bundle.js',
       };
 

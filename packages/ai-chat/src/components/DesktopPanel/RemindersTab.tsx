@@ -1,5 +1,5 @@
-import { t as tr } from '@ig-live/ui';
-import { Badge, Button, EmptyState, Input, Select } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, Button, EmptyState, Input, Select } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {

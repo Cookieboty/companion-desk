@@ -1,5 +1,5 @@
 /**
- * @ig-live/bundle-ig-electron-caps
+ * @nomi-ai/bundle-ig-electron-caps
  *
  * dsh Bundle：Electron 主进程独占能力
  *   - SafeKeyStorePlugin：safeStorage 加密密钥库

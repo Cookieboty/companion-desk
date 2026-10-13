@@ -1,5 +1,5 @@
 /** 设置 → 通用 → 语言：跟随系统 / 中文 / English，切换即时生效（对话窗口、看板娘、托盘、通知同步）。 */
-import { getLocalePref, setLocalePref, t, useLocale, type LocalePref } from '@ig-live/ui';
+import { getLocalePref, setLocalePref, t, useLocale, type LocalePref } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './index.module.css';

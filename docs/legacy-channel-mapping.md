@@ -4,7 +4,7 @@
 
 调用旧通道会：
 
-- 打印 `[deprecated] <channel> — 请迁移到 @ig-live/ai-sdk-client` warning；
+- 打印 `[deprecated] <channel> — 请迁移到 @nomi-ai/ai-sdk-client` warning；
 - 计数器 +1，可通过 `AiChatCompat.stats()` 读取，供 telemetry 上报；
 - 转发到新 [AIClient](../packages/ai-sdk/src/AIClient.ts) 的对应 Facade。
 

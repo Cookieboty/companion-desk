@@ -2,8 +2,8 @@
  * DesktopPanel —— 桌面能力设置：授权文件夹（系统选择框）、工具权限、隐私（仅本地模型 / 云端提示）、
  * 操作记录（审计日志）与撤销。全部数据只保存在本机 userData。
  */
-import { t as tr } from '@ig-live/ui';
-import { Badge, Button, Card, EmptyState, Modal, Notice, Select, Switch, Tabs } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, Button, Card, EmptyState, Modal, Notice, Select, Switch, Tabs } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {

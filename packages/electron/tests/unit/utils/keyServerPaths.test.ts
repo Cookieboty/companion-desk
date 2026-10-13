@@ -12,8 +12,8 @@ import {
 describe('keyServerPaths', () => {
   it('maps app.asar to app.asar.unpacked (Windows and POSIX separators)', () => {
     expect(
-      toAsarUnpackedPath('C:\\Program Files\\Companion Desk\\resources\\app.asar\\node_modules\\x'),
-    ).toBe('C:\\Program Files\\Companion Desk\\resources\\app.asar.unpacked\\node_modules\\x');
+      toAsarUnpackedPath('C:\\Program Files\\Nomi\\resources\\app.asar\\node_modules\\x'),
+    ).toBe('C:\\Program Files\\Nomi\\resources\\app.asar.unpacked\\node_modules\\x');
     expect(toAsarUnpackedPath('/opt/app/resources/app.asar/node_modules/x')).toBe(
       '/opt/app/resources/app.asar.unpacked/node_modules/x',
     );

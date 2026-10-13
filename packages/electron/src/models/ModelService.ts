@@ -8,7 +8,7 @@ import type {
   ModelImportResult,
   RegistryModel,
   StoreStateView,
-} from '@ig-live/types';
+} from '@nomi-ai/types';
 import { BrowserWindow, app, dialog, ipcMain, protocol, type OpenDialogOptions } from 'electron';
 
 import { parseConfigFile, toConfigFile } from './modelConfig';

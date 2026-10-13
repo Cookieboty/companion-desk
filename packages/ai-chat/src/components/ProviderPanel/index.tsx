@@ -4,8 +4,8 @@
  *   任务路由：chat / agent-tools / summary 从各供应商已启用（或已获取）的模型里选。
  * 明文 key 只单向提交给主进程；界面只显示掩码。
  */
-import { t } from '@ig-live/ui';
-import { Badge, Button, Card, EmptyState, Modal, Notice, Select, ToastProvider } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Badge, Button, Card, EmptyState, Modal, Notice, Select, ToastProvider } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {

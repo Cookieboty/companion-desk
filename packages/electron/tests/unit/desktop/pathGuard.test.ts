@@ -94,9 +94,7 @@ describe('pathGuard · denylist', () => {
       denyReason('C:\\Users\\u\\AppData\\Roaming\\Microsoft\\Protect\\x', 'win32'),
     ).not.toBeNull();
     expect(
-      denyReason('/home/u/.config/companion-desk/ai-providers.json', 'linux', [
-        '/home/u/.config/companion-desk',
-      ]),
+      denyReason('/home/u/.config/nomi/ai-providers.json', 'linux', ['/home/u/.config/nomi']),
     ).toBe('应用私有数据目录');
   });
 

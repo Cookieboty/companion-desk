@@ -1,4 +1,4 @@
-import type { ModelConfig as MascotModelConfig } from '@ig-live/types';
+import type { ModelConfig as MascotModelConfig } from '@nomi-ai/types';
 import { type VRM } from '@pixiv/three-vrm';
 
 /**

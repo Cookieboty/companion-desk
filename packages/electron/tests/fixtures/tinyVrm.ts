@@ -154,12 +154,12 @@ export function makeTinyVrm(opts: TinyVrmOptions = {}): Buffer {
     version === '0.x'
       ? {
           VRM: {
-            exporterVersion: 'companion-desk-test',
+            exporterVersion: 'nomi-test',
             specVersion: '0.0',
             meta: {
               title: opts.title ?? 'Tiny Test',
               version: '1.0',
-              author: opts.author ?? 'Companion Desk tests',
+              author: opts.author ?? 'Nomi tests',
               texture: 0,
               allowedUserName: 'Everyone',
               violentUssageName: 'Disallow',
@@ -192,7 +192,7 @@ export function makeTinyVrm(opts: TinyVrmOptions = {}): Buffer {
             specVersion: '1.0',
             meta: {
               name: opts.title ?? 'Tiny Test',
-              authors: [opts.author ?? 'Companion Desk tests'],
+              authors: [opts.author ?? 'Nomi tests'],
               licenseUrl: opts.license ?? 'https://vrm.dev/licenses/1.0/',
               avatarPermission: 'everyone',
               commercialUsage: 'personalNonProfit',
@@ -209,7 +209,7 @@ export function makeTinyVrm(opts: TinyVrmOptions = {}): Buffer {
         };
 
   const gltf = {
-    asset: { version: '2.0', generator: 'companion-desk tinyVrm' },
+    asset: { version: '2.0', generator: 'nomi tinyVrm' },
     extensionsUsed: Object.keys(extensions),
     extensions,
     scene: 0,

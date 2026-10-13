@@ -12,7 +12,7 @@
 
 ## 目标
 
-一句话：**渲染进程 `import { AIProvider, useChat } from '@ig-live/ai-sdk-client'` 就能收发消息、订阅事件、读写偏好，零业务代码。**
+一句话：**渲染进程 `import { AIProvider, useChat } from '@nomi-ai/ai-sdk-client'` 就能收发消息、订阅事件、读写偏好，零业务代码。**
 
 ## 准入前提
 
@@ -30,7 +30,7 @@
 ### P7-1 · 包骨架
 
 - 目录 [packages/ai-sdk-client](../../packages/ai-sdk-client)
-- `peerDependencies: react @ig-live/ai-sdk`
+- `peerDependencies: react @nomi-ai/ai-sdk`
 - tsup 仅 ESM；`"exports"` 拆 `./preload` 与 `./react`（避免主进程/preload 引入 React）
 - 验收：`pnpm build` 产出
 
@@ -83,12 +83,12 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/ai-sdk-client](../../packages/ai-sdk-client)
+- 1 个可发布 npm 包 [@nomi-ai/ai-sdk-client](../../packages/ai-sdk-client)
 - 5 个 React Hook + AIProvider + preload 模板 + example
 
 ## 退出准则（自动化）
 
-1. `pnpm --filter @ig-live/ai-sdk-client build test lint typecheck` 全绿
+1. `pnpm --filter @nomi-ai/ai-sdk-client build test lint typecheck` 全绿
 2. Example 应用点击 send 能实时收到 chunks
 3. `useUserProfile` 修改后组件 rerender
 4. 类型签名与 P5 AIClient 完全一致（tsc 结构等价断言）

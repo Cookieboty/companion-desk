@@ -3,7 +3,7 @@ import {
   definePlugin,
   type PluginContext,
   type UserProfileService,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import {
   AgentPresetRegistryKey,

@@ -2,8 +2,8 @@
  * CapabilityIpcServer + AiChatCompat 兼容层测试。
  */
 
-import { AIClient } from '@ig-live/ai-sdk';
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
+import { AIClient } from '@nomi-ai/ai-sdk';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { describe, it, expect, vi } from 'vitest';
 
 import { CAPABILITY_CHANNELS, CapabilityIpcServer } from '../src/CapabilityIpcServer';

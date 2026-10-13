@@ -1,4 +1,4 @@
-import { definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
+import { definePlugin, type PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import { loadElectron } from '../electronLoader';
 

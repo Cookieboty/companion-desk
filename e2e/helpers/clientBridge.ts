@@ -1,4 +1,4 @@
-import type { IPCBridge, IpcEventListener, IpcUnsubscribe } from '@ig-live/ai-sdk-client';
+import type { IPCBridge, IpcEventListener, IpcUnsubscribe } from '@nomi-ai/ai-sdk-client';
 
 import type { FakeIpcAdapter, FakeWebContents } from './fakeIpc';
 

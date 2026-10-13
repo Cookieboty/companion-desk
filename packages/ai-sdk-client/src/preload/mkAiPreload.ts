@@ -10,7 +10,7 @@
  * 使用示例（在 preload.ts 中）：
  * ```ts
  * import { contextBridge, ipcRenderer } from 'electron';
- * import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+ * import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
  * mkAiPreload({ contextBridge, ipcRenderer });
  * ```
  */
@@ -30,9 +30,7 @@ export function assertChannel(channel: string): void {
     throw new Error(`[ai-preload] channel '${channel}' 缺少前缀 '${AI_CHANNEL_PREFIX}'`);
   }
   if (channel.length > AI_CHANNEL_MAX_LEN) {
-    throw new Error(
-      `[ai-preload] channel '${channel}' 超过最大长度 ${AI_CHANNEL_MAX_LEN}`,
-    );
+    throw new Error(`[ai-preload] channel '${channel}' 超过最大长度 ${AI_CHANNEL_MAX_LEN}`);
   }
   if (!/^[A-Za-z0-9_:-]+$/.test(channel)) {
     throw new Error(`[ai-preload] channel '${channel}' 含非法字符`);
@@ -65,10 +63,7 @@ export interface MkAiPreloadOptions {
  */
 export function mkAiPreload(opts: MkAiPreloadOptions): {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
-  on: (
-    channel: string,
-    fn: (payload: unknown) => void,
-  ) => () => void;
+  on: (channel: string, fn: (payload: unknown) => void) => () => void;
   off: (channel: string, fn: (payload: unknown) => void) => void;
 } {
   const bridgeName = opts.bridgeName ?? 'aiIPC';

@@ -1,4 +1,4 @@
-import { useChat } from '@ig-live/ai-sdk-client/react';
+import { useChat } from '@nomi-ai/ai-sdk-client/react';
 import { useState } from 'react';
 
 export function ChatPanel() {

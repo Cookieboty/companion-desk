@@ -1,6 +1,6 @@
-import type { LicenseTermsView } from '@ig-live/types';
-import { t } from '@ig-live/ui';
-import { Badge, Modal } from '@ig-live/ui';
+import type { LicenseTermsView } from '@nomi-ai/types';
+import { t } from '@nomi-ai/ui';
+import { Badge, Modal } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './style.module.css';
@@ -58,7 +58,7 @@ export function collectCredits(
     rows.push({
       key: 'motions-own',
       title: t('手势动作（{0} 个）', own.length),
-      author: 'Companion Desk contributors',
+      author: 'Nomi contributors',
       license: 'MIT',
     });
   }

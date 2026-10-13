@@ -7,7 +7,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { z } from 'zod';
 

@@ -4,7 +4,7 @@
  *
  * 说明：
  *   - electron 包目前 tsconfig 为 `moduleResolution: node`（旧解析），无法解析
- *     `@ig-live/bundle-ig-electron-caps` 的 `./seams` 子入口；主入口又会立即
+ *     `@nomi-ai/bundle-ig-electron-caps` 的 `./seams` 子入口；主入口又会立即
  *     执行 [assertElectronMainProcess](file:///./../../../bundle-ig-electron-caps/src/env.ts)，
  *     在 Jest 里 import 会直接抛错。
  *   - 因此本文件**本地重申**最小契约类型（`TtsProvider` / `TtsOptions` / `TtsChunk`
@@ -31,7 +31,7 @@ import type { AdvancedTTSEngine, TTSSettings, TTSVoiceConfig } from '../services
 export const ELECTRON_NATIVE_TTS_PROVIDER_ID = 'electron-native';
 
 // -----------------------------------------------------------------------------
-// 本地契约（结构等价于 @ig-live/bundle-ig-electron-caps/seams/tts.ts）
+// 本地契约（结构等价于 @nomi-ai/bundle-ig-electron-caps/seams/tts.ts）
 // -----------------------------------------------------------------------------
 
 export interface TtsVoice {

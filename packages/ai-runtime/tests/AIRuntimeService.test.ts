@@ -7,8 +7,8 @@
  * - `runtime.configure` 在运行时状态下抛错。
  */
 
-import type { PluginContext } from '@ig-live/bundle-ig-base';
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
+import type { PluginContext } from '@nomi-ai/bundle-ig-base';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { describe, it, expect, vi } from 'vitest';
 
 import {

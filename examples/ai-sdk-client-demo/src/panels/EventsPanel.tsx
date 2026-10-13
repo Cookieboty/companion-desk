@@ -1,4 +1,4 @@
-import { useAIEvents } from '@ig-live/ai-sdk-client/react';
+import { useAIEvents } from '@nomi-ai/ai-sdk-client/react';
 import { useState } from 'react';
 
 export function EventsPanel() {

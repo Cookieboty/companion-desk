@@ -4,7 +4,7 @@
  *   · 默认模型（获取模型列表 → 勾选启用）· 高级选项（上游格式 / 模型映射 / 思考 / UA / Headers）
  * 编辑正在使用的供应商时提示「保存后立即生效」。
  */
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -16,7 +16,7 @@ import {
   Textarea,
   SkeletonList,
   useToast,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useMemo, useRef, useState } from 'react';
 
 import {

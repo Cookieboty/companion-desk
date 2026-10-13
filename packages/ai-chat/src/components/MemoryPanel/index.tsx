@@ -2,7 +2,7 @@
  * MemoryPanel —— 长期记忆：对话记忆（摘要，可编辑 / 置顶 / 删除）、关于我（事实）、
  * 用户档案（persona.md）、设置与导出。数据全部在本机 userData/memory。
  */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -16,7 +16,7 @@ import {
   Switch,
   Tabs,
   Textarea,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';

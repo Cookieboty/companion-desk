@@ -223,7 +223,7 @@ describe('credits', () => {
       ],
       [
         { source: 'Quaternius Universal Animation Library: Idle_Loop', license: 'CC0-1.0' },
-        { source: 'Companion Desk (original, procedural)', license: 'MIT' },
+        { source: 'Nomi (original, procedural)', license: 'MIT' },
       ],
     );
     expect(rows.map((r) => r.key)).toEqual([

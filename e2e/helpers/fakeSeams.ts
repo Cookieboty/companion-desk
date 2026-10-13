@@ -26,8 +26,8 @@ import type {
   UserProfile,
   UserProfileEvent,
   UserProfileService,
-} from '@ig-live/bundle-ig-base';
-import { makeDefaultUserProfile } from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
+import { makeDefaultUserProfile } from '@nomi-ai/bundle-ig-base';
 import type {
   TtsChunk,
   TtsOptions,
@@ -36,12 +36,12 @@ import type {
   TtsResult,
   TtsService,
   TtsVoice,
-} from '@ig-live/bundle-ig-electron-caps/seams';
+} from '@nomi-ai/bundle-ig-electron-caps/seams';
 import type {
   Live2dEvent,
   Live2dEventPayload,
   Live2dService,
-} from '@ig-live/bundle-ig-mascot/seams';
+} from '@nomi-ai/bundle-ig-mascot/seams';
 
 export interface FakeLLM extends LLMProvider {
   chatCalls: ChatRequest[];

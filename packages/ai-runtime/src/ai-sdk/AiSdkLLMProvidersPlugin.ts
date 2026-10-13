@@ -11,7 +11,7 @@ import {
   type LLMProvider,
   type LLMProviderEntry,
   type PluginContext,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import { RoutedLLMRegistry, type ProviderFactory } from '../providers/ProviderRouter';
 import type { ProviderStore } from '../providers/ProviderStore';

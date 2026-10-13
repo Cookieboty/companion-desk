@@ -6,7 +6,7 @@
  * Optional dsh remains available via `createDshBooter({ core: 'required' })`
  * for doctor / experimental harness work.
  */
-import { UserProfileKey, type PluginContext } from '@ig-live/bundle-ig-base';
+import { UserProfileKey, type PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import { AiSdkLLMProvidersPlugin } from './ai-sdk/AiSdkLLMProvidersPlugin';
 import { AiSdkMcpPlugin } from './ai-sdk/AiSdkMcpPlugin';

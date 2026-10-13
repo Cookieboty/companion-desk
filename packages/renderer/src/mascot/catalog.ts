@@ -4,7 +4,7 @@ import type {
   ModelOrigin,
   RegistryModel,
   VrmMetaSummary,
-} from '@ig-live/types';
+} from '@nomi-ai/types';
 
 /**
  * 看板娘模型（统一注册表：内置 + 商店已安装 + 用户导入）。

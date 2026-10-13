@@ -1,4 +1,4 @@
-# @ig-live/renderer — 看板娘渲染进程
+# @nomi-ai/renderer — 看板娘渲染进程
 
 桌面看板娘窗口（React + Vite）。看板娘使用 **VRM 3D 角色**（`@pixiv/three-vrm`，MIT），
 内置 5 个 pixiv VRoid 项目的 **CC0** 样例模型（见 `public/assets/models/vrm/CREDITS.md`）。

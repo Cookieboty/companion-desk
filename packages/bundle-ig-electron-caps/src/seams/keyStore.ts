@@ -1,4 +1,4 @@
-import { defineService } from '@ig-live/bundle-ig-base';
+import { defineService } from '@nomi-ai/bundle-ig-base';
 
 export interface KeyStoreService {
   get(id: string): Promise<string | undefined>;

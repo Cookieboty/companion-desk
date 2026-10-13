@@ -1,4 +1,4 @@
-import { defineService } from '@ig-live/bundle-ig-base';
+import { defineService } from '@nomi-ai/bundle-ig-base';
 
 /**
  * 命中区域（由 Live2D 模型自身定义，常见如 Head / Body / Chest / Arm）。

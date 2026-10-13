@@ -9,7 +9,7 @@
  * 无 localStorage（测试 / 非浏览器）时退化为内存存储。
  */
 
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 
 import type { ChatMessage, ChatSession } from '../types/chat';
 

@@ -1,7 +1,7 @@
 /**
  * ChatFacade · 多 provider 路由：registry.resolve(role) 决定默认 provider 与模型。
  */
-import { LLMRegistryKey, type LLMProvider, type LLMRole } from '@ig-live/bundle-ig-base';
+import { LLMRegistryKey, type LLMProvider, type LLMRole } from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it } from 'vitest';
 
 import { AIClient } from '../../src/AIClient';

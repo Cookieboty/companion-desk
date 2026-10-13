@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /** 编程助手进度客户端：`ai:agents:*` IPC（经 preload 的 window.aiIPC） */
 export type AgentKind = 'codex' | 'claude' | 'aider' | 'cline' | 'continue' | 'cursor';
 export type AgentStatus = 'running' | 'completed' | 'failed' | 'stalled' | 'idle';

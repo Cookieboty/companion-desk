@@ -12,8 +12,8 @@
 # still succeeds — do NOT raise NODE_OPTIONS to force the collector (it can hang for
 # tens of minutes on CI). pnpm deploy staging is only needed if traversal also fails.
 
-appId: com.cookieboty.companion-desk
-productName: Companion Desk
+appId: com.cookieboty.nomi
+productName: Nomi
 
 files:
   - dist/**/*
@@ -63,9 +63,9 @@ extraMetadata:
   main: dist/main.js
 
 protocols:
-  - name: Companion Desk
+  - name: Nomi
     schemes:
-      - companion-desk
+      - nomi
 
 # ---------------------------------------------------------------
 # macOS · DMG（默认）；notarize 需要 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
@@ -102,8 +102,8 @@ linux:
       arch:
         - x64
   category: Utility
-  # 可执行文件名（默认取 package.json name，会得到 '@ig-liveelectron'）
-  executableName: companion-desk
+  # 可执行文件名（默认取 package.json name，会得到 '@nomi-aielectron'）
+  executableName: nomi
   # electron-builder 26+: derive .desktop / WM_CLASS from package.json desktopName
   syncDesktopName: true
   icon: assets/icons

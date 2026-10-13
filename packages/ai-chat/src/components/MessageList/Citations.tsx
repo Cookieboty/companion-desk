@@ -2,8 +2,8 @@
  * 知识库回答的引用：正文里的 [n] 变成可点击的上标；底部列出来源卡片。
  * 点击来源 → 预览片段，可「打开文件」或「在文件夹中显示」（主进程重新检查授权）；笔记直接显示全文。
  */
-import { t } from '@ig-live/ui';
-import { Button, Modal } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Button, Modal } from '@nomi-ai/ui';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 

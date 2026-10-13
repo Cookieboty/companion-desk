@@ -11,7 +11,7 @@
  * 契约：`IPC_METHODS` 是 P6 阶段 IPC 表面的**快照锁**——测试里用它做通道数/名字回归。
  */
 
-import type { AIClient } from '@ig-live/ai-sdk';
+import type { AIClient } from '@nomi-ai/ai-sdk';
 
 import { IPC_METHODS, channelName, chunkChannelName, type IpcMethodSpec } from './channels';
 import type { IpcAdapter, IpcInvokeEvent } from './IpcAdapter';

@@ -18,7 +18,7 @@ import type {
   LLMProvider,
   LLMRegistry,
   ToolDefinition,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import { AiSdkLlmProvider, type AiSdkLlmProviderOptions } from '../ai-sdk/AiSdkLlmProvider';
 

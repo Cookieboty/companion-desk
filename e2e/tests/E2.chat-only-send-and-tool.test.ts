@@ -8,7 +8,7 @@
  * - `client.tools.list()` 能列出预注册的 `echo` 工具。
  */
 
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 
 import { createE2eRuntime, type E2eRuntimeHandle } from '../helpers/e2eRuntime';

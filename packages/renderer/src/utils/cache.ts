@@ -3,7 +3,7 @@
  * @module cache
  */
 
-import { type IpcApi } from '@ig-live/types';
+import { type IpcApi } from '@nomi-ai/types';
 
 import logger from './logger';
 

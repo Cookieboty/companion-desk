@@ -8,7 +8,7 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 
-import { type TTSConfig, type TTSTestResult } from '@ig-live/types';
+import { type TTSConfig, type TTSTestResult } from '@nomi-ai/types';
 import { app } from 'electron';
 
 import { t } from '../../i18n';

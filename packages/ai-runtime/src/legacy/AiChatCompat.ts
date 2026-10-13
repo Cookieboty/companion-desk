@@ -11,7 +11,7 @@
  * mapping 表见 [docs/legacy-channel-mapping.md](file:///../../../../docs/legacy-channel-mapping.md)。
  */
 
-import type { AIClient } from '@ig-live/ai-sdk';
+import type { AIClient } from '@nomi-ai/ai-sdk';
 
 import type { IpcAdapter, IpcInvokeEvent } from '../IpcAdapter';
 import type { RuntimeLogger } from '../logger';
@@ -53,7 +53,7 @@ export class AiChatCompat {
     const mark = (ch: string, event: IpcInvokeEvent) => {
       this.counts.set(ch, (this.counts.get(ch) ?? 0) + 1);
       if (this.opts.onDeprecation) this.opts.onDeprecation(ch, event.senderId);
-      else this.logger.warn(`[deprecated] ${ch} — 请迁移到 @ig-live/ai-sdk-client`);
+      else this.logger.warn(`[deprecated] ${ch} — 请迁移到 @nomi-ai/ai-sdk-client`);
     };
 
     adapter.handle('ai-chat:message:send', async (event, payload) => {

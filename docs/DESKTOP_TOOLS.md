@@ -1,6 +1,6 @@
 # Desktop tools (P0 + P1)
 
-Companion Desk lets the model read and summarize your local files, but only inside folders you grant. Every action is checked, logged and, where it changes something, undoable.
+Nomi lets the model read and summarize your local files, but only inside folders you grant. Every action is checked, logged and, where it changes something, undoable.
 This page covers what shipped in P0 (foundations) and P1 (file tools). The full design and the later phases are in [plans/desktop-tools.md](plans/desktop-tools.md).
 
 ## For users

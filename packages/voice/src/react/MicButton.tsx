@@ -2,8 +2,8 @@
  * 按住说话按钮：按下开始录音，松开识别；按住时把指针移出按钮 → 松开即取消。
  * 键盘：聚焦后按住 空格 / 回车 说话，Esc 取消。光环随音量起伏。
  */
-import { t } from '@ig-live/ui';
-import { Tooltip, cx } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Tooltip, cx } from '@nomi-ai/ui';
 import React, { useRef, useState } from 'react';
 
 import type { VoiceState } from '../controller';

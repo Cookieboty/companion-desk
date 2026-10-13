@@ -2,7 +2,7 @@
  * 麦克风采集：getUserMedia（开启回声消除 / 降噪 / 自动增益，减少把看板娘自己的 TTS 录进去）
  * → ScriptProcessor（不需要额外脚本文件，兼容严格 CSP）→ 16 kHz → 512 样本帧。
  */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 
 import { levelOf, resampleTo16k } from './audio';
 import { FRAME } from './vad';
@@ -21,7 +21,7 @@ export function micErrorFrom(e: unknown): MicError {
   if (name === 'NotAllowedError' || name === 'SecurityError')
     return new MicError(
       'mic_denied',
-      tr('麦克风权限被拒绝。请在系统设置 → 隐私 → 麦克风中允许 Companion Desk。'),
+      tr('麦克风权限被拒绝。请在系统设置 → 隐私 → 麦克风中允许 Nomi。'),
     );
   if (name === 'NotFoundError' || name === 'OverconstrainedError')
     return new MicError('mic_missing', tr('没有找到可用的麦克风。'));

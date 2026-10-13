@@ -1,4 +1,4 @@
-import { ToolRegistryKey, definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
+import { ToolRegistryKey, definePlugin, type PluginContext } from '@nomi-ai/bundle-ig-base';
 import { z } from 'zod';
 
 export interface MascotModelInfo {

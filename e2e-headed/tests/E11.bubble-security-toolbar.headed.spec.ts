@@ -260,7 +260,7 @@ test.describe('E11 · bubble security + toolbar', () => {
     expect(covered).toEqual([]);
     expect(await bar.getAttribute('data-mascot-ui')).toBe('');
 
-    // tooltip（@ig-live/ui）+ 键盘焦点环
+    // tooltip（@nomi-ai/ui）+ 键盘焦点环
     await main.locator('[data-testid="tool-ai-chat"]').hover();
     await main.waitForTimeout(300);
     await expect(main.locator('[role="tooltip"]', { hasText: 'AI 对话' })).toBeVisible();

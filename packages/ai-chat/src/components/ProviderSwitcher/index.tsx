@@ -1,8 +1,8 @@
 /**
  * 工具栏上的 provider 一键切换（与托盘菜单、面板共享主进程状态，实时同步）。
  */
-import { t } from '@ig-live/ui';
-import { IconButton, Select } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { IconButton, Select } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import {

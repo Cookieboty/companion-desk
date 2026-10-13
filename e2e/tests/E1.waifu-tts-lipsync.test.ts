@@ -13,8 +13,8 @@
  * 语义等价的完成信号；详见 [P8-consumer-migration.md#P8-8](../../docs/plans/P8-consumer-migration.md#p8-8-e2e-冒烟三端-三-profile)。
  */
 
-import { EVENT_BROADCAST_CHANNEL } from '@ig-live/ai-runtime';
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { EVENT_BROADCAST_CHANNEL } from '@nomi-ai/ai-runtime';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 
 import { createE2eRuntime, type E2eRuntimeHandle } from '../helpers/e2eRuntime';

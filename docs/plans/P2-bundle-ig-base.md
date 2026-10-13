@@ -38,7 +38,7 @@
 - [package.json](../../packages/bundle-ig-base/package.json)：
   ```jsonc
   {
-    "name": "@ig-live/bundle-ig-base",
+    "name": "@nomi-ai/bundle-ig-base",
     "type": "module",
     "main": "./dist/index.js",
     "exports": {
@@ -194,13 +194,13 @@
 
 ## 交付物
 
-- 1 个可发布 npm 包 [@ig-live/bundle-ig-base](../../packages/bundle-ig-base)
+- 1 个可发布 npm 包 [@nomi-ai/bundle-ig-base](../../packages/bundle-ig-base)
 - `waifu.yml` 追加本 bundle 后：`ctx.llm.list().length === 8` / `ctx.tools.list().length ≥ 6` / `ctx.mcp` / `ctx.userProfile` 均可用
 - 至少 60 条单测，覆盖率达门槛
 
 ## 退出准则（自动化）
 
-1. `pnpm --filter @ig-live/bundle-ig-base build test lint typecheck` 全绿
+1. `pnpm --filter @nomi-ai/bundle-ig-base build test lint typecheck` 全绿
 2. `pnpm doctor waifu` 输出中 `services` 含 `llm/tools/mcp/userProfile`
 3. 契约测试对 8 家 provider 的 mock server 全绿
 4. `ctx.userProfile.get()` 返回 zod 合法的默认 profile
