@@ -31,7 +31,9 @@
 
 /* 内层负责滚动（外层不裁剪，尾巴才能露出来） */
 .scroll {
-  max-height: var(--bubble-max-h, 200px);
+  /* --bubble-max-h is the bubble's outer height (placement): include padding + 1px borders */
+  box-sizing: border-box;
+  max-height: calc(var(--bubble-max-h, 200px) - 2px);
   padding: 8px 12px;
   overflow-x: hidden;
   overflow-y: auto;

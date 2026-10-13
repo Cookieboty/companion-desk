@@ -23,78 +23,8 @@
           "pitch": 1.1
         }
       }
-    },
-    {
-      "name": "default-character",
-      "displayName": "千駄ヶ谷 渋 (Sendagaya Shibu)",
-      "description": "VRoid 样例模型 AvatarSample_D（默认角色）",
-      "path": "./assets/models/vrm/default-character.vrm",
-      "thumbnail": "./assets/models/vrm/default-character-thumb.jpg",
-      "author": "pixiv Inc. / VRoid Project",
-      "license": "CC0-1.0",
-      "source": "https://opengameart.org/content/vroid-studio-cc0-models",
-      "vrmVersion": "0.x",
-      "tags": [
-        "default-3d",
-        "vroid"
-      ],
-      "config": {
-        "voice": {
-          "voiceHint": "xiaoxiao",
-          "rate": 0.88,
-          "pitch": 1.06
-        }
-      }
-    },
-    {
-      "name": "pastel-girl",
-      "displayName": "Pastel Girl (2D)",
-      "description": "CC0 pastel cute girl by pzUH (OpenGameArt / gameart2d).",
-      "path": "./assets/models/sprite/pastel-girl/manifest.json",
-      "thumbnail": "./assets/models/sprite/pastel-girl/thumb.png",
-      "author": "pzUH",
-      "license": "CC0-1.0",
-      "source": "https://opengameart.org/content/cute-girl-free-sprites",
-      "tags": [
-        "sprite",
-        "2d",
-        "soft",
-        "cute",
-        "cc0"
-      ],
-      "config": {
-        "voice": {
-          "voiceHint": "xiaoxiao",
-          "rate": 0.9,
-          "pitch": 1.08
-        }
-      }
-    },
-    {
-      "name": "michona",
-      "displayName": "Michona (2D)",
-      "description": "CC0 anime girl by Hordana — walk/jump frames mapped to moods.",
-      "path": "./assets/models/sprite/michona/manifest.json",
-      "thumbnail": "./assets/models/sprite/michona/thumb.png",
-      "author": "Hordana",
-      "license": "CC0-1.0",
-      "source": "https://opengameart.org/content/anime-girl",
-      "tags": [
-        "sprite",
-        "2d",
-        "soft",
-        "anime",
-        "cc0"
-      ],
-      "config": {
-        "voice": {
-          "voiceHint": "meijia",
-          "rate": 0.88,
-          "pitch": 1.05
-        }
-      }
     }
   ],
-  "lastUpdated": "2026-10-12T00:00:00Z",
-  "version": "2.3.0"
+  "lastUpdated": "2026-10-13T00:00:00Z",
+  "version": "3.0.0"
 }

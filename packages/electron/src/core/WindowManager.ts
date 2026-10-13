@@ -8,6 +8,7 @@ import * as url from 'url';
 import { BrowserWindow, screen, app } from 'electron';
 
 import { t } from '../i18n';
+import { mascotWindowSize } from '../mascot/mascotSize';
 import { MascotWindowController } from '../mascot/MascotWindowController';
 import { type IConfigService } from '../services/ConfigService';
 import { type ILoggerService } from '../services/LoggerService';
@@ -71,14 +72,16 @@ export class WindowManager implements IWindowManager {
       let x = config.windowPosition.x;
       let y = config.windowPosition.y;
 
+      // 窗口 = 角色框（默认原尺寸的一半）+ 工具栏 / 气泡的透明边距（逐像素点击穿透）
+      const size = mascotWindowSize(config.mascotScale);
       if (x <= 0 || x >= width || y <= 0 || y >= height) {
-        x = width - 420;
-        y = height - 450;
+        x = width - size.width;
+        y = height - size.height;
       }
 
       const windowOptions: WindowOptions = {
-        width: 420,
-        height: 450,
+        width: size.width,
+        height: size.height,
         x,
         y,
         frame: false,

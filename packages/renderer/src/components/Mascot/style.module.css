@@ -119,6 +119,11 @@
   margin-bottom: var(--cd-space-3, 12px);
 }
 
+/* the half-size mascot window is narrow: keep tab labels on one line */
+.tabs * {
+  white-space: nowrap;
+}
+
 .cardWrap {
   position: relative;
   display: flex;
@@ -294,4 +299,15 @@
   margin: 4px 0 0 44px;
   font-size: var(--cd-font-size-xs, 12px);
   color: var(--cd-color-text-muted, #9aa3b2);
+}
+
+.uploadCard {
+  border-style: dashed;
+}
+
+.uploadThumb {
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  color: var(--cd-color-text-secondary, #888);
 }

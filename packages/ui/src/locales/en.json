@@ -1371,5 +1371,7 @@
   "耸肩": "Shrug",
   "害羞": "Shy",
   "指向": "Point",
-  "打招呼": "Greet"
+  "打招呼": "Greet",
+  "上传自定义模型": "Upload custom model",
+  "导入自己的 .vrm 模型（仅保存在本机）": "Import your own .vrm model (stays on this device)"
 }

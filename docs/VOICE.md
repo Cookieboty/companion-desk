@@ -60,11 +60,10 @@ Stored on `ModelConfig.voice` (model-list defaults + user `models.updateConfig`)
 
 Built-in defaults:
 
-| Character           | Hint     | Rate | Pitch |
-| ------------------- | -------- | ---- | ----- |
-| `default-character` | xiaoxiao | 0.88 | 1.06  |
-| `pastel-girl`       | xiaoxiao | 0.90 | 1.08  |
-| `michona`           | meijia   | 0.88 | 1.05  |
+| Character          | Hint     | Rate | Pitch |
+| ------------------ | -------- | ---- | ----- |
+| (imported, 2D tag) | xiaoxiao | 0.90 | 1.08  |
+| (imported, other)  | xiaoxiao | 0.88 | 1.06  |
 
 Resolve order: global soft prefs (preferNeural/volume) → character defaults → `model.config.voice` → local override.
 

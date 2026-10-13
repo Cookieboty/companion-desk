@@ -21,6 +21,8 @@ export function alphaSpans(
     scale?: number;
     offsetX?: number;
     offsetY?: number;
+    /** rows stored top-down (Canvas2D getImageData) instead of GL bottom-up */
+    topDown?: boolean;
   } = {},
 ): Rect[] {
   const band = opts.band ?? 8;
@@ -36,7 +38,7 @@ export function alphaSpans(
     const bottom = Math.min(height, top + band);
     const filled = new Uint8Array(width);
     for (let yy = top; yy < bottom; yy += 2) {
-      const row = height - 1 - yy; // GL 行序自下而上
+      const row = opts.topDown ? yy : height - 1 - yy; // GL 行序自下而上
       const base = row * width * 4;
       for (let x = 0; x < width; x += 1) if (pixels[base + x * 4 + 3] > threshold) filled[x] = 1;
     }

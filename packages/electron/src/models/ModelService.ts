@@ -49,6 +49,9 @@ function bundledListPath(): string {
 }
 
 /** 主进程模型服务：注册表 + 商店 + 用户导入 + cdmodel:// 协议 + IPC。 */
+/** fixed id of the e2e-seeded user model (see seedOnce) */
+export const SEED_USER_VRM_ID = 'user-e2e-avatar-000000';
+
 export class ModelService {
   readonly root: string;
   readonly store: ModelStore;
@@ -81,7 +84,26 @@ export class ModelService {
     });
   }
 
-  list(): Promise<RegistryModel[]> {
+  private seeding?: Promise<void>;
+
+  /**
+   * Test-only (unpackaged builds): CD_SEED_USER_VRM=<path to fixture .vrm> imports it through the
+   * normal user-import path under a fixed id, so e2e exercises the custom-upload 3D path without
+   * any VRM bundled in the app.
+   */
+  private seedOnce(): Promise<void> {
+    const src = process.env.CD_SEED_USER_VRM;
+    if (!src || app.isPackaged) return Promise.resolve();
+    this.seeding ??= (async () => {
+      const id = process.env.CD_SEED_USER_VRM_ID || SEED_USER_VRM_ID;
+      if ((await this.user.list()).some((r) => r.id === id)) return;
+      await this.user.import(src, {}, id);
+    })().catch((err: unknown) => this.logger.warn('[models] seed failed', { error: String(err) }));
+    return this.seeding;
+  }
+
+  async list(): Promise<RegistryModel[]> {
+    await this.seedOnce();
     return this.registry.list();
   }
 

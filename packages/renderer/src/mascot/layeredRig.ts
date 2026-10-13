@@ -1382,6 +1382,103 @@ export function drawRig(
  * Bust framing used by the mascot window: rig scaled to the canvas (w × h CSS px) with a
  * little headroom, plus a soft fade at the bottom edge so the cut-off waist never ends hard.
  */
+/** Where the rig is drawn inside the canvas: rig px → CSS px is `x * sc + ox`. */
+export interface RigView {
+  sc: number;
+  ox: number;
+  oy: number;
+}
+
+export interface ViewBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Fit the rig into a character box (defaults to the whole canvas). */
+export function rigTransform(rig: RigManifest, w: number, h: number, box?: ViewBox): RigView {
+  const b = box ?? { x: 0, y: 0, w, h };
+  const [rw, rh] = rig.size;
+  const sc = Math.min((b.w * 0.98) / rw, b.h / (rh * 0.95));
+  // bottom-anchored (identical to the old top offset rh·0.025·sc when height-limited)
+  return { sc, ox: b.x + (b.w - rw * sc) / 2, oy: b.y + b.h - rh * sc * 0.925 };
+}
+
+type RigRect = { left: number; top: number; right: number; bottom: number };
+
+/** Rig-space rect of a layer (from its offset, draw scale and the loaded image size). */
+export function rigLayerRect(rig: RigManifest, imgs: RigImages, name: string): RigRect | null {
+  const off = rig.layers[name];
+  const img = imgs.get(name);
+  if (!off || !img) return null;
+  const s = off[2] ?? 1;
+  const iw = (img as { naturalWidth?: number }).naturalWidth || img.width;
+  const ih = (img as { naturalHeight?: number }).naturalHeight || img.height;
+  return { left: off[0], top: off[1], right: off[0] + iw * s, bottom: off[1] + ih * s };
+}
+
+const union = (rects: Array<RigRect | null>): RigRect | null => {
+  const r = rects.filter((x): x is RigRect => !!x);
+  if (!r.length) return null;
+  return {
+    left: Math.min(...r.map((x) => x.left)),
+    top: Math.min(...r.map((x) => x.top)),
+    right: Math.max(...r.map((x) => x.right)),
+    bottom: Math.max(...r.map((x) => x.bottom)),
+  };
+};
+
+const HEAD_LAYERS = ['head', 'crown', 'bangs', 'hair-side-l', 'hair-side-r', 'ribbon'];
+const BODY_LAYERS = ['body', 'arm-l', 'arm-r', ...HEAD_LAYERS];
+
+/**
+ * Head (face + hair) rect in canvas CSS px for the current pose, padded by `pad` (fraction of
+ * its width) to cover sway / tilt. Used by the speech bubble to never cover the face.
+ */
+export function rigHeadBox(
+  rig: RigManifest,
+  imgs: RigImages,
+  pose: Pick<RigPose, 'headX' | 'headY' | 'bodyY' | 'torsoX' | 'figureScale'> | null,
+  view: RigView,
+  pad = 0.08,
+): RigRect | null {
+  const r = union(HEAD_LAYERS.map((n) => rigLayerRect(rig, imgs, n)));
+  if (!r) return null;
+  const [W, H] = rig.size;
+  const fs = pose?.figureScale ?? 1;
+  const dx = (pose?.headX ?? 0) + (pose?.torsoX ?? 0);
+  const dy = (pose?.headY ?? 0) + (pose?.bodyY ?? 0);
+  // figureScale scales about the bottom centre of the rig
+  const fx = (x: number) => W / 2 + (x + dx - W / 2) * fs;
+  const fy = (y: number) => H + (y + dy - H) * fs;
+  const p = (r.right - r.left) * pad;
+  return {
+    left: (fx(r.left) - p) * view.sc + view.ox,
+    right: (fx(r.right) + p) * view.sc + view.ox,
+    top: (fy(r.top) - p) * view.sc + view.oy,
+    bottom: (fy(r.bottom) + p) * view.sc + view.oy,
+  };
+}
+
+/** Whole-figure rect (canvas CSS px), clamped to the canvas. */
+export function rigBodyBox(
+  rig: RigManifest,
+  imgs: RigImages,
+  view: RigView,
+  w: number,
+  h: number,
+): RigRect | null {
+  const r = union(BODY_LAYERS.map((n) => rigLayerRect(rig, imgs, n)));
+  if (!r) return null;
+  return {
+    left: Math.max(0, r.left * view.sc + view.ox),
+    right: Math.min(w, r.right * view.sc + view.ox),
+    top: Math.max(0, r.top * view.sc + view.oy),
+    bottom: Math.min(h, r.bottom * view.sc + view.oy),
+  };
+}
+
 export function paintRigFrame(
   ctx: CanvasRenderingContext2D,
   rig: RigManifest,
@@ -1389,17 +1486,17 @@ export function paintRigFrame(
   pose: RigPose,
   w: number,
   h: number,
+  box?: ViewBox,
 ): void {
-  const [rw, rh] = rig.size;
-  const sc = Math.min((w * 0.98) / rw, h / (rh * 0.95));
+  const v = rigTransform(rig, w, h, box);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.save();
-  ctx.translate((w - rw * sc) / 2, rh * 0.025 * sc);
-  ctx.scale(sc, sc);
+  ctx.translate(v.ox, v.oy);
+  ctx.scale(v.sc, v.sc);
   drawRig(ctx, rig, imgs, pose);
   ctx.restore();
-  const fadeH = h * 0.12;
+  const fadeH = (box?.h ?? h) * 0.12;
   const g = ctx.createLinearGradient(0, h - fadeH, 0, h);
   g.addColorStop(0, 'rgba(0,0,0,0)');
   g.addColorStop(1, 'rgba(0,0,0,1)');
