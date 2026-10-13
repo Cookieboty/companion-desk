@@ -1,0 +1,33 @@
+{
+  "id": "nomi",
+  "displayName": "Nomi·诺米",
+  "style": "soft",
+  "license": "MIT",
+  "author": "Nomi-ai project owner (AI-generated artwork)",
+  "source": "docs/BRAND.md",
+  "description": "Nomi brand mascot. Owner-provided, AI-generated artwork, licensed by the project owner for use in this repository. Expressions cropped from the brand board.",
+  "expressions": {
+    "neutral": "neutral.png",
+    "happy": "happy.png",
+    "angry": "angry.png",
+    "sad": "sad.png",
+    "relaxed": "relaxed.png",
+    "surprised": "surprised.png"
+  },
+  "blink": "blink.png",
+  "mouthOpen": "mouth.png",
+  "thumbnail": "thumb.png",
+  "extras": {
+    "happy": "expressions/happy.png",
+    "think": "expressions/think.png",
+    "heart": "expressions/heart.png",
+    "work": "expressions/work.png",
+    "confused": "expressions/confused.png",
+    "surprised": "expressions/surprised.png",
+    "wave": "expressions/wave.png",
+    "cheer": "expressions/cheer.png",
+    "goodnight": "expressions/goodnight.png",
+    "fullBody": "full-body.png"
+  },
+  "tags": ["sprite", "2d", "soft", "anime", "brand", "default"]
+}

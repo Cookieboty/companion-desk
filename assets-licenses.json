@@ -1,18 +1,7 @@
 {
   "$comment": "Every shipped static asset must match an entry with an allow-listed open licence. Checked by scripts/check-licenses.mjs. 'LicenseRef-FirstParty' = artwork owned by the project author (Cookieboty), all rights reserved; allowed only for explicitly listed files.",
-  "roots": [
-    "packages/renderer/public",
-    "packages/electron/assets",
-    "packages/ui/src/brand"
-  ],
-  "allowedLicenses": [
-    "CC0-1.0",
-    "CC-BY-4.0",
-    "CC-BY-SA-4.0",
-    "MIT",
-    "Apache-2.0",
-    "OFL-1.1"
-  ],
+  "roots": ["packages/renderer/public", "packages/electron/assets", "packages/ui/src/brand"],
+  "allowedLicenses": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "MIT", "Apache-2.0", "OFL-1.1"],
   "$reviewedLicensesComment": "Explicitly reviewed non-OSI licences: allowed only because they permit commercial use AND redistribution. Per-asset conditions are shown in the app (credits / badges). Adding one needs maintainer review.",
   "reviewedLicenses": {
     "LicenseRef-VRoid-AvatarSample": {
@@ -23,10 +12,7 @@
         "redistribution": true,
         "modification": true,
         "credit": false,
-        "prohibited": [
-          "hate speech / discrimination",
-          "antisocial or illegal use"
-        ]
+        "prohibited": ["hate speech / discrimination", "antisocial or illegal use"]
       }
     },
     "LicenseRef-VRM-Public-1.0": {
@@ -63,6 +49,12 @@
       "license": "CC0-1.0",
       "author": "pzUH (Cute Girl Free Sprites) + Companion Desk (mood remap overlays)",
       "source": "https://opengameart.org/content/cute-girl-free-sprites"
+    },
+    {
+      "pattern": "packages/renderer/public/assets/models/sprite/nomi/**",
+      "license": "MIT",
+      "author": "Nomi-ai project owner (Cookieboty) — owner-provided, AI-generated, licensed by project owner",
+      "source": "docs/BRAND.md (Nomi brand board)"
     },
     {
       "pattern": "packages/renderer/public/assets/models/sprite/michona/**",

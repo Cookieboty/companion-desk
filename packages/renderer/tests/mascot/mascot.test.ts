@@ -36,7 +36,7 @@ describe('catalog', () => {
     expect(nextModel([], null)).toBeUndefined();
   });
 
-  it('ships default VRM plus bundled 2D sprite spikes (all CC0)', async () => {
+  it('ships Nomi (default 2D) plus VRM and alternate sprites', async () => {
     const fs = await import('node:fs');
     const raw = JSON.parse(
       fs.readFileSync(
@@ -46,12 +46,14 @@ describe('catalog', () => {
     );
     const list = parseCatalog(raw);
     expect(list.map((m) => m.name)).toEqual([
+      'nomi',
       'default-character',
       'pastel-girl',
       'michona',
     ]);
-    for (const m of list) expect(m.license).toBe('CC0-1.0');
-    expect(list.filter((m) => m.tags?.includes('sprite')).length).toBe(2);
+    expect(list[0].license).toBe('MIT'); // owner-provided, AI-generated
+    for (const m of list.slice(1)) expect(m.license).toBe('CC0-1.0');
+    expect(list.filter((m) => m.tags?.includes('sprite')).length).toBe(3);
   });
 });
 

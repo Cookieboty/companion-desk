@@ -1,6 +1,30 @@
 {
   "models": [
     {
+      "name": "nomi",
+      "displayName": "Nomi·诺米",
+      "description": "Nomi 品牌看板娘（默认角色，2D 表情立绘）",
+      "path": "./assets/models/sprite/nomi/manifest.json",
+      "thumbnail": "./assets/models/sprite/nomi/thumb.png",
+      "author": "Nomi-ai project owner (AI-generated)",
+      "license": "MIT",
+      "source": "https://github.com/Cookieboty/nomi-ai/blob/main/docs/BRAND.md",
+      "tags": [
+        "default",
+        "sprite",
+        "2d",
+        "soft",
+        "brand"
+      ],
+      "config": {
+        "voice": {
+          "voiceHint": "xiaoxiao",
+          "rate": 0.92,
+          "pitch": 1.1
+        }
+      }
+    },
+    {
       "name": "default-character",
       "displayName": "千駄ヶ谷 渋 (Sendagaya Shibu)",
       "description": "VRoid 样例模型 AvatarSample_D（默认角色）",
@@ -11,7 +35,7 @@
       "source": "https://opengameart.org/content/vroid-studio-cc0-models",
       "vrmVersion": "0.x",
       "tags": [
-        "default",
+        "default-3d",
         "vroid"
       ],
       "config": {
