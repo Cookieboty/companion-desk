@@ -85,7 +85,7 @@ Themes: Warm Ink (default) carries the brand orange. Graphite, Light Paper and C
 
 ## 7. Mascot usage
 
-- Default mascot: **Nomi·诺米** (2D sprite, `sprite/nomi`). Alternates: Pastel Girl (2D), Michona (2D), VRM 3D default (千駄ヶ谷 渋).
+- Default mascot: **Nomi·诺米** (2D pseudo-3D layered rig, `sprite/nomi`). Alternates: Pastel Girl (2D), Michona (2D), VRM 3D default (千駄ヶ谷 渋).
 - Always on a transparent background; don't crop through the face; keep the bust framing and the soft bottom fade.
 - Match the expression to the message: cheer for completions, think while working, wave on greetings, goodnight at night. No sad/angry faces in error or security dialogs.
 - Don't redraw, re-dress or sexualise Nomi; don't use her to endorse third-party products; don't use her in ads outside the project without the owner's permission.
