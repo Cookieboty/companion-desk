@@ -34,6 +34,8 @@ interface MessageInputProps {
   onScreenClick?: () => void;
   onExtClick?: () => void;
   onLocalClick?: () => void;
+  /** 打开统一设置页的某个分区 */
+  onSettingsClick?: (section?: string) => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -49,6 +51,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onScreenClick,
   onExtClick,
   onLocalClick,
+  onSettingsClick,
 }) => {
   const [message, setMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -303,6 +306,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     run: () => void;
     show: boolean;
     active?: boolean;
+    /** 出现在 ＋ 菜单里（其余只走 / 命令、快捷键与顶栏/设置） */
+    menu?: boolean;
   };
   const commands: Cmd[] = [
     {
@@ -311,6 +316,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       label: kbMode ? '知识库问答：开' : '知识库问答：关',
       hint: '⌘/Ctrl+Shift+K',
       testId: 'kb-mode-toggle',
+      menu: true,
       run: toggleKb,
       show: kbAvailable,
       active: kbMode,
@@ -321,6 +327,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       label: '截图提问',
       hint: '⌘/Ctrl+Shift+S',
       testId: 'snip-button',
+      menu: true,
       run: () => void snip(),
       show: screenOk && !isDisabled && !snipping,
     },
@@ -329,6 +336,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       icon: '⚙️',
       label: provOk ? '供应商与模型' : '配置模型',
       testId: 'open-config',
+      menu: true,
       run: () => openModels?.(),
       show: true,
     },
@@ -402,6 +410,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       testId: 'open-local-panel',
       run: () => onLocalClick?.(),
       show: !!onLocalClick && extClient.available(),
+    },
+    {
+      id: 'settings',
+      icon: '⚙️',
+      label: '全部设置…',
+      hint: '⌘/Ctrl+,',
+      testId: 'composer-settings',
+      run: () => onSettingsClick?.(),
+      show: !!onSettingsClick,
+      menu: true,
     },
   ].filter((c) => c.show);
   const slashQuery = /^\/(\S*)$/.exec(message)?.[1];
@@ -545,7 +563,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              title="更多：知识库、语音、模型、设置…（也可输入 / ）"
+              title="更多：知识库问答、截图、模型、设置（也可输入 / ）"
               aria-label="更多功能"
               data-testid="composer-more"
             >
@@ -555,7 +573,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             </button>
             {menuOpen && (
               <div className={styles.menu} role="menu" data-testid="composer-menu">
-                {renderItems(commands, false)}
+                {renderItems(
+                  commands.filter((c) => c.menu),
+                  false,
+                )}
               </div>
             )}
           </div>

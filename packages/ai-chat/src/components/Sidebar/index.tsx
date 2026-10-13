@@ -9,6 +9,7 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onNewChat: () => void;
+  onSettings?: () => void;
 }
 
 type Meta = Omit<ChatSession, 'messages'>;
@@ -22,7 +23,7 @@ const rel = (ts: number) => {
 };
 
 /** Codex 风格的极简侧栏：新对话 + 历史线程列表，⌘/Ctrl+B 收起 */
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat, onSettings }) => {
   const { state, actions } = useAiChat();
   const ipc = state.ipcClient;
   const [list, setList] = useState<Meta[]>([]);
@@ -112,6 +113,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
             </button>
           ))}
         </nav>
+      )}
+      {onSettings && (
+        <button
+          className={`${styles.newChat} ${styles.bottom}`}
+          onClick={onSettings}
+          title="设置 (⌘/Ctrl+,)"
+          data-testid="sidebar-settings"
+        >
+          <span aria-hidden>⚙</span>
+          {!collapsed && <span>设置</span>}
+        </button>
       )}
     </aside>
   );

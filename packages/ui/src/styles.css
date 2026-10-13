@@ -1126,3 +1126,40 @@
   flex: none;
   flex-wrap: nowrap;
 }
+
+/* 抽屉：从右侧滑出的快速视图 */
+.cd-modal-overlay--drawer {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+.cd-modal--drawer {
+  width: min(560px, 92vw);
+  max-width: none;
+  max-height: none;
+  height: 100%;
+  border-radius: 0;
+  border-width: 0 0 0 1px;
+}
+/* 内嵌：设置页里的分区，无遮罩、无阴影 */
+.cd-modal--inline {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  animation: none;
+}
+.cd-modal--inline > .cd-modal__header {
+  padding-left: 0;
+  padding-right: 0;
+}
+.cd-modal--inline > .cd-modal__body {
+  padding-left: 0;
+  padding-right: 0;
+  overflow: visible;
+}
+.cd-modal--drawer .cd-modal__title {
+  flex: 1;
+}

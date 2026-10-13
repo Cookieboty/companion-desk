@@ -1,0 +1,97 @@
+.settings {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+.nav {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--cd-color-border);
+  background: rgba(255, 255, 255, 0.015);
+  overflow-y: auto;
+}
+.back,
+.navItem {
+  border: none;
+  background: transparent;
+  color: var(--cd-color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.back:hover,
+.navItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cd-color-text);
+}
+.navTitle {
+  font-size: 11px;
+  color: var(--cd-color-text-subtle);
+  padding: 14px 10px 6px;
+}
+.navActive {
+  background: rgba(var(--cd-accent-rgb), 0.14);
+  color: var(--cd-color-text);
+}
+.navIcon {
+  width: 18px;
+  text-align: center;
+}
+.content {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+.inner {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 20px 28px 40px;
+}
+.block {
+  margin-top: 8px;
+}
+.h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 12px 0;
+  color: var(--cd-color-text);
+}
+.note,
+.list {
+  font-size: 13px;
+  color: var(--cd-color-text-muted);
+  line-height: 1.8;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.keys {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 18px;
+  font-size: 13px;
+  margin: 0;
+}
+.keys dt {
+  color: var(--cd-color-text);
+  font-family: var(--cd-font-mono, monospace);
+  font-size: 12px;
+}
+.keys dd {
+  margin: 0;
+  color: var(--cd-color-text-muted);
+}
