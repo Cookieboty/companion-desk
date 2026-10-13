@@ -15,6 +15,7 @@ import { MemoryPanel } from './components/MemoryPanel';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
+import { onboardingClient } from './components/Onboarding/client';
 import { ProviderPanel } from './components/ProviderPanel';
 import { SchedulePanel } from './components/SchedulePanel';
 import { ScreenPanel } from './components/ScreenPanel';
@@ -34,6 +35,12 @@ const AiChatContent: React.FC = () => {
 
   // 托盘「Provider 设置…」→ 主进程通知打开面板
   useEffect(() => providerClient.onOpenPanel(() => setShowProviders(true)), []);
+  // mascot holds a thinking pose while a reply is being generated
+  useEffect(() => {
+    if (!state.isLoading) return;
+    onboardingClient.mascot({ type: 'motion', name: 'think-on' });
+    return () => onboardingClient.mascot({ type: 'motion', name: 'think-off' });
+  }, [state.isLoading]);
   const [showDesktop, setShowDesktop] = useState(false);
   // 托盘「桌面能力…」→ 打开桌面能力面板
   useEffect(() => desktopClient.onOpenPanel(() => setShowDesktop(true)), []);
