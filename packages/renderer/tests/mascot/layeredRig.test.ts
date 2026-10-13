@@ -54,6 +54,9 @@ describe('layered rig animator', () => {
     expect(p.headX).toBeGreaterThan(5);
     expect(p.featX).toBeGreaterThan(2);
     expect(p.headRot).toBeGreaterThan(0);
+    expect(p.irisX).toBeGreaterThan(0.5);
+    const q = run(new RigAnimator(), { lookX: 0, lookY: -1 }, 2);
+    expect(q.irisY).toBeGreaterThan(0.5);
   });
 
   it('opens the mouth while talking', () => {

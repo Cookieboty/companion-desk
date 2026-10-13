@@ -12,8 +12,14 @@ export interface RigManifest {
   size: [number, number];
   /** Named pivots, e.g. neck, eyeL, eyeR, mouth, hairL, hairR, ribbon, cheekL, cheekR, headTop. */
   anchors: Record<string, [number, number]>;
-  /** Layer name → top-left offset of its (trimmed) PNG in rig space. Files are `${dir}${name}.png`. */
-  layers: Record<string, [number, number]>;
+  /** iris radius per eye (rig px), for hi-res eyes with movable irises */
+  irisRadius?: { l?: number; r?: number };
+  /**
+   * Layer name → top-left offset of its (trimmed) PNG in rig space, plus an optional
+   * draw scale (e.g. 0.5 for hi-res face layers authored at 2× rig density).
+   * Files are `${dir}${name}.png`.
+   */
+  layers: Record<string, [number, number] | [number, number, number]>;
   /** Folder (relative to manifest) holding the layer PNGs. */
   dir?: string;
 }
@@ -41,6 +47,9 @@ export interface RigPose {
   headRot: number;
   featX: number;
   featY: number;
+  /** iris offset inside the eye, -1..1 (scaled by the iris radius) */
+  irisX: number;
+  irisY: number;
   hairRotL: number;
   hairRotR: number;
   ribbonRot: number;
@@ -298,6 +307,8 @@ export class RigAnimator {
       ...m,
       featX: s.lookX * 4,
       featY: -s.lookY * 3,
+      irisX: Math.max(-1, Math.min(1, s.lookX * 1.2)),
+      irisY: Math.max(-1, Math.min(1, -s.lookY * 1.2)),
       eyeOpen: happy > 0.5 ? 1 : eyeOpen,
       eyeScale: s.eyeScale,
       eyeVariant: happy > 0.5 ? 'happy' : 'open',
@@ -318,6 +329,18 @@ export type RigImages = Map<string, CanvasImageSource & { width: number; height:
 export const RIG_LAYERS = [
   'body',
   'head',
+  'face-hd',
+  'eye-white-l',
+  'eye-white-r',
+  'iris-l',
+  'iris-r',
+  'lash-l',
+  'lash-r',
+  'lid-l',
+  'lid-r',
+  'happy-l',
+  'happy-r',
+  // legacy single-plate eyes (older rigs)
   'eye-l',
   'eye-r',
   'eyes-closed',
@@ -331,19 +354,21 @@ export const RIG_LAYERS = [
   'ribbon',
 ] as const;
 
-let scratch: HTMLCanvasElement | OffscreenCanvas | null = null;
-function scratchCanvas(w: number, h: number) {
-  if (!scratch) {
-    scratch =
+const scratches: (HTMLCanvasElement | OffscreenCanvas | undefined)[] = [];
+function scratchCanvas(w: number, h: number, slot = 0) {
+  let c = scratches[slot];
+  if (!c) {
+    c =
       typeof OffscreenCanvas !== 'undefined'
         ? new OffscreenCanvas(w, h)
         : Object.assign(document.createElement('canvas'), { width: w, height: h });
+    scratches[slot] = c;
   }
-  if (scratch.width !== w || scratch.height !== h) {
-    scratch.width = w;
-    scratch.height = h;
+  if (c.width !== w || c.height !== h) {
+    c.width = w;
+    c.height = h;
   }
-  return scratch;
+  return c;
 }
 
 /**
@@ -362,8 +387,65 @@ export function drawRig(
     const off = L[name];
     if (!img || !off || alpha <= 0.003) return;
     if (alpha < 1) ctx.globalAlpha = alpha;
-    ctx.drawImage(img, off[0], off[1]);
+    const k = off[2] ?? 1;
+    if (k === 1) ctx.drawImage(img, off[0], off[1]);
+    else ctx.drawImage(img, off[0], off[1], img.width * k, img.height * k);
     if (alpha < 1) ctx.globalAlpha = 1;
+  };
+  const tint = pose.tint;
+  const tintedLayer = (name: string, slot: number) => {
+    const img = imgs.get(name);
+    const off = L[name];
+    if (!img || !off) return;
+    if (tint.a <= 0.004) return layer(name);
+    const c = scratchCanvas(img.width, img.height, slot);
+    const g = c.getContext('2d') as CanvasRenderingContext2D | null;
+    if (!g) return layer(name);
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = `rgba(${tint.r | 0},${tint.g | 0},${tint.b | 0},${tint.a})`;
+    g.fillRect(0, 0, c.width, c.height);
+    const k = off[2] ?? 1;
+    ctx.drawImage(c as CanvasImageSource, off[0], off[1], img.width * k, img.height * k);
+  };
+  /**
+   * Eye with movable iris: white → iris (clipped to the white) → lashes, composed on a
+   * scratch canvas at the layers' native resolution, then squashed for blinks.
+   */
+  const hdEye = (side: 'l' | 'r', pivotPt: [number, number]) => {
+    const white = imgs.get(`eye-white-${side}`);
+    const wo = L[`eye-white-${side}`];
+    if (!white || !wo) return false;
+    const k = wo[2] ?? 1;
+    const c = scratchCanvas(white.width, white.height, side === 'l' ? 2 : 3);
+    const g = c.getContext('2d') as CanvasRenderingContext2D | null;
+    if (!g) return false;
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, c.width, c.height);
+    g.drawImage(white, 0, 0);
+    const iris = imgs.get(`iris-${side}`);
+    const io = L[`iris-${side}`];
+    const r = rig.irisRadius?.[side] ?? 20;
+    if (iris && io) {
+      g.globalCompositeOperation = 'source-atop';
+      const dx = (io[0] - wo[0]) / k + (pose.irisX * r * 0.38) / k;
+      const dy = (io[1] - wo[1]) / k + (pose.irisY * r * 0.22) / k;
+      g.drawImage(iris, dx, dy);
+    }
+    g.globalCompositeOperation = 'source-over';
+    pivot(
+      pivotPt,
+      () => {
+        ctx.drawImage(c as CanvasImageSource, wo[0], wo[1], white.width * k, white.height * k);
+        layer(`lash-${side}`);
+      },
+      0,
+      pose.eyeScale,
+      pose.eyeOpen * pose.eyeScale,
+    );
+    return true;
   };
   const pivot = (p: [number, number], fn: () => void, rot = 0, sx = 1, sy = 1) => {
     ctx.save();
@@ -390,25 +472,9 @@ export function drawRig(
   ctx.rotate(pose.headRot);
   ctx.translate(-neck[0], -neck[1]);
 
-  const tinted = pose.tint.a > 0.004;
-  const head = imgs.get('head');
-  const hOff = L.head;
-  if (tinted && head && hOff) {
-    // tint only the head's own pixels (source-atop on a scratch canvas)
-    const c = scratchCanvas(head.width, head.height);
-    const g = c.getContext('2d') as CanvasRenderingContext2D | null;
-    if (g) {
-      g.globalCompositeOperation = 'source-over';
-      g.clearRect(0, 0, c.width, c.height);
-      g.drawImage(head, 0, 0);
-      g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = `rgba(${pose.tint.r | 0},${pose.tint.g | 0},${pose.tint.b | 0},${pose.tint.a})`;
-      g.fillRect(0, 0, c.width, c.height);
-      ctx.drawImage(c as CanvasImageSource, hOff[0], hOff[1]);
-    }
-  } else {
-    layer('head');
-  }
+  // tint only the head's own pixels (source-atop on scratch canvases)
+  tintedLayer('head', 0);
+  tintedLayer('face-hd', 1);
 
   // blush (soft radial gradients on the cheeks)
   if (pose.blush > 0.02 && A.cheekL && A.cheekR) {
@@ -426,14 +492,23 @@ export function drawRig(
   // features ride a little further than the head → parallax depth
   ctx.save();
   ctx.translate(pose.featX, pose.featY);
+  const hd = imgs.has('eye-white-l');
   if (pose.eyeVariant === 'happy') {
-    layer('eyes-happy');
+    if (hd) {
+      layer('happy-l');
+      layer('happy-r');
+    } else layer('eyes-happy');
   } else {
     if (pose.eyeOpen > 0.06) {
-      pivot(A.eyeL, () => layer('eye-l'), 0, pose.eyeScale, pose.eyeOpen * pose.eyeScale);
-      pivot(A.eyeR, () => layer('eye-r'), 0, pose.eyeScale, pose.eyeOpen * pose.eyeScale);
+      if (!hdEye('l', A.eyeL))
+        pivot(A.eyeL, () => layer('eye-l'), 0, pose.eyeScale, pose.eyeOpen * pose.eyeScale);
+      if (!hdEye('r', A.eyeR))
+        pivot(A.eyeR, () => layer('eye-r'), 0, pose.eyeScale, pose.eyeOpen * pose.eyeScale);
     }
-    layer('eyes-closed', pose.lidAlpha);
+    if (hd) {
+      layer('lid-l', pose.lidAlpha);
+      layer('lid-r', pose.lidAlpha);
+    } else layer('eyes-closed', pose.lidAlpha);
   }
   if (pose.mouthVariant === 'closed' || pose.mouthVariant === 'frown') {
     layer(pose.mouthVariant === 'frown' ? 'mouth-frown' : 'mouth');
@@ -444,7 +519,7 @@ export function drawRig(
       A.mouth,
       () => layer(name),
       0,
-      pose.mouthVariant === 'o' ? 0.8 + 0.2 * open : 0.85 + 0.15 * open,
+      pose.mouthVariant === 'o' ? 0.5 + 0.1 * open : 0.85 + 0.15 * open,
       open,
     );
   }
