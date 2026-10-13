@@ -57,6 +57,7 @@ export const MessageBubble: React.FC = () => {
       gutter,
       view: { width: window.innerWidth, height: vh },
       prefWidth: PREF_W,
+      preferAbove: document.documentElement.dataset.mascotRig === 'layered',
       screen: {
         winX: window.screenX,
         availLeft: (window.screen as Screen & { availLeft?: number }).availLeft ?? 0,

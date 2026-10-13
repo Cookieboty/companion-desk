@@ -20,6 +20,11 @@ export interface BubbleInput {
   minWidth?: number;
   gap?: number;
   margin?: number;
+  /**
+   * Prefer a height-squeezed (scrollable) bubble above / beside the head over the "below the
+   * head" slot. The 2D figure has its chest right under the face, so it uses this.
+   */
+  preferAbove?: boolean;
 }
 
 export interface BubblePlacement {
@@ -88,16 +93,23 @@ export function placeBubble(i: BubbleInput): BubblePlacement {
   const roomAbove = head.top - gap - m;
   const roomBelow = view.height - m - (head.bottom + gap);
 
-  // 1. 头顶（放不下完整高度时压缩到可用空间）
+  // 1. 头顶（放不下完整高度时压缩到可用空间）；与工具栏槽位相交时横向让开
   if (roomAbove >= Math.min(fullH, MIN_H)) {
     const h = Math.min(fullH, roomAbove);
+    const y = head.top - gap - h;
+    let xa = xCentered;
+    if (i.gutter && intersects({ left: xa, right: xa + fullW, top: y, bottom: y + h }, i.gutter)) {
+      xa = gutterRight
+        ? clamp(i.gutter.left - 4 - fullW, xLo, Math.max(xLo, xHi - fullW))
+        : clamp(i.gutter.right + 4, xLo, Math.max(xLo, xHi - fullW));
+    }
     const r = consider({
-      x: xCentered,
-      y: head.top - gap - h,
+      x: xa,
+      y,
       width: fullW,
       height: h,
       tail: 'bottom',
-      tailOffset: clamp(hx - xCentered, 14, fullW - 14),
+      tailOffset: clamp(hx - xa, 14, fullW - 14),
       candidate: 'above',
     });
     if (r && h === fullH) return round(r);
@@ -120,6 +132,10 @@ export function placeBubble(i: BubbleInput): BubblePlacement {
       candidate: side,
     });
     if (r) return round(r);
+  }
+  if (i.preferAbove) {
+    const sq = tried.find((t) => t.candidate === 'above' && ok(t.x, t.y, t.width, t.height));
+    if (sq) return round(sq);
   }
   // 4. 头部下方（肩膀旁，尾巴朝上），同样可压缩高度
   const below = (h: number): BubblePlacement => {

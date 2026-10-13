@@ -4,8 +4,10 @@ import { defineConfig } from '@playwright/test';
 process.env.CD_LOCALE ||= 'zh-CN';
 // 首次启动引导默认不弹出（引导自己的用例里显式开启）
 process.env.CD_ONBOARDING ||= 'off';
-// 默认角色是 2D Nomi；既有 E2E 基于 3D VRM 编写，测试中固定为 VRM
-process.env.CD_DEFAULT_MODEL ||= 'default-character';
+// 应用只内置 2D Nomi；3D 用例改用「用户导入」的测试夹具（CC0，仅位于 e2e-headed/fixtures，不随应用打包）。
+// CD_SEED_USER_VRM 让主进程在未打包运行时按正常导入流程把它导入为固定 id 的用户模型。
+process.env.CD_SEED_USER_VRM ||= `${process.cwd()}/e2e-headed/fixtures/models/test-avatar-cc0.vrm`;
+process.env.CD_DEFAULT_MODEL ||= 'user-e2e-avatar-000000';
 
 export default defineConfig({
   testDir: './e2e-headed/tests',

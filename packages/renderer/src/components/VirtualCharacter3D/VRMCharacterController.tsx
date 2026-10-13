@@ -44,6 +44,11 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     let cancelled = false;
     let detach: (() => void) | null = null;
     const url = modelPath || DEFAULT_VRM_MODEL_PATH;
+    if (!url) {
+      // no bundled VRM: only user/store models reach the 3D path
+      setUseFallback(true);
+      return;
+    }
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
     setUseFallback(false);

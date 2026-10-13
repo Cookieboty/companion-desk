@@ -3,7 +3,7 @@
  * Licence gate (CI):
  *   1. assets — every file under assets-licenses.json `roots` must match an entry whose licence is allow-listed;
  *      model-list.json entries must carry an allow-listed licence and point at existing files;
- *      every .vrm on disk must be listed in model-list.json.
+ *      only Nomi may be bundled; no .vrm ships in packages/renderer/public.
  *   2. deps  — production dependencies (`pnpm licenses list --prod -r --json`) must use allow-listed
  *      SPDX licences, or be a reviewed per-package exception below.
  *
@@ -185,7 +185,12 @@ function checkAssets() {
       if (key === 'path') listed.add(path.resolve(file));
     }
   }
-  for (const vrm of walk(path.dirname(listPath)).filter((f) => f.endsWith('.vrm'))) {
+  // Only Nomi is bundled; every other character comes from the store or a user import.
+  for (const m of list.models ?? [])
+    if (m.name !== 'nomi') errors.push(`assets: only Nomi may be bundled (found ${m.name})`);
+  for (const vrm of walk(path.join(ROOT, 'packages/renderer/public')).filter((f) =>
+    f.endsWith('.vrm'),
+  )) {
     if (!listed.has(path.resolve(vrm)))
       errors.push(`assets: ${path.basename(vrm)} is not listed in model-list.json`);
   }

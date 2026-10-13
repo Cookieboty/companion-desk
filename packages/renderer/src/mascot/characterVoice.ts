@@ -25,22 +25,11 @@ export const CHARACTER_VOICE_DEFAULTS: Record<string, ModelVoiceConfig> = {
     rate: 0.92,
     pitch: 1.1,
   },
-  'default-character': {
-    voiceHint: 'xiaoxiao',
-    rate: 0.88,
-    pitch: 1.06,
-  },
-  'pastel-girl': {
-    voiceHint: 'xiaoxiao',
-    rate: 0.9,
-    pitch: 1.08,
-  },
-  michona: {
-    voiceHint: 'meijia',
-    rate: 0.88,
-    pitch: 1.05,
-  },
 };
+
+/** fallbacks for user-imported / store models (no bundled defaults besides Nomi) */
+export const SOFT_2D_VOICE: ModelVoiceConfig = { voiceHint: 'xiaoxiao', rate: 0.9, pitch: 1.08 };
+export const GENERIC_VOICE: ModelVoiceConfig = { voiceHint: 'xiaoxiao', rate: 0.88, pitch: 1.06 };
 
 type OverrideMap = Record<string, ModelVoiceConfig>;
 
@@ -89,11 +78,9 @@ export function defaultsForCharacter(
 ): ModelVoiceConfig {
   if (modelName && CHARACTER_VOICE_DEFAULTS[modelName])
     return { ...CHARACTER_VOICE_DEFAULTS[modelName] };
-  if (tags?.includes('pixel') || tags?.includes('pet'))
-    return { ...CHARACTER_VOICE_DEFAULTS['pastel-girl'] };
-  if (tags?.includes('sprite') || tags?.includes('soft'))
-    return { ...CHARACTER_VOICE_DEFAULTS.michona };
-  return { ...CHARACTER_VOICE_DEFAULTS['default-character'] };
+  if (tags?.includes('sprite') || tags?.includes('soft') || tags?.includes('2d'))
+    return { ...SOFT_2D_VOICE };
+  return { ...GENERIC_VOICE };
 }
 
 export function getCharacterVoiceOverride(modelName: string): ModelVoiceConfig | undefined {

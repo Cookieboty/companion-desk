@@ -33,27 +33,25 @@ describe('characterVoice', () => {
     setActiveCharacter(null);
   });
 
-  it('ships distinct softer defaults per character', () => {
-    expect(CHARACTER_VOICE_DEFAULTS.michona.rate).toBeLessThan(
-      CHARACTER_VOICE_DEFAULTS['pastel-girl'].rate!,
-    );
-    expect(defaultsForCharacter('pastel-girl').voiceHint).toBe('xiaoxiao');
+  it('ships only Nomi defaults; imported models get family fallbacks', () => {
+    expect(Object.keys(CHARACTER_VOICE_DEFAULTS)).toEqual(['nomi']);
+    expect(defaultsForCharacter('nomi').pitch).toBe(1.1);
+    expect(defaultsForCharacter('user-x-abcdef', ['sprite']).rate).toBe(0.9);
+    expect(defaultsForCharacter('user-y-abcdef').rate).toBe(0.88);
   });
 
   it('merges config then override', async () => {
-    const merged = resolveCharacterVoice('michona', { voice: { rate: 0.8 } });
+    const merged = resolveCharacterVoice('nomi', { voice: { rate: 0.8, voiceHint: 'meijia' } });
     expect(merged.rate).toBe(0.8);
     expect(merged.voiceHint).toBe('meijia');
-    await saveCharacterVoice('michona', { pitch: 1.2 });
-    expect(resolveCharacterVoice('michona', { voice: { rate: 0.8 } }).pitch).toBe(1.2);
-    clearCharacterVoiceOverride('michona');
-    expect(resolveCharacterVoice('michona').pitch).toBe(
-      CHARACTER_VOICE_DEFAULTS.michona.pitch,
-    );
+    await saveCharacterVoice('nomi', { pitch: 1.2 });
+    expect(resolveCharacterVoice('nomi', { voice: { rate: 0.8 } }).pitch).toBe(1.2);
+    clearCharacterVoiceOverride('nomi');
+    expect(resolveCharacterVoice('nomi').pitch).toBe(CHARACTER_VOICE_DEFAULTS.nomi.pitch);
   });
 
   it('active character drives resolvePrefsForCharacter', () => {
-    setActiveCharacter('pastel-girl', { voice: { voiceHint: 'xiaoxiao', rate: 0.94 } });
+    setActiveCharacter('nomi', { voice: { voiceHint: 'xiaoxiao', rate: 0.94 } });
     const prefs = resolvePrefsForCharacter();
     expect(prefs.rate).toBe(0.94);
   });

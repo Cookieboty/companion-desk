@@ -114,11 +114,13 @@ test.describe('E5 · real app · dist/main.js 生产模式冒烟', () => {
     });
     expect(state.expressions).toEqual(expect.arrayContaining(['aa', 'happy', 'sad', 'blink']));
 
-    // 角色选择器：内置只剩默认角色（其余在模型商店，见 E8）→ 选中并记住
+    // 角色选择器：内置只有 Nomi + 测试种入的用户 VRM（其余在模型商店，见 E8）→ 选中并记住
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('mascot:open-picker')));
-    await page.locator('[data-testid="model-option-default-character"]').click({ timeout: 10_000 });
+    await page
+      .locator('[data-testid="model-option-user-e2e-avatar-000000"]')
+      .click({ timeout: 10_000 });
     await page.waitForFunction(
-      () => localStorage.getItem('companion.mascot.model') === 'default-character',
+      () => localStorage.getItem('companion.mascot.model') === 'user-e2e-avatar-000000',
       undefined,
       { timeout: 10_000 },
     );

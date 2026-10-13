@@ -107,11 +107,12 @@ export class UserModels {
     return name;
   }
 
-  async import(src: string, config: ModelConfig = {}): Promise<UserModelRecord> {
+  async import(src: string, config: ModelConfig = {}, fixedId?: string): Promise<UserModelRecord> {
     const inspection = await this.validate(src);
     const meta = summarize(inspection);
     const base = meta.title || path.basename(src);
-    const id = `user-${slug(base)}-${randomBytes(3).toString('hex')}`;
+    const id = fixedId ?? `user-${slug(base)}-${randomBytes(3).toString('hex')}`;
+    if (!ID_RE.test(id)) throw new Error('invalid user model id');
     const dir = path.join(this.dir, id);
     await fsp.mkdir(dir, { recursive: true });
     try {

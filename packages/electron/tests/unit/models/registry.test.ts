@@ -20,7 +20,7 @@ it('merges bundled + installed remote + user models; remote overrides bundled id
     JSON.stringify({
       models: [
         {
-          name: 'default-character',
+          name: 'nomi',
           displayName: 'Shibu',
           path: './a.vrm',
           author: 'pixiv',
@@ -77,7 +77,7 @@ it('merges bundled + installed remote + user models; remote overrides bundled id
 
   const list = await new ModelRegistry({ bundledListPath: listPath, store, user }).list();
   expect(list.map((m) => [m.id, m.origin])).toEqual([
-    ['default-character', 'bundled'],
+    ['nomi', 'bundled'],
     ['vivi', 'remote'],
     [u.id, 'user'],
   ]);
@@ -87,4 +87,15 @@ it('merges bundled + installed remote + user models; remote overrides bundled id
     license: 'Other',
     meta: expect.objectContaining({ title: 'Mine' }),
   });
+});
+
+it('imports a user model under a fixed id (e2e seed path) and rejects bad ids', async () => {
+  const root = tmp();
+  const user = new UserModels(root);
+  const src = path.join(tmp(), 'seed.vrm');
+  await fsp.writeFile(src, makeTinyVrm({ title: 'Seed' }));
+  const rec = await user.import(src, {}, 'user-e2e-avatar-000000');
+  expect(rec.id).toBe('user-e2e-avatar-000000');
+  expect((await user.list()).map((r) => r.id)).toEqual(['user-e2e-avatar-000000']);
+  await expect(user.import(src, {}, '../escape')).rejects.toThrow(/invalid user model id/);
 });

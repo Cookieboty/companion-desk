@@ -9,6 +9,7 @@ import * as path from 'path';
 import { app } from 'electron';
 
 import { t } from '../i18n';
+import { DEFAULT_MASCOT_SCALE, migrateMascotSize } from '../mascot/mascotSize';
 
 import { type ILoggerService } from './LoggerService';
 
@@ -29,6 +30,8 @@ export interface WindowSettings {
 
 export interface AppConfig {
   windowPosition: { x: number; y: number };
+  /** mascot on-screen size relative to the original 420×450 (default 0.5, see mascotSize.ts) */
+  mascotScale: number;
   modelName: string;
   voiceSettings: VoiceSettings;
   window: WindowSettings;
@@ -62,6 +65,7 @@ export class ConfigService implements IConfigService {
     // 默认配置
     this.defaultConfig = {
       windowPosition: { x: 0, y: 0 },
+      mascotScale: DEFAULT_MASCOT_SCALE,
       modelName: '',
       voiceSettings: {
         enabled: true,
@@ -94,6 +98,14 @@ export class ConfigService implements IConfigService {
 
         // 合并默认配置和加载的配置
         this.config = this.mergeConfigs(this.defaultConfig, loadedConfig);
+        // mascotScale 之前的配置：迁移到新的半尺寸默认值，并保持角色底部中心位置
+        const mig = migrateMascotSize(loadedConfig);
+        this.config.mascotScale = mig.mascotScale;
+        if (mig.windowPosition) this.config.windowPosition = mig.windowPosition;
+        if (mig.migrated) {
+          this.logger?.info('mascot size migrated to half-size default', mig);
+          await this.save();
+        }
 
         this.logger?.info('配置加载成功', { path: this.configPath });
       } else {

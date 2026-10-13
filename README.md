@@ -19,7 +19,7 @@ Nomi 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 
 - 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
 - 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
 - 🧩 **可扩展宿主** - IgPluginHost profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包 + Vercel AI SDK providers，MCP 桥接
-- 🎭 **可选 3D 桌面伙伴** - 开源 VRM 角色（内置 1 个 + 模型商店 9 个模型，支持导入自己的 .vrm）、表情、眨眼/视线、TTS 口型同步
+- 🎭 **可选 3D 桌面伙伴** - 内置角色只有 2D 的 Nomi；3D 渲染用于模型商店的 VRM 或导入自己的 .vrm、表情、眨眼/视线、TTS 口型同步
 - 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
 - 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
 - 📦 **工程化管理** - pnpm workspace + Turborepo，Vitest / Jest / Playwright 全链路测试
@@ -453,7 +453,7 @@ for await (const chunk of runtime.client.chat.stream({
 ### 核心技术与框架
 
 - [three.js](https://threejs.org/) 与 [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) - 3D 渲染与 VRM 支持（MIT）
-- [VRoid Project](https://vroid.com/) - 内置的 CC0 样例角色模型
+- [VRoid Project](https://vroid.com/) - 模型商店中的 CC0 样例角色模型（应用不内置）
 - [Quaternius](https://quaternius.com/) - Universal Animation Library（CC0），重定向为看板娘身体动作
 - [Electron](https://www.electronjs.org/) - 跨平台桌面应用开发框架
 - [React](https://reactjs.org/) - 用户界面库

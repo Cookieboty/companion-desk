@@ -10,12 +10,16 @@ import {
   paintRigFrame,
   RigAnimator,
   RIG_LAYERS,
+  rigBodyBox,
+  rigHeadBox,
+  rigTransform,
   type RigImages,
   type RigManifest,
 } from '../../mascot/layeredRig';
 import { mascotRegistry } from '../../mascot/MascotBackend';
+import { characterBox } from '../../mascot/spriteLayout';
 
-import MascotInteractionLayerLite from './InteractionLite';
+import MascotInteractionLayerLite, { type SpriteGeometry } from './InteractionLite';
 
 export interface SpriteCanvasProps {
   /** URL to manifest.json */
@@ -44,6 +48,7 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
   const rigRef = useRef<RigManifest | null>(null);
   const animRef = useRef<RigAnimator | null>(null);
   const rigImgs = useRef<RigImages>(new Map());
+  const geometry = useRef<SpriteGeometry>({ head: null, body: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -193,18 +198,37 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           gesture: frame.gesture,
           thinking: frame.thinking,
         });
-        paintRigFrame(ctx, rig, rigImgs.current, pose, w, h);
+        const box = characterBox(w, h);
+        paintRigFrame(ctx, rig, rigImgs.current, pose, w, h, box);
+        const view = rigTransform(rig, w, h, box);
+        const r = canvas.getBoundingClientRect();
+        const shift = (b: { left: number; right: number; top: number; bottom: number } | null) =>
+          b && {
+            left: b.left + r.left,
+            right: b.right + r.left,
+            top: b.top + r.top,
+            bottom: b.bottom + r.top,
+          };
+        geometry.current = {
+          head: shift(rigHeadBox(rig, rigImgs.current, pose, view)),
+          body: shift(rigBodyBox(rig, rigImgs.current, view, w, h)),
+        };
         return;
       }
       const img = imgs.current.get(frame.expressionUrl);
       if (!img) return;
-      const scale = Math.min((w * 0.85) / img.width, (h * 0.9) / img.height);
+      const cb = characterBox(w, h);
+      const scale = Math.min((cb.w * 0.85) / img.width, (cb.h * 0.9) / img.height);
       const dw = img.width * scale;
       const dh = img.height * scale;
       const lookOffX = frame.lookX * 8;
       const lookOffY = -frame.lookY * 6;
-      const x = (w - dw) / 2 + lookOffX;
-      const y = (h - dh) / 2 + frame.bobY + lookOffY;
+      const x = cb.x + (cb.w - dw) / 2 + lookOffX;
+      const y = cb.y + (cb.h - dh) / 2 + frame.bobY + lookOffY;
+      geometry.current = {
+        head: { left: x, right: x + dw, top: y, bottom: y + dh * 0.4 },
+        body: { left: x, right: x + dw, top: y, bottom: y + dh },
+      };
       if (styleKindRef.current === 'pixel') {
         ctx.imageSmoothingEnabled = false;
       } else {
@@ -264,6 +288,7 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       detach?.();
       backendRef.current?.dispose();
       backendRef.current = null;
+      delete document.documentElement.dataset.mascotRig;
     };
   }, [manifestPath]);
 
@@ -289,7 +314,13 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           imageRendering: styleKind === 'pixel' ? 'pixelated' : 'auto',
         }}
       />
-      {ready && <MascotInteractionLayerLite />}
+      {ready && (
+        <MascotInteractionLayerLite
+          canvasRef={canvasRef}
+          geometry={geometry}
+          registry={mascotRegistry}
+        />
+      )}
       {!ready && !error && (
         <div
           style={{

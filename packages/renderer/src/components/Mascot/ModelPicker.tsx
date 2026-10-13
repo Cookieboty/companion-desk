@@ -104,6 +104,25 @@ export const ModelPicker: React.FC = () => {
               </div>
             );
           })}
+          {hasModelsApi && (
+            <div className={styles.cardWrap}>
+              <button
+                type="button"
+                className={`${styles.card} ${styles.uploadCard}`}
+                data-testid="model-option-upload"
+                title={tr('导入自己的 .vrm 模型（仅保存在本机）')}
+                onClick={() => setTab('import')}
+              >
+                <div className={`${styles.thumb} ${styles.uploadThumb}`} aria-hidden>
+                  ＋
+                </div>
+                <span className={styles.name}>{tr('上传自定义模型')}</span>
+                <span className={styles.badges}>
+                  <Badge tone="neutral">.vrm</Badge>
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       )}
       {tab === 'store' && <ModelStoreTab />}
