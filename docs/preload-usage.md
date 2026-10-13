@@ -1,6 +1,6 @@
-# `@ig-live/ai-sdk-client/preload` 使用指引
+# `@nomi-ai/ai-sdk-client/preload` 使用指引
 
-> P7-4 交付物之一：把 [`mkAiPreload`](../packages/ai-sdk-client/src/preload/mkAiPreload.ts) 模板复制到 Electron 各端 preload，实现渲染进程与主进程 [`@ig-live/ai-runtime`](../packages/ai-runtime) 之间的**白名单 IPC 桥**。
+> P7-4 交付物之一：把 [`mkAiPreload`](../packages/ai-sdk-client/src/preload/mkAiPreload.ts) 模板复制到 Electron 各端 preload，实现渲染进程与主进程 [`@nomi-ai/ai-runtime`](../packages/ai-runtime) 之间的**白名单 IPC 桥**。
 
 ## 目标
 
@@ -15,7 +15,7 @@
 ```jsonc
 {
   "dependencies": {
-    "@ig-live/ai-sdk-client": "workspace:*",
+    "@nomi-ai/ai-sdk-client": "workspace:*",
   },
 }
 ```
@@ -27,7 +27,7 @@ renderer 侧（**Electron preload，CommonJS 或 ESM 皆可**）：
 ```ts
 // packages/renderer/src/preload.ts
 import { contextBridge, ipcRenderer } from 'electron';
-import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
 
 // 挂到 window.aiIPC（默认）
 mkAiPreload({ contextBridge, ipcRenderer });
@@ -38,7 +38,7 @@ ai-chat 侧（多窗口场景，可以使用不同 bridgeName 避免冲突）：
 ```ts
 // packages/ai-chat/preload.ts
 import { contextBridge, ipcRenderer } from 'electron';
-import { mkAiPreload } from '@ig-live/ai-sdk-client/preload';
+import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
 
 mkAiPreload({
   contextBridge,
@@ -53,7 +53,7 @@ mkAiPreload({
 
 ```tsx
 // packages/renderer/src/App.tsx
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
 
 export function App() {
   return (
@@ -76,7 +76,7 @@ export function App() {
 或注入外部 client：
 
 ```tsx
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 const client = new ClientAIClient({ bridgeName: 'aiChatIPC' });
 <AIProvider client={client}>...</AIProvider>;
 ```

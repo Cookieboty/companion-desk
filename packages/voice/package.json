@@ -1,8 +1,8 @@
 {
-  "name": "@ig-live/voice",
+  "name": "@nomi-ai/voice",
   "version": "0.1.0",
   "private": true,
-  "description": "Companion Desk 语音输入：麦克风采集、Silero VAD、唤醒词匹配、按住说话 / 免按键控制器与 UI",
+  "description": "Nomi 语音输入：麦克风采集、Silero VAD、唤醒词匹配、按住说话 / 免按键控制器与 UI",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,7 +27,7 @@
     "test": "node ../../scripts/run-bin.mjs vitest run"
   },
   "dependencies": {
-    "@ig-live/ui": "workspace:*"
+    "@nomi-ai/ui": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.0.0",

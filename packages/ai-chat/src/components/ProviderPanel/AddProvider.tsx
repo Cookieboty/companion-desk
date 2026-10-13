@@ -2,8 +2,8 @@
  * 添加供应商：搜索 + 分类（自定义配置 / 模型厂商 / 第三方平台）+ 预设卡片。
  * 预设只是表单预填模板，点开后进入编辑页，所有字段都可改。
  */
-import { t } from '@ig-live/ui';
-import { Input } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Input } from '@nomi-ai/ui';
 import React, { useMemo, useState } from 'react';
 
 import {

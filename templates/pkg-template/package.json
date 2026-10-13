@@ -1,5 +1,5 @@
 {
-  "name": "@ig-live/pkg-template",
+  "name": "@nomi-ai/pkg-template",
   "version": "0.0.0",
   "private": true,
   "description": "Workspace 包模板 —— 复制本目录到 packages/<your-pkg> 即可开工",

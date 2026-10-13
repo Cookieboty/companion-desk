@@ -50,10 +50,10 @@ const {
   CapabilityIpcServer,
   runtime,
   NoopRuntimeLogger,
-} = require('@ig-live/ai-runtime');
+} = require('@nomi-ai/ai-runtime');
 
-const { AIClient, toSdkContext } = require('@ig-live/ai-sdk');
-const bundleBase = require('@ig-live/bundle-ig-base');
+const { AIClient, toSdkContext } = require('@nomi-ai/ai-sdk');
+const bundleBase = require('@nomi-ai/bundle-ig-base');
 
 // -------------------------------------------------------------------
 // 直接手工构造 IpcAdapter（不走 ai-runtime 的 createElectronIpcAdapter 内部的
@@ -85,12 +85,7 @@ function makeAdapter() {
   };
 }
 
-const {
-  LLMRegistryKey,
-  ToolRegistryKey,
-  UserProfileKey,
-  makeDefaultUserProfile,
-} = bundleBase;
+const { LLMRegistryKey, ToolRegistryKey, UserProfileKey, makeDefaultUserProfile } = bundleBase;
 
 // ---------------------------------------------------------------------------
 // CLI 参数解析

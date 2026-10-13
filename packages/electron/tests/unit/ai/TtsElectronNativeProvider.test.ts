@@ -221,7 +221,7 @@ describe('TtsElectronNativeProvider', () => {
     });
   });
 
-  describe('contract shape (对齐 @ig-live/bundle-ig-electron-caps/seams TtsProvider)', () => {
+  describe('contract shape (对齐 @nomi-ai/bundle-ig-electron-caps/seams TtsProvider)', () => {
     it('runtime shape 具备 info / synth / stream / stop / listVoices，且 info 字段完整', () => {
       const provider = new TtsElectronNativeProvider({ engine: makeEngine() });
       expect(typeof provider.synth).toBe('function');

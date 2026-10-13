@@ -17,7 +17,7 @@
 ## 准入前提
 
 - [P4](../HISTORY.md) 完成：看板娘 bundle（Live2dSeam / TtsLipSync / WaifuAgent）可加载
-- [P7](P7-ai-sdk-client.md) 完成：`@ig-live/ai-sdk-client` 可发布并稳定
+- [P7](P7-ai-sdk-client.md) 完成：`@nomi-ai/ai-sdk-client` 可发布并稳定
 - 三个 profile（waifu / chat-only / mcp-headless）冒烟通过（[P1](P1-dsh-kernel-adoption.md) 退出准则）
 
 ## 范围与非范围
@@ -58,7 +58,7 @@
 > - AI Runtime 引导：[AIRuntimeBoot.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/AIRuntimeBoot.ts)
 > - Seams 实现：[SafeKeyProvider.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/SafeKeyProvider.ts) / [ClipboardGateway.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/ClipboardGateway.ts) / [ScreenCapture.ts](file:///d:/self_git/ai-live2d-client/packages/electron/src/ai/ScreenCapture.ts)
 > - 生命周期挂钩：[Application.ts#startAIRuntime/stopAIRuntime](file:///d:/self_git/ai-live2d-client/packages/electron/src/core/Application.ts#L119-L164)
-> - 依赖登记：[packages/electron/package.json](file:///d:/self_git/ai-live2d-client/packages/electron/package.json) 增补 `@ig-live/ai-runtime` 等 workspace 依赖
+> - 依赖登记：[packages/electron/package.json](file:///d:/self_git/ai-live2d-client/packages/electron/package.json) 增补 `@nomi-ai/ai-runtime` 等 workspace 依赖
 >
 > **仍未落地项**：`FileGateway` / `HotkeyGateway` / `WindowGateway` 三个 seam（当前 profile 尚不需要，待 P9 打磨阶段按需补齐）
 
@@ -125,7 +125,7 @@
 >   - [`bubbleReducer.test.ts`](../../packages/renderer/tests/ai/bubbleReducer.test.ts)（18 用例：文本抽取 / 截断 / 各事件派生 / 去重）
 >   - [`lipSyncStore.test.ts`](../../packages/renderer/tests/ai/lipSyncStore.test.ts)（6 用例：clamp / listener / reset）
 >   - [`waifuSceneStore.test.ts`](../../packages/renderer/tests/ai/waifuSceneStore.test.ts)（6 用例：set / 幂等 / listener / reset）
-> - 命令：`pnpm --filter @ig-live/renderer typecheck / build / test`（`3 files / 30 tests` 全绿）；`pnpm run typecheck`（16/16 绿）；`pnpm run test`（17/17 + root 4/18 绿）；`pnpm run doctor waifu|chat-only|mcp-headless`（三 profile 均 `ok: 86 entries composed, no warnings`）
+> - 命令：`pnpm --filter @nomi-ai/renderer typecheck / build / test`（`3 files / 30 tests` 全绿）；`pnpm run typecheck`（16/16 绿）；`pnpm run test`（17/17 + root 4/18 绿）；`pnpm run doctor waifu|chat-only|mcp-headless`（三 profile 均 `ok: 86 entries composed, no warnings`）
 >
 > **仍未落地的子项（下沉到 P9 打磨阶段）**：
 > - `waifuSceneStore → ctx.live2d.registerSceneProvider` 的正式对接（需要 `Live2dHost` 接口扩展）
@@ -151,7 +151,7 @@
 > - **Context 迁移**：[AiChatContext.tsx](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/contexts/AiChatContext.tsx) 直接持有 `ClientAIClient`，`currentModelId` 持久化到 `localStorage`（key `ai-chat:currentModel`）。
 > - **入口装配**：[main.tsx](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/main.tsx) 在 `window.aiIPC` 就绪时使用 `<AIProvider>` 包裹 `<App />`。
 > - **旧代码清理**（P8-4 → P8-5 交界）：删除 [AIService.ts](file:///d:/self_git/ai-live2d-client/packages/ai-chat/src/services/AIService.ts)、`services/adapters/` 目录（`AdapterFactory` + `BaseAdapter` + `DeepSeekAdapter` + `OpenAIAdapter`），并从 [packages/ai-chat/package.json](file:///d:/self_git/ai-live2d-client/packages/ai-chat/package.json) 移除 `crypto-js` / `axios` / `@types/crypto-js`。
-> - **验证**：`pnpm --filter @ig-live/ai-chat typecheck / build / test` 全绿。
+> - **验证**：`pnpm --filter @nomi-ai/ai-chat typecheck / build / test` 全绿。
 >
 > **尚未落地的子项（保留待做）**：
 > - `SessionList.tsx`（`client.session.list()`）
@@ -309,7 +309,7 @@
 ## 退出准则（自动化）
 
 1. `pnpm test:e2e` 通过 E1~E4
-2. `pnpm --filter @ig-live/electron dev` 启动后 `console` 无 `AIService` / `Mock` 关键字
+2. `pnpm --filter @nomi-ai/electron dev` 启动后 `console` 无 `AIService` / `Mock` 关键字
 3. 旧用户升级后 `chat_history.json` 全部条目在新 session log 中可见（脚本产出的 diff 报告为空）
 4. bundle size：ai-chat renderer 主包缩小 ≥ 15%（去除 adapter 代码）
 5. `pnpm typecheck` 全绿；`AIModelConfig` 全局 grep 无残留（除 `.legacy.` 文件）

@@ -2,7 +2,7 @@
  * KnowledgePanel —— 本地知识库管理：来源（文件夹 / 笔记）、索引进度、文档列表、检索测试、
  * 向量 / 重排模型（可选，OpenAI 兼容）、OCR 语言数据（按需下载，显示许可、进度、可取消）。
  */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Skeleton,
   Switch,
   Tabs,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 

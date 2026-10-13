@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import React, { useState, useEffect } from 'react';
 
 import { DEFAULT_VRM_MODEL_PATH } from '../../config/vrm';

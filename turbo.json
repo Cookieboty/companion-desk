@@ -60,17 +60,17 @@
       "dependsOn": ["^build"],
       "cache": false
     },
-    "@ig-live/electron#package": {
+    "@nomi-ai/electron#package": {
       "cache": false,
-      "dependsOn": ["@ig-live/electron#build", "@ig-live/renderer#build", "@ig-live/ai-chat#build"]
+      "dependsOn": ["@nomi-ai/electron#build", "@nomi-ai/renderer#build", "@nomi-ai/ai-chat#build"]
     },
-    "@ig-live/renderer#package": {
+    "@nomi-ai/renderer#package": {
       "cache": false,
-      "dependsOn": ["@ig-live/renderer#build"]
+      "dependsOn": ["@nomi-ai/renderer#build"]
     },
-    "@ig-live/types#package": {
+    "@nomi-ai/types#package": {
       "cache": false,
-      "dependsOn": ["@ig-live/types#build"]
+      "dependsOn": ["@nomi-ai/types#build"]
     },
     "package:prod": {
       "cache": false,

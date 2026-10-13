@@ -130,7 +130,7 @@ describe('SdkIPCClient · multi-turn', () => {
     const [send, stream] = calls;
     expect(send!.opts.provider).toBe('openai');
     expect(send!.opts.messages).toEqual([
-      { role: 'system', content: expect.stringContaining('Companion Desk') },
+      { role: 'system', content: expect.stringContaining('Nomi') },
       { role: 'user', content: 'q1' },
       { role: 'assistant', content: 'a1' },
       { role: 'user', content: 'q2' },

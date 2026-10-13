@@ -3,7 +3,7 @@
  *
  * 只返回视图（掩码 key），所有明文 key 的使用都在主进程内完成。
  */
-import type { LLMProviderEntry } from '@ig-live/bundle-ig-base';
+import type { LLMProviderEntry } from '@nomi-ai/bundle-ig-base';
 
 import { envProviderConfig, type AiSdkLlmProviderOptions } from '../ai-sdk/AiSdkLlmProvider';
 

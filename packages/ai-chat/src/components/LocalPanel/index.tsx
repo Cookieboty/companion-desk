@@ -2,7 +2,7 @@
  * LocalPanel —— 本地中心：本机模型（llama.cpp 按需下载 / 启停 / 删除 / 设为聊天模型、Ollama）、
  * 本地日历（.ics / 订阅 / CalDAV）、剪贴板历史、全部数据导出。
  */
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -14,7 +14,7 @@ import {
   SkeletonList,
   Switch,
   Tabs,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {

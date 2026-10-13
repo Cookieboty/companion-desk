@@ -1,4 +1,4 @@
-// Single source of truth for Companion Desk dev ports (dev-ports.json + env overrides).
+// Single source of truth for Nomi dev ports (dev-ports.json + env overrides).
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

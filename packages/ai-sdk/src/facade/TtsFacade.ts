@@ -1,7 +1,7 @@
 /**
  * TtsFacade —— 语音合成薄封装（含 stream / stop / listVoices）。
  *
- * 通过子入口 `@ig-live/bundle-ig-electron-caps/seams` 引 `TtsKey` 与类型，避开主入口的
+ * 通过子入口 `@nomi-ai/bundle-ig-electron-caps/seams` 引 `TtsKey` 与类型，避开主入口的
  * `assertElectronMainProcess` 运行时守卫。
  */
 
@@ -14,7 +14,7 @@ import {
   type TtsResult,
   type TtsService,
   type TtsVoice,
-} from '@ig-live/bundle-ig-electron-caps/seams';
+} from '@nomi-ai/bundle-ig-electron-caps/seams';
 
 import type { SdkContext } from '../di/SdkContext';
 import { AIClientError, ErrorCodes } from '../errors';

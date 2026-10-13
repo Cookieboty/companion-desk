@@ -1,5 +1,5 @@
 // 跨环境通用的公共类型：LLM / Tools / Memory
-// 仅本 bundle 内部使用；后续可迁移到 @ig-live/ai-sdk 的 dto。
+// 仅本 bundle 内部使用；后续可迁移到 @nomi-ai/ai-sdk 的 dto。
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';

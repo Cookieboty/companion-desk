@@ -1,4 +1,4 @@
-/* 只保留布局；视觉（颜色 / 圆角 / 阴影 / 控件）来自 @ig-live/ui tokens */
+/* 只保留布局；视觉（颜色 / 圆角 / 阴影 / 控件）来自 @nomi-ai/ui tokens */
 .modalBody {
   min-height: 520px;
 }

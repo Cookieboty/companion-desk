@@ -8,7 +8,7 @@ import {
   type IProfileStorage,
   type PluginContext,
   type UserProfile,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 
 import { loadElectron } from '../electronLoader';
 

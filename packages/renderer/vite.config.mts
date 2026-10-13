@@ -50,7 +50,7 @@ export default defineConfig({
     assetsDir: 'assets',
     minify: 'terser',
     rollupOptions: {
-      // 多页面：看板娘主窗口 + TTS 配置窗口（共享 @ig-live/ui 样式）
+      // 多页面：看板娘主窗口 + TTS 配置窗口（共享 @nomi-ai/ui 样式）
       input: {
         main: path.resolve(__dirname, 'index.html'),
         'tts-config': path.resolve(__dirname, 'tts-config.html'),

@@ -1,5 +1,5 @@
 /**
- * IPC 通道表（渲染进程视角）—— 与 [`@ig-live/ai-runtime/channels`](file:///../../ai-runtime/src/channels.ts)
+ * IPC 通道表（渲染进程视角）—— 与 [`@nomi-ai/ai-runtime/channels`](file:///../../ai-runtime/src/channels.ts)
  * 保持结构一致，但**在渲染端独立维护**，避免让浏览器打包器把 `ai-runtime`
  * 的 electron 主进程代码拉进来。
  *

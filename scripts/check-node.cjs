@@ -2,7 +2,7 @@
 var v = process.versions.node.split('.').map(Number);
 if (v[0] < 22 || (v[0] === 22 && v[1] < 12)) {
   console.error(
-    '\n  ✖ Companion Desk needs Node >= 22.12 (you have ' +
+    '\n  ✖ Nomi needs Node >= 22.12 (you have ' +
       process.versions.node +
       ').\n' +
       '    Install Node 22 LTS or newer (nvm install  — reads .nvmrc — or brew install node@22),\n' +

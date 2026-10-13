@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /** 截图提问 / 图片附件 / 屏幕记忆客户端：`ai:screen:*` IPC */
 
 export interface ImageAttachment {

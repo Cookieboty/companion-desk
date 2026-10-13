@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { ChatChunk, ChatRequest, LLMProvider } from '@ig-live/bundle-ig-base';
+import type { ChatChunk, ChatRequest, LLMProvider } from '@nomi-ai/bundle-ig-base';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiSdkLlmProvider, type AiSdkLlmProviderOptions } from '../src/ai-sdk/AiSdkLlmProvider';

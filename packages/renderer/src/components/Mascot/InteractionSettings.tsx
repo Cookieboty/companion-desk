@@ -1,6 +1,6 @@
-import type { MascotInteractionConfig } from '@ig-live/types';
-import { t } from '@ig-live/ui';
-import { Button, Modal, Switch } from '@ig-live/ui';
+import type { MascotInteractionConfig } from '@nomi-ai/types';
+import { t } from '@nomi-ai/ui';
+import { Button, Modal, Switch } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './style.module.css';

@@ -1,7 +1,7 @@
-import { EventBroadcaster, IPCTransportServer, NoopRuntimeLogger } from '@ig-live/ai-runtime';
-import { AIClient } from '@ig-live/ai-sdk';
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
-import type { ToolDefinition, UserProfileService } from '@ig-live/bundle-ig-base';
+import { EventBroadcaster, IPCTransportServer, NoopRuntimeLogger } from '@nomi-ai/ai-runtime';
+import { AIClient } from '@nomi-ai/ai-sdk';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
+import type { ToolDefinition, UserProfileService } from '@nomi-ai/bundle-ig-base';
 
 import { makeClientBridge, type ClientBridgeHandle } from './clientBridge';
 import { createFakeIpcAdapter, type FakeIpcAdapter, type FakeWebContents } from './fakeIpc';

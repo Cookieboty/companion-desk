@@ -1,4 +1,4 @@
-import { McpKey, ToolRegistryKey, definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
+import { McpKey, ToolRegistryKey, definePlugin, type PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import { getExtensionsService } from '../extensions/ExtensionsService';
 import { getKnowledgeService } from '../knowledge/KnowledgeService';

@@ -1,5 +1,5 @@
 {
-  "name": "@ig-live/types",
+  "name": "@nomi-ai/types",
   "version": "1.0.0",
   "description": "共享类型定义",
   "main": "dist/index.js",

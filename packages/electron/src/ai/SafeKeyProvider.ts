@@ -9,7 +9,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import type { KeyStoreService } from '@ig-live/bundle-ig-electron-caps';
+import type { KeyStoreService } from '@nomi-ai/bundle-ig-electron-caps';
 import { app, safeStorage } from 'electron';
 
 import { t } from '../i18n';

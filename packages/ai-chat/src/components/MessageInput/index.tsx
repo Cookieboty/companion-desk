@@ -1,4 +1,4 @@
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';

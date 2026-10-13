@@ -1,4 +1,4 @@
-import { MODEL_CONFIG_SCHEMA, type ModelConfig, type ModelConfigFile } from '@ig-live/types';
+import { MODEL_CONFIG_SCHEMA, type ModelConfig, type ModelConfigFile } from '@nomi-ai/types';
 
 import { t } from '../i18n';
 
@@ -69,7 +69,7 @@ export function parseConfigFile(text: string): ModelConfig {
   }
   const f = data as Partial<ModelConfigFile>;
   if (f?.schema !== MODEL_CONFIG_SCHEMA || typeof f.config !== 'object') {
-    throw new Error(t('不是 Companion Desk 模型配置（需要 schema: {0}）', MODEL_CONFIG_SCHEMA));
+    throw new Error(t('不是 Nomi 模型配置（需要 schema: {0}）', MODEL_CONFIG_SCHEMA));
   }
   return sanitizeModelConfig(f.config);
 }

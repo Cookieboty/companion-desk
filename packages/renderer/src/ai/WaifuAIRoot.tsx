@@ -1,4 +1,4 @@
-import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { AIProvider } from '@nomi-ai/ai-sdk-client/react';
 import React, { useMemo } from 'react';
 import type { FC, PropsWithChildren } from 'react';
 

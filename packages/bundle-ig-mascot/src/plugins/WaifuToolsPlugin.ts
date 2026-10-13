@@ -3,7 +3,7 @@ import {
   definePlugin,
   type PluginContext,
   type ToolDefinition,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 import { z } from 'zod';
 
 import { Live2dKey, type Live2dService } from '../seams/live2d';

@@ -1,6 +1,6 @@
 /** 设置 → 通用 → 主题：四套配色 + 跟随系统，点选即时生效（对话窗口与看板娘同步）。 */
-import { t as tr } from '@ig-live/ui';
-import { THEMES, currentTheme, setTheme, type ThemeState } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { THEMES, currentTheme, setTheme, type ThemeState } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './index.module.css';

@@ -1,4 +1,4 @@
-import type { IpcAdapter, IpcHandler, IpcInvokeEvent, WebContentsLike } from '@ig-live/ai-runtime';
+import type { IpcAdapter, IpcHandler, IpcInvokeEvent, WebContentsLike } from '@nomi-ai/ai-runtime';
 
 export interface FakeWebContents extends WebContentsLike {
   sent: Array<{ channel: string; payload: unknown }>;

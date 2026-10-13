@@ -61,7 +61,7 @@ export async function parseFile(filePath: string, opts: ParseOptions = {}): Prom
   return new Promise<ParseResult>((resolve) => {
     const child = up.fork(workerPath, [], {
       execArgv: [`--max-old-space-size=${opts.memoryMb ?? 256}`],
-      serviceName: 'companion-desk-parse',
+      serviceName: 'nomi-parse',
       stdio: 'ignore',
     });
     let done = false;

@@ -6,7 +6,7 @@
  */
 import * as path from 'path';
 
-import type { ProviderService, ProviderState } from '@ig-live/ai-runtime';
+import type { ProviderService, ProviderState } from '@nomi-ai/ai-runtime';
 import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
@@ -100,7 +100,7 @@ export class TrayManager {
   private screenMenu(): MenuItemConstructorOptions[] {
     const sm = this.opts.screenMemory;
     const on = !!sm?.active();
-    this.tray?.setToolTip(on ? t('Companion Desk · ● 屏幕记忆中') : 'Companion Desk');
+    this.tray?.setToolTip(on ? t('Nomi · ● 屏幕记忆中') : 'Nomi');
     if (!sm || !on) return [];
     return [
       { label: t('● 屏幕记忆中（仅保存在本机）'), click: () => sm.open() },

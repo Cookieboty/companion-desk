@@ -1,5 +1,5 @@
 /**
- * @ig-live/ai-runtime · 主入口
+ * @nomi-ai/ai-runtime · 主入口
  *
  * 顶部即断言主进程；测试通过 `VITEST` 环境变量自动旁路（`env.ts` 内部处理）。
  * 注：断言只在**真实生产**执行；测试导入 `env` 内 `assertElectronMainProcess({ skipInTest: true })`
@@ -39,7 +39,7 @@ export * from './legacy/AiChatCompat';
 /**
  * `runtime` 单例。业务方在 Electron 主进程中：
  * ```ts
- * import { runtime, createAiSdkBooter, createElectronLifecycle } from '@ig-live/ai-runtime';
+ * import { runtime, createAiSdkBooter, createElectronLifecycle } from '@nomi-ai/ai-runtime';
  * await runtime.configure({ booter: createAiSdkBooter(), lifecycle: createElectronLifecycle() })
  *              .start('waifu', { home: app.getAppPath() });
  * ```

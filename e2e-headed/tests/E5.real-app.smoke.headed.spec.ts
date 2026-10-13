@@ -29,7 +29,7 @@ test.describe('E5 · real app · dist/main.js 生产模式冒烟', () => {
   test.beforeAll(() => {
     if (existsSync(rendererBuild)) {
       // 每次都同步最新的 renderer 构建产物，避免 dist/renderer 过期；
-      // 与 `pnpm --filter @ig-live/electron copy-renderer` 等价
+      // 与 `pnpm --filter @nomi-ai/electron copy-renderer` 等价
       execFileSync(process.execPath, [resolve(electronPkgDir, 'scripts', 'copy-renderer.js')], {
         stdio: 'inherit',
       });

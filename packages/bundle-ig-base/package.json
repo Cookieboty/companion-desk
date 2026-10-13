@@ -1,5 +1,5 @@
 {
-  "name": "@ig-live/bundle-ig-base",
+  "name": "@nomi-ai/bundle-ig-base",
   "version": "0.0.1",
   "private": true,
   "description": "dsh Bundle：跨环境通用 AI 能力（LLM Providers / 内置工具 / 护栏 / MCP 桥接 / 4 层记忆含用户偏好薄层）",

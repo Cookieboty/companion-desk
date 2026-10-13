@@ -1,5 +1,5 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import { OrbitControls, useProgress, Html } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import React, { Suspense, useRef, useEffect, useState } from 'react';

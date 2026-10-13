@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /**
  * 桌面能力（文件授权 / 工具权限 / 审计 / 撤销）客户端：`ai:desktop:*` IPC（经 preload 的 window.aiIPC）。
  * 授权文件夹一律由主进程弹出系统选择框，渲染层无法直接传入路径授权。

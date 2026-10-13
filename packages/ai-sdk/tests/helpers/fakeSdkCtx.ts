@@ -6,7 +6,7 @@
  * - `on` / `emit`：内部维护 handler set，`triggerEvent(evt, payload)` 同步串行触发
  */
 
-import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@ig-live/bundle-ig-base';
+import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@nomi-ai/bundle-ig-base';
 
 import type { SdkContext } from '../../src/di/SdkContext';
 

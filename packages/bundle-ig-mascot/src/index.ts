@@ -1,5 +1,5 @@
 /**
- * @ig-live/bundle-ig-mascot
+ * @nomi-ai/bundle-ig-mascot
  *
  * dsh Bundle：看板娘渲染进程能力（渲染后端无关；协议名沿用 live2d，见 seams/mascot.ts）
  *   - Live2dSeamPlugin：ctx.live2d 服务与事件桥

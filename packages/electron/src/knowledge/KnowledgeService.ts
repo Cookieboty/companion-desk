@@ -10,7 +10,7 @@ import { createHash, randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import { BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
 import type * as Tess from 'tesseract.js';
 import { z } from 'zod';

@@ -1,8 +1,8 @@
 {
-  "name": "@ig-live/ui",
+  "name": "@nomi-ai/ui",
   "version": "0.1.0",
   "private": true,
-  "description": "Companion Desk 共享 UI：设计 token（CSS 变量）+ 轻量 React 组件",
+  "description": "Nomi 共享 UI：设计 token（CSS 变量）+ 轻量 React 组件",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

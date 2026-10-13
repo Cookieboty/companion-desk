@@ -289,7 +289,7 @@ function gesture(name, tags, keys, loop = false) {
     loop,
     tags,
     duration: times.at(-1),
-    source: 'Companion Desk (original, procedural)',
+    source: 'Nomi (original, procedural)',
     license: 'MIT',
     times,
     tracks,

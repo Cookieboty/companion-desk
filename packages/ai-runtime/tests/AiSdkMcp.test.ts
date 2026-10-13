@@ -5,7 +5,7 @@ import {
   type McpServerConfig,
   type ToolDefinition,
   type ToolRegistry,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AiSdkMcpPlugin } from '../src/ai-sdk/AiSdkMcpPlugin';

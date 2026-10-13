@@ -12,7 +12,7 @@ import type {
   ClipboardEvent,
   ClipboardImage,
   ClipboardService,
-} from '@ig-live/bundle-ig-electron-caps';
+} from '@nomi-ai/bundle-ig-electron-caps';
 import { clipboard, nativeImage } from 'electron';
 
 export interface ClipboardGatewayOptions {

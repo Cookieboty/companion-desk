@@ -1,5 +1,5 @@
-import { t as tr } from '@ig-live/ui';
-import { Badge, Button, EmptyState, Input, Textarea } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, Button, EmptyState, Input, Textarea } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { desktopClient, type NoteMetaView, type NoteView } from '../../services/desktopClient';

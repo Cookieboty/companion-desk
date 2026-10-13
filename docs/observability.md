@@ -16,7 +16,7 @@
 ## P9-1 · 结构化日志
 
 ```ts
-import { createStructuredLogger } from '@ig-live/ai-runtime';
+import { createStructuredLogger } from '@nomi-ai/ai-runtime';
 
 const logger = createStructuredLogger({
   level: 'info',
@@ -51,7 +51,7 @@ sess.info('turn started', { turnId: 't1' });
 ### 用法
 
 ```ts
-import { AI_METRICS, defaultRegistry } from '@ig-live/ai-runtime';
+import { AI_METRICS, defaultRegistry } from '@nomi-ai/ai-runtime';
 
 AI_METRICS.chatTokensPrompt.inc({ provider: 'openai', model: 'gpt-4', sessionId: 's1' }, 120);
 
@@ -99,7 +99,7 @@ const broadcaster = new EventBroadcaster({
 ### 默认零依赖
 
 ```ts
-import { configureTracing, getTracer } from '@ig-live/ai-runtime';
+import { configureTracing, getTracer } from '@nomi-ai/ai-runtime';
 
 // 应用启动时调用一次
 configureTracing({ serviceName: 'ai-runtime' });
@@ -123,7 +123,7 @@ await tracer.withSpan('chat.turn', undefined, async (span) => {
 `@opentelemetry/exporter-trace-otlp-http` 并注入 `configureTracing({ exporter })`：
 
 ```ts
-import { readOtlpEndpoint, configureTracing } from '@ig-live/ai-runtime';
+import { readOtlpEndpoint, configureTracing } from '@nomi-ai/ai-runtime';
 
 const endpoint = readOtlpEndpoint(); // 未设置返回 undefined
 if (endpoint) {

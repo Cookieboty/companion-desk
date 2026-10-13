@@ -6,7 +6,7 @@
  * token 预算裁剪由主进程 ChatFacade（ai-sdk `fitMessagesToBudget`）负责。
  */
 
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 
 import type { ChatMessage } from '../types/chat';
 

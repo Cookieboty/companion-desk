@@ -1,4 +1,4 @@
-import type { LicenseTermsView } from '@ig-live/types';
+import type { LicenseTermsView } from '@nomi-ai/types';
 
 /** 徽章文字：开源许可显示 SPDX；审核过的自定义条款显示简称 */
 export function licenseLabel(license: string): string {

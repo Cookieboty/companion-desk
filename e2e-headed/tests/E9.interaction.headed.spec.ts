@@ -16,7 +16,7 @@ import { safeRm } from '../fixtures/fsutil';
  * - 逐像素点击穿透：光标在透明区 → setIgnoreMouseEvents(true)；在角色身上 → false
  * - 区域悬停 / 点击反应
  * - 按住拖动窗口 → 松手下落 → 落地事件
- * - 互动设置面板（@ig-live/ui Switch）+ 立即散步
+ * - 互动设置面板（@nomi-ai/ui Switch）+ 立即散步
  *
  * 真实光标需要 xdotool（Linux / xvfb）；其它平台只跑不依赖光标的部分。
  * 设置 E9_SHOTS=<dir> 时保存整屏截图 / 帧序列（ffmpeg x11grab）。

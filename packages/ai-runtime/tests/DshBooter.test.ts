@@ -8,7 +8,7 @@ import {
   UserProfileKey,
   definePlugin,
   defineService,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createDshBooter } from '../src/DshBooter';

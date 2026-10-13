@@ -1,6 +1,6 @@
-import type { DesktopConfirmRequest } from '@ig-live/types';
-import { t as tr } from '@ig-live/ui';
-import { Badge, Button, Modal } from '@ig-live/ui';
+import type { DesktopConfirmRequest } from '@nomi-ai/types';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, Button, Modal } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import styles from './DesktopConfirm.module.css';

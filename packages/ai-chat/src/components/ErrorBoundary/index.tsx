@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 
 import styles from './index.module.css';

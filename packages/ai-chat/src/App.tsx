@@ -1,7 +1,7 @@
-import type { ClientAIClient } from '@ig-live/ai-sdk-client';
-import * as AISdkReact from '@ig-live/ai-sdk-client/react';
-import { t } from '@ig-live/ui';
-import { ModalHostContext, type ModalHost } from '@ig-live/ui';
+import type { ClientAIClient } from '@nomi-ai/ai-sdk-client';
+import * as AISdkReact from '@nomi-ai/ai-sdk-client/react';
+import { t } from '@nomi-ai/ui';
+import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';

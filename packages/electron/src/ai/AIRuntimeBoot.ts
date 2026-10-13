@@ -2,7 +2,7 @@
  * AIRuntimeBoot - 主进程 AI 运行时引导器
  *
  * 责任：
- * 1. 装配 `@ig-live/ai-runtime` 单例（Booter + Lifecycle + Logger）；
+ * 1. 装配 `@nomi-ai/ai-runtime` 单例（Booter + Lifecycle + Logger）；
  * 2. 启动 IgPluginHost + AI SDK providers，得到 `AIClient`；
  * 3. 挂上 `IPCTransportServer`（业务方法反射）、`EventBroadcaster`（事件广播）、
  *    `CapabilityIpcServer`（seams 通道）、`AiChatCompat`（旧通道兼容）；
@@ -33,9 +33,9 @@ import {
   type Booter,
   type RoutedLLMRegistry,
   type RuntimeLogger,
-} from '@ig-live/ai-runtime';
-import type { AIClient } from '@ig-live/ai-sdk';
-import { FileSessionStorePlugin } from '@ig-live/bundle-ig-electron-caps';
+} from '@nomi-ai/ai-runtime';
+import type { AIClient } from '@nomi-ai/ai-sdk';
+import { FileSessionStorePlugin } from '@nomi-ai/bundle-ig-electron-caps';
 import { app, safeStorage } from 'electron';
 
 import { desktopIgPlugins } from '../desktop/plugin';
@@ -116,7 +116,7 @@ function tryRegisterTtsProviders(
     try {
       // client.tts.register 内部会 `require()` TtsService；未注入时抛 SEAM_NOT_INJECTED。
       // 这里对 register 参数做一次协变转型：electron 侧本地契约与 seams 结构等价，
-      // 但 electron tsconfig `moduleResolution: node` 无法直接解析 `@ig-live/bundle-ig-electron-caps/seams`
+      // 但 electron tsconfig `moduleResolution: node` 无法直接解析 `@nomi-ai/bundle-ig-electron-caps/seams`
       // 子入口，故用 unknown 中转，等价性靠单测保证。
       (client.tts.register as (p: TtsProvider) => void)(provider);
       logger.info(`TtsProvider registered: id=${provider.info.id}`);

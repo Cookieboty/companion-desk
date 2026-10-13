@@ -8,7 +8,7 @@
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
-const { mkAiPreload } = require('@ig-live/ai-sdk-client/preload');
+const { mkAiPreload } = require('@nomi-ai/ai-sdk-client/preload');
 
 mkAiPreload({ contextBridge, ipcRenderer });
 

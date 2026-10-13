@@ -8,8 +8,8 @@
  * 4. 权限：`isSenderAllowed=false` 时抛错；`ai:tools:confirm` 通道存在。
  */
 
-import { AIClient } from '@ig-live/ai-sdk';
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
+import { AIClient } from '@nomi-ai/ai-sdk';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { describe, it, expect } from 'vitest';
 
 import { IPC_METHODS, channelName, chunkChannelName } from '../src/channels';

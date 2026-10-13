@@ -8,7 +8,7 @@
  *   在测试里则轻量 mock。
  */
 
-import type { DshEvent, HookHandler, PluginContext, ServiceKey } from '@ig-live/bundle-ig-base';
+import type { DshEvent, HookHandler, PluginContext, ServiceKey } from '@nomi-ai/bundle-ig-base';
 
 export interface SdkContext {
   inject<T>(key: ServiceKey<T>): T | undefined;

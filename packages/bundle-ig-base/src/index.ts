@@ -1,5 +1,5 @@
 /**
- * @ig-live/bundle-ig-base — 主入口
+ * @nomi-ai/bundle-ig-base — 主入口
  *
  * 汇总导出：类型、Seam、插件工厂、默认 patch.yml 由 exports."./patch" 提供。
  */

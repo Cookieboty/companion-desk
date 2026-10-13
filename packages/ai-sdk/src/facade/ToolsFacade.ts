@@ -8,7 +8,7 @@
  *   Facade 只负责把决策 emit 出去，真正等待方在 guardrails 中间件（P2 GuardrailsPlugin）。
  */
 
-import { ToolRegistryKey, type ToolDefinition } from '@ig-live/bundle-ig-base';
+import { ToolRegistryKey, type ToolDefinition } from '@nomi-ai/bundle-ig-base';
 
 import type { SdkContext } from '../di/SdkContext';
 import { AIClientError, ErrorCodes } from '../errors';

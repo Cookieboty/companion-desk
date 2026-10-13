@@ -6,9 +6,9 @@ export default createTsup({
   external: [
     '@deepseek-ai/dsh',
     '@deepseek-ai/dsh-app-boot',
-    '@ig-live/ai-sdk',
-    '@ig-live/bundle-ig-base',
-    '@ig-live/bundle-ig-electron-caps',
+    '@nomi-ai/ai-sdk',
+    '@nomi-ai/bundle-ig-base',
+    '@nomi-ai/bundle-ig-electron-caps',
     'electron',
   ],
 });

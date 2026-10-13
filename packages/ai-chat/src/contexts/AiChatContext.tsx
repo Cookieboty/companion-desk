@@ -1,5 +1,5 @@
-import type { ClientAIClient } from '@ig-live/ai-sdk-client';
-import { t } from '@ig-live/ui';
+import type { ClientAIClient } from '@nomi-ai/ai-sdk-client';
+import { t } from '@nomi-ai/ui';
 import React, {
   createContext,
   useContext,

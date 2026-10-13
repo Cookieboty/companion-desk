@@ -1,12 +1,17 @@
-# Companion Desk
+<p align="center"><img src="docs/brand/nomi-wordmark.svg" alt="Nomi" width="320"></p>
 
-> A local-first desktop AI assistant, with an optional 3D (VRM) desktop companion.
+# Nomi·诺米
 
-Companion Desk 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
-[`@ig-live/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供（可选的
+> **你的桌面 AI 伙伴** —— 住在桌面，懂你所想，帮你做到。
+> Your desktop AI companion: lives on your desktop, gets what you mean, and gets it done.
+
+任务管理 · 智能执行 · 情感陪伴。品牌规范见 [docs/BRAND.md](docs/BRAND.md)（[中文](docs/BRAND.zh-CN.md)）。
+
+Nomi 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
+[`@nomi-ai/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供（可选的
 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 仅保留给 doctor / 实验），
 可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
-桌面伙伴（看板娘）是**可选**的形象层：开源 VRM 3D 角色、表情、语音与口型同步，但不是产品核心。
+桌面伙伴是形象层：默认是 2D 的品牌角色「Nomi·诺米」，也可切换开源 VRM 3D 角色、表情、语音与口型同步，但不是产品核心。
 
 ## 🚀 项目特点
 
@@ -94,7 +99,7 @@ MCP_AUTO_CONNECT=true pnpm dev
 ## 📁 项目结构
 
 ```
-companion-desk/
+nomi/
 ├── packages/
 │   ├── electron/           # Electron主进程和预加载脚本
 │   │   ├── src/
@@ -133,7 +138,7 @@ companion-desk/
 ### 从零开始（一条命令启动）
 
 ```bash
-git clone <repo> companion-desk && cd companion-desk
+git clone <repo> nomi && cd nomi
 corepack enable          # 使用仓库锁定的 pnpm 版本
 pnpm install
 pnpm dev                 # 预检 → 构建 workspace 库 → 启动 Vite ×2 + Electron
@@ -143,7 +148,7 @@ pnpm dev                 # 预检 → 构建 workspace 库 → 启动 Vite ×2 +
 
 1. `scripts/doctor.mjs --quick` 预检：Node/pnpm 版本、依赖是否安装、**Electron 二进制**（Electron 44 不再在
    postinstall 下载，首次运行时这里会下载）、端口 6127/6128 是否空闲（见 `dev-ports.json` / `docs/PORTS.md`）。
-2. turbo 先 `build` 所有 workspace 依赖（`@ig-live/ui`、`types`、`ai-sdk*`、`ai-runtime`、`bundle-ig-*`；有缓存时秒过）。
+2. turbo 先 `build` 所有 workspace 依赖（`@nomi-ai/ui`、`types`、`ai-sdk*`、`ai-runtime`、`bundle-ig-*`；有缓存时秒过）。
 3. 并行启动：看板娘渲染进程 Vite（`:6127`）、对话窗口 Vite（`:6128`）、`packages/electron/scripts/dev.mjs`
    （先编译一次主进程与 preload，再 `tsc -w` + preload 监听，等两个端口就绪后以 `NODE_ENV=development` 启动 Electron）。
 
@@ -172,7 +177,7 @@ pnpm doctor:dsh    # 仅当使用可选 dsh 内核（IG_DSH_CORE=auto|required�
 
 - `Node.util.isObject is not a function`：旧版本中按键监听的 key server 没有可执行位，回退到了与 Node 24 不兼容的
   sudo-prompt。已修复（启动前自动 `chmod +x`）；如仍遇到，`rm -rf node_modules && pnpm install`。
-- macOS 上全局按键监听需要在「系统设置 → 隐私与安全性 → 辅助功能」里允许 Electron / Companion Desk；不授权只影响按键台词。
+- macOS 上全局按键监听需要在「系统设置 → 隐私与安全性 → 辅助功能」里允许 Electron / Nomi；不授权只影响按键台词。
 - 端口被占用：`lsof -i :6127` / `lsof -i :6128`（Windows：`netstat -ano | findstr :6127`）结束对应进程，或用 `CD_RENDERER_PORT` / `CD_CHAT_PORT` 改端口。
 - Electron 下载慢：设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后 `pnpm run doctor`。
 
@@ -366,12 +371,12 @@ pnpm test:e2e:headed   # Playwright + Electron 端到端（先 pnpm build；Linu
 cp -r templates/pkg-template packages/<your-pkg>
 
 # 2. 改包名（macOS 用 sed -i ''，Linux 用 sed -i）
-sed -i '' 's|@ig-live/pkg-template|@ig-live/<your-pkg>|g' \
+sed -i '' 's|@nomi-ai/pkg-template|@nomi-ai/<your-pkg>|g' \
   packages/<your-pkg>/package.json packages/<your-pkg>/src/*.ts
 
 # 3. 安装并冒烟：build / test / lint / typecheck 应全绿
 pnpm install
-pnpm --filter @ig-live/<your-pkg> build test lint typecheck
+pnpm --filter @nomi-ai/<your-pkg> build test lint typecheck
 ```
 
 模板复用的根级配置：
@@ -384,12 +389,12 @@ pnpm --filter @ig-live/<your-pkg> build test lint typecheck
 
 ## 🤖 AI SDK 最小示例
 
-自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@ig-live/ai-sdk-client`](packages/ai-sdk-client)（渲染进程）与 [`@ig-live/ai-sdk`](packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/consumer-integration.md](docs/consumer-integration.md)。
+自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@nomi-ai/ai-sdk-client`](packages/ai-sdk-client)（渲染进程）与 [`@nomi-ai/ai-sdk`](packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/consumer-integration.md](docs/consumer-integration.md)。
 
 **渲染进程（React）**：
 
 ```tsx
-import { AIProvider, useChat, useTTSLipSync } from '@ig-live/ai-sdk-client';
+import { AIProvider, useChat, useTTSLipSync } from '@nomi-ai/ai-sdk-client';
 
 function ChatBox() {
   const { messages, send, streaming } = useChat();
@@ -422,8 +427,8 @@ export function App() {
 **主进程（Electron）**：由 [Application.startAIRuntime](packages/electron/src/core/Application.ts#L121-L148) 自动装配；如需自定义可直接调用 [startAIRuntime](packages/electron/src/ai/AIRuntimeBoot.ts#L120-L217)：
 
 ```ts
-import { startAIRuntime, TtsElectronNativeProvider } from '@ig-live/electron/ai';
-import { AdvancedTTSEngine } from '@ig-live/electron/services/AdvancedTTSEngine';
+import { startAIRuntime, TtsElectronNativeProvider } from '@nomi-ai/electron/ai';
+import { AdvancedTTSEngine } from '@nomi-ai/electron/services/AdvancedTTSEngine';
 
 const runtime = await startAIRuntime(logger, {
   profile: 'waifu',
@@ -497,7 +502,7 @@ for await (const chunk of runtime.client.chat.stream({
 
 ## 🔗 相关链接
 
-- [项目仓库](https://github.com/Cookieboty/companion-desk)
-- [问题反馈](https://github.com/Cookieboty/companion-desk/issues)
+- [项目仓库](https://github.com/Cookieboty/nomi-ai)
+- [问题反馈](https://github.com/Cookieboty/nomi-ai/issues)
 - [开发文档](./docs/)
 - [更新日志](./CHANGELOG.md)

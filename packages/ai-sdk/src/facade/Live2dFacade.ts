@@ -3,7 +3,7 @@
  *
  * P5 计划 §P5-4 明确：**仅渲染进程 profile 才可用**；否则抛 `LIVE2D_NOT_AVAILABLE`。
  *
- * 依赖只留在类型层：通过 [@ig-live/bundle-ig-mascot/seams](file:///../../bundle-ig-mascot/src/seams/index.ts)
+ * 依赖只留在类型层：通过 [@nomi-ai/bundle-ig-mascot/seams](file:///../../bundle-ig-mascot/src/seams/index.ts)
  * 子入口引 `Live2dKey`，避免走 bundle 主入口触发 `assertRendererProcess`。
  */
 
@@ -12,7 +12,7 @@ import {
   type Live2dEvent,
   type Live2dEventPayload,
   type Live2dService,
-} from '@ig-live/bundle-ig-mascot/seams';
+} from '@nomi-ai/bundle-ig-mascot/seams';
 
 import type { SdkContext } from '../di/SdkContext';
 import { AIClientError, ErrorCodes } from '../errors';

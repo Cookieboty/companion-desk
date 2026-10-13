@@ -1,5 +1,5 @@
 /** 主动日程客户端：`ai:sched:*` IPC */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 
 import type { RepeatRule } from './desktopClient';
 

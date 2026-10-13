@@ -2,7 +2,7 @@
  * P5-7 集成测试 · 场景 1：chat.stream() 端到端返回 chunks + AIClient.on('tool:executed') 桥接
  */
 
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@ig-live/bundle-ig-base';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey } from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it } from 'vitest';
 
 import { AIClient } from '../../src/AIClient';

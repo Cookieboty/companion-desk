@@ -1,5 +1,5 @@
-import { t as tr } from '@ig-live/ui';
-import { Badge, Button, Modal, Tabs } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, Button, Modal, Tabs } from '@nomi-ai/ui';
 import React, { useState } from 'react';
 
 import { ImportTab } from './ImportTab';

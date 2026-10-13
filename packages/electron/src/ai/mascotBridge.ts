@@ -1,11 +1,11 @@
-import { definePlugin, type PluginContext } from '@ig-live/bundle-ig-base';
+import { definePlugin, type PluginContext } from '@nomi-ai/bundle-ig-base';
 import {
   Live2dKey,
   Live2dSeamPlugin,
   MascotModelToolsPlugin,
   WaifuToolsPlugin,
   type Live2dHost,
-} from '@ig-live/bundle-ig-mascot/plugins';
+} from '@nomi-ai/bundle-ig-mascot/plugins';
 
 import { getModelService } from '../models/ModelService';
 

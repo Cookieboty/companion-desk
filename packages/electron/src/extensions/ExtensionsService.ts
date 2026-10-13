@@ -14,7 +14,7 @@ import {
   type McpService,
   type ToolDefinition,
   type ToolRegistry,
-} from '@ig-live/bundle-ig-base';
+} from '@nomi-ai/bundle-ig-base';
 import { BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron';
 import { z } from 'zod';
 
@@ -82,7 +82,7 @@ const BUILTIN_SKILLS: Array<{ meta: SkillMeta; body: string }> = [
         '用户要写周报 / 工作总结时使用：按固定结构整理本周完成、进行中、问题和下周计划。',
       version: '1.0',
       license: 'MIT',
-      author: 'Companion Desk',
+      author: 'Nomi',
     },
     body: `# 周报助手
 
@@ -102,7 +102,7 @@ const BUILTIN_SKILLS: Array<{ meta: SkillMeta; body: string }> = [
         '用户粘贴会议记录 / 语音转写并想要纪要时使用：提炼结论、待办（负责人 + 截止时间）和未决问题。',
       version: '1.0',
       license: 'MIT',
-      author: 'Companion Desk',
+      author: 'Nomi',
     },
     body: `# 会议纪要
 

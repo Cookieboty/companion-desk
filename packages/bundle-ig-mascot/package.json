@@ -1,5 +1,5 @@
 {
-  "name": "@ig-live/bundle-ig-mascot",
+  "name": "@nomi-ai/bundle-ig-mascot",
   "version": "0.0.1",
   "private": true,
   "description": "dsh Bundle：看板娘渲染进程能力（mascot seam（协议名 live2d） / 触摸感官注入 / TTS 嘴型联动 / waifu 专属工具 + agent preset）",
@@ -41,14 +41,14 @@
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": "0.2.0-rc.2",
-    "@ig-live/bundle-ig-base": "workspace:*",
-    "@ig-live/bundle-ig-electron-caps": "workspace:*"
+    "@nomi-ai/bundle-ig-base": "workspace:*",
+    "@nomi-ai/bundle-ig-electron-caps": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh": {
       "optional": true
     },
-    "@ig-live/bundle-ig-electron-caps": {
+    "@nomi-ai/bundle-ig-electron-caps": {
       "optional": true
     }
   },
@@ -56,8 +56,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@ig-live/bundle-ig-base": "workspace:*",
-    "@ig-live/bundle-ig-electron-caps": "workspace:*",
+    "@nomi-ai/bundle-ig-base": "workspace:*",
+    "@nomi-ai/bundle-ig-electron-caps": "workspace:*",
     "rimraf": "^6.1.3",
     "tsup": "^8.3.5",
     "typescript": "^6.0.3",

@@ -1,6 +1,6 @@
 # 看板娘模型：内置、模型商店、用户导入
 
-Companion Desk 的角色来自三处，由主进程 `packages/electron/src/models/ModelRegistry.ts` 合并成一份列表
+Nomi 的角色来自三处，由主进程 `packages/electron/src/models/ModelRegistry.ts` 合并成一份列表
 （角色选择器、托盘「切换角色」、AI 工具 `mascot_list_models` / `mascot_select_model` 共用）：
 
 | 来源           | 位置                                                                          | 许可要求                                                   |

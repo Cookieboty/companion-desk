@@ -177,7 +177,7 @@ export class CursorIDEIntegration {
         prompts: false,
       },
       metadata: {
-        name: 'Companion Desk',
+        name: 'Nomi',
         description: '提供代码解释、动画演示、语音反馈和手势引导的3D虚拟角色',
         version: '1.0.0',
         author: 'Virtual Character Team',

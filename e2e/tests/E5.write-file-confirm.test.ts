@@ -14,7 +14,7 @@
  * 覆盖"pre-execute → confirm-required → reject → 拒绝路径 post-execute"完整链路。
  */
 
-import { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 
 import { createE2eRuntime, type E2eRuntimeHandle } from '../helpers/e2eRuntime';

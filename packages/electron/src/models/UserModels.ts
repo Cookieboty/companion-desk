@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 
-import type { ModelConfig, VrmMetaSummary } from '@ig-live/types';
+import type { ModelConfig, VrmMetaSummary } from '@nomi-ai/types';
 
 import { t } from '../i18n';
 

@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import {
   BrowserWindow,
   ClipboardItem,
@@ -185,7 +185,7 @@ export class LocalHubService {
     if (!Number.isFinite(start) || !(end > start)) throw new Error(tr('结束时间要晚于开始时间'));
     const prev = p.uid ? this.events.find((e) => e.uid === p.uid && e.cal === 'local') : undefined;
     const e: CalEvent = {
-      uid: prev?.uid ?? `${randomUUID()}@companion-desk`,
+      uid: prev?.uid ?? `${randomUUID()}@nomi`,
       summary: summary.slice(0, 300),
       start,
       end,
@@ -355,7 +355,7 @@ export class LocalHubService {
   async exportIcs() {
     const r = await dialog.showSaveDialog({
       title: tr('导出本地日历'),
-      defaultPath: 'companion-desk.ics',
+      defaultPath: 'nomi.ics',
       filters: [{ name: 'iCalendar', extensions: ['ics'] }],
     });
     if (r.canceled || !r.filePath) return null;
@@ -527,7 +527,7 @@ export class LocalHubService {
   async exportAll(opts: { conversations?: unknown; include?: string[] } = {}) {
     const r = await dialog.showSaveDialog({
       title: tr('导出全部本地数据'),
-      defaultPath: `companion-desk-export-${new Date().toISOString().slice(0, 10)}.zip`,
+      defaultPath: `nomi-export-${new Date().toISOString().slice(0, 10)}.zip`,
       filters: [{ name: 'Zip', extensions: ['zip'] }],
     });
     if (r.canceled || !r.filePath) return null;
@@ -634,7 +634,7 @@ export class LocalHubService {
     }
     add(
       'README.txt',
-      tr('Companion Desk 数据导出 {0}\n\n', new Date().toLocaleString('zh-CN')) +
+      tr('Nomi 数据导出 {0}\n\n', new Date().toLocaleString('zh-CN')) +
         tr(
           '包含：对话、长期记忆、日程与提醒、日历（.ics）、剪贴板历史、技能、屏幕记忆文字、设置。\n',
         ) +

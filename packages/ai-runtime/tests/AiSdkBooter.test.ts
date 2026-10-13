@@ -1,4 +1,4 @@
-import { LLMRegistryKey, ToolRegistryKey, UserProfileKey, echoTool } from '@ig-live/bundle-ig-base';
+import { LLMRegistryKey, ToolRegistryKey, UserProfileKey, echoTool } from '@nomi-ai/bundle-ig-base';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AiSdkLlmProvider, createAiSdkProviderFromEntry } from '../src/ai-sdk/AiSdkLlmProvider';

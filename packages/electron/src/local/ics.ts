@@ -224,11 +224,11 @@ const fmtDate = (t: number) => {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export function toIcs(events: CalEvent[], name = 'Companion Desk'): string {
+export function toIcs(events: CalEvent[], name = 'Nomi'): string {
   const L = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Companion Desk//Local Calendar//ZH',
+    'PRODID:-//Nomi//Local Calendar//ZH',
     `X-WR-CALNAME:${escape(name)}`,
   ];
   for (const e of events) {

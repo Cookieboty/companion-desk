@@ -1,5 +1,5 @@
-import { t } from '@ig-live/ui';
-import { Button, Modal } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
+import { Button, Modal } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './style.module.css';

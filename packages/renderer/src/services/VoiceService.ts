@@ -4,8 +4,8 @@ import {
   type VoiceSettings,
   type KeyboardEvent,
   type VoiceContribute,
-} from '@ig-live/types';
-import { t } from '@ig-live/ui';
+} from '@nomi-ai/types';
+import { t } from '@nomi-ai/ui';
 
 import { HOURLY_LINES, KEYWORD_LINES } from '../mascot/tips';
 import { toFileUrl } from '../utils/fileUrl';

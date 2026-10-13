@@ -1,5 +1,5 @@
-import { t as tr } from '@ig-live/ui';
-import { Badge, BrandIcon, hasBrandIcon } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, BrandIcon, hasBrandIcon } from '@nomi-ai/ui';
 import React from 'react';
 
 import type { FetchModelsResult, TestResult } from '../../services/providerClient';

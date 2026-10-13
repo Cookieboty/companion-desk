@@ -33,22 +33,22 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.12.0(jiti@2.6.1))
-      '@ig-live/ai-runtime':
+      '@nomi-ai/ai-runtime':
         specifier: workspace:*
         version: link:packages/ai-runtime
-      '@ig-live/ai-sdk':
+      '@nomi-ai/ai-sdk':
         specifier: workspace:*
         version: link:packages/ai-sdk
-      '@ig-live/ai-sdk-client':
+      '@nomi-ai/ai-sdk-client':
         specifier: workspace:*
         version: link:packages/ai-sdk-client
-      '@ig-live/bundle-ig-base':
+      '@nomi-ai/bundle-ig-base':
         specifier: workspace:*
         version: link:packages/bundle-ig-base
-      '@ig-live/bundle-ig-electron-caps':
+      '@nomi-ai/bundle-ig-electron-caps':
         specifier: workspace:*
         version: link:packages/bundle-ig-electron-caps
-      '@ig-live/bundle-ig-mascot':
+      '@nomi-ai/bundle-ig-mascot':
         specifier: workspace:*
         version: link:packages/bundle-ig-mascot
       '@playwright/test':
@@ -101,11 +101,11 @@ importers:
         version: 8.71.1(eslint@10.12.0(jiti@2.6.1))(typescript@6.0.3)
       vitest:
         specifier: ^5.0.3
-        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/ai-sdk-client-demo:
     dependencies:
-      '@ig-live/ai-sdk-client':
+      '@nomi-ai/ai-sdk-client':
         specifier: workspace:*
         version: link:../../packages/ai-sdk-client
       react:
@@ -136,13 +136,13 @@ importers:
 
   packages/ai-chat:
     dependencies:
-      '@ig-live/ai-sdk-client':
+      '@nomi-ai/ai-sdk-client':
         specifier: workspace:*
         version: link:../ai-sdk-client
-      '@ig-live/ui':
+      '@nomi-ai/ui':
         specifier: workspace:*
         version: link:../ui
-      '@ig-live/voice':
+      '@nomi-ai/voice':
         specifier: workspace:*
         version: link:../voice
       react:
@@ -155,7 +155,7 @@ importers:
         specifier: ^2.3.3
         version: 2.3.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
     devDependencies:
-      '@ig-live/types':
+      '@nomi-ai/types':
         specifier: workspace:*
         version: link:../types
       '@testing-library/dom':
@@ -216,13 +216,13 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@ig-live/ai-sdk':
+      '@nomi-ai/ai-sdk':
         specifier: workspace:*
         version: link:../ai-sdk
-      '@ig-live/bundle-ig-base':
+      '@nomi-ai/bundle-ig-base':
         specifier: workspace:*
         version: link:../bundle-ig-base
-      '@ig-live/bundle-ig-electron-caps':
+      '@nomi-ai/bundle-ig-electron-caps':
         specifier: workspace:*
         version: link:../bundle-ig-electron-caps
       rimraf:
@@ -247,13 +247,13 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@ig-live/bundle-ig-base':
+      '@nomi-ai/bundle-ig-base':
         specifier: workspace:*
         version: link:../bundle-ig-base
-      '@ig-live/bundle-ig-electron-caps':
+      '@nomi-ai/bundle-ig-electron-caps':
         specifier: workspace:*
         version: link:../bundle-ig-electron-caps
-      '@ig-live/bundle-ig-mascot':
+      '@nomi-ai/bundle-ig-mascot':
         specifier: workspace:*
         version: link:../bundle-ig-mascot
       rimraf:
@@ -267,11 +267,11 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^5.0.3
-        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/ai-sdk-client:
     devDependencies:
-      '@ig-live/ai-sdk':
+      '@nomi-ai/ai-sdk':
         specifier: workspace:*
         version: link:../ai-sdk
       '@testing-library/dom':
@@ -336,7 +336,7 @@ importers:
         specifier: '>=28'
         version: 44.7.0
     devDependencies:
-      '@ig-live/bundle-ig-base':
+      '@nomi-ai/bundle-ig-base':
         specifier: workspace:*
         version: link:../bundle-ig-base
       rimraf:
@@ -361,10 +361,10 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@ig-live/bundle-ig-base':
+      '@nomi-ai/bundle-ig-base':
         specifier: workspace:*
         version: link:../bundle-ig-base
-      '@ig-live/bundle-ig-electron-caps':
+      '@nomi-ai/bundle-ig-electron-caps':
         specifier: workspace:*
         version: link:../bundle-ig-electron-caps
       rimraf:
@@ -394,27 +394,27 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.67
         version: 3.0.67(zod@4.6.5)
-      '@ig-live/ai-runtime':
-        specifier: workspace:*
-        version: link:../ai-runtime
-      '@ig-live/ai-sdk':
-        specifier: workspace:*
-        version: link:../ai-sdk
-      '@ig-live/ai-sdk-client':
-        specifier: workspace:*
-        version: link:../ai-sdk-client
-      '@ig-live/bundle-ig-base':
-        specifier: workspace:*
-        version: link:../bundle-ig-base
-      '@ig-live/bundle-ig-electron-caps':
-        specifier: workspace:*
-        version: link:../bundle-ig-electron-caps
-      '@ig-live/bundle-ig-mascot':
-        specifier: workspace:*
-        version: link:../bundle-ig-mascot
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
         version: 1.32.1(zod@4.6.5)
+      '@nomi-ai/ai-runtime':
+        specifier: workspace:*
+        version: link:../ai-runtime
+      '@nomi-ai/ai-sdk':
+        specifier: workspace:*
+        version: link:../ai-sdk
+      '@nomi-ai/ai-sdk-client':
+        specifier: workspace:*
+        version: link:../ai-sdk-client
+      '@nomi-ai/bundle-ig-base':
+        specifier: workspace:*
+        version: link:../bundle-ig-base
+      '@nomi-ai/bundle-ig-electron-caps':
+        specifier: workspace:*
+        version: link:../bundle-ig-electron-caps
+      '@nomi-ai/bundle-ig-mascot':
+        specifier: workspace:*
+        version: link:../bundle-ig-mascot
       ai:
         specifier: ^7.0.136
         version: 7.0.136(zod@4.6.5)
@@ -434,7 +434,7 @@ importers:
         specifier: ^1.8.1
         version: 1.8.1
     devDependencies:
-      '@ig-live/types':
+      '@nomi-ai/types':
         specifier: workspace:*
         version: link:../types
       '@types/jest':
@@ -460,20 +460,20 @@ importers:
         version: 6.1.3
       ts-jest:
         specifier: ^29.4.14
-        version: 29.4.14(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(esbuild@0.27.7)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.3))(typescript@6.0.3)
+        version: 29.4.14(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(esbuild@0.28.2)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.3))(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
 
   packages/renderer:
     dependencies:
-      '@ig-live/ai-sdk-client':
+      '@nomi-ai/ai-sdk-client':
         specifier: workspace:*
         version: link:../ai-sdk-client
-      '@ig-live/ui':
+      '@nomi-ai/ui':
         specifier: workspace:*
         version: link:../ui
-      '@ig-live/voice':
+      '@nomi-ai/voice':
         specifier: workspace:*
         version: link:../voice
       '@pixiv/three-vrm':
@@ -507,7 +507,7 @@ importers:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.3.0)(immer@11.1.21)(react@19.3.0)(use-sync-external-store@1.5.0(react@19.3.0))
     devDependencies:
-      '@ig-live/types':
+      '@nomi-ai/types':
         specifier: workspace:*
         version: link:../types
       '@types/node':
@@ -582,7 +582,7 @@ importers:
 
   packages/voice:
     dependencies:
-      '@ig-live/ui':
+      '@nomi-ai/ui':
         specifier: workspace:*
         version: link:../ui
     devDependencies:
@@ -14811,7 +14811,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.2': {}
 
@@ -18766,7 +18766,7 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  ts-jest@29.4.14(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(esbuild@0.27.7)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.3))(typescript@6.0.3):
+  ts-jest@29.4.14(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(esbuild@0.28.2)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.3))(typescript@6.0.3):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0
@@ -18784,7 +18784,7 @@ snapshots:
       '@jest/transform': 30.5.2
       '@jest/types': 30.5.1
       babel-jest: 30.5.2(@babel/core@7.29.7)
-      esbuild: 0.27.7
+      esbuild: 0.28.2
       jest-util: 30.5.1
 
   tslib@2.8.1: {}

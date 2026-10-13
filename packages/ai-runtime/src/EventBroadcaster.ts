@@ -14,8 +14,8 @@
  * 事件形态：`ai:event` 的 payload 是 `{ evt: AIClientEvent, data: unknown }`。
  */
 
-import type { AIClient } from '@ig-live/ai-sdk';
-import type { AIClientEvent, AIClientEventMap } from '@ig-live/ai-sdk';
+import type { AIClient } from '@nomi-ai/ai-sdk';
+import type { AIClientEvent, AIClientEventMap } from '@nomi-ai/ai-sdk';
 
 import type { IpcAdapter, IpcInvokeEvent } from './IpcAdapter';
 import type { RuntimeLogger } from './logger';

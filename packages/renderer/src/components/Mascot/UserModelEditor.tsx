@@ -1,6 +1,6 @@
-import type { ModelConfig } from '@ig-live/types';
-import { t } from '@ig-live/ui';
-import { Badge, Button, FormField, Input, Notice, Textarea } from '@ig-live/ui';
+import type { ModelConfig } from '@nomi-ai/types';
+import { t } from '@nomi-ai/ui';
+import { Badge, Button, FormField, Input, Notice, Textarea } from '@nomi-ai/ui';
 import React, { useState } from 'react';
 
 import { USER_MODEL_NOTICE } from './ImportTab';

@@ -28,7 +28,7 @@
     visibility 0s linear 0s;
 }
 
-/* 跟随应用主题（默认）：全部取自 @ig-live/ui 主题令牌 */
+/* 跟随应用主题（默认）：全部取自 @nomi-ai/ui 主题令牌 */
 .root[data-palette='theme'] {
   --tb-bg: color-mix(in srgb, var(--cd-color-surface-raised) 86%, transparent);
   --tb-pop-bg: var(--cd-color-surface-raised);

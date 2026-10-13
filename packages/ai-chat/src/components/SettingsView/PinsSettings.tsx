@@ -1,5 +1,5 @@
 /** 设置 → 通用 → 常驻入口：勾选要固定到左上角的功能，拖拽或 Alt+↑/↓ 排序，可恢复默认。 */
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import React, { useState } from 'react';
 
 import {

@@ -3,8 +3,8 @@
  * 识别文本经主进程转交 AI 对话窗口（ai:voice:sendToChat）。
  * 状态胶囊固定在窗口底部，不遮挡角色面部。
  */
-import { t } from '@ig-live/ui';
-import { MicButton, VoiceStatus, useVoice } from '@ig-live/voice';
+import { t } from '@nomi-ai/ui';
+import { MicButton, VoiceStatus, useVoice } from '@nomi-ai/voice';
 import React, { useCallback, useEffect, useRef } from 'react';
 
 import { directiveForEvent } from '../expressionDirector';

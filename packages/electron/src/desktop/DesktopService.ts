@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import {
   app,
   BrowserWindow,
@@ -266,7 +266,7 @@ export class DesktopService {
   async pickFolder(suggested?: string): Promise<string | null> {
     const parent = this.windows ? BrowserWindow.getFocusedWindow() : null;
     const opts: Electron.OpenDialogOptions = {
-      title: tr('授权 Companion Desk 访问这个文件夹'),
+      title: tr('授权 Nomi 访问这个文件夹'),
       buttonLabel: tr('授权'),
       properties: ['openDirectory', 'createDirectory'],
       ...(suggested

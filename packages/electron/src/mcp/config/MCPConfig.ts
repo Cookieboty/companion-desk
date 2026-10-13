@@ -2,11 +2,12 @@
  * MCP服务器配置管理
  */
 
-import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
+
+import { type TTSConfig } from '@nomi-ai/types';
 import { app } from 'electron';
-import { TTSConfig } from '@ig-live/types';
 
 // 语音配置接口
 export interface VoiceConfig {
@@ -35,10 +36,10 @@ const DEFAULT_CONFIG: MCPServerConfig = {
   voice: {
     voiceMode: 'fixed', // 默认使用系统语音
     enableProjectSummary: true,
-    ttsApiConfig: undefined // 不设置默认TTS配置
+    ttsApiConfig: undefined, // 不设置默认TTS配置
   },
   maxCallsBeforePrompt: 24,
-  assetsPath: 'packages/electron/assets'
+  assetsPath: 'packages/electron/assets',
 };
 
 /**
@@ -51,7 +52,14 @@ export class MCPConfigManager {
 
   private constructor() {
     this.config = { ...DEFAULT_CONFIG };
-    this.appConfigPath = path.join(os.homedir(), 'Library', 'Application Support', '@ig-live', 'electron', 'config.json');
+    this.appConfigPath = path.join(
+      os.homedir(),
+      'Library',
+      'Application Support',
+      '@nomi-ai',
+      'electron',
+      'config.json',
+    );
   }
 
   static getInstance(): MCPConfigManager {
@@ -72,7 +80,13 @@ export class MCPConfigManager {
         userDataPath = app.getPath('userData');
       } catch (error) {
         // Fallback到用户配置目录
-        userDataPath = path.join(os.homedir(), 'Library', 'Application Support', '@ig-live', 'electron');
+        userDataPath = path.join(
+          os.homedir(),
+          'Library',
+          'Application Support',
+          '@nomi-ai',
+          'electron',
+        );
       }
 
       const ttsConfigPath = path.join(userDataPath, 'tts-config.json');
@@ -83,16 +97,18 @@ export class MCPConfigManager {
         const ttsConfig = JSON.parse(configData) as TTSConfig;
 
         // 验证配置完整性
-        if (ttsConfig.enabled &&
+        if (
+          ttsConfig.enabled &&
           ttsConfig.hostname &&
           ttsConfig.port &&
           ttsConfig.path &&
           ttsConfig.audioUrl &&
-          ttsConfig.promptText) {
+          ttsConfig.promptText
+        ) {
           console.log('MCP: TTS配置加载成功', {
             hostname: ttsConfig.hostname,
             port: ttsConfig.port,
-            enabled: ttsConfig.enabled
+            enabled: ttsConfig.enabled,
           });
           return ttsConfig;
         } else {
@@ -127,7 +143,8 @@ export class MCPConfigManager {
           console.log(`MCP: 从配置文件读取到voiceMode: ${newMode}`);
 
           this.config.voice.voiceMode = newMode;
-          this.config.voice.enableProjectSummary = appConfig.voiceSettings.enableProjectSummary !== false;
+          this.config.voice.enableProjectSummary =
+            appConfig.voiceSettings.enableProjectSummary !== false;
 
           console.log(`MCP: 动态更新语音模式为: ${this.config.voice.voiceMode}`);
         } else {
@@ -149,7 +166,7 @@ export class MCPConfigManager {
         port: ttsConfig.port,
         path: ttsConfig.path,
         audioUrl: ttsConfig.audioUrl,
-        promptText: ttsConfig.promptText
+        promptText: ttsConfig.promptText,
       };
 
       // 如果TTS配置存在且启用，则优先使用TTS模式
@@ -213,7 +230,7 @@ export class MCPConfigManager {
     if (this.config.voice.ttsApiConfig) {
       this.config.voice.ttsApiConfig = {
         ...this.config.voice.ttsApiConfig,
-        ...config
+        ...config,
       };
       console.log(`MCP: TTS API配置已更新:`, this.config.voice.ttsApiConfig);
     }
@@ -234,12 +251,14 @@ export class MCPConfigManager {
    * 检查TTS配置是否可用
    */
   isTTSConfigAvailable(): boolean {
-    return !!(this.config.voice.ttsApiConfig &&
+    return !!(
+      this.config.voice.ttsApiConfig &&
       this.config.voice.ttsApiConfig.hostname &&
       this.config.voice.ttsApiConfig.port &&
       this.config.voice.ttsApiConfig.path &&
       this.config.voice.ttsApiConfig.audioUrl &&
-      this.config.voice.ttsApiConfig.promptText);
+      this.config.voice.ttsApiConfig.promptText
+    );
   }
 
   /**

@@ -1,7 +1,7 @@
 /**
- * Map `@ig-live/bundle-ig-base` ToolDefinition → Vercel AI SDK `tool()`.
+ * Map `@nomi-ai/bundle-ig-base` ToolDefinition → Vercel AI SDK `tool()`.
  */
-import type { ToolDefinition } from '@ig-live/bundle-ig-base';
+import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import { jsonSchema, tool, type Tool } from 'ai';
 import type { ZodType } from 'zod';
 

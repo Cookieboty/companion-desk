@@ -2,7 +2,7 @@
  * ScreenPanel —— 截图提问说明 + 本地屏幕记忆（默认关闭）：开关、间隔、保留期、
  * 排除的应用 / 窗口、时间线搜索、暂停与清空。数据只在本机 userData/screen-memory。
  */
-import { t as tr } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -14,7 +14,7 @@ import {
   SkeletonList,
   Switch,
   Tabs,
-} from '@ig-live/ui';
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { ModalHostContext, Modal } from '@ig-live/ui';
+import { ModalHostContext, Modal } from '@nomi-ai/ui';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';

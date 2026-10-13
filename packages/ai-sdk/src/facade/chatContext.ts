@@ -11,7 +11,7 @@
  * 只用于预算控制，宁可略微高估。
  */
 
-import type { ChatMessage } from '@ig-live/bundle-ig-base';
+import type { ChatMessage } from '@nomi-ai/bundle-ig-base';
 
 export interface ContextBudget {
   /** 发送给模型的消息总 token 上限（估算），默认 8000 */

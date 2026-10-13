@@ -1,7 +1,7 @@
-import type { ModelVoiceConfig } from '@ig-live/types';
-import { type VoiceSettings as VoiceSettingsType } from '@ig-live/types';
-import { t as tr } from '@ig-live/ui';
-import { Modal, Switch } from '@ig-live/ui';
+import type { ModelVoiceConfig } from '@nomi-ai/types';
+import { type VoiceSettings as VoiceSettingsType } from '@nomi-ai/types';
+import { t as tr } from '@nomi-ai/ui';
+import { Modal, Switch } from '@nomi-ai/ui';
 import React, { useState, useEffect, useCallback } from 'react';
 
 import {

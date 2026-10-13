@@ -1,6 +1,6 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /**
- * 看板娘提示文案。本文件为 Companion Desk 原创内容，随项目以 MIT 许可发布。
+ * 看板娘提示文案。本文件为 Nomi 原创内容，随项目以 MIT 许可发布。
  * （取代此前来自第三方项目、GPL-3.0 许可的 waifu-tips.json）
  */
 export interface TipRule {

@@ -3,7 +3,7 @@
  * @file Define the type of the global window object.
  * @module types/window
  */
-import type { IpcApi } from '@ig-live/types';
+import type { IpcApi } from '@nomi-ai/types';
 
 interface Window {
   /**

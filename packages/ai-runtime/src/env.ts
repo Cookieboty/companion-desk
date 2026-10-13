@@ -19,13 +19,13 @@ export function assertElectronMainProcess(opts: AssertMainProcessOptions = {}): 
 
   if (!hasElectron) {
     throw new Error(
-      '[@ig-live/ai-runtime] must be loaded inside Electron main process ' +
+      '[@nomi-ai/ai-runtime] must be loaded inside Electron main process ' +
         '(process.versions.electron is undefined).',
     );
   }
   if (!isMain) {
     throw new Error(
-      '[@ig-live/ai-runtime] must be loaded inside Electron main process ' +
+      '[@nomi-ai/ai-runtime] must be loaded inside Electron main process ' +
         `(process.type === '${proc.type}').`,
     );
   }

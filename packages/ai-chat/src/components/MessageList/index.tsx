@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 import React, { useEffect, useRef } from 'react';
 import { List, useListRef, type RowComponentProps } from 'react-window';
 

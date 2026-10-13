@@ -1,4 +1,4 @@
-import { t } from '@ig-live/ui';
+import { t } from '@nomi-ai/ui';
 /**
  * 本地知识库客户端：`ai:kb:*` IPC（经 preload 的 window.aiIPC）。
  * 文件夹一律由主进程弹系统选择框加入；渲染层拿不到 key，也不能直接传路径授权。

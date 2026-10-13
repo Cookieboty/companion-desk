@@ -1,5 +1,5 @@
-import { t as tr } from '@ig-live/ui';
-import { Switch, Tooltip } from '@ig-live/ui';
+import { t as tr } from '@nomi-ai/ui';
+import { Switch, Tooltip } from '@nomi-ai/ui';
 import {
   AudioLines,
   Bot,
@@ -42,7 +42,7 @@ import { getCache, setCache } from '@/utils/cache';
 
 /**
  * 看板娘工具栏。
- * - 柔和配色（磨砂玻璃 + 低饱和强调色，无霓虹辉光），Lucide（ISC）统一图标，@ig-live/ui Tooltip。
+ * - 柔和配色（磨砂玻璃 + 低饱和强调色，无霓虹辉光），Lucide（ISC）统一图标，@nomi-ai/ui Tooltip。
  * - 独立图层（高于画布），放在角色包围盒旁的“预留槽位”，不压住角色；贴近屏幕边缘时翻到另一侧。
  * - 空闲自动隐藏，光标靠近角色 / 工具栏时出现；可收起为单个「更多」按钮。
  * - 显示时带 data-mascot-ui，点击穿透命中测试（Win/mac elementFromPoint、Linux setShape）都会算上它。

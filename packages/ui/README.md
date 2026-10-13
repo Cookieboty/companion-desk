@@ -1,10 +1,10 @@
-# @ig-live/ui
+# @nomi-ai/ui
 
-Companion Desk 共享 UI：设计 token（CSS 变量）+ 轻量 React 组件。renderer（看板娘窗口）与 ai-chat（对话窗口）共用。
+Nomi 共享 UI：设计 token（CSS 变量）+ 轻量 React 组件。renderer（看板娘窗口）与 ai-chat（对话窗口）共用。
 
 ```ts
-import '@ig-live/ui/styles.css'; // 含 tokens.css
-import { Button, Modal, Select, Switch } from '@ig-live/ui';
+import '@nomi-ai/ui/styles.css'; // 含 tokens.css
+import { Button, Modal, Select, Switch } from '@nomi-ai/ui';
 ```
 
 - **Tokens**（`src/tokens.css`）：`--cd-color-*`、`--cd-radius-*`、`--cd-space-*`、`--cd-font-*`、`--cd-shadow-*`、`--cd-z-*`。默认暗色（深海军蓝 + 玻璃拟态 + 蓝/青强调），`[data-theme='light']` 预留浅色。

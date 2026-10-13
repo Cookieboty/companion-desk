@@ -15,8 +15,8 @@
  *   （多窗口 / 多 profile 场景）。
  */
 
-import { AIClient, toSdkContext, type AIClientOptions } from '@ig-live/ai-sdk';
-import type { PluginContext } from '@ig-live/bundle-ig-base';
+import { AIClient, toSdkContext, type AIClientOptions } from '@nomi-ai/ai-sdk';
+import type { PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import type { RuntimeLogger } from './logger';
 import { ConsoleRuntimeLogger } from './logger';
