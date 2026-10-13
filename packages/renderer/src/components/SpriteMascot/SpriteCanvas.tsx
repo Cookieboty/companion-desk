@@ -71,6 +71,7 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           if (cancelled) return;
           setReady(true);
           document.documentElement.dataset.mascotModel = manifest.id;
+          console.info('[perf] mascot-model-loaded');
           console.info('[perf] sprite-model-loaded', manifest.id);
         });
       })
