@@ -7,6 +7,8 @@ Local only (numpy, Pillow, opencv-python-headless). Usage:
 Run after stages 1 and 2; rewrites body.png (torso) and adds arm-l/arm-r/badge/strap-r + pivots.
 
 v6: colour-matched under-jaw neck pad (no flat pale rectangle).
+
+v6: colour-matched under-jaw neck pad.
 """
 import json, sys
 import numpy as np, cv2

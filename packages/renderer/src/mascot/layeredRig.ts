@@ -15,6 +15,11 @@ export interface RigEyeMetrics {
   bottom: number;
   /** upper lash stroke thickness (rig px) */
   lash: number;
+  /** tight under-lash oval used to hard-clip the travelling iris */
+  ovalX0?: number;
+  ovalX1?: number;
+  ovalTop?: number;
+  ovalBottom?: number;
 }
 
 export interface RigManifest {
@@ -920,7 +925,7 @@ export function drawRig(
     fn();
     ctx.restore();
   };
-  /** white + iris (clipped to the white) composed on a scratch canvas at native res */
+  /** white + iris hard-clipped to the eye-white alpha (and a tight oval) at native res */
   const composeEye = (side: 'l' | 'r') => {
     const white = imgs.get(`eye-white-${side}`);
     const wo = L[`eye-white-${side}`];
@@ -937,9 +942,29 @@ export function drawRig(
     const r = rig.irisRadius?.[side] ?? 20;
     if (iris && io) {
       g.globalCompositeOperation = 'source-atop';
-      const dx = (io[0] - wo[0]) / k + (pose.irisX * r * 0.38) / k;
-      const dy = (io[1] - wo[1]) / k + (pose.irisY * r * 0.22) / k;
-      g.drawImage(iris, dx, dy);
+      const dx = (io[0] - wo[0]) / k + (pose.irisX * r * 0.34) / k;
+      const dy = (io[1] - wo[1]) / k + (pose.irisY * r * 0.16) / k;
+      // draw iris ~4% larger so soft/AA rim never leaves a white gap at the lid
+      const is = 1.04;
+      const iw = iris.width * is;
+      const ih = iris.height * is;
+      g.drawImage(iris, dx - (iw - iris.width) / 2, dy - (ih - iris.height) / 2, iw, ih);
+    }
+    // belt-and-suspenders: hard oval clip matching the open-eye shape under the lash
+    const m = rig.eyes?.[side];
+    if (m) {
+      const ox0 = m.ovalX0 ?? m.x0;
+      const ox1 = m.ovalX1 ?? m.x1;
+      const oy0 = m.ovalTop ?? m.top;
+      const oy1 = m.ovalBottom ?? m.bottom;
+      const cx = (ox0 + ox1) / 2;
+      const cy = (oy0 + oy1) / 2;
+      const rx = ((ox1 - ox0) / 2) * 1.04;
+      const ry = ((oy1 - oy0) / 2) * 1.08;
+      g.globalCompositeOperation = 'destination-in';
+      g.beginPath();
+      g.ellipse((cx - wo[0]) / k, (cy - wo[1]) / k, rx / k, ry / k, 0, 0, Math.PI * 2);
+      g.fill();
     }
     g.globalCompositeOperation = 'source-over';
     return { c, wo, k, white };

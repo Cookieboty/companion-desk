@@ -15,6 +15,9 @@ border ring (pixel-aligned); eye region inpainted out of head and bangs.
 
 v6: crisp neck column + opaque collar-adjacent hair tips; closed/happy lids
 improved in the renderer (thicker taper, crease, lid shade, lower-lash hint).
+
+v6: closed/happy lid polish in renderer; crisp neck join; smooth oval eye-white,
+iris hard-clip, lash kept outside opening (no lines on iris / white leaks on gaze).
 """
 import sys, json, math
 import numpy as np, cv2
@@ -192,7 +195,7 @@ for side, (cx, cy, r), box in [('l', (559.5, 283.5, 23.5), (494, 246, 600, 314))
     region &= (xx > 486) & (xx < 800)
     if fit is not None:  # nothing far above the lash line (that is hair / brow area)
         region &= yy > np.polyval(fit, xx) - 27
-    eyes[side] = dict(c=(cx, cy), r=r, op=op, iris=circle(cx, cy, r), lash=lash, box=box, region=region)
+    eyes[side] = dict(c=(cx, cy), r=r, op=op, iris=circle(cx, cy, r), lash=lash, box=box, region=region, fit=fit)
 # --- bangs (hair over the forehead / eye tops) → drawn above the eyes so blinks never erase them
 hair = (lum < 125) & (a > 0.3) & ((hsv[..., 0] < 30) | (hsv[..., 2] < 90))
 eye_any = np.any([e['op'] for e in eyes.values()], 0)
@@ -208,7 +211,14 @@ for i in range(1, nb):
 bangs = soft(cv2.dilate(keep.astype(np.uint8), np.ones((3, 3), np.uint8)), 0.8) * a
 # nothing of the eyes may stay in the fringe layer (lash strokes there doubled the lash line)
 for e in eyes.values():
-    bangs = bangs * (1 - soft(cv2.dilate(e['region'].astype(np.uint8), np.ones((3, 3), np.uint8)), 1.0))
+    # clear lash OR brow residue from bangs (region + a band above the eye)
+    clear = cv2.dilate(e['region'].astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+    ys_, xs_ = np.where(e['op'])
+    if len(xs_):
+        brow_band = (xx >= xs_.min() - 8) & (xx <= xs_.max() + 8) & (yy >= ys_.min() - 36) & (yy <= ys_.min() - 2)
+        brow_band &= (lum < 130) & (hsv[..., 1] < 90)
+        clear |= brow_band
+    bangs = bangs * (1 - soft(clear, 1.0))
 # --- side hair (secondary motion), ribbon
 root = np.clip((yy - 330) / 30, 0, 1)
 sideL = soft(hair & (xx < 478) & (yy < NECK_CUT), 1.0) * root * a
@@ -258,42 +268,113 @@ save('head', skin, head_a)
 save('bangs', img, bangs)
 save('hair-side-l', img, sideL); save('hair-side-r', img, sideR); save('ribbon', img, rib)
 for side, e in eyes.items():
-    op = soft(e['op'], 0.6)
     bx = e['box']; ys0, ys1, xs0, xs1 = bx[1] - 16, bx[3] + 12, bx[0] - 14, bx[2] + 14
-    # white: the source's own sclera where visible; under the iris a smooth white sampled
-    # from the sclera (with the art's top shading), so a moved iris never reveals dark pixels
-    scl = e['op'] & ~cv2.dilate(e['iris'].astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & (lum > 170)
-    sv = scl.astype(np.float32)
-    nm = cv2.GaussianBlur(img * sv[..., None], (0, 0), 6); dn = cv2.GaussianBlur(sv, (0, 0), 6)[..., None]
-    base = np.where(dn > 1e-3, nm / np.maximum(dn, 1e-4), np.array([240, 236, 234], np.float32))
-    ys, _ = np.where(e['op']); top, bot = ys.min(), ys.max()
-    shade = np.clip((yy - top) / max(1, (bot - top) * 0.5), 0, 1)[..., None]
-    base = base * (0.8 + 0.2 * shade)
-    keep_src = soft(scl, 0.8)[..., None]
-    wht = img * keep_src + base * (1 - keep_src)
-    save(f'eye-white-{side}', wht, op)
-    # lash: every pixel of the eye region that differs from the clean skin, colour un-mixed
-    # against that skin, so at rest  skin + lash  reproduces the source exactly (pixel aligned)
-    # never inside the opening (white / visible iris): those belong to the white and iris layers
-    reg = e['region'] & ~cv2.erode(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    # v6b: tight smooth opening under the lash (almond = opening ∩ fitted ellipse),
+    # hard core + 1px AA — iris travel clips cleanly with no jagged white leaks
+    op_u8 = e['op'].astype(np.uint8) * 255
+    op_u8 = cv2.morphologyEx(op_u8, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    op_u8 = cv2.morphologyEx(op_u8, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    cnts, _ = cv2.findContours(op_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    ell_mask = np.zeros_like(op_u8)
+    if cnts and max(len(c) for c in cnts) >= 5:
+        big = max(cnts, key=cv2.contourArea)
+        if len(big) >= 5:
+            try:
+                cv2.ellipse(ell_mask, cv2.fitEllipse(big), 255, -1)
+            except cv2.error:
+                cv2.drawContours(ell_mask, [big], -1, 255, -1)
+        else:
+            cv2.drawContours(ell_mask, [big], -1, 255, -1)
+    else:
+        ell_mask = op_u8
+    # sit fully under the upper lash: erode 1px so the lash border is never part of the white
+    core = cv2.erode((ell_mask > 0).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
+    core = core.astype(bool) & cv2.dilate(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    # distance-based AA (smooth oval edge, no stair-steps)
+    dist = cv2.distanceTransform(core.astype(np.uint8), cv2.DIST_L2, 5)
+    op_a = np.clip(dist / 1.15, 0, 1)
+    op_a[op_a < 0.04] = 0
+    e['op_a'] = op_a
+    e['op_core'] = core
+    # clean synthetic sclera (no baked lash / rim); soft top shade only
+    ys, _ = np.where(e['op']); top, bot = (ys.min(), ys.max()) if len(ys) else (0, 1)
+    shade = np.clip((yy - top) / max(1, (bot - top) * 0.55), 0, 1)[..., None]
+    wht = np.array([242, 236, 232], np.float32) * (0.82 + 0.18 * shade)
+    # keep a hint of real sclera colour only deep inside (never near the lid)
+    deep = cv2.erode(core.astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool) & (lum > 175)
+    wht = np.where(deep[..., None], img * 0.35 + wht * 0.65, wht)
+    save(f'eye-white-{side}', wht, op_a)
+    # lash: strictly OUTSIDE the opening (dilate so nothing dark sits on the eyeball)
+    outside = ~cv2.dilate(core.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 5))).astype(bool)
+    reg = e['region'] & outside
     diff = np.abs(img - skin).max(-1)
-    # only real strokes: faint skin-tone residue would show as a box once the features
-    # parallax-shift over the head, so it stays in the (clean) face layer instead
-    dl = (skin @ np.array([.299, .587, .114])) - lum   # darker than the clean skin
-    la = np.maximum(np.clip((diff - 16) / 22, 0, 1), np.clip((dl - 6) / 16, 0, 1)) * soft(reg, 1.0)
+    dl = (skin @ np.array([.299, .587, .114])) - lum
+    la = np.maximum(np.clip((diff - 16) / 22, 0, 1), np.clip((dl - 6) / 16, 0, 1)) * soft(reg, 0.7)
     la = cv2.morphologyEx((la * 255).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)).astype(np.float32) / 255
-    la[la < 0.06] = 0
-    col = img  # straight source colour: no un-mixing artefacts (halo) at the stroke edges
+    la[la < 0.08] = 0
+    # drop tiny detached flecks (outer-corner dirt)
+    nb, lb, st, _ = cv2.connectedComponentsWithStats((la > 0.1).astype(np.uint8), connectivity=8)
+    keep = np.ones(nb, bool); keep[0] = False
+    for i in range(1, nb):
+        if st[i, 4] < 12: keep[i] = False
+    la *= keep[lb].astype(np.float32)
+    # final guard: no lash alpha inside OR hanging into the eye opening
+    # (dilate the opening so the upper-lash underside cannot sit on the iris)
+    exclude = soft(cv2.dilate(e['op'].astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))).astype(bool), 0.6)
+    la = la * (1.0 - np.maximum(op_a, exclude))
+    col = img
     save(f'lash-{side}', col, la)
     e['la'] = la
-    # iris pixels hidden under the lashes are NOT kept (they are lash pixels): repaint that part
-    # of the disc from the visible iris so a moving iris never drags lash lines over the eye
-    vis = e['iris'] & cv2.erode(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    # iris: rebuild a full continuous disc so gaze never shows an inpaint seam or lash rim.
+    # 1) take the visible iris (inside the opening, below the lash)
+    # 2) inpaint the hidden top from that visible texture (Telea)
+    # 3) radial-blend any residual seam so there is no flat horizontal bar
+    core = e.get('op_core', e['op'])
+    cx, cy = e['c']; r = e['r']
+    # visible = iris inside opening, excluding the upper lash-adjacent band
+    under_lash = (yy < np.polyval(e.get('fit', [0, 0, cy - r * 0.6]), xx) + 2) if 'fit' in e else (yy < cy - r * 0.55)
+    # simpler: visible is the lower ~70% of the disc that sits in the opening
+    vis = e['iris'] & core & (yy > cy - r * 0.35)
+    # also drop very dark lash pixels from the "visible" donor
+    vis &= (lum > 55)
     hid = (e['iris'] & ~vis).astype(np.uint8) * 255
-    bx = e['box']; sub = np.ascontiguousarray(img[bx[1]:bx[3], bx[0]:bx[2]].astype(np.uint8))
+    bx = e['box']
+    y0, y1, x0, x1 = bx[1], bx[3], bx[0], bx[2]
+    sub = np.ascontiguousarray(img[y0:y1, x0:x1].astype(np.uint8))
+    hsub = np.ascontiguousarray(hid[y0:y1, x0:x1])
+    # seed: put visible pixels into sub, blank the hidden so Telea fills from visible
+    sub_f = sub.copy()
+    # ensure hidden area is marked for inpaint
     rep = img.copy()
-    rep[bx[1]:bx[3], bx[0]:bx[2]] = cv2.inpaint(sub, np.ascontiguousarray(hid[bx[1]:bx[3], bx[0]:bx[2]]), 4, cv2.INPAINT_TELEA)
-    save(f'iris-{side}', rep, soft(e['iris'], 0.6))
+    filled = cv2.inpaint(sub_f, hsub, 6, cv2.INPAINT_TELEA)
+    rep[y0:y1, x0:x1] = filled
+    # radial smooth: blend any remaining discontinuity near the upper half
+    yy_l = yy[y0:y1, x0:x1] - cy; xx_l = xx[y0:y1, x0:x1] - cx
+    rad = np.sqrt(xx_l ** 2 + yy_l ** 2) / max(r, 1)
+    # blur the whole disc slightly then restore sharp pupil/highlight from original visible
+    blur = cv2.GaussianBlur(filled, (0, 0), 1.2)
+    # detect flat inpaint (low local variance) in upper disc and replace with blurred neighbour mix
+    gray = cv2.cvtColor(filled, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    local_std = cv2.GaussianBlur(gray * gray, (0, 0), 2) - cv2.GaussianBlur(gray, (0, 0), 2) ** 2
+    local_std = np.sqrt(np.maximum(local_std, 0))
+    upper = (yy_l < 0) & (rad < 0.98)
+    flat = upper & (local_std < 8) & (hsub > 0)
+    # also soften the seam ring around vis/hid boundary
+    seam = cv2.dilate((hsub > 0).astype(np.uint8), np.ones((5, 5), np.uint8))
+    seam = seam.astype(bool) & (cv2.dilate((hsub == 0).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0)
+    mix = np.clip(soft(flat | seam, 1.2), 0, 1)[..., None]
+    filled2 = filled * (1 - mix) + blur * mix
+    # restore crisp highlight + pupil from the ORIGINAL visible pixels (never blur those)
+    orig_vis = (hsub == 0) & (sub[..., 0] * 0.299 + sub[..., 1] * 0.587 + sub[..., 2] * 0.114 < 50)
+    orig_hi = (hsub == 0) & (sub[..., 0] * 0.299 + sub[..., 1] * 0.587 + sub[..., 2] * 0.114 > 220)
+    filled2 = np.where((orig_vis | orig_hi)[..., None], sub, filled2)
+    rep[y0:y1, x0:x1] = filled2
+    # hard disc alpha
+    ir_dist = cv2.distanceTransform(e['iris'].astype(np.uint8), cv2.DIST_L2, 5)
+    ir_a = np.clip(ir_dist / 0.7, 0, 1)
+    ir_a[ir_a < 0.08] = 0
+    ir_a[ir_a > 0.75] = 1
+    save(f'iris-{side}', rep, ir_a)
     cx, cy = e['c']; r = e['r']
     # closed / happy eyes are drawn procedurally by the renderer from these metrics
     ys, xs = np.where(e['op'])
@@ -302,7 +383,19 @@ for side, e in eyes.items():
     col = np.median(img[lp & (lum < 90)], axis=0) if (lp & (lum < 90)).sum() > 10 else np.array([60, 34, 30])
     lys = np.where(lp)[0]
     thick = float(np.median(lp[:, xs.min():xs.max()].sum(0)[lp[:, xs.min():xs.max()].sum(0) > 0])) * K
-    rig.setdefault('eyes', {})[side] = {'x0': lx0, 'x1': lx1, 'top': ly0, 'bottom': ly1, 'lash': max(1.6, min(thick, 5.0))}
+    # oval clip in rig space (tight under-lash opening for iris travel)
+    core = e.get('op_core', e['op'])
+    cys, cxs = np.where(core)
+    if len(cxs):
+        ox0, oy0 = to_rig(float(cxs.min()), float(cys.min()))
+        ox1, oy1 = to_rig(float(cxs.max()), float(cys.max()))
+    else:
+        ox0, oy0, ox1, oy1 = lx0, ly0, lx1, ly1
+    rig.setdefault('eyes', {})[side] = {
+        'x0': lx0, 'x1': lx1, 'top': ly0, 'bottom': ly1,
+        'lash': max(1.6, min(thick, 5.0)),
+        'ovalX0': ox0, 'ovalX1': ox1, 'ovalTop': oy0, 'ovalBottom': oy1,
+    }
     rig['lashColor'] = '#%02x%02x%02x' % tuple(int(v) for v in col)
     rig['anchors'][f'iris{side.upper()}'] = to_rig(cx, cy)
     rig['anchors'][f'eye{side.upper()}'] = to_rig(cx, cy + r * 0.9)  # squash pivot on the lower lid
