@@ -53,12 +53,12 @@ const STEP_TITLE: Record<Step, () => string> = {
 };
 /** 看板娘在每一步说的话 */
 const STEP_LINE: Record<Step, () => string> = {
-  language: () => t('你好呀～我是你的桌面伙伴！花一分钟认识一下吧。'),
-  theme: () => t('换身衣服吧，你喜欢哪种颜色？'),
-  character: () => t('想让谁陪着你？点一下就能换人哦。'),
-  persona: () => t('告诉我怎么称呼你，我会记住的～'),
-  provider: () => t('接上模型，我就能陪你聊天、帮你做事啦。'),
-  privacy: () => t('放心，我们的对话都只保存在你的电脑里。'),
+  language: () => t('你好，我是 Nomi·诺米，住在你桌面上的 AI 伙伴。花一分钟认识一下吧！'),
+  theme: () => t('先挑一个看着舒服的外观吧，我们每天都要见面呢。'),
+  character: () => t('想让我以什么样子陪着你？点一下就能换，之后也能随时改。'),
+  persona: () => t('告诉我怎么称呼你，我会好好记住。'),
+  provider: () => t('接上一个 AI 模型，我就能帮你规划任务、把想法变成行动。'),
+  privacy: () => t('放心，我们的对话和记忆都只留在这台电脑上。'),
 };
 
 const LANGS: { id: LocalePref; label: () => string; hint: () => string }[] = [
@@ -127,7 +127,9 @@ export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ o
       await onboardingClient.complete(skipped);
       onboardingClient.mascot({
         type: 'say',
-        text: skipped ? t('随时可以在设置里重新打开引导哦～') : t('准备好啦！有事随时叫我～'),
+        text: skipped
+          ? t('随时可以在设置里重新打开引导哦～')
+          : t('准备好啦！我在这里，陪你把每一个任务都变成小小的成就。'),
         motion: skipped ? undefined : 'cheer',
       });
       onDone(skipped);
@@ -251,7 +253,7 @@ export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ o
                     onboardingClient.mascot({
                       type: 'voice-style',
                       style: v.id,
-                      preview: v.id === 'off' ? undefined : t('你好呀，以后请多关照～'),
+                      preview: v.id === 'off' ? undefined : t('你好，我是 Nomi，今天也要加油哦！'),
                     });
                   }}
                 >
