@@ -5,7 +5,7 @@
   "license": "MIT",
   "author": "Nomi-ai project owner (AI-generated artwork)",
   "source": "docs/BRAND.md",
-  "description": "Nomi brand mascot. Owner-provided, AI-generated artwork, licensed by the project owner for use in this repository. Pseudo-3D layered rig cut from the approved clean half-body illustration (scripts/brand/build-nomi-rig.py).",
+  "description": "Nomi brand mascot. Owner-provided, AI-generated artwork, licensed by the project owner for use in this repository. Pseudo-3D layered rig cut from the approved clean half-body illustration with the face rebuilt from the owner HD close-up (scripts/brand/build-nomi-rig.py + build-nomi-face-hd.py).",
   "expressions": {
     "neutral": "neutral.png"
   },
@@ -39,7 +39,7 @@
       ],
       "mouth": [
         475.0,
-        332.0
+        331.0
       ],
       "cheekL": [
         408.0,
@@ -64,28 +64,20 @@
       "headTop": [
         474.0,
         80.0
+      ],
+      "irisL": [
+        406.5906598505171,
+        264.95825951983267
+      ],
+      "irisR": [
+        529.9510890654789,
+        251.36884817195596
       ]
     },
     "layers": {
       "body": [
         66,
         291
-      ],
-      "eye-l": [
-        370,
-        236
-      ],
-      "eye-r": [
-        492,
-        222
-      ],
-      "eyes-closed": [
-        368,
-        251
-      ],
-      "eyes-happy": [
-        376,
-        242
       ],
       "hair-side-l": [
         223,
@@ -100,25 +92,88 @@
         17
       ],
       "mouth-frown": [
-        457,
-        322
+        447.5,
+        320.0,
+        0.5
       ],
       "mouth-o": [
-        463,
-        319
+        446.0,
+        324.0,
+        0.5
       ],
       "mouth-open": [
-        457,
-        324
+        446.0,
+        324.0,
+        0.5
       ],
       "mouth": [
-        444,
-        314
+        446.5,
+        328.0,
+        0.5
       ],
       "ribbon": [
         605,
         183
+      ],
+      "face-hd": [
+        351.5,
+        205.5,
+        0.5
+      ],
+      "eye-white-l": [
+        367.5661892191582,
+        239.61259790396605,
+        0.5
+      ],
+      "iris-l": [
+        378.0199072418851,
+        238.51880960514518,
+        0.5
+      ],
+      "lash-l": [
+        360.1926416930548,
+        232.1142951061433,
+        0.5
+      ],
+      "lid-l": [
+        364.1992252553912,
+        259.8871739917196,
+        0.5
+      ],
+      "happy-l": [
+        364.1179843126477,
+        251.93488555963995,
+        0.5
+      ],
+      "eye-white-r": [
+        503.0,
+        234.0,
+        0.5
+      ],
+      "iris-r": [
+        506.5,
+        230.0,
+        0.5
+      ],
+      "lash-r": [
+        500.5,
+        228.0,
+        0.5
+      ],
+      "lid-r": [
+        503.5,
+        255.5,
+        0.5
+      ],
+      "happy-r": [
+        503.5,
+        247.5,
+        0.5
       ]
+    },
+    "irisRadius": {
+      "l": 21.849351242582934,
+      "r": 21.849351242582934
     },
     "dir": "layers/"
   }
