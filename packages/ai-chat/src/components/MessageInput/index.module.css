@@ -84,7 +84,7 @@
     0 3px 12px rgba(var(--cd-accent-rgb), 0.4);
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--cd-color-border);
 }
 
 /* 发送按钮的发光效果 */
@@ -182,7 +182,7 @@
   background: rgba(127, 29, 29, 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: #fecaca;
+  color: var(--cd-color-danger-text);
   padding: 6px 14px;
   border-radius: 10px;
   font-weight: 500;
@@ -476,7 +476,7 @@
   border-radius: 999px;
 }
 .composerBar .sendButton:disabled {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--cd-color-active);
 }
 .moreWrap {
   position: relative;
@@ -568,4 +568,8 @@
 }
 .composerBar > :not(.modelStatus):not(.spacer) {
   flex-shrink: 0;
+}
+.composerBar .sendButton:disabled {
+  background: var(--cd-color-active);
+  color: var(--cd-color-text-subtle);
 }

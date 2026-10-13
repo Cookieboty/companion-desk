@@ -1,4 +1,5 @@
 import { AIProvider } from '@ig-live/ai-sdk-client/react';
+import { initTheme } from '@ig-live/ui';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
@@ -6,6 +7,9 @@ import '@ig-live/ui/styles.css';
 import '@ig-live/voice/styles.css';
 import App from './App';
 import { SnipOverlay } from './components/SnipOverlay';
+
+// 主题（默认 Cool Mist；设置 → 通用 → 主题）
+initTheme();
 
 const hasAiIpc = typeof window !== 'undefined' && Boolean((window as { aiIPC?: unknown }).aiIPC);
 

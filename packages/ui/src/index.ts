@@ -27,3 +27,4 @@ export { BrandIcon, hasBrandIcon } from './BrandIcon';
 export type { BrandIconProps } from './BrandIcon';
 export { Skeleton, SkeletonList, Truncate } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
+export * from './theme';

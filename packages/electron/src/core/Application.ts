@@ -27,6 +27,7 @@ import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
 import { LoggerService, LogLevel } from '../services/LoggerService';
+import { ThemeService } from '../theme/ThemeService';
 import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { perfMark } from '../utils/perfMarks';
 import { getVoiceService } from '../voice/VoiceService';
@@ -238,6 +239,9 @@ export class Application implements IApplication {
         providers: () => this.aiRuntime?.providers as never,
       });
       localLlm.registerIpc();
+
+      // 界面主题（设置 → 通用 → 主题），对话窗口与看板娘同步
+      new ThemeService(path.join(app.getPath('userData'), 'theme.json')).registerIpc();
 
       // 编程助手进度：监视本机 Codex / Claude Code 等会话文件，看板娘提醒完成/失败
       const agents = initAgentProgressService({
