@@ -216,6 +216,7 @@ test.describe('E10 · real app · desktop file tools', () => {
       await chat.waitForSelector('textarea', { timeout: 20_000 });
 
       // ---- 1. 授权文件夹（读写） ----
+      await chat.click('[data-testid="composer-more"]');
       await chat.click('[data-testid="open-desktop-panel"]');
       await chat.waitForSelector('[data-testid="desktop-panel"]');
       await chat.click('[data-testid="desktop-grant-rw"]');
@@ -287,6 +288,7 @@ test.describe('E10 · real app · desktop file tools', () => {
       expect(existsSync(target)).toBe(false);
 
       // 撤销（设置面板 → 操作记录）
+      await chat.click('[data-testid="composer-more"]');
       await chat.click('[data-testid="open-desktop-panel"]');
       await chat.getByRole('tab', { name: '操作记录' }).click();
       await chat.click('[data-testid="desktop-undo"]');
