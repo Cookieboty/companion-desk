@@ -9,8 +9,18 @@ The owner chose a **pseudo-3D layered 2D** Nomi (a Live2D-like feel without Live
 - **Source:** the owner-approved clean half-body illustration (front pose, arms down). The official poster is the design reference for face and hair; it is not shipped.
 - **Layers** (`packages/renderer/public/assets/models/sprite/nomi/layers/`): body, head, left/right side hair, ribbon, left/right eye, mouth, plus painted variants (closed eyes, happy `^^` eyes, open / `o` / frown mouths). `scripts/brand/build-nomi-rig.py` cuts them with local tools only (Pillow, NumPy, OpenCV; nothing uploaded). Occluded areas are filled with OpenCV inpainting: skin under the eyes and mouth, hair under the ribbon, neck under the chin, collar under the side hair.
 - **Renderer:** `src/mascot/layeredRig.ts` (Canvas2D, no GPU) driven by the existing sprite backend. It does idle breathing, auto blink (eye squash plus lid line), head tilt and sway, spring-driven side hair and ribbon, cursor parallax (the head moves, and the eyes and mouth move a little further), lip-sync mouth from the TTS RMS level, and expression styles for neutral / happy / relaxed / sad / angry / surprised (talking and blink map onto these). It pauses while the window is hidden and drops positional motion under `prefers-reduced-motion`.
+- **HD head (v3, 2026-10-13):** the whole head (face, bangs, side hair, clips, ribbon, ears, neck) is rebuilt from one source: the owner's approved front-facing HD head image. `scripts/brand/build-nomi-head-hd.py` cuts it after stage 1, and the layers keep the source resolution with a draw scale of 0.64. The head is placed so its chin meets the body's neck, and its colour is matched to the half-body skin. The script also does the following:
+  - removes the stage-1 hair tips above the collar from the body;
+  - paints the crown, which the source crops off, as a dome continuing the top strands;
+  - splits each eye into white, iris (follows the cursor, clipped to the white) and lashes;
+  - makes closed lids from the art's upper-lash stroke flipped onto the lower lid, and happy eyes from the lash arc;
+  - fills the skin under the eyes and mouth only from skin pixels;
+  - puts the **bangs on their own layer above the eyes**, so blinks never erase them;
+  - paints the open, "o" and frown mouths around the art's own lip line.
+
+  An earlier attempt (v2) that patched a hand-on-cheek close-up onto the old head was rejected and reverted.
 - **Superseded:** the nine blurry brand-board busts were removed. `neutral.png` is the static composite.
-- **Limits:** the face is about 150 px wide in the source, so it is upscaled 2×. Eye whites are not separate, so the eyes do not track inside the sockets; gaze is shown with head and feature parallax. Arms and body do not bend.
+- **Limits:** the body is still the 2× upscaled half-body art, so it is softer than the head. The painted crown and mouths are approximations. Where the old hair tips were removed above the collar, small inpainted smudges can remain. Arms and body do not bend.
 
 The real-3D research below is kept for when the owner wants to revisit it.
 
