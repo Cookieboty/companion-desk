@@ -8,8 +8,3 @@ The layered rig in layers/ (body, head, side hair, ribbon, eyes, mouth and the
 painted closed/happy-eye and open/o/frown-mouth variants) was cut from the
 owner's clean half-body illustration with scripts/brand/build-nomi-rig.py
 (local tools only; occluded areas inpainted). Same licence as above.
-
-The hi-res face layers (face-hd, eye-white-*, iris-*, lash-*, lid-*, happy-*,
-mouth*) come from the owner's HD face close-up (also owner-provided,
-AI-generated), aligned to the half-body head with
-scripts/brand/build-nomi-face-hd.py. Same licence as above.
