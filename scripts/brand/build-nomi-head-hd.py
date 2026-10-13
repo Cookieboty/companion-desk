@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
-"""Stage 2 (v4): rebuild the whole Nomi head from the owner's front-facing HD head image.
+"""Stage 2 (v3): rebuild the whole Nomi head from the owner's front-facing HD head image.
 
 Local only (numpy, Pillow, opencv-python-headless). Usage:
   python3 scripts/brand/build-nomi-head-hd.py <nomi-head-front-hd.jpg> <rig-out-dir/>
 Needs <rig-out-dir>/rig.json + body.png from stage 1 (build-nomi-rig.py). Replaces the
-head-related layers (head, bangs, side hair, ribbon, eyes, mouths) with layers cut from the
-one HD source, stored at native resolution with a draw scale, and updates rig.json.
-v4: the eye sockets are filled with clean skin and eye metrics + lash colour are written to
-rig.json; the renderer draws the descending lid, closed and happy (^^) eyes procedurally.
-Then run stage 3 (build-nomi-body-parts.py).
-
-v5: eye opening fitted to the lash lower edge; lash layer limited to the eye
-border ring (pixel-aligned); eye region inpainted out of head and bangs.
-
-v6: crisp neck column + opaque collar-adjacent hair tips; closed/happy lids
-improved in the renderer (thicker taper, crease, lid shade, lower-lash hint).
-
-v6: closed/happy lid polish in renderer; crisp neck join; smooth oval eye-white,
-iris hard-clip, lash kept outside opening (no lines on iris / white leaks on gaze).
+head-related layers (head, bangs, side hair, ribbon, eyes, lids, mouths) with layers cut
+from the one HD source, stored at native resolution with a draw scale, and updates rig.json.
 """
 import sys, json, math
 import numpy as np, cv2
@@ -32,7 +20,7 @@ yy, xx = np.mgrid[0:H, 0:W]
 K = 0.66                       # head width/chin-to-eyes matched to the half-body rig
 SRC_CHIN = (640.0, 470.0); RIG_CHIN = (474.0, 381.0)
 def to_rig(x, y): return [RIG_CHIN[0] + (x - SRC_CHIN[0]) * K, RIG_CHIN[1] + (y - SRC_CHIN[1]) * K]
-NECK_CUT = 500                 # source y; just above the source choker, overlaps the body choker
+NECK_CUT = 510                 # v7: keep more real HD neck+choker lip; less fake body pad
 def soft(m, s): return cv2.GaussianBlur(m.astype(np.float32), (0, 0), s)
 def fill_holes(m):
     m = m.astype(np.uint8); ff = m.copy(); mask = np.zeros((m.shape[0] + 2, m.shape[1] + 2), np.uint8)
@@ -63,9 +51,12 @@ img = np.where(a[..., None] < 0.98, np.clip((img - (1 - aa) * BGC) / aa, 0, 255)
 neck_col_src = (xx > 560) & (xx < 720)
 neckw = np.where(neck_col_src, np.clip((NECK_CUT + 2 - yy) / 3.0 + 0.5, 0, 1),
                  np.clip((NECK_CUT - yy) / 4.0 + 0.5, 0, 1))
-# jacket collar pokes above the cut at the sides — remove anything below the hair tips that is collar-ish
-collar = (yy > 440) & ((xx < 560) | (xx > 720)) & ((hsv[..., 1] < 40) & (lum > 200) | ((hsv[..., 0] > 5) & (hsv[..., 0] < 22) & (hsv[..., 1] > 150) & (yy > 455)))
-a = a * neckw * (1 - soft(collar, 0.6))
+# remove HD jacket lapels at the sides (body owns the collar); NEVER strip the neck skin column
+collar = (yy > 448) & ((xx < 575) | (xx > 705)) & (
+    ((hsv[..., 0] > 3) & (hsv[..., 0] < 26) & (hsv[..., 1] > 80) & (lum < 210)) |  # orange jacket
+    ((hsv[..., 1] < 45) & (lum > 195))  # white shirt
+)
+a = a * neckw * (1 - soft(collar, 0.5))
 # beside the neck: drop grey shadow strands; hair tips that hang toward the collar stay opaque
 side_n = (xx < 596) | (xx > 684)
 greyh = side_n & (yy > 440) & (hsv[..., 1] < 70) & (lum > 80)
@@ -129,6 +120,10 @@ src_skin = img[345:365, 585:615].reshape(-1, 3).mean(0)
 gain = 1 + 0.6 * (body_skin / src_skin - 1)
 print('skin body', body_skin.round(), 'src', src_skin.round(), 'gain', gain.round(3))
 img = np.clip(img * gain, 0, 255)
+# v7: deepen the neck column slightly so it matches the warmer body chest (not a pale pad)
+_neck = (xx > 560) & (xx < 720) & (yy > 440) & (yy < NECK_CUT + 2)
+_skin = (hsv[..., 0] < 25) & (hsv[..., 1] >= 20) & ((img @ np.array([.299, .587, .114])) > 130)
+img = np.where((_neck & _skin)[..., None], np.clip(img * np.array([0.98, 0.96, 0.94]), 0, 255), img)
 lum = img @ np.array([.299, .587, .114]); hsv = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2HSV).astype(np.float32)
 # --- eyes
 def circle(cx, cy, r): return ((xx - cx) ** 2 + (yy - cy) ** 2) <= r * r
@@ -515,34 +510,16 @@ alpha[(ry < 368) & ~neck_col] = 0
 neck_zone = neck_col & (ry >= 368) & (ry < 410)
 alpha_blur = cv2.GaussianBlur(alpha, (0, 0), 0.4)
 barr[..., 3] = np.where(neck_zone, np.where(alpha > 12, 255, alpha), alpha_blur)
-# replace the stage-1 soft pale rectangle with a short under-jaw pad matched to chest
+# v7: clear stage-1 pale rectangle entirely; polish_neck owns a thin backup strip
 brgb = barr[..., :3].astype(np.float32)
 bl = brgb @ np.array([.299, .587, .114])
 bhsv = cv2.cvtColor(np.clip(brgb, 0, 255).astype(np.uint8), cv2.COLOR_RGB2HSV).astype(np.float32)
-chest = (ry > 412) & (ry < 448) & (np.abs(rx - 474) < 32) & (barr[..., 3] > 200)
-chest &= (bhsv[..., 0] < 25) & (bhsv[..., 1] > 18) & (bhsv[..., 2] > 130)
-nc_body = np.median(brgb[chest], axis=0) if chest.sum() > 30 else np.array([232, 178, 154], np.float32)
-half_w = 18 + 14 * np.clip((ry - 372) / 26.0, 0, 1)
-neck_mask = (np.abs(rx - 474) < half_w) & (ry >= 372) & (ry < 398) & neck_col
-choker = (ry >= 392) & (ry <= 410) & (np.abs(rx - 474) < 42) & (bl < 90) & (barr[..., 3] > 180)
-neck_mask &= ~choker
-old_pale = neck_col & (ry >= 300) & (ry < 390) & (bl > 200) & (bhsv[..., 1] < 55)
-# clear old pale rect above the pad
-clear = old_pale & (ry < 372)
-t = np.clip((ry - 372) / 24.0, 0, 1)
-shade = 0.82 + 0.18 * np.sin(np.clip(t, 0, 1) * np.pi) - 0.05 * np.clip((t - 0.8) / 0.2, 0, 1)
-fill_rgb = nc_body * shade[..., None]
-write = neck_mask | (old_pale & (ry >= 372) & ~choker)
-brgb = np.where(write[..., None], fill_rgb, brgb)
+choker = (ry >= 392) & (ry <= 412) & (np.abs(rx - 474) < 48) & (bl < 100) & (barr[..., 3] > 160)
+old_pale = neck_col & (ry >= 300) & (ry < 396) & (bl > 195) & (bhsv[..., 1] < 60) & (barr[..., 3] > 5)
+clear = old_pale & ~choker
 brgb = np.where(clear[..., None], 0, brgb)
 alpha = barr[..., 3].astype(np.float32)
-alpha = np.where(write, 255, alpha)
 alpha = np.where(clear, 0, alpha)
-# 1px AA on pad edge only
-edge = soft((write & ~clear).astype(np.float32), 0.35)
-brgb = np.where((edge > 0.01)[..., None] & ~write[..., None] & ~clear[..., None],
-                brgb * (1 - edge[..., None]) + fill_rgb * edge[..., None], brgb)
-alpha = np.where(~clear, np.maximum(alpha, edge * 255), alpha)
 barr[..., :3] = brgb
 barr[..., 3] = alpha
 Image.fromarray(np.clip(barr, 0, 255).astype(np.uint8), 'RGBA').save(OUT + 'body.png', optimize=True)
