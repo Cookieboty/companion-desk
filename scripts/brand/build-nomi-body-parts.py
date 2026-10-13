@@ -5,11 +5,13 @@ Hidden areas under each part are inpainted from the torso so small rotations nev
 Local only (numpy, Pillow, opencv-python-headless). Usage:
   python3 scripts/brand/build-nomi-body-parts.py <rig-out-dir/>
 Run after stages 1 and 2; rewrites body.png (torso) and adds arm-l/arm-r/badge/strap-r + pivots.
+
+v6: colour-matched under-jaw neck pad (no flat pale rectangle).
 """
 import json, sys
 import numpy as np, cv2
 from PIL import Image
-OUT = (sys.argv[1].rstrip('/') + '/') if len(sys.argv) > 1 else 'out/'
+OUT = sys.argv[1] if len(sys.argv) > 1 else 'out/'
 rig = json.load(open(OUT + 'rig.json'))
 bo = rig['layers']['body']; ox, oy = int(bo[0]), int(bo[1])
 barr = np.asarray(Image.open(OUT + 'body.png').convert('RGBA')).astype(np.float32)
@@ -58,15 +60,30 @@ src = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 filled = cv2.cvtColor(cv2.inpaint(src, fill * 255, 9, cv2.INPAINT_TELEA), cv2.COLOR_BGR2RGB)
 f = cv2.GaussianBlur(fill.astype(np.float32), (0, 0), 1.2)[..., None]
 out = rgb * (1 - f) + filled * f
-# neck backing: widen the painted neck so a turned jaw never shows a notch
+# neck backing (v6): short under-jaw pad only — the HD head owns the visible neck.
+# Shape follows a cylinder under the chin; colour matches chest skin with jaw shadow.
 yy, xx = np.mgrid[0:H, 0:W]; ry, rx = yy + oy, xx + ox
-neck = ((rx - 474) / 40) ** 2 + ((ry - 400) / 70) ** 2 < 1
-neck &= ry < 400
-ref = barr[(ry > 360) & (ry < 380) & (np.abs(rx - 474) < 18) & (barr[..., 3] > 250)][:, :3]
-nc = np.median(ref, axis=0) if len(ref) else np.array([240, 200, 185])
-na = neck & (alpha < 0.98)
-out[na] = nc * 0.94
+chest = (ry > 412) & (ry < 450) & (np.abs(rx - 474) < 34) & (alpha > 0.8)
+chsv = cv2.cvtColor(np.clip(out, 0, 255).astype(np.uint8), cv2.COLOR_RGB2HSV)
+chest &= (chsv[..., 0] < 25) & (chsv[..., 1] > 18) & (chsv[..., 2] > 130)
+nc = np.median(out[chest], axis=0) if chest.sum() > 30 else np.array([232., 178., 154.])
+# trapezoid: narrower under the jaw tip, wider just above the choker
+half_w = 18 + 14 * np.clip((ry - 372) / 26.0, 0, 1)
+neck = (np.abs(rx - 474) < half_w) & (ry >= 372) & (ry < 398)
+bl = out @ np.array([.299, .587, .114])
+choker = (ry >= 392) & (bl < 95) & (alpha > 0.7) & (np.abs(rx - 474) < 42)
+# also clear the old stage-1 soft rectangle that sat too high / too pale
+old_rect = (ry >= 300) & (ry < 390) & (np.abs(rx - 474) < 36) & (bl > 200) & (chsv[..., 1] < 55)
+na = (neck & ~choker) | (old_rect & (ry >= 372) & ~choker)
+t = np.clip((ry - 372) / 24.0, 0, 1)
+shade = 0.82 + 0.18 * np.sin(np.clip(t, 0, 1) * np.pi) - 0.05 * np.clip((t - 0.8) / 0.2, 0, 1)
+fill = nc * shade[..., None]
+# remove old pale rectangle above the pad (leave transparent — head covers it)
+clear = old_rect & (ry < 372)
+out = np.where(na[..., None], fill, out)
 a2 = np.where(na, 1.0, alpha)
+a2 = np.where(clear, 0.0, a2)
+out = np.where(clear[..., None], 0, out)
 torso = np.dstack([np.clip(out, 0, 255), a2 * 255]).astype(np.uint8)
 Image.fromarray(torso, 'RGBA').save(OUT + 'body.png', optimize=True)
 json.dump(rig, open(OUT + 'rig.json', 'w'), indent=1)
