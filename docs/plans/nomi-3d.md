@@ -19,8 +19,26 @@ The owner chose a **pseudo-3D layered 2D** Nomi (a Live2D-like feel without Live
   - paints the open, "o" and frown mouths around the art's own lip line.
 
   An earlier attempt (v2) that patched a hand-on-cheek close-up onto the old head was rejected and reverted.
+- **Motion and body (v4, 2026-10-13):**
+  - **Blinks:** the upper lid descends over the eye. The iris is clipped, never squashed, and the lash rides down with the lid. Each blink takes about 170 ms, with a slower reopen, occasional double blinks, and blinks on big gaze shifts. The closed and happy `^^` eyes are drawn procedurally from eye metrics stored in `rig.json`: tapered strokes in the art's lash colour with outer-corner lash ticks and light lid shading.
+  - **Whole-body motion:** every head motion (cursor follow, tilt, sway, nod, emotion poses, speech bob) is shared with the torso in the same frame. The torso rotates at the hips and carries the neck, the shoulders follow the lean, and the chest dips on nods. The head only adds the smaller share on top. A unit test and the demo render check that no frame moves the head over a static body.
+  - **Iris clean-up:** the part of the iris disc hidden under the lashes is repainted from the visible iris, so a moving iris never drags lash pixels across the eye.
+  - **Motion:** layered noise plus spring-dampers replace the sine loops.
+    - Saccadic eyes lead the head, which follows on a critically damped spring with no overshoot.
+    - Breathing has an asymmetric, noise-modulated rhythm. It lifts the shoulders, the chest scales slightly and the head moves a little.
+    - A weight-shift idle loop runs, and the torso leans with the head.
+    - Hair, ribbon, sleeves, badge and strap hang on separate inertia springs.
+    - Speech uses a smoothed envelope with a slight viseme width change and a lagged head bob.
+  - **Body parts:** `scripts/brand/build-nomi-body-parts.py` (stage 3) splits the torso into sleeves on shoulder pivots, the badge and a strap, and inpaints the hidden band under each part. It also removes floating hair wisps, widens the neck backing and fades the hair behind the neck.
+  - **Gestures:**
+    - happy: hop and shrug
+    - surprised: jump back
+    - angry: stomp and shake
+    - sad: slump (held)
+    - wave / nod / bow / think: on motion commands
+    - AI generating: the chat window sends `think-on` / `think-off` while a reply is loading, and the rig holds a thinking tilt.
 - **Superseded:** the nine blurry brand-board busts were removed. `neutral.png` is the static composite.
-- **Limits:** the body is still the 2× upscaled half-body art, so it is softer than the head. The painted crown and mouths are approximations. Where the old hair tips were removed above the collar, small inpainted smudges can remain. Arms and body do not bend.
+- **Limits:** the body is still the 2× upscaled half-body art, so it is softer than the head. The painted crown and mouths are approximations. Where the old hair tips were removed above the collar, small inpainted smudges can remain. Arms and body do not bend: sleeves only rotate a little (≤1.6°) around the shoulders, because the hands are not drawn separately in the source. The jacket fronts are still part of the torso layer.
 
 The real-3D research below is kept for when the owner wants to revisit it.
 
