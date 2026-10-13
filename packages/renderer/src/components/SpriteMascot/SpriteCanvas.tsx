@@ -56,7 +56,7 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
         const backend = createSpriteBackend(manifest, baseUrl);
         backendRef.current = backend;
         detach = mascotRegistry.attach(backend);
-        if (import.meta.env?.DEV) {
+        if (process.env.NODE_ENV === 'development') {
           // dev-only handle for visual checks / screenshots over CDP
           (globalThis as { __nomiMascot?: SpriteBackend }).__nomiMascot = backend;
         }
