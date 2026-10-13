@@ -114,6 +114,10 @@ export interface RigPose {
   tint: { r: number; g: number; b: number; a: number };
   angerMark: number;
   sweat: number;
+  /** subtle bangs lift (0..1) — never draws a second brow */
+  browRaise: number;
+  /** cheek soft squash on smile (0..1) */
+  cheekSquash: number;
 }
 
 interface ExprStyle {
@@ -159,13 +163,22 @@ export const EXPRESSION_STYLES: Record<string, ExprStyle> = {
     ...BASE,
     eyeVariant: 'happy',
     mouth: 'open',
-    mouthBase: 0.45,
-    tilt: 3,
-    blush: 0.65,
-    breathRate: 1.3,
-    gesture: 'hop',
+    mouthBase: 0.5,
+    tilt: 4,
+    headY: -1,
+    blush: 0.72,
+    breathRate: 1.35,
+    gesture: 'celebrate',
   },
-  relaxed: { ...BASE, eyeOpen: 0.55, tilt: -2.5, headY: 2, blush: 0.35, breathRate: 0.75 },
+  relaxed: {
+    ...BASE,
+    eyeOpen: 0.52,
+    eyeScale: 0.97,
+    tilt: -3,
+    headY: 2.5,
+    blush: 0.4,
+    breathRate: 0.7,
+  },
   sad: {
     ...BASE,
     eyeOpen: 0.62,
@@ -192,13 +205,23 @@ export const EXPRESSION_STYLES: Record<string, ExprStyle> = {
   },
   surprised: {
     ...BASE,
-    eyeScale: 1.12,
+    eyeOpen: 1,
+    eyeScale: 1.14,
     mouth: 'o',
-    mouthBase: 0.7,
-    headY: -4,
-    blush: 0.25,
-    breathRate: 1.4,
+    mouthBase: 0.72,
+    headY: -5,
+    blush: 0.28,
+    breathRate: 1.45,
     gesture: 'jump',
+  },
+  shy: {
+    ...BASE,
+    eyeOpen: 0.7,
+    tilt: -4,
+    headY: 3,
+    blush: 0.85,
+    breathRate: 1.1,
+    gesture: 'shy',
   },
 };
 
@@ -322,78 +345,144 @@ const pulse = (x: number) => (x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x));
 export function gestureCurve(name: string, tau: number): GestureOut | null {
   const g = { ...ZERO_G };
   switch (name) {
-    case 'hop':
-    case 'cheer':
-    case 'clap': {
-      // two little bounces + a shrug
-      const D = 0.9;
+    case 'hop': {
+      const D = 0.95;
       if (tau > D) return null;
       const decay = 1 - tau / D;
-      g.bodyY = -9 * Math.abs(Math.sin((Math.PI * tau) / 0.42)) * decay;
-      g.shoulder = -5 * pulse(tau / 0.5);
-      g.headRot = 2 * DEG * pulse(tau / 0.9);
-      g.armOut = 0.6 * DEG * pulse(tau / 0.5);
+      g.bodyY = -10 * Math.abs(Math.sin((Math.PI * tau) / 0.4)) * decay;
+      g.shoulder = -5.5 * pulse(tau / 0.5);
+      g.headRot = 2.2 * DEG * pulse(tau / 0.9);
+      g.armOut = 2.2 * DEG * pulse(tau / 0.5);
+      return g;
+    }
+    case 'cheer':
+    case 'celebrate': {
+      const D = 1.15;
+      if (tau > D) return null;
+      const decay = 1 - tau / D;
+      g.bodyY = -12 * Math.abs(Math.sin((Math.PI * tau) / 0.38)) * decay;
+      g.shoulder = -7 * pulse(tau / 0.55);
+      g.headRot = 3.5 * DEG * pulse(tau / D);
+      g.armOut = 3.5 * DEG * pulse(tau / 0.55);
+      g.scale = 0.012 * pulse(tau / 0.5);
+      return g;
+    }
+    case 'clap': {
+      const D = 1.05;
+      if (tau > D) return null;
+      const env = pulse(tau / D);
+      // light bounce + inward arm pulse (art range is small)
+      g.bodyY = -6 * Math.abs(Math.sin((Math.PI * tau) / 0.28)) * (1 - tau / D);
+      g.shoulder = -4 * env;
+      g.armOut = 2.8 * DEG * Math.abs(Math.sin(tau * 14)) * env;
+      g.headRot = 1.5 * DEG * env;
       return g;
     }
     case 'jump':
     case 'flinch':
     case 'shake': {
-      // jump back: fast rise, slow settle
-      const D = 0.9;
+      const D = 0.95;
       if (tau > D) return null;
       const k = tau < 0.1 ? easeInOut(tau / 0.1) : Math.exp(-(tau - 0.1) * 5.5);
-      g.bodyY = -11 * k;
-      g.headY = -5 * k;
-      g.scale = -0.03 * k;
-      g.shoulder = -6 * k;
-      g.armOut = 1.1 * DEG * k;
+      g.bodyY = -12 * k;
+      g.headY = -5.5 * k;
+      g.scale = -0.032 * k;
+      g.shoulder = -6.5 * k;
+      g.armOut = 2.4 * DEG * k;
       return g;
     }
     case 'stomp': {
-      const D = 0.9;
+      const D = 0.95;
       if (tau > D) return null;
       const s1 = pulse(tau / 0.16);
       const s2 = pulse((tau - 0.34) / 0.16);
-      g.bodyY = 5 * (s1 + s2 * 0.9);
-      g.shoulder = -3 * (s1 + s2);
-      g.torsoX = Math.sin(tau * 34) * 2.2 * (1 - tau / D);
-      g.headRot = Math.sin(tau * 31) * 1.6 * DEG * (1 - tau / D);
+      g.bodyY = 5.5 * (s1 + s2 * 0.9);
+      g.shoulder = -3.5 * (s1 + s2);
+      g.torsoX = Math.sin(tau * 34) * 2.6 * (1 - tau / D);
+      g.headRot = Math.sin(tau * 31) * 1.8 * DEG * (1 - tau / D);
       return g;
     }
     case 'nod':
     case 'greet': {
-      const D = 0.95;
+      const D = 1.05;
       if (tau > D) return null;
-      g.nodHead = 7 * pulse(tau / 0.42) + 4 * pulse((tau - 0.45) / 0.4);
-      g.shoulder = -1.5 * pulse(tau / 0.42);
+      g.nodHead = 8 * pulse(tau / 0.4) + 5 * pulse((tau - 0.48) / 0.42);
+      g.shoulder = -2 * pulse(tau / 0.4);
+      g.torsoRot = 0.4 * DEG * pulse(tau / D);
       return g;
     }
     case 'wave': {
-      const D = 1.3;
+      const D = 1.45;
       if (tau > D) return null;
       const env = pulse(tau / D);
-      g.nodHead = 5 * pulse(tau / 0.45);
-      g.headRot = 3 * DEG * env;
-      g.shoulder = -3 * env;
-      g.armR = Math.sin(tau * 11) * 1.3 * DEG * env;
-      g.bodyY = -3 * Math.abs(Math.sin((Math.PI * tau) / 0.65)) * env;
+      g.nodHead = 5.5 * pulse(tau / 0.45);
+      g.headRot = 3.5 * DEG * env;
+      g.shoulder = -3.5 * env;
+      g.armR = Math.sin(tau * 12) * 4.2 * DEG * env;
+      g.bodyY = -3.5 * Math.abs(Math.sin((Math.PI * tau) / 0.65)) * env;
+      g.torsoRot = 0.8 * DEG * env;
       return g;
     }
     case 'bow': {
-      const D = 1.5;
+      const D = 1.55;
       if (tau > D) return null;
-      const env = easeInOut(tau / 0.45) * (tau < 0.9 ? 1 : 1 - easeInOut((tau - 0.9) / 0.6));
-      g.nodHead = 12 * env;
-      g.bodyY = 3 * env;
-      g.scale = -0.008 * env;
+      const env = easeInOut(tau / 0.45) * (tau < 0.9 ? 1 : 1 - easeInOut((tau - 0.9) / 0.65));
+      g.nodHead = 13 * env;
+      g.bodyY = 3.5 * env;
+      g.torsoRot = 1.2 * DEG * env;
+      g.scale = -0.01 * env;
       return g;
     }
     case 'think': {
-      const D = 1.6;
+      const D = 1.7;
       if (tau > D) return null;
       const env = pulse(tau / D);
-      g.headRot = -5 * DEG * env;
-      g.torsoRot = -0.6 * DEG * env;
+      g.headRot = -5.5 * DEG * env;
+      g.torsoRot = -0.9 * DEG * env;
+      g.shoulder = 1.2 * env;
+      return g;
+    }
+    case 'shrug': {
+      const D = 1.2;
+      if (tau > D) return null;
+      const env = pulse(tau / D);
+      g.shoulder = -8 * env;
+      g.headRot = 2 * DEG * env;
+      g.armOut = 2.5 * DEG * env;
+      g.torsoRot = 0.5 * DEG * Math.sin(tau * 6) * env;
+      return g;
+    }
+    case 'look_around': {
+      const D = 2.2;
+      if (tau > D) return null;
+      const env = pulse(tau / D);
+      g.headRot = Math.sin(tau * 3.2) * 7 * DEG * env;
+      g.torsoRot = Math.sin(tau * 3.2) * 1.4 * DEG * env;
+      g.torsoX = Math.sin(tau * 3.2) * 4 * env;
+      g.nodHead = Math.sin(tau * 5) * 2 * env;
+      return g;
+    }
+    case 'shy': {
+      const D = 1.4;
+      if (tau > D) return null;
+      const env = pulse(tau / D);
+      g.headRot = -6 * DEG * env;
+      g.torsoRot = -1.2 * DEG * env;
+      g.nodHead = 3 * env;
+      g.shoulder = 2 * env;
+      // arms tuck slightly (cover-ish within art range)
+      g.armOut = -1.5 * DEG * env;
+      return g;
+    }
+    case 'point': {
+      const D = 1.3;
+      if (tau > D) return null;
+      const env = pulse(tau / D);
+      g.armR = 5 * DEG * env;
+      g.shoulder = -3 * env;
+      g.headRot = 2.5 * DEG * env;
+      g.torsoRot = 1.0 * DEG * env;
+      g.nodHead = -1.5 * env;
       return g;
     }
     default:
@@ -431,26 +520,29 @@ export class RigAnimator {
   private eyeGoalY = 0;
   private eyeX = new Spring(1400, 1);
   private eyeY = new Spring(1400, 1);
-  private headLX = new Spring(26, 1.05);
-  private headLY = new Spring(26, 1.05);
-  private nextSaccade = 0.8;
+  private headLX = new Spring(22, 1.0);
+  private headLY = new Spring(22, 1.0);
+  private nextSaccade = 0.55;
   // blinks
   private blinkStarts: number[] = [];
   private nextBlink = 1.8;
   private lastBlink = -10;
-  // body
+  // body — softer lean/shift springs restore the v4 “weighty” sway feel
   private shift = 0;
-  private nextShift = 6;
-  private shiftS = new Spring(5, 1);
-  private lean = new Spring(60, 1);
-  private bobS = new Spring(140, 0.75);
-  private armL = new Spring(30, 0.35);
-  private armR = new Spring(28, 0.35);
-  private badge = new Spring(20, 0.18);
-  private strap = new Spring(26, 0.2);
-  private hairL = new Spring(45, 0.3);
-  private hairR = new Spring(38, 0.28);
-  private ribbon = new Spring(24, 0.22);
+  private nextShift = 5;
+  private shiftS = new Spring(3.2, 1);
+  private lean = new Spring(20, 0.92);
+  private bobS = new Spring(110, 0.7);
+  private armL = new Spring(26, 0.32);
+  private armR = new Spring(24, 0.32);
+  private badge = new Spring(16, 0.16);
+  private strap = new Spring(22, 0.18);
+  private hairL = new Spring(36, 0.26);
+  private hairR = new Spring(32, 0.24);
+  private ribbon = new Spring(20, 0.2);
+  private browS = new Spring(18, 1);
+  private cheekS = new Spring(14, 1);
+  private nextHairFlick = 4;
   private prev = { headRot: 0, headX: 0, headY: 0, torsoX: 0, bodyY: 0, vX: 0, vY: 0 };
   private gesture: { name: string; t0: number } | null = null;
   private gestureId = -1;
@@ -488,8 +580,9 @@ export class RigAnimator {
     if (!this.started) {
       this.started = true;
       this.nextBlink = t + 1.2 + this.rand() * 2;
-      this.nextShift = t + 5 + this.rand() * 4;
-      this.nextSaccade = t + 0.6;
+      this.nextShift = t + 4 + this.rand() * 3.5;
+      this.nextSaccade = t + 0.5;
+      this.nextHairFlick = t + 2.5 + this.rand() * 3;
     }
 
     // --- events → gestures
@@ -531,10 +624,10 @@ export class RigAnimator {
       this.eyeGoalY = goalY;
       this.nextSaccade = t + 0.5 + this.rand() * 1.4;
     } else if (t >= this.nextSaccade) {
-      // idle micro-saccade around the current target
-      this.eyeGoalX = goalX + (this.rand() - 0.5) * 0.16 * m;
-      this.eyeGoalY = goalY + (this.rand() - 0.5) * 0.1 * m;
-      this.nextSaccade = t + 0.7 + this.rand() * 1.9;
+      // idle micro-saccade / dart between blinks
+      this.eyeGoalX = goalX + (this.rand() - 0.5) * 0.22 * m;
+      this.eyeGoalY = goalY + (this.rand() - 0.5) * 0.14 * m;
+      this.nextSaccade = t + 0.45 + this.rand() * 1.5;
     }
     const eyeX = this.eyeX.step(this.eyeGoalX, dt);
     const eyeY = this.eyeY.step(this.eyeGoalY, dt);
@@ -557,51 +650,83 @@ export class RigAnimator {
     const mouthWidth = speaking ? 1 + 0.16 * fbm(t * 5.5, 9) - 0.08 * s.energy : 1;
     const bob = this.bobS.step(s.energy * 4.5 * m, dt);
 
-    // --- breathing: noise-modulated rate, inhale quicker than exhale
-    s.breathPhase += dt * (0.27 + 0.03 * fbm(t * 0.1, 3)) * st.breathRate * Math.PI * 2;
+    // --- breathing: noise-modulated rate, inhale quicker than exhale (richer chest+shoulder+head)
+    s.breathPhase += dt * (0.26 + 0.04 * fbm(t * 0.1, 3)) * st.breathRate * Math.PI * 2;
     const ph = s.breathPhase % (Math.PI * 2);
     const breath =
-      (ph < Math.PI * 0.85 ? -Math.cos(ph / 0.85) : Math.cos((ph - Math.PI * 0.85) / 1.15)) * m;
+      (ph < Math.PI * 0.82 ? -Math.cos(ph / 0.82) : Math.cos((ph - Math.PI * 0.82) / 1.18)) * m;
 
-    // --- weight shift idle loop
+    // --- weight shift idle loop (slightly more frequent / larger)
     if (t >= this.nextShift) {
-      this.shift = (this.shift > 0 ? -1 : 1) * (0.5 + this.rand() * 0.5);
-      this.nextShift = t + 7 + this.rand() * 6;
+      this.shift = (this.shift > 0 ? -1 : 1) * (0.55 + this.rand() * 0.55);
+      this.nextShift = t + 5.5 + this.rand() * 5.5;
     }
     const shift = this.shiftS.step(this.shift * m, dt);
 
-    // --- idle micro-movements (noise, different seeds per channel)
-    const nRot = fbm(t * 0.35, 1) * 1.3 * m;
-    const nX = fbm(t * 0.27, 2) * 1.6 * m;
-    const nY = fbm(t * 0.31, 4) * 0.9 * m;
-    const nTalk = fbm(t * 1.8, 5) * 1.4 * Math.min(1, s.energy * 3) * m;
+    // --- idle micro-movements (richer noise; uncorrelated seeds)
+    const nRot = fbm(t * 0.33, 1) * 1.85 * m;
+    const nX = fbm(t * 0.25, 2) * 2.2 * m;
+    const nY = fbm(t * 0.29, 4) * 1.25 * m;
+    const nTalk = fbm(t * 1.9, 5) * 1.7 * Math.min(1, s.energy * 3) * m;
+    const nTilt = fbm(t * 0.17, 21) * 0.9 * m; // random micro-tilts
+
+    // occasional hair flick (secondary impulse)
+    let flick = 0;
+    if (t >= this.nextHairFlick && m) {
+      flick = (this.rand() - 0.5) * 5.5 * DEG;
+      this.nextHairFlick = t + 3.5 + this.rand() * 6;
+    }
 
     const slump = s.slump;
-    // Whole-body intent: every head motion (look, tilt, nod, sway, poses) is carried by the
-    // torso first; the head only adds a smaller share on top, so it never moves over a
-    // frozen body. The torso rotates at the hips, which also carries the neck.
+    // Talking: lean slightly toward the user (look) + shoulder bounce
+    const talkLean = speaking ? s.energy * m : 0;
+    // Whole-body intent: torso leads; head adds a smaller share (smoother lean vs stiff same-frame lock)
     const intentRot =
-      (s.tilt + nRot + lookX * 3.2 * (1 - thinkLook) - 6 * s.think + nTalk - shift * 0.8) * DEG +
-      g.headRot * m;
-    const intentX = lookX * 9 + nX + shift * 1.5;
-    const intentY = s.headY - lookY * 5 + nY + bob + slump * 3 + (g.headY + g.nodHead) * m;
-    // the torso takes its share of the intent in the same frame (no lag); only the slow
-    // idle sway goes through a spring
+      (s.tilt + nRot + nTilt + lookX * 3.6 * (1 - thinkLook) - 6 * s.think + nTalk - shift * 1.0) *
+        DEG +
+      g.headRot * m +
+      lookX * 0.8 * DEG * talkLean;
+    const intentX = lookX * 12 + nX + shift * 2.0 + lookX * 2.5 * talkLean;
+    const intentY = s.headY - lookY * 5.5 + nY + bob + slump * 3 + (g.headY + g.nodHead) * m;
+
+    // Slow idle sway through soft lean spring; intent torso share is higher for body-led lean
     const torsoIdle =
-      (shift * 0.7 + fbm(t * 0.12, 6) * 0.35 + fbm(t * 0.23, 16) * 0.25 + slump * 0.4) * DEG * m;
-    const torsoRot = intentRot * 0.38 * m + this.lean.step(torsoIdle, dt) + g.torsoRot * m;
-    const torsoX = (intentX * 0.45 + shift * 3.5 + fbm(t * 0.19, 17) * 1.2 + g.torsoX) * m;
-    // the chest dips with nods / bows / slumps (positive intentY = head down)
-    const bodyY = (g.bodyY + slump * 3 + Math.max(-6, Math.min(6, intentY * 0.45))) * m;
-    const bodyScaleY = 1 + breath * 0.0045;
-    const headRot = intentRot * 0.62;
-    const headX = intentX * 0.5;
-    const headY = intentY * 0.6 - breath * 0.9;
-    // shoulders follow the lean: the side the torso tips toward drops a little
-    const tiltSh = (torsoRot / DEG) * 1.6;
-    const sh = (-breath * 1.8 + g.shoulder + slump * 5) * m;
+      (shift * 0.95 +
+        fbm(t * 0.11, 6) * 0.55 +
+        fbm(t * 0.21, 16) * 0.4 +
+        fbm(t * 0.08, 22) * 0.25 +
+        slump * 0.45) *
+      DEG *
+      m;
+    const torsoRot =
+      intentRot * 0.44 * m +
+      this.lean.step(torsoIdle, dt) +
+      g.torsoRot * m +
+      lookX * 0.6 * DEG * talkLean;
+    const torsoX =
+      (intentX * 0.52 + shift * 4.2 + fbm(t * 0.18, 17) * 1.7 + g.torsoX + lookX * 1.8 * talkLean) *
+      m;
+    const bodyY = (g.bodyY + slump * 3 + Math.max(-7, Math.min(7, intentY * 0.48))) * m;
+    // richer breath: chest scale + head lift + shoulders
+    const bodyScaleY = 1 + breath * 0.0072;
+    const headRot = intentRot * 0.56;
+    const headX = intentX * 0.48;
+    const headY = intentY * 0.58 - breath * 1.35;
+    const tiltSh = (torsoRot / DEG) * 1.85;
+    const talkBob = talkLean * (1.8 + 1.2 * Math.abs(Math.sin(t * 9)));
+    const sh = (-breath * 2.6 + g.shoulder + slump * 5 - talkBob) * m;
     const shL = sh - tiltSh * m;
     const shR = sh + tiltSh * m;
+
+    // brow micro-raise (expression + idle noise) — drives bangs lift only
+    const browTarget =
+      (st.eyeScale > 1 ? (st.eyeScale - 1) * 4 : 0) * 0.35 +
+      (st.eyeVariant === 'happy' ? 0.15 : 0) +
+      fbm(t * 0.4, 23) * 0.08 * m +
+      (speaking ? 0.06 * s.energy : 0);
+    const browRaise = this.browS.step(browTarget * m, dt);
+    const cheekTarget = Math.max(s.blush * 0.55, s.happy * 0.7) + (speaking ? 0.08 * s.energy : 0);
+    const cheekSquash = this.cheekS.step(cheekTarget * m, dt);
 
     // velocities drive inertia of hanging parts
     const inv = dt > 0 ? 1 / dt : 0;
@@ -613,34 +738,44 @@ export class RigAnimator {
     const aY = (vY - this.prev.vY) * inv;
     this.prev = { headRot, headX, headY, torsoX, bodyY: bodyY + headY * 0.3, vX, vY };
 
-    const hairDrive = (-vHeadRot * 0.09 - vHeadX * 0.0016) * m;
-    const hairRotL = this.hairL.step(hairDrive + fbm(t * 0.6, 10) * 1.0 * DEG * m, dt);
-    const hairRotR = this.hairR.step(hairDrive + fbm(t * 0.55 + 2, 11) * 1.0 * DEG * m, dt);
+    const hairDrive = (-vHeadRot * 0.11 - vHeadX * 0.0018) * m;
+    const hairRotL = this.hairL.step(
+      hairDrive + flick * 0.7 + fbm(t * 0.55, 10) * 1.35 * DEG * m,
+      dt,
+    );
+    const hairRotR = this.hairR.step(
+      hairDrive + flick + fbm(t * 0.52 + 2, 11) * 1.35 * DEG * m,
+      dt,
+    );
     const ribbonRot = this.ribbon.step(
-      hairDrive * 1.5 + (fbm(t * 0.8, 12) * 2.6 - vY * 0.02) * DEG * m,
+      hairDrive * 1.6 + (fbm(t * 0.75, 12) * 3.2 - vY * 0.025) * DEG * m,
       dt,
     );
     const lim = (v: number, l: number) => Math.max(-l, Math.min(l, v));
-    const armDrive = -aX * 0.00004 - torsoRot * 0.5;
+    // Art-safe arm range (~5° idle; gestures up to ~8°)
+    const armDrive = -aX * 0.00005 - torsoRot * 0.55;
     const armRotL = lim(
       this.armL.step(
-        (armDrive + g.armOut + fbm(t * 0.4, 13) * 0.25 * DEG + slump * 0.5 * DEG) * m,
+        (armDrive + g.armOut + fbm(t * 0.38, 13) * 0.4 * DEG + slump * 0.55 * DEG) * m,
         dt,
       ),
-      1.6 * DEG,
+      5.5 * DEG,
     );
     const armRotR = lim(
       this.armR.step(
-        (armDrive - g.armOut + g.armR + fbm(t * 0.42, 14) * 0.25 * DEG - slump * 0.5 * DEG) * m,
+        (armDrive - g.armOut + g.armR + fbm(t * 0.4, 14) * 0.4 * DEG - slump * 0.55 * DEG) * m,
         dt,
       ),
-      1.6 * DEG,
+      5.5 * DEG,
     );
-    const hang = -torsoRot - aX * 0.00025 + aY * 0.0001;
-    const badgeRot = lim(this.badge.step(hang * m, dt), 7 * DEG);
+    const hang = -torsoRot - aX * 0.0003 + aY * 0.00012;
+    const badgeRot = lim(
+      this.badge.step(hang * m + fbm(t * 0.45, 18) * 0.4 * DEG * m, dt),
+      9 * DEG,
+    );
     const strapRot = lim(
-      this.strap.step((hang * 0.8 + fbm(t * 0.5, 15) * 0.6 * DEG) * m, dt),
-      6 * DEG,
+      this.strap.step((hang * 0.85 + fbm(t * 0.48, 15) * 0.85 * DEG) * m, dt),
+      7.5 * DEG,
     );
 
     const happy = s.happy;
@@ -667,10 +802,11 @@ export class RigAnimator {
       headX: rm ? lookX * 4 : headX,
       headY: rm ? s.headY * 0.5 : headY,
       headRot: rm ? s.tilt * 0.5 * DEG : headRot,
-      featX: lookX * 4 + (eyeX - lookX) * 1.2,
-      featY: -lookY * 3,
-      irisX: Math.max(-1, Math.min(1, eyeX * 1.2)),
-      irisY: Math.max(-1, Math.min(1, -eyeY * 1.2)),
+      // stronger feature parallax (eyes lead a bit more)
+      featX: lookX * 5.2 + (eyeX - lookX) * 1.35,
+      featY: -lookY * 3.6 - browRaise * 1.2,
+      irisX: Math.max(-1, Math.min(1, eyeX * 1.25)),
+      irisY: Math.max(-1, Math.min(1, -eyeY * 1.25)),
       hairRotL,
       hairRotR,
       ribbonRot,
@@ -687,6 +823,8 @@ export class RigAnimator {
       tint: { r: s.tr, g: s.tg, b: s.tb, a: s.ta },
       angerMark: s.anger,
       sweat: s.sweat,
+      browRaise,
+      cheekSquash,
     };
     return pose;
   }
@@ -1134,15 +1272,18 @@ export function drawRig(
   tintedLayer('crown', 5);
   tintedLayer('face-hd', 1);
 
-  // blush (soft radial gradients on the cheeks)
+  // blush (soft radial gradients on the cheeks; smile soft-squash widens them)
   if (pose.blush > 0.02 && A.cheekL && A.cheekR) {
+    const sq = 1 + 0.22 * (pose.cheekSquash ?? 0);
+    const rx = 26 * sq;
+    const ry = 16 * (2 - sq); // slight vertical squash
     for (const c of [A.cheekL, A.cheekR]) {
-      const gr = ctx.createRadialGradient(c[0], c[1], 0, c[0], c[1], 26);
-      gr.addColorStop(0, `rgba(255,120,120,${0.38 * pose.blush})`);
+      const gr = ctx.createRadialGradient(c[0], c[1], 0, c[0], c[1], rx);
+      gr.addColorStop(0, `rgba(255,120,120,${0.4 * pose.blush})`);
       gr.addColorStop(1, 'rgba(255,120,120,0)');
       ctx.fillStyle = gr;
       ctx.beginPath();
-      ctx.ellipse(c[0], c[1], 26, 16, 0, 0, Math.PI * 2);
+      ctx.ellipse(c[0], c[1] + 1.5 * (pose.cheekSquash ?? 0), rx, ry, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -1187,8 +1328,11 @@ export function drawRig(
   }
   ctx.restore();
 
-  // fringe sits above the eyes so blinks / iris moves never erase it
+  // fringe sits above the eyes; micro brow-raise lifts bangs slightly (no second brow)
+  ctx.save();
+  ctx.translate(0, -2.2 * (pose.browRaise ?? 0));
   tintedLayer('bangs', 4);
+  ctx.restore();
   // secondary motion layers (hang from their roots)
   if (A.hairL) pivot(A.hairL, () => layer('hair-side-l'), pose.hairRotL);
   if (A.hairR) pivot(A.hairR, () => layer('hair-side-r'), pose.hairRotR);

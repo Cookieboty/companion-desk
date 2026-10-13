@@ -235,16 +235,30 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       }
     };
     raf = requestAnimationFrame(tick);
+    let greeted = false;
+    const tryGreet = () => {
+      const b = backendRef.current;
+      if (!b || !rigRef.current || greeted) return;
+      // first open / return-from-hidden: a soft greet nod-wave
+      b.playMotion('greet');
+      greeted = true;
+    };
+    // greet shortly after the rig finishes loading
+    const greetTimer = window.setTimeout(tryGreet, 900);
     const onVis = () => {
       if (!document.hidden && !raf && !cancelled) {
         last = performance.now();
         raf = requestAnimationFrame(tick);
+        // re-arm a greet when returning from a long hide
+        if (greeted) greeted = false;
+        window.setTimeout(tryGreet, 400);
       }
     };
     document.addEventListener('visibilitychange', onVis);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(greetTimer);
       document.removeEventListener('visibilitychange', onVis);
       cancelAnimationFrame(raf);
       detach?.();

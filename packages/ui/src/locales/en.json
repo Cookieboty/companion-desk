@@ -1363,5 +1363,13 @@
   "新手引导": "Getting started guide",
   "重新走一遍：语言、主题、角色与声音、称呼与语气、模型供应商和隐私说明。": "Walk through it again: language, theme, character & voice, name & tone, model provider and privacy.",
   "重新打开新手引导": "Reopen getting started guide",
-  "暂时无法加载供应商设置，可以先跳过，之后在设置里添加。": "Provider settings couldn’t be loaded. Skip for now and add one later in Settings."
+  "暂时无法加载供应商设置，可以先跳过，之后在设置里添加。": "Provider settings couldn’t be loaded. Skip for now and add one later in Settings.",
+  "庆祝": "Celebrate",
+  "小跳": "Hop",
+  "后跳": "Jump back",
+  "跺脚": "Stomp",
+  "耸肩": "Shrug",
+  "害羞": "Shy",
+  "指向": "Point",
+  "打招呼": "Greet"
 }

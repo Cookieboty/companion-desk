@@ -120,17 +120,22 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         }
         const map: Record<string, string> = {
           wave: 'wave',
-          greet: 'wave',
+          greet: 'greet',
           nod: 'nod',
           bow: 'bow',
-          cheer: 'hop',
-          clap: 'hop',
+          cheer: 'cheer',
+          celebrate: 'celebrate',
+          clap: 'clap',
           hop: 'hop',
           shake: 'jump',
           flinch: 'jump',
           jump: 'jump',
           stomp: 'stomp',
           think: 'think',
+          shrug: 'shrug',
+          look_around: 'look_around',
+          shy: 'shy',
+          point: 'point',
         };
         const g = map[_name];
         if (!g) return false;
@@ -138,9 +143,11 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         return true;
       }
       // Sprites have no skeletal motions; treat as soft expression pulse
-      if (_name === 'wave' || _name === 'cheer' || _name === 'clap') backend.setExpression('happy');
+      if (_name === 'wave' || _name === 'cheer' || _name === 'clap' || _name === 'celebrate')
+        backend.setExpression('happy');
       else if (_name === 'shake' || _name === 'flinch') backend.setExpression('surprised');
-      else if (_name === 'bow' || _name === 'think') backend.setExpression('relaxed');
+      else if (_name === 'bow' || _name === 'think' || _name === 'shy')
+        backend.setExpression('relaxed');
       return true;
     },
     setTalking(t) {
@@ -156,7 +163,23 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         lookAt: true,
         blink: !!manifest.blink || !!manifest.rig,
         motions: manifest.rig
-          ? ['wave', 'nod', 'cheer', 'clap', 'shake', 'bow', 'think', 'jump', 'stomp']
+          ? [
+              'wave',
+              'nod',
+              'cheer',
+              'clap',
+              'celebrate',
+              'shake',
+              'bow',
+              'think',
+              'jump',
+              'stomp',
+              'shrug',
+              'look_around',
+              'shy',
+              'point',
+              'greet',
+            ]
           : ['wave', 'cheer', 'clap', 'shake', 'bow', 'think'],
       };
     },
