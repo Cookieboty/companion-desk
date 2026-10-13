@@ -1,13 +1,13 @@
-/** 设置 → 通用 → 主题：四套配色并排预览，点选即时生效（对话窗口与看板娘同步）。 */
-import { THEMES, currentTheme, setTheme, type ThemeId } from '@ig-live/ui';
+/** 设置 → 通用 → 主题：四套配色 + 跟随系统，点选即时生效（对话窗口与看板娘同步）。 */
+import { THEMES, currentTheme, setTheme, type ThemeState } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
 import styles from './index.module.css';
 
 export const ThemeSettings: React.FC = () => {
-  const [cur, setCur] = useState<ThemeId>(currentTheme);
+  const [cur, setCur] = useState<ThemeState>(currentTheme);
   useEffect(() => {
-    const on = (e: Event) => setCur((e as CustomEvent<ThemeId>).detail);
+    const on = (e: Event) => setCur((e as CustomEvent<ThemeState>).detail);
     window.addEventListener('cd:theme-changed', on);
     return () => window.removeEventListener('cd:theme-changed', on);
   }, []);
@@ -15,34 +15,49 @@ export const ThemeSettings: React.FC = () => {
     <section className={styles.block} data-testid="theme-settings">
       <h2 className={styles.h2}>主题</h2>
       <div className={styles.themes} role="radiogroup" aria-label="主题">
-        {THEMES.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="radio"
-            aria-checked={cur === t.id}
-            className={`${styles.theme} ${cur === t.id ? styles.themeOn : ''}`}
-            onClick={() => void setTheme(t.id)}
-            data-testid={`theme-${t.id}`}
-          >
-            <span
-              className={styles.themePreview}
-              style={{ background: t.swatch[0], borderColor: t.swatch[1] }}
-              aria-hidden
+        {THEMES.map((t) => {
+          const on = cur.pref === t.id;
+          const sys = t.id === 'system';
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`${styles.theme} ${on ? styles.themeOn : ''}`}
+              onClick={() => void setTheme(t.id)}
+              data-testid={`theme-${t.id}`}
             >
-              <span style={{ background: t.swatch[1] }} className={styles.themeCard}>
-                <span style={{ background: t.swatch[2] }} className={styles.themeLine} />
-                <span
-                  style={{ background: t.swatch[2], opacity: 0.45 }}
-                  className={styles.themeLine}
-                />
-                <span style={{ background: t.swatch[3] }} className={styles.themeDot} />
+              <span
+                className={styles.themePreview}
+                style={{
+                  background: sys
+                    ? `linear-gradient(110deg, ${t.swatch[0]} 50%, ${t.swatch[2]} 50%)`
+                    : t.swatch[0],
+                  borderColor: t.swatch[1],
+                }}
+                aria-hidden
+              >
+                {!sys && (
+                  <span style={{ background: t.swatch[1] }} className={styles.themeCard}>
+                    <span style={{ background: t.swatch[2] }} className={styles.themeLine} />
+                    <span
+                      style={{ background: t.swatch[2], opacity: 0.45 }}
+                      className={styles.themeLine}
+                    />
+                    <span style={{ background: t.swatch[3] }} className={styles.themeDot} />
+                  </span>
+                )}
               </span>
-            </span>
-            <span className={styles.themeName}>{t.name}</span>
-            <span className={styles.themeDesc}>{t.desc}</span>
-          </button>
-        ))}
+              <span className={styles.themeName}>{t.name}</span>
+              <span className={styles.themeDesc}>
+                {sys && on
+                  ? `${t.desc}（当前：${cur.resolved === 'paper' ? '纸白' : '石墨'}）`
+                  : t.desc}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
