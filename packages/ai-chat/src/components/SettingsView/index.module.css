@@ -272,10 +272,15 @@
   background: var(--cd-color-hover);
 }
 .langOn {
-  border-color: var(--cd-color-primary);
-  box-shadow: 0 0 0 1px var(--cd-color-primary) inset;
+  border-color: var(--cd-color-accent);
+  box-shadow: 0 0 0 1px var(--cd-color-accent) inset;
 }
 .langHint {
   font-size: 11px;
-  color: var(--cd-color-text-secondary);
+  color: var(--cd-color-text-muted);
+}
+.muted {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--cd-color-text-muted);
 }

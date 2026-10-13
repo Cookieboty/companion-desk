@@ -15,6 +15,7 @@ import { ExtensionsPanel } from '../ExtensionsPanel';
 import { KnowledgePanel } from '../KnowledgePanel';
 import { LocalPanel } from '../LocalPanel';
 import { MemoryPanel } from '../MemoryPanel';
+import { onboardingClient } from '../Onboarding/client';
 import { ProviderPanel } from '../ProviderPanel';
 import { SchedulePanel } from '../SchedulePanel';
 import { ScreenPanel } from '../ScreenPanel';
@@ -107,6 +108,23 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return (
           <>
             <LanguageSettings />
+            <section className={styles.block}>
+              <h2 className={styles.h2}>{t('新手引导')}</h2>
+              <p className={styles.muted}>
+                {t('重新走一遍：语言、主题、角色与声音、称呼与语气、模型供应商和隐私说明。')}
+              </p>
+              <button
+                type="button"
+                className={styles.lang}
+                data-testid="settings-reopen-onboarding"
+                onClick={() => {
+                  onClose();
+                  void onboardingClient.reopen();
+                }}
+              >
+                {t('重新打开新手引导')}
+              </button>
+            </section>
             <ThemeSettings />
             <PinsSettings />
             <ConfigPanel isVisible onClose={noop} />

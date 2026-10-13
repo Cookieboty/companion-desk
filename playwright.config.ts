@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 // e2e 断言使用中文原文：固定界面语言（各用例启动 Electron 时透传 process.env）
 process.env.CD_LOCALE ||= 'zh-CN';
+// 首次启动引导默认不弹出（引导自己的用例里显式开启）
+process.env.CD_ONBOARDING ||= 'off';
 
 export default defineConfig({
   testDir: './e2e-headed/tests',
