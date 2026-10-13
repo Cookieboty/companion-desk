@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import React, { useEffect, useRef } from 'react';
 import { List, useListRef, type RowComponentProps } from 'react-window';
 
@@ -52,7 +53,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
                 <span></span>
                 <span></span>
               </div>
-              <span>正在思考…</span>
+              <span>{t('正在思考…')}</span>
             </div>
           )}
         </div>
@@ -79,7 +80,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading })
             <span></span>
             <span></span>
           </div>
-          <span>正在思考…</span>
+          <span>{t('正在思考…')}</span>
         </div>
       )}
     </div>

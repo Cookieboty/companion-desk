@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /**
  * OpenAI 兼容的云端 / 本地服务识别：POST {baseURL}/audio/transcriptions（multipart）。
  * 适用于 OpenAI、Groq、SiliconFlow 等，以及本地 whisper.cpp server（--inference-path /v1/audio/transcriptions）。
@@ -29,7 +30,7 @@ export async function transcribeOpenAICompat(o: {
     signal: o.signal,
   });
   const body = await res.text();
-  if (!res.ok) throw new Error(`识别服务返回 ${res.status}：${body.slice(0, 200)}`);
+  if (!res.ok) throw new Error(t('识别服务返回 {0}：{1}', res.status, body.slice(0, 200)));
   try {
     const j = JSON.parse(body) as { text?: string };
     return (j.text ?? '').trim();

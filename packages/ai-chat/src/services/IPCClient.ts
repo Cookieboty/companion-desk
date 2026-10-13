@@ -1,4 +1,5 @@
 import { ClientAIClient } from '@ig-live/ai-sdk-client';
+import { t } from '@ig-live/ui';
 
 import { type ChatMessage, type ChatConfig, type ChatSession } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
@@ -187,9 +188,12 @@ export class SdkIPCClient implements IPCClient {
       });
       return typeof resp?.content === 'string' ? resp.content : '';
     } catch (error) {
-      throw Object.assign(new Error(`发送消息失败: ${(error as Error).message ?? String(error)}`), {
-        cause: error,
-      });
+      throw Object.assign(
+        new Error(t('发送消息失败: {0}', (error as Error).message ?? String(error))),
+        {
+          cause: error,
+        },
+      );
     }
   }
 
@@ -222,7 +226,7 @@ export class SdkIPCClient implements IPCClient {
       }
     } catch (error) {
       throw Object.assign(
-        new Error(`发送流式消息失败: ${(error as Error).message ?? String(error)}`),
+        new Error(t('发送流式消息失败: {0}', (error as Error).message ?? String(error))),
         { cause: error },
       );
     }
@@ -322,11 +326,11 @@ export class SdkIPCClient implements IPCClient {
 
 export class MockIPCClient implements IPCClient {
   private history: ChatMessage[] = [
-    { id: '1', role: 'user', content: '你好', timestamp: Date.now() - 60000 },
+    { id: '1', role: 'user', content: t('你好'), timestamp: Date.now() - 60000 },
     {
       id: '2',
       role: 'assistant',
-      content: '你好！有什么可以帮助你的吗？',
+      content: t('你好！有什么可以帮助你的吗？'),
       timestamp: Date.now() - 50000,
     },
   ];
@@ -343,7 +347,7 @@ export class MockIPCClient implements IPCClient {
       history?.length ?? 0,
     );
     await new Promise((r) => setTimeout(r, 500));
-    return `模拟回复: ${message}`;
+    return t('模拟回复: {0}', message);
   }
 
   async sendStreamMessage(
@@ -351,7 +355,7 @@ export class MockIPCClient implements IPCClient {
     _modelId?: string,
     onChunk?: (chunk: string) => void,
   ): Promise<void> {
-    const chunks = ['模拟', '流式', '回复', '内容'];
+    const chunks = [t('模拟'), t('流式'), t('回复'), t('内容')];
     for (const c of chunks) {
       await new Promise((r) => setTimeout(r, 200));
       onChunk?.(c + ' ');
@@ -371,7 +375,7 @@ export class MockIPCClient implements IPCClient {
   }
 
   async listConversations(): Promise<Array<Omit<ChatSession, 'messages'>>> {
-    return [{ id: 'mock', name: 'Mock 对话', createdAt: 0, updatedAt: 0 }];
+    return [{ id: 'mock', name: t('Mock 对话'), createdAt: 0, updatedAt: 0 }];
   }
 
   async newConversation(): Promise<string> {

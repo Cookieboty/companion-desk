@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import { Switch, Tooltip } from '@ig-live/ui';
 import {
   AudioLines,
@@ -177,7 +178,7 @@ export const ToolBar: React.FC = () => {
       electronAPI.setAlwaysOnTop(newState);
 
       // 显示消息
-      showMessage(newState ? '已设置为最前端显示！' : '已取消最前端显示！');
+      showMessage(newState ? tr('已设置为最前端显示！') : tr('已取消最前端显示！'));
     }
   }, [showMessage]);
 
@@ -185,7 +186,7 @@ export const ToolBar: React.FC = () => {
   const takeScreenshot = useCallback(() => {
     const canvas = document.querySelector('#mascot-canvas canvas') as HTMLCanvasElement | null;
     if (!canvas) {
-      showMessage('找不到画布元素，无法截图');
+      showMessage(tr('找不到画布元素，无法截图'));
       return;
     }
 
@@ -200,10 +201,10 @@ export const ToolBar: React.FC = () => {
       link.click();
       document.body.removeChild(link);
 
-      showMessage('照好了，保存在下载目录了');
+      showMessage(tr('照好了，保存在下载目录了'));
     } catch (error) {
       console.error('截图失败:', error);
-      showMessage('截图失败');
+      showMessage(tr('截图失败'));
     }
   }, [showMessage]);
 
@@ -216,7 +217,7 @@ export const ToolBar: React.FC = () => {
   // 关闭应用
   const quitApp = useCallback(async () => {
     await setCache('waifu-display', Date.now());
-    showMessage('再见了，下次见！', 2000);
+    showMessage(tr('再见了，下次见！'), 2000);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
     const electronAPI = (window as any).electronAPI;
@@ -231,7 +232,7 @@ export const ToolBar: React.FC = () => {
   const switchModel = useCallback(() => {
     const next = nextModel(mascotState.modelList, mascotState.modelName);
     if (!next) {
-      showMessage('没有可切换的角色');
+      showMessage(tr('没有可切换的角色'));
       return;
     }
     selectModel(next.name);
@@ -254,7 +255,7 @@ export const ToolBar: React.FC = () => {
   // Cursor MCP注入
   const injectCursorMCP = useCallback(async () => {
     try {
-      showMessage('正在为Cursor注入MCP配置...');
+      showMessage(tr('正在为Cursor注入MCP配置...'));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
       const electronAPI = (window as any).electronAPI;
@@ -263,34 +264,34 @@ export const ToolBar: React.FC = () => {
         const result = await electronAPI.mcp.setupCursorIntegration();
 
         if (result.success) {
-          showMessage('✅ Cursor MCP配置已成功注入！请重启Cursor IDE以使配置生效');
+          showMessage(tr('✅ Cursor MCP配置已成功注入！请重启Cursor IDE以使配置生效'));
 
           // 播放成功提示音
           if (voiceService && voiceEnabled) {
             try {
               // 使用showMessage来播放语音提示
-              showMessage('MCP配置注入成功，请重启Cursor IDE');
+              showMessage(tr('MCP配置注入成功，请重启Cursor IDE'));
             } catch (voiceError) {
               console.warn('ToolBar: 语音提示失败:', voiceError);
             }
           }
         } else {
-          showMessage(`❌ MCP注入失败: ${result.error || '未知错误'}`);
+          showMessage(tr('❌ MCP注入失败: {0}', result.error || tr('未知错误')));
         }
       } else {
-        showMessage('❌ MCP功能不可用，请检查Electron环境');
+        showMessage(tr('❌ MCP功能不可用，请检查Electron环境'));
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
     } catch (error: any) {
       console.error('Cursor MCP注入失败:', error);
-      showMessage(`❌ MCP注入异常: ${error?.message || '请查看控制台'}`);
+      showMessage(tr('❌ MCP注入异常: {0}', error?.message || tr('请查看控制台')));
     }
   }, [showMessage, voiceService, voiceEnabled]);
 
   // 切换语音模式（保存到应用配置）
   const toggleVoiceMode = useCallback(async () => {
     if (!voiceService) {
-      showMessage('语音服务尚未初始化，请稍后再试...');
+      showMessage(tr('语音服务尚未初始化，请稍后再试...'));
       return;
     }
 
@@ -304,11 +305,11 @@ export const ToolBar: React.FC = () => {
       await voiceService.updateSettings({ voiceMode: newMode });
 
       // 显示切换成功消息
-      const modeText = newMode === 'fixed' ? '固定语音' : 'TTS语音';
-      showMessage(`已切换到${modeText}模式`);
+      const modeText = newMode === 'fixed' ? tr('固定语音') : tr('TTS语音');
+      showMessage(tr('已切换到{0}模式', modeText));
     } catch (error) {
       console.error('ToolBar: 语音模式切换失败:', error);
-      showMessage('语音模式切换失败，请重试');
+      showMessage(tr('语音模式切换失败，请重试'));
       // 回滚状态
       setVoiceMode(voiceMode);
     }
@@ -333,7 +334,7 @@ export const ToolBar: React.FC = () => {
         return () => {
           // 如果VoiceService还没有初始化，显示提示
           if (!voiceService) {
-            showMessage('语音服务正在初始化中，请稍后再试...');
+            showMessage(tr('语音服务正在初始化中，请稍后再试...'));
             return;
           }
 
@@ -348,9 +349,9 @@ export const ToolBar: React.FC = () => {
 
           // 显示消息
           if (newEnabled) {
-            showMessage('语音功能已启用！');
+            showMessage(tr('语音功能已启用！'));
           } else {
-            showMessage('语音功能已禁用！');
+            showMessage(tr('语音功能已禁用！'));
           }
         };
       case 'voice-mode-toggle':
@@ -365,19 +366,19 @@ export const ToolBar: React.FC = () => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .then((result: any) => {
                 if (result?.success) {
-                  showMessage('TTS配置窗口已打开');
+                  showMessage(tr('TTS配置窗口已打开'));
                 } else {
-                  showMessage(`打开失败: ${result?.error || '未知错误'}`);
+                  showMessage(tr('打开失败: {0}', result?.error || tr('未知错误')));
                 }
               })
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .catch((error: any) => {
                 console.error('打开TTS配置窗口失败:', error);
-                showMessage('打开TTS配置窗口失败，请稍后再试');
+                showMessage(tr('打开TTS配置窗口失败，请稍后再试'));
               });
           } else {
             console.warn('Electron API不可用，无法打开TTS配置窗口');
-            showMessage('TTS配置功能需要在Electron环境中运行');
+            showMessage(tr('TTS配置功能需要在Electron环境中运行'));
           }
         };
       case 'ai-chat':
@@ -390,19 +391,19 @@ export const ToolBar: React.FC = () => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .then((result: any) => {
                 if (result?.success) {
-                  showMessage('AI对话窗口已打开');
+                  showMessage(tr('AI对话窗口已打开'));
                 } else {
-                  showMessage(`打开失败: ${result?.error || '未知错误'}`);
+                  showMessage(tr('打开失败: {0}', result?.error || tr('未知错误')));
                 }
               })
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .catch((error: any) => {
                 console.error('打开AI对话窗口失败:', error);
-                showMessage('打开AI对话窗口失败，请稍后再试');
+                showMessage(tr('打开AI对话窗口失败，请稍后再试'));
               });
           } else {
             console.warn('Electron API不可用，无法打开AI对话窗口');
-            showMessage('AI对话功能需要在Electron环境中运行');
+            showMessage(tr('AI对话功能需要在Electron环境中运行'));
           }
         };
       case 'motion':
@@ -581,29 +582,29 @@ export const ToolBar: React.FC = () => {
   const toolLabel = (toolId: string): string => {
     switch (toolId) {
       case 'switch-model':
-        return '切换角色（右键：角色列表）';
+        return tr('切换角色（右键：角色列表）');
       case 'photo':
-        return '截图保存';
+        return tr('截图保存');
       case 'info':
-        return '致谢 / Credits';
+        return tr('致谢 / Credits');
       case 'quit':
-        return '关闭应用';
+        return tr('关闭应用');
       case 'toggle-top':
-        return alwaysOnTop ? '取消窗口置顶' : '窗口置顶';
+        return alwaysOnTop ? tr('取消窗口置顶') : tr('窗口置顶');
       case 'voice-settings':
-        return voiceEnabled ? '语音：开（右键：语音设置）' : '语音：关（右键：语音设置）';
+        return voiceEnabled ? tr('语音：开（右键：语音设置）') : tr('语音：关（右键：语音设置）');
       case 'voice-mode-toggle':
-        return voiceMode === 'fixed' ? '语音模式：固定语音' : '语音模式：TTS';
+        return voiceMode === 'fixed' ? tr('语音模式：固定语音') : tr('语音模式：TTS');
       case 'tts-config':
-        return 'TTS 语音配置';
+        return tr('TTS 语音配置');
       case 'ai-chat':
-        return 'AI 对话';
+        return tr('AI 对话');
       case 'voice-input':
-        return '免按键语音：开/关（工具栏麦克风按住说话）';
+        return tr('免按键语音：开/关（工具栏麦克风按住说话）');
       case 'motion':
-        return '做个动作（右键：动作列表）';
+        return tr('做个动作（右键：动作列表）');
       case 'cursor-mcp':
-        return '为 Cursor 注入 MCP 配置';
+        return tr('为 Cursor 注入 MCP 配置');
       default:
         return toolId;
     }
@@ -709,17 +710,17 @@ export const ToolBar: React.FC = () => {
           ref={barRef}
           className={styles.bar}
           role="toolbar"
-          aria-label="看板娘工具栏"
+          aria-label={tr('看板娘工具栏')}
           aria-orientation="vertical"
         >
           {primary.map(iconButton)}
           {primary.length > 0 && secondary.length > 0 && <div className={styles.sep} aria-hidden />}
-          <Tooltip content={menuOpen ? '收起' : '更多'} placement={tipSide}>
+          <Tooltip content={menuOpen ? tr('收起') : tr('更多')} placement={tipSide}>
             <button
               type="button"
               className={styles.btn}
               data-testid="tool-more"
-              aria-label="更多"
+              aria-label={tr('更多')}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -733,7 +734,7 @@ export const ToolBar: React.FC = () => {
           <div
             className={styles.menu}
             role="menu"
-            aria-label="更多工具"
+            aria-label={tr('更多工具')}
             data-testid="toolbar-menu"
             ref={menuRef}
             style={{ top: menuTop }}
@@ -741,25 +742,25 @@ export const ToolBar: React.FC = () => {
             {secondary.map(menuItem)}
             <div className={styles.sep} aria-hidden />
             <div className={styles.menuRow}>
-              <span>收起为单个按钮</span>
+              <span>{tr('收起为单个按钮')}</span>
               <Switch
                 checked={prefs.compact}
                 onChange={(v: boolean) => updatePrefs({ compact: v })}
-                aria-label="收起为单个按钮"
+                aria-label={tr('收起为单个按钮')}
                 data-testid="toolbar-compact"
               />
             </div>
             <div className={styles.menuRow}>
-              <span>配色</span>
-              <div className={styles.swatches} role="radiogroup" aria-label="工具栏配色">
+              <span>{tr('配色')}</span>
+              <div className={styles.swatches} role="radiogroup" aria-label={tr('工具栏配色')}>
                 {PALETTES.map((p) => (
                   <button
                     key={p.id}
                     type="button"
                     role="radio"
                     aria-checked={prefs.palette === p.id}
-                    aria-label={p.label}
-                    title={p.label}
+                    aria-label={tr(p.label)}
+                    title={tr(p.label)}
                     data-testid={`toolbar-palette-${p.id}`}
                     className={styles.swatch}
                     style={{ background: p.swatch }}

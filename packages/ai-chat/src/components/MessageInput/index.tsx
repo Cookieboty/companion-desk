@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -41,7 +42,7 @@ interface MessageInputProps {
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
-  placeholder = '输入消息...',
+  placeholder = tr('输入消息...'),
   disabled = false,
   onConfigClick,
   onProvidersClick,
@@ -104,7 +105,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     setImgErr('');
     setImages((cur) => {
       const next = [...cur, ...list];
-      if (next.length > MAX_ATTACHMENTS) setImgErr(`最多附 ${MAX_ATTACHMENTS} 张图片`);
+      if (next.length > MAX_ATTACHMENTS) setImgErr(tr('最多附 {0} 张图片', MAX_ATTACHMENTS));
       return next.slice(0, MAX_ATTACHMENTS);
     });
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -134,7 +135,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       const a = await screenClient.snip();
       if (a) {
         addImages([a]);
-        if (!textareaRef.current?.value) setMessage('这张截图里是什么？');
+        if (!textareaRef.current?.value) setMessage(tr('这张截图里是什么？'));
       }
     } catch (e) {
       setImgErr((e as Error).message);
@@ -147,7 +148,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     () =>
       screenClient.onAttachment((a) => {
         addImages([a]);
-        setMessage((m) => m || '这张截图里是什么？');
+        setMessage((m) => m || tr('这张截图里是什么？'));
       }),
     [addImages],
   );
@@ -185,7 +186,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     !likelyVision(state.models.find((m) => m.id === chatModel)?.name);
 
   const handleSend = async () => {
-    const trimmedMessage = message.trim() || (images.length ? '请看看这张图片。' : '');
+    const trimmedMessage = message.trim() || (images.length ? tr('请看看这张图片。') : '');
     if (!trimmedMessage || state.isLoading) return;
     const sendImages = images;
 
@@ -315,7 +316,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'kb',
       icon: '📚',
-      label: kbMode ? '知识库问答：开' : '知识库问答：关',
+      label: kbMode ? tr('知识库问答：开') : tr('知识库问答：关'),
       hint: '⌘/Ctrl+Shift+K',
       testId: 'kb-mode-toggle',
       menu: true,
@@ -326,7 +327,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'snip',
       icon: '✂️',
-      label: '截图提问',
+      label: tr('截图提问'),
       hint: '⌘/Ctrl+Shift+S',
       testId: 'snip-button',
       menu: true,
@@ -336,7 +337,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'model',
       icon: '⚙️',
-      label: provOk ? '供应商与模型' : '配置模型',
+      label: provOk ? tr('供应商与模型') : tr('配置模型'),
       testId: 'open-config',
       menu: true,
       run: () => openModels?.(),
@@ -345,8 +346,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'voice',
       icon: '🎙',
-      label: '语音设置',
-      hint: 'F2 说话',
+      label: tr('语音设置'),
+      hint: tr('F2 说话'),
       testId: 'open-voice-settings',
       run: () => cv.setShowSettings(true),
       show: cv.v.available,
@@ -354,7 +355,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'kbm',
       icon: '🗂',
-      label: '知识库管理',
+      label: tr('知识库管理'),
       hint: '⌘/Ctrl+Shift+L',
       testId: 'open-kb-panel',
       run: () => onKnowledgeClick?.(),
@@ -363,7 +364,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'memory',
       icon: '🧠',
-      label: '长期记忆',
+      label: tr('长期记忆'),
       hint: '⌘/Ctrl+Shift+M',
       testId: 'open-mem-panel',
       run: () => onMemoryClick?.(),
@@ -372,7 +373,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'schedule',
       icon: '🗓',
-      label: '日程 · 提醒 · 编程助手',
+      label: tr('日程 · 提醒 · 编程助手'),
       hint: '⌘/Ctrl+Shift+D',
       testId: 'open-sched-panel',
       run: () => onScheduleClick?.(),
@@ -381,7 +382,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'screen',
       icon: '🖥',
-      label: '截图与屏幕记忆',
+      label: tr('截图与屏幕记忆'),
       hint: '⌘/Ctrl+Shift+O',
       testId: 'open-screen-panel',
       run: () => onScreenClick?.(),
@@ -390,7 +391,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'ext',
       icon: '🧩',
-      label: '扩展：MCP 与技能',
+      label: tr('扩展：MCP 与技能'),
       hint: '⌘/Ctrl+Shift+E',
       testId: 'open-ext-panel',
       run: () => onExtClick?.(),
@@ -399,7 +400,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'desktop',
       icon: '📁',
-      label: '桌面能力',
+      label: tr('桌面能力'),
       testId: 'open-desktop-panel',
       run: () => onDesktopClick?.(),
       show: !!onDesktopClick,
@@ -407,7 +408,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'local',
       icon: '🏠',
-      label: '本地中心（辅助）',
+      label: tr('本地中心（辅助）'),
       hint: '⌘/Ctrl+Shift+J',
       testId: 'open-local-panel',
       run: () => onLocalClick?.(),
@@ -416,7 +417,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     {
       id: 'settings',
       icon: '⚙️',
-      label: '全部设置…',
+      label: tr('全部设置…'),
       hint: '⌘/Ctrl+,',
       testId: 'composer-settings',
       run: () => onSettingsClick?.(),
@@ -429,7 +430,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     slashQuery === undefined
       ? []
       : commands.filter(
-          (c) => c.id.startsWith(slashQuery.toLowerCase()) || c.label.includes(slashQuery),
+          (c) =>
+            c.id.startsWith(slashQuery.toLowerCase()) ||
+            c.label.includes(slashQuery) ||
+            tr(c.label).toLowerCase().includes(slashQuery.toLowerCase()),
         );
   const slashOpen = slashMatches.length > 0;
   // 左上角常驻入口 / 其它地方通过 `cd:cmd` 事件触发同一套动作
@@ -476,11 +480,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           onClick={() => runCommand(c)}
           data-testid={slash ? `slash-${c.id}` : c.testId}
           aria-pressed={c.active}
-          title={c.label}
+          title={tr(c.label)}
         >
           <span className={styles.menuIcon}>{c.icon}</span>
-          <span className={styles.menuLabel}>{slash ? `/${c.id}` : c.label}</span>
-          <span className={styles.menuHint}>{slash ? c.label : c.hint}</span>
+          <span className={styles.menuLabel}>{slash ? `/${c.id}` : tr(c.label)}</span>
+          <span className={styles.menuHint}>{slash ? tr(c.label) : tr(c.hint)}</span>
         </button>
       );
       if (slash || !pinDef(c.id)) return item;
@@ -495,8 +499,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => updatePins(togglePin(pins, c.id))}
             disabled={full}
-            title={pinned ? '取消固定' : full ? `左上角最多 ${MAX_PINS} 个` : '固定到左上角'}
-            aria-label={pinned ? `取消固定${c.label}` : `固定${c.label}到左上角`}
+            title={
+              pinned
+                ? tr('取消固定')
+                : full
+                  ? tr('左上角最多 {0} 个', MAX_PINS)
+                  : tr('固定到左上角')
+            }
+            aria-label={pinned ? tr('取消固定{0}', c.label) : tr('固定{0}到左上角', c.label)}
             aria-pressed={pinned}
             data-testid={`pin-toggle-${c.id}`}
           >
@@ -517,11 +527,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         <div className={styles.attachRow} data-testid="attach-row">
           {images.map((i) => (
             <div key={i.id} className={styles.attachItem} title={`${i.width}×${i.height}`}>
-              <img src={i.thumb} alt="附件图片" className={styles.attachThumb} />
+              <img src={i.thumb} alt={tr('附件图片')} className={styles.attachThumb} />
               <button
                 type="button"
                 className={styles.attachRemove}
-                aria-label="移除图片"
+                aria-label={tr('移除图片')}
                 onClick={() => setImages((c) => c.filter((x) => x.id !== i.id))}
               >
                 ×
@@ -533,11 +543,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               <span className={styles.attachErr}>{imgErr}</span>
             ) : visionWarn ? (
               <span className={styles.attachWarn} data-testid="vision-warn">
-                当前模型可能不支持看图，建议切换到视觉模型（如 qwen2.5vl、llava、gpt-4o）
+                {tr('当前模型可能不支持看图，建议切换到视觉模型（如 qwen2.5vl、llava、gpt-4o）')}
               </span>
             ) : (
               <span className={styles.attachHint}>
-                图片将随这条消息发送 · 原图不会保存在聊天记录里
+                {tr('图片将随这条消息发送 · 原图不会保存在聊天记录里')}
               </span>
             )}
           </div>
@@ -582,9 +592,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           }}
           placeholder={
             isDisabled
-              ? '请先选择AI模型...'
+              ? tr('请先选择AI模型...')
               : kbMode && kbAvailable
-                ? '向知识库提问，回答会标注出处…'
+                ? tr('向知识库提问，回答会标注出处…')
                 : placeholder
           }
           disabled={isDisabled}
@@ -600,8 +610,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              title="更多：知识库问答、截图、模型、设置（也可输入 / ）"
-              aria-label="更多功能"
+              title={tr('更多：知识库问答、截图、模型、设置（也可输入 / ）')}
+              aria-label={tr('更多功能')}
               data-testid="composer-more"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -622,10 +632,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               type="button"
               className={styles.chip}
               onClick={toggleKb}
-              title="知识库问答已开启，点击关闭"
+              title={tr('知识库问答已开启，点击关闭')}
               data-testid="kb-mode-chip"
             >
-              📚 知识库
+              {tr('📚 知识库')}
             </button>
           )}
           <div className={styles.modelStatus}>
@@ -635,7 +645,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 onManage={() => onProvidersClick?.()}
               />
             ) : state.models.filter((m) => m.enabled).length === 0 ? (
-              <span className={styles.noModel}>没有可用的AI模型</span>
+              <span className={styles.noModel}>{tr('没有可用的AI模型')}</span>
             ) : (
               <span className={styles.currentModel}>
                 {state.models.find((m) => m.id === state.currentModelId)?.name || 'DeepSeek Chat'}
@@ -648,8 +658,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onClick={handleSend}
             disabled={isDisabled || (!message.trim() && !images.length)}
             className={styles.sendButton}
-            title="发送消息 (Enter)"
-            aria-label="发送"
+            title={tr('发送消息 (Enter)')}
+            aria-label={tr('发送')}
           >
             {state.isLoading ? (
               <div className={styles.loadingSpinner} />

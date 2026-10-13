@@ -2,6 +2,7 @@
  * 统一设置页（参考 Codex app 的 Settings：左侧分区导航，右侧内容）。
  * 各分区直接复用原有面板，通过 ModalHostContext 以「内嵌」方式渲染，功能与 test id 不变。
  */
+import { t } from '@ig-live/ui';
 import { ModalHostContext } from '@ig-live/ui';
 import { VoiceSettingsPanel, useVoice } from '@ig-live/voice';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,6 +20,7 @@ import { SchedulePanel } from '../SchedulePanel';
 import { ScreenPanel } from '../ScreenPanel';
 
 import styles from './index.module.css';
+import { LanguageSettings } from './LanguageSettings';
 import { PinsSettings } from './PinsSettings';
 import { ThemeSettings } from './ThemeSettings';
 
@@ -70,10 +72,10 @@ const SHORTCUTS: Array<[string, string]> = [
 
 const VoiceSection: React.FC = () => {
   const v = useVoice('chat');
-  if (!v.api) return <p className={styles.note}>语音服务不可用（仅在桌面应用中提供）。</p>;
+  if (!v.api) return <p className={styles.note}>{t('语音服务不可用（仅在桌面应用中提供）。')}</p>;
   return (
     <section className={styles.block} data-testid="settings-voice">
-      <h2 className={styles.h2}>语音输入</h2>
+      <h2 className={styles.h2}>{t('语音输入')}</h2>
       <VoiceSettingsPanel api={v.api} config={v.config} onRefresh={() => void v.refresh()} />
     </section>
   );
@@ -104,16 +106,17 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
       case 'general':
         return (
           <>
+            <LanguageSettings />
             <ThemeSettings />
             <PinsSettings />
             <ConfigPanel isVisible onClose={noop} />
             <section className={styles.block}>
-              <h2 className={styles.h2}>快捷键</h2>
+              <h2 className={styles.h2}>{t('快捷键')}</h2>
               <dl className={styles.keys}>
                 {SHORTCUTS.map(([k, d]) => (
                   <React.Fragment key={k}>
-                    <dt>{k}</dt>
-                    <dd>{d}</dd>
+                    <dt>{t(k)}</dt>
+                    <dd>{t(d)}</dd>
                   </React.Fragment>
                 ))}
               </dl>
@@ -124,7 +127,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return providerClientAvailable() ? (
           <ProviderPanel isVisible onClose={noop} />
         ) : (
-          <p className={styles.note}>供应商管理仅在桌面应用中可用；模型配置见「通用」。</p>
+          <p className={styles.note}>{t('供应商管理仅在桌面应用中可用；模型配置见「通用」。')}</p>
         );
       case 'voice':
         return <VoiceSection />;
@@ -154,11 +157,11 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
       case 'privacy':
         return (
           <section className={styles.block} data-testid="settings-privacy">
-            <h2 className={styles.h2}>隐私与数据</h2>
+            <h2 className={styles.h2}>{t('隐私与数据')}</h2>
             <ul className={styles.list}>
-              <li>对话、记忆、知识库索引、屏幕记忆都只保存在这台电脑上，不做云同步。</li>
-              <li>编程助手进度只读取本机日志 / 状态文件，不登录、不抓取任何账号。</li>
-              <li>屏幕记忆可随时暂停；桌面文件访问需逐个文件夹授权，操作都有记录可撤销。</li>
+              <li>{t('对话、记忆、知识库索引、屏幕记忆都只保存在这台电脑上，不做云同步。')}</li>
+              <li>{t('编程助手进度只读取本机日志 / 状态文件，不登录、不抓取任何账号。')}</li>
+              <li>{t('屏幕记忆可随时暂停；桌面文件访问需逐个文件夹授权，操作都有记录可撤销。')}</li>
             </ul>
             <div className={styles.actions}>
               <button
@@ -166,21 +169,21 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
                 className="cd-btn cd-btn--sm"
                 onClick={() => onSection('memory')}
               >
-                管理记忆
+                {t('管理记忆')}
               </button>
               <button
                 type="button"
                 className="cd-btn cd-btn--sm"
                 onClick={() => onSection('screen')}
               >
-                屏幕记忆与排除
+                {t('屏幕记忆与排除')}
               </button>
               <button
                 type="button"
                 className="cd-btn cd-btn--sm"
                 onClick={() => onSection('desktop')}
               >
-                文件夹授权与操作记录
+                {t('文件夹授权与操作记录')}
               </button>
               <button
                 type="button"
@@ -191,18 +194,18 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
                   onSection('local');
                 }}
               >
-                导出本地数据
+                {t('导出本地数据')}
               </button>
               <button
                 type="button"
                 className="cd-btn cd-btn--sm cd-btn--danger"
                 data-testid="privacy-clear-chat"
                 onClick={() => {
-                  if (window.confirm('清空当前对话的消息？（其它对话不受影响）'))
+                  if (window.confirm(t('清空当前对话的消息？（其它对话不受影响）')))
                     void actions.clearChatHistory();
                 }}
               >
-                清空当前对话
+                {t('清空当前对话')}
               </button>
             </div>
           </section>
@@ -212,17 +215,17 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
 
   return (
     <div className={styles.settings} data-testid="settings-view">
-      <nav className={styles.nav} aria-label="设置分区">
+      <nav className={styles.nav} aria-label={t('设置分区')}>
         <button
           type="button"
           className={styles.back}
           onClick={onClose}
           data-testid="settings-back"
-          title="返回对话 (Esc)"
+          title={t('返回对话 (Esc)')}
         >
-          ‹ 返回对话
+          {t('‹ 返回对话')}
         </button>
-        <div className={styles.navTitle}>设置</div>
+        <div className={styles.navTitle}>{t('设置')}</div>
         {SETTINGS_SECTIONS.map((s) => (
           <button
             key={s.id}
@@ -236,7 +239,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             data-testid={`settings-nav-${s.id}`}
           >
             <span className={styles.navIcon}>{s.icon}</span>
-            {s.label}
+            {t(s.label)}
           </button>
         ))}
       </nav>

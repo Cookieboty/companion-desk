@@ -2,6 +2,7 @@
  * DesktopPanel —— 桌面能力设置：授权文件夹（系统选择框）、工具权限、隐私（仅本地模型 / 云端提示）、
  * 操作记录（审计日志）与撤销。全部数据只保存在本机 userData。
  */
+import { t as tr } from '@ig-live/ui';
 import { Badge, Button, Card, EmptyState, Modal, Notice, Select, Switch, Tabs } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -67,33 +68,34 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
 
   const grant = async (mode: 'read' | 'read-write') => {
     const s = await desktopClient.grant(mode);
-    setMsg(s ? `已授权：${s.path}` : '已取消');
+    setMsg(s ? tr('已授权：{0}', s.path) : tr('已取消'));
     void refresh();
   };
 
   const undo = async () => {
     const r = await desktopClient.undoLast();
-    setMsg(r.ok ? `已撤销：${r.undone}` : `无法撤销：${r.error}`);
+    setMsg(r.ok ? tr('已撤销：{0}', r.undone) : tr('无法撤销：{0}', r.error));
     void refresh();
   };
 
   return (
-    <Modal open onClose={onClose} title="桌面能力" size="lg" data-testid="desktop-panel">
+    <Modal open onClose={onClose} title={tr('桌面能力')} size="lg" data-testid="desktop-panel">
       <div className={styles.stack}>
         <Notice>
-          🔒
-          授权、权限、操作记录都只保存在本机。看板娘只能访问你在这里授权的文件夹；删除一律进回收站，可撤销。
+          {tr(
+            '🔒 授权、权限、操作记录都只保存在本机。看板娘只能访问你在这里授权的文件夹；删除一律进回收站，可撤销。',
+          )}
         </Notice>
         <Tabs
           value={tab}
           onChange={(v) => setTab(v as Tab)}
           items={[
-            { value: 'folders', label: '授权文件夹' },
-            { value: 'notes', label: '笔记' },
-            { value: 'reminders', label: '提醒' },
-            { value: 'tools', label: '工具权限' },
-            { value: 'privacy', label: '隐私' },
-            { value: 'log', label: '操作记录' },
+            { value: 'folders', label: tr('授权文件夹') },
+            { value: 'notes', label: tr('笔记') },
+            { value: 'reminders', label: tr('提醒') },
+            { value: 'tools', label: tr('工具权限') },
+            { value: 'privacy', label: tr('隐私') },
+            { value: 'log', label: tr('操作记录') },
           ]}
         />
         {msg && (
@@ -110,20 +112,20 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 onClick={() => void grant('read')}
                 data-testid="desktop-grant-read"
               >
-                ＋ 授权文件夹（只读）
+                {tr('＋ 授权文件夹（只读）')}
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => void grant('read-write')}
                 data-testid="desktop-grant-rw"
               >
-                ＋ 授权文件夹（读写）
+                {tr('＋ 授权文件夹（读写）')}
               </Button>
             </div>
             {state && state.scopes.length === 0 ? (
               <EmptyState
-                title="还没有授权任何文件夹"
-                description="默认看板娘看不到你的任何文件。"
+                title={tr('还没有授权任何文件夹')}
+                description={tr('默认看板娘看不到你的任何文件。')}
               />
             ) : (
               state?.scopes.map((s) => (
@@ -131,20 +133,24 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   key={s.id}
                   data-testid="desktop-scope"
                   title={s.path}
-                  subtitle={`${s.kind === 'file' ? '单个文件' : '文件夹'} · ${fmt(s.grantedAt)}`}
+                  subtitle={tr(
+                    '{0} · {1}',
+                    s.kind === 'file' ? tr('单个文件') : tr('文件夹'),
+                    fmt(s.grantedAt),
+                  )}
                   actions={
                     <>
                       <Badge tone={s.mode === 'read-write' ? 'warning' : 'neutral'}>
-                        {s.mode === 'read-write' ? '读写' : '只读'}
+                        {s.mode === 'read-write' ? tr('读写') : tr('只读')}
                       </Badge>
-                      {s.session && <Badge>仅本次运行</Badge>}
+                      {s.session && <Badge>{tr('仅本次运行')}</Badge>}
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => void desktopClient.revoke(s.id)}
                         data-testid="desktop-revoke"
                       >
-                        撤销授权
+                        {tr('撤销授权')}
                       </Button>
                     </>
                   }
@@ -152,8 +158,9 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
               ))
             )}
             <p className={styles.hint}>
-              始终拒绝：.ssh / .gnupg / 云凭据 / 浏览器配置 / 钥匙串 / *.kdbx / id_rsa / .env
-              等，以及应用自己的数据目录。
+              {tr(
+                '始终拒绝：.ssh / .gnupg / 云凭据 / 浏览器配置 / 钥匙串 / *.kdbx / id_rsa / .env 等，以及应用自己的数据目录。',
+              )}
             </p>
           </div>
         )}
@@ -164,9 +171,9 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           <table className={styles.table} data-testid="desktop-tools">
             <thead>
               <tr>
-                <th>工具</th>
-                <th>级别</th>
-                <th>确认方式</th>
+                <th>{tr('工具')}</th>
+                <th>{tr('级别')}</th>
+                <th>{tr('确认方式')}</th>
               </tr>
             </thead>
             <tbody>
@@ -174,7 +181,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 <tr key={t.name}>
                   <td>
                     {TOOL_LABELS[t.name] ?? t.name}
-                    <div className={styles.code}>{t.name}</div>
+                    <div className={styles.code}>{tr(t.name)}</div>
                   </td>
                   <td>
                     <Badge
@@ -191,11 +198,13 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                   </td>
                   <td>
                     {t.danger === 'destructive' ? (
-                      <span className={styles.hint}>每次都需在对话框中确认（不可更改）</span>
+                      <span className={styles.hint}>
+                        {tr('每次都需在对话框中确认（不可更改）')}
+                      </span>
                     ) : t.name === 'desktop_request_scope' ? (
-                      <span className={styles.hint}>由你在系统文件夹选择框中决定</span>
+                      <span className={styles.hint}>{tr('由你在系统文件夹选择框中决定')}</span>
                     ) : t.locked ? (
-                      <span className={styles.hint}>每次都询问（不可更改）</span>
+                      <span className={styles.hint}>{tr('每次都询问（不可更改）')}</span>
                     ) : (
                       <Select
                         value={t.policy}
@@ -221,18 +230,19 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
             <Switch
               checked={state.localOnly}
               onChange={(v) => void desktopClient.setLocalOnly(v)}
-              label="仅本地模型可读文件"
+              label={tr('仅本地模型可读文件')}
               data-testid="desktop-local-only"
             />
             <p className={styles.hint}>
-              开启后，只有本机模型（如 Ollama，地址为 localhost）才能读取 /
-              总结文件内容；云端模型调用文件工具会被拒绝。
+              {tr(
+                '开启后，只有本机模型（如 Ollama，地址为 localhost）才能读取 / 总结文件内容；云端模型调用文件工具会被拒绝。',
+              )}
             </p>
             <div>
-              第一次把文件内容发给某个云端模型时会弹出提示。已确认过的：
+              {tr('第一次把文件内容发给某个云端模型时会弹出提示。已确认过的：')}
               {state.cloudAcked.length
                 ? state.cloudAcked.map((p) => <Badge key={p}>{p}</Badge>)
-                : ' 无'}
+                : tr(' 无')}
             </div>
             <div className={styles.row}>
               <Button
@@ -240,16 +250,16 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 variant="secondary"
                 onClick={() => void desktopClient.resetCloudAcks()}
               >
-                重新提示
+                {tr('重新提示')}
               </Button>
               <Button
                 size="sm"
                 variant="danger"
                 onClick={() =>
-                  void desktopClient.resetAll().then(() => setMsg('已清除全部桌面能力数据'))
+                  void desktopClient.resetAll().then(() => setMsg(tr('已清除全部桌面能力数据')))
                 }
               >
-                清除全部（授权 / 权限 / 记录）
+                {tr('清除全部（授权 / 权限 / 记录）')}
               </Button>
             </div>
           </div>
@@ -263,39 +273,39 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 disabled={!journal.some((j) => !j.undone)}
                 data-testid="desktop-undo"
               >
-                ↶ 撤销上一步
+                {tr('↶ 撤销上一步')}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => void desktopClient.clearAudit().then(refresh)}
               >
-                清空记录
+                {tr('清空记录')}
               </Button>
             </div>
             {journal.length > 0 && (
               <div>
-                <h4 className={styles.h4}>可撤销的操作</h4>
+                <h4 className={styles.h4}>{tr('可撤销的操作')}</h4>
                 <ul className={styles.list}>
                   {journal.map((j) => (
                     <li key={j.id} data-testid="desktop-journal-item">
-                      {fmt(j.ts)} · {j.summary} {j.undone && <Badge>已撤销</Badge>}
+                      {fmt(j.ts)} · {tr(j.summary)} {j.undone && <Badge>{tr('已撤销')}</Badge>}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            <h4 className={styles.h4}>审计日志</h4>
+            <h4 className={styles.h4}>{tr('审计日志')}</h4>
             {audit.length === 0 ? (
-              <EmptyState title="还没有记录" />
+              <EmptyState title={tr('还没有记录')} />
             ) : (
               <table className={styles.table} data-testid="desktop-audit">
                 <thead>
                   <tr>
-                    <th>时间</th>
-                    <th>操作</th>
-                    <th>结果</th>
-                    <th>参数</th>
+                    <th>{tr('时间')}</th>
+                    <th>{tr('操作')}</th>
+                    <th>{tr('结果')}</th>
+                    <th>{tr('参数')}</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -5,8 +5,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { app } from 'electron';
-import { ILoggerService } from './LoggerService';
+
+import { t } from '../i18n';
+
+import { type ILoggerService } from './LoggerService';
 
 export interface VoiceSettings {
   enabled: boolean;
@@ -65,15 +69,15 @@ export class ConfigService implements IConfigService {
         keyboardListening: true,
         timeAnnouncement: true,
         voicePackPath: 'packages/renderer/public/assets/voice',
-        voiceMode: 'fixed'
+        voiceMode: 'fixed',
       },
       window: {
         position: { x: 0, y: 0 },
         alwaysOnTop: true,
-        transparent: true
+        transparent: true,
       },
       debug: false,
-      environment: process.env.NODE_ENV === 'development' ? 'development' : 'production'
+      environment: process.env.NODE_ENV === 'development' ? 'development' : 'production',
     };
 
     this.config = { ...this.defaultConfig };
@@ -186,7 +190,11 @@ export class ConfigService implements IConfigService {
 
     for (const key in override) {
       if (override.hasOwnProperty(key)) {
-        if (typeof override[key] === 'object' && override[key] !== null && !Array.isArray(override[key])) {
+        if (
+          typeof override[key] === 'object' &&
+          override[key] !== null &&
+          !Array.isArray(override[key])
+        ) {
           result[key] = this.mergeConfigs(result[key] || {}, override[key]);
         } else {
           result[key] = override[key];
@@ -206,14 +214,17 @@ export class ConfigService implements IConfigService {
 
     // 基本类型检查
     if (typeof config !== 'object' || config === null) {
-      errors.push('配置必须是一个对象');
+      errors.push(t('配置必须是一个对象'));
       return { isValid: false, errors, warnings };
     }
 
     // 验证窗口位置
     if (config.windowPosition) {
-      if (typeof config.windowPosition.x !== 'number' || typeof config.windowPosition.y !== 'number') {
-        errors.push('窗口位置必须是数字');
+      if (
+        typeof config.windowPosition.x !== 'number' ||
+        typeof config.windowPosition.y !== 'number'
+      ) {
+        errors.push(t('窗口位置必须是数字'));
       }
     }
 
@@ -221,13 +232,13 @@ export class ConfigService implements IConfigService {
     if (config.voiceSettings) {
       const voice = config.voiceSettings;
       if (typeof voice.enabled !== 'boolean') {
-        errors.push('语音设置enabled必须是布尔值');
+        errors.push(t('语音设置enabled必须是布尔值'));
       }
       if (typeof voice.volume !== 'number' || voice.volume < 0 || voice.volume > 1) {
-        errors.push('音量必须是0-1之间的数字');
+        errors.push(t('音量必须是0-1之间的数字'));
       }
       if (!['fixed', 'tts', 'mixed'].includes(voice.voiceMode)) {
-        errors.push('语音模式必须是fixed、tts或mixed');
+        errors.push(t('语音模式必须是fixed、tts或mixed'));
       }
     }
 
@@ -259,6 +270,4 @@ export class ConfigService implements IConfigService {
       throw error;
     }
   }
-
-
 }

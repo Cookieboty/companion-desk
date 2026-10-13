@@ -2,6 +2,7 @@
  * 知识库回答的引用：正文里的 [n] 变成可点击的上标；底部列出来源卡片。
  * 点击来源 → 预览片段，可「打开文件」或「在文件夹中显示」（主进程重新检查授权）；笔记直接显示全文。
  */
+import { t } from '@ig-live/ui';
 import { Button, Modal } from '@ig-live/ui';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -42,7 +43,7 @@ export const CitedText: React.FC<{
             type="button"
             className={styles.cite}
             onClick={() => onPick(byN.get(p)!)}
-            title={byN.get(p)!.title}
+            title={t(byN.get(p)!.title)}
             data-testid="kb-cite"
           >
             {p}
@@ -58,7 +59,7 @@ export const SourceList: React.FC<{ sources: KbSource[]; onPick: (s: KbSource) =
   onPick,
 }) => (
   <div className={styles.sources} data-testid="kb-sources-list">
-    <span className={styles.sourcesLabel}>📚 出处</span>
+    <span className={styles.sourcesLabel}>{t('📚 出处')}</span>
     {sources.map((s) => (
       <button
         key={s.chunkId}
@@ -69,8 +70,12 @@ export const SourceList: React.FC<{ sources: KbSource[]; onPick: (s: KbSource) =
         data-testid="kb-source-chip"
       >
         <span className={styles.sourceNum}>{s.n}</span>
-        <span className={styles.sourceTitle}>{s.title}</span>
-        {s.page ? <span className={styles.sourceMeta}>第 {s.page} 页</span> : null}
+        <span className={styles.sourceTitle}>{t(s.title)}</span>
+        {s.page ? (
+          <span className={styles.sourceMeta}>
+            {t('第')} {s.page} {t('页')}
+          </span>
+        ) : null}
       </button>
     ))}
   </div>
@@ -88,7 +93,7 @@ export const SourcePreview: React.FC<{ source: KbSource | null; onClose: () => v
     setErr('');
     try {
       const r = await kbClient.open(source.docId, how);
-      if (!r.ok) setErr(r.error ?? '打开失败');
+      if (!r.ok) setErr(r.error ?? t('打开失败'));
       else if (r.note) setNote(r.note);
       else onClose();
     } catch (e) {
@@ -110,13 +115,13 @@ export const SourcePreview: React.FC<{ source: KbSource | null; onClose: () => v
       footer={
         isNote ? (
           <Button variant="primary" onClick={() => void act('preview')} disabled={!!note}>
-            查看全文
+            {t('查看全文')}
           </Button>
         ) : (
           <>
-            <Button onClick={() => void act('reveal')}>在文件夹中显示</Button>
+            <Button onClick={() => void act('reveal')}>{t('在文件夹中显示')}</Button>
             <Button variant="primary" onClick={() => void act('open')} data-testid="kb-open-file">
-              打开文件
+              {t('打开文件')}
             </Button>
           </>
         )
@@ -124,8 +129,8 @@ export const SourcePreview: React.FC<{ source: KbSource | null; onClose: () => v
     >
       <div className={styles.previewBody}>
         <div className={styles.previewPath}>
-          {isNote ? '本地笔记' : shortPath(source.path)}
-          {source.page ? ` · 第 ${source.page} 页` : ''}
+          {isNote ? t('本地笔记') : shortPath(source.path)}
+          {source.page ? t(' · 第 {0} 页', source.page) : ''}
         </div>
         <blockquote className={styles.previewQuote}>{note ? note.body : source.snippet}</blockquote>
         {err && <div className={styles.errorText}>{err}</div>}

@@ -6,11 +6,13 @@
  * 只做序列化 + IO，不需要额外的口令。
  */
 
-import { app, safeStorage } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import type { KeyStoreService } from '@ig-live/bundle-ig-electron-caps';
+import { app, safeStorage } from 'electron';
+
+import { t } from '../i18n';
 
 export interface SafeKeyProviderOptions {
   /** 密钥文件根目录，默认 `<userData>/keys` */
@@ -59,7 +61,7 @@ export class SafeKeyProvider implements KeyStoreService {
     } else if (this.fallback === 'plaintext') {
       buf = Buffer.from(value, 'utf8');
     } else {
-      throw new Error('[SafeKeyProvider] safeStorage 不可用；请配置 fallback=plaintext');
+      throw new Error(t('[SafeKeyProvider] safeStorage 不可用；请配置 fallback=plaintext'));
     }
     await fs.writeFile(this.filePath(id), buf, { mode: 0o600 });
   }
@@ -75,9 +77,7 @@ export class SafeKeyProvider implements KeyStoreService {
   async list(): Promise<string[]> {
     try {
       const files = await fs.readdir(this.baseDir);
-      return files
-        .filter((f) => f.endsWith('.bin'))
-        .map((f) => f.slice(0, -'.bin'.length));
+      return files.filter((f) => f.endsWith('.bin')).map((f) => f.slice(0, -'.bin'.length));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw err;

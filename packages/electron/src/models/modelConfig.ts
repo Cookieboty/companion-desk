@@ -1,5 +1,7 @@
 import { MODEL_CONFIG_SCHEMA, type ModelConfig, type ModelConfigFile } from '@ig-live/types';
 
+import { t } from '../i18n';
+
 const clamp = (v: unknown, lo: number, hi: number): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : undefined;
 const NAME_RE = /^[A-Za-z0-9_\-. ]{1,64}$/;
@@ -58,16 +60,16 @@ export function toConfigFile(config: ModelConfig, modelName?: string): ModelConf
 }
 
 export function parseConfigFile(text: string): ModelConfig {
-  if (text.length > 64 * 1024) throw new Error('配置文件过大');
+  if (text.length > 64 * 1024) throw new Error(t('配置文件过大'));
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('配置文件不是合法 JSON');
+    throw new Error(t('配置文件不是合法 JSON'));
   }
   const f = data as Partial<ModelConfigFile>;
   if (f?.schema !== MODEL_CONFIG_SCHEMA || typeof f.config !== 'object') {
-    throw new Error(`不是 Companion Desk 模型配置（需要 schema: ${MODEL_CONFIG_SCHEMA}）`);
+    throw new Error(t('不是 Companion Desk 模型配置（需要 schema: {0}）', MODEL_CONFIG_SCHEMA));
   }
   return sanitizeModelConfig(f.config);
 }

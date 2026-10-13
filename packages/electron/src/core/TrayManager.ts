@@ -10,6 +10,7 @@ import type { ProviderService, ProviderState } from '@ig-live/ai-runtime';
 import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { onLocaleChange, t } from '../i18n';
 import type { ILoggerService } from '../services/LoggerService';
 
 export interface ProviderMenuEntry {
@@ -26,14 +27,21 @@ export function providerMenuEntries(state: ProviderState): ProviderMenuEntry[] {
     .filter((p) => p.enabled)
     .map((p) => ({
       id: p.id,
-      label: `${p.name} · ${p.defaultModel}${p.keys.length === 0 && !['ollama', 'lmstudio', 'custom'].includes(p.presetId) ? '（未配置 key）' : ''}`,
+      label: t(
+        '{0} · {1}{2}',
+        p.name,
+        p.defaultModel,
+        p.keys.length === 0 && !['ollama', 'lmstudio', 'custom'].includes(p.presetId)
+          ? t('（未配置 key）')
+          : '',
+      ),
       checked: p.id === current,
       enabled: true,
     }));
   for (const e of state.envProviders) {
     entries.push({
       id: e.id,
-      label: `${e.name}${e.hasKey ? '' : '（无 key）'}`,
+      label: t('{0}{1}', e.name, e.hasKey ? '' : t('（无 key）')),
       checked: e.id === current,
       enabled: e.hasKey,
     });
@@ -91,11 +99,11 @@ export class TrayManager {
   private screenMenu(): MenuItemConstructorOptions[] {
     const sm = this.opts.screenMemory;
     const on = !!sm?.active();
-    this.tray?.setToolTip(on ? 'Companion Desk · ● 屏幕记忆中' : 'Companion Desk');
+    this.tray?.setToolTip(on ? t('Companion Desk · ● 屏幕记忆中') : 'Companion Desk');
     if (!sm || !on) return [];
     return [
-      { label: '● 屏幕记忆中（仅保存在本机）', click: () => sm.open() },
-      { label: '暂停屏幕记忆 1 小时', click: () => sm.pause(60) },
+      { label: t('● 屏幕记忆中（仅保存在本机）'), click: () => sm.open() },
+      { label: t('暂停屏幕记忆 1 小时'), click: () => sm.pause(60) },
       { type: 'separator' },
     ];
   }
@@ -112,6 +120,8 @@ export class TrayManager {
       this.unsubscribeModels = this.opts.models?.onChange(() => void this.refreshModels());
       void this.refreshModels();
       this.unsubscribeScreen = this.opts.screenMemory?.onChange(() => this.rebuild());
+      // 切换界面语言后立即重建托盘菜单
+      this.unsubscribeLocale = onLocaleChange(() => this.rebuild());
     } catch (error) {
       this.opts.logger.warn('托盘创建失败（不影响主功能）', {
         error: error instanceof Error ? error.message : String(error),
@@ -120,6 +130,7 @@ export class TrayManager {
     }
   }
 
+  private unsubscribeLocale?: () => void;
   private models: RegistryModelLite[] = [];
   private unsubscribeModels?: () => void;
 
@@ -153,18 +164,18 @@ export class TrayManager {
     }));
     const template: MenuItemConstructorOptions[] = [
       ...this.screenMenu(),
-      { label: '打开 AI 对话', click: () => this.opts.openChat() },
+      { label: t('打开 AI 对话'), click: () => this.opts.openChat() },
       { type: 'separator' },
       {
-        label: state.overrideId ? `AI Provider（已被 COMPANION_PROVIDER 锁定）` : 'AI Provider',
+        label: state.overrideId ? t('AI Provider（已被 COMPANION_PROVIDER 锁定）') : 'AI Provider',
         enabled: false,
       },
       ...providerItems,
-      { label: 'Provider 设置…', click: () => this.opts.openProviderPanel() },
-      { label: '桌面能力（文件授权 / 操作记录）…', click: () => this.opts.openDesktopPanel?.() },
+      { label: t('Provider 设置…'), click: () => this.opts.openProviderPanel() },
+      { label: t('桌面能力（文件授权 / 操作记录）…'), click: () => this.opts.openDesktopPanel?.() },
       { type: 'separator' },
       {
-        label: '看板娘动作',
+        label: t('看板娘动作'),
         submenu: TRAY_MOTIONS.map(([name, label]) => ({
           label,
           click: () => broadcastMascotCommand({ type: 'motion', name }),
@@ -173,7 +184,7 @@ export class TrayManager {
       ...(this.models.length
         ? [
             {
-              label: '切换角色',
+              label: t('切换角色'),
               submenu: this.models.map((m) => ({
                 label: `${m.name}${ORIGIN_LABEL[m.origin] ?? ''}`,
                 click: () => broadcastMascotCommand({ type: 'select-model', id: m.id }),
@@ -182,20 +193,21 @@ export class TrayManager {
           ]
         : []),
       {
-        label: '选择角色 / 模型商店…',
+        label: t('选择角色 / 模型商店…'),
         click: () => broadcastMascotCommand({ type: 'open-picker' }),
       },
       {
-        label: '互动设置（穿透 / 重力 / 散步）…',
+        label: t('互动设置（穿透 / 重力 / 散步）…'),
         click: () => broadcastMascotCommand({ type: 'open-panel', panel: 'interaction' }),
       },
       { type: 'separator' },
-      { label: '退出', click: () => this.opts.quit() },
+      { label: t('退出'), click: () => this.opts.quit() },
     ];
     this.tray.setContextMenu(Menu.buildFromTemplate(template));
   }
 
   dispose(): void {
+    this.unsubscribeLocale?.();
     this.unsubscribe?.();
     this.unsubscribeScreen?.();
     this.unsubscribeModels?.();

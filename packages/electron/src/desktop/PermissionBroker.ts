@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { t } from '../i18n';
+
 import { decide, sanitizePolicy, TOOL_DEFAULT_POLICY, type Danger, type Policy } from './consent';
 import { guardPath, type GuardEnv, type GuardResult, type Scope } from './pathGuard';
 
@@ -279,7 +281,7 @@ export class PermissionBroker {
   async checkSend(
     provider: { id: string; name: string; local: boolean } | null,
     signal?: AbortSignal,
-    what = '文件内容',
+    what = t('文件内容'),
   ): Promise<null | 'local_only' | 'user_denied'> {
     if (!provider || provider.local) return null;
     if (this.settings.localOnly) return 'local_only';
@@ -287,9 +289,14 @@ export class PermissionBroker {
     const d = await this.authorize({
       tool: 'cloud_send_notice',
       danger: 'write',
-      summary: `${what}将发送给「${provider.name}」进行处理，可以吗？`,
+      summary: t('{0}将发送给「{1}」进行处理，可以吗？', what, provider.name),
       args: { provider: provider.name },
-      preview: `这是第一次把本地${what}发送给云端模型「${provider.name}」。\n${what}会离开本机，由该服务商处理。\n可以在「桌面能力 → 隐私」里开启「仅本地模型可读文件」。`,
+      preview: t(
+        '这是第一次把本地{0}发送给云端模型「{1}」。\n{2}会离开本机，由该服务商处理。\n可以在「桌面能力 → 隐私」里开启「仅本地模型可读文件」。',
+        what,
+        provider.name,
+        what,
+      ),
       signal,
       force: { dialog: true },
     });

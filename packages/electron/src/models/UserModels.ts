@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import type { ModelConfig, VrmMetaSummary } from '@ig-live/types';
 
+import { t } from '../i18n';
+
 import { sanitizeModelConfig } from './modelConfig';
 import { inspectVrmFile, type VrmInspection } from './vrmInspect';
 
@@ -85,15 +87,15 @@ export class UserModels {
 
   async get(id: string): Promise<UserModelRecord> {
     const rec = (await this.list()).find((r) => r.id === id);
-    if (!rec) throw new Error('模型不存在');
+    if (!rec) throw new Error(t('模型不存在'));
     return rec;
   }
 
   private async validate(src: string): Promise<VrmInspection> {
-    if (!/\.vrm$/i.test(src)) throw new Error('请选择 .vrm 文件');
+    if (!/\.vrm$/i.test(src)) throw new Error(t('请选择 .vrm 文件'));
     const st = await fsp.stat(src);
-    if (!st.isFile()) throw new Error('不是文件');
-    if (st.size > MAX_USER_VRM_BYTES) throw new Error('文件超过 300 MB 上限');
+    if (!st.isFile()) throw new Error(t('不是文件'));
+    if (st.size > MAX_USER_VRM_BYTES) throw new Error(t('文件超过 300 MB 上限'));
     return inspectVrmFile(src, true);
   }
 

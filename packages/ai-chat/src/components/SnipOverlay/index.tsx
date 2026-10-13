@@ -2,6 +2,7 @@
  * 截图框选遮罩（对话页 #snip 路由，在全屏无边框窗口里运行）。
  * 拖拽框选 → Enter / 「提问」确认；F / 「整屏」；Esc / 右键取消。
  */
+import { t } from '@ig-live/ui';
 import { Button } from '@ig-live/ui';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -33,7 +34,7 @@ export const SnipOverlay: React.FC = () => {
   useEffect(() => {
     screenClient
       .snipSource()
-      .then((s) => (s ? setSrc(s.url) : setErr('截图已失效，请重新截图')))
+      .then((s) => (s ? setSrc(s.url) : setErr(t('截图已失效，请重新截图'))))
       .catch((e: Error) => setErr(e.message));
   }, []);
 
@@ -104,7 +105,7 @@ export const SnipOverlay: React.FC = () => {
             <span className={styles.tip}>{err}</span>
           ) : (
             <span className={styles.tip}>
-              {ok ? '框好了，问点什么吧' : '拖动鼠标框选要提问的区域'}
+              {ok ? t('框好了，问点什么吧') : t('拖动鼠标框选要提问的区域')}
             </span>
           )}
           <Button
@@ -114,13 +115,13 @@ export const SnipOverlay: React.FC = () => {
             onClick={() => done(sel)}
             data-testid="snip-confirm"
           >
-            提问 ⏎
+            {t('提问 ⏎')}
           </Button>
           <Button size="sm" onClick={full} data-testid="snip-full">
-            整屏 F
+            {t('整屏 F')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => done(null)} data-testid="snip-cancel">
-            取消 Esc
+            {t('取消 Esc')}
           </Button>
         </div>
       )}

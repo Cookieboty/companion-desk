@@ -50,6 +50,9 @@ jobs:
       - name: Licence check (deps allow-list + asset manifest)
         run: pnpm check:licenses
 
+      - name: i18n check (every user-facing string has an English translation)
+        run: pnpm check:i18n
+
       - name: Turbo cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

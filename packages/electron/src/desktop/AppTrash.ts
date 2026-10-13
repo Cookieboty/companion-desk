@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { t } from '../i18n';
+
 /**
  * 应用回收站：桌面工具从不硬删除，一律把文件移到 userData/desktop/trash/<日期>/<id>/ 下并写 manifest，
  * 以便「撤销」能原样恢复（系统回收站无法可靠地以编程方式恢复）。30 天后自动清理。
@@ -25,7 +27,8 @@ async function move(from: string, to: string): Promise<void> {
 }
 
 export async function moveNoOverwrite(from: string, to: string): Promise<void> {
-  if (fs.existsSync(to)) throw Object.assign(new Error(`目标已存在：${to}`), { code: 'conflict' });
+  if (fs.existsSync(to))
+    throw Object.assign(new Error(t('目标已存在：{0}', to)), { code: 'conflict' });
   await move(from, to);
 }
 
@@ -48,7 +51,7 @@ export class AppTrash {
 
   async restore(rec: Pick<TrashRecord, 'stored' | 'original'>): Promise<void> {
     if (!fs.existsSync(rec.stored))
-      throw Object.assign(new Error('回收站中的文件已不存在'), { code: 'gone' });
+      throw Object.assign(new Error(t('回收站中的文件已不存在')), { code: 'gone' });
     await moveNoOverwrite(rec.stored, rec.original);
     await fs.promises.rm(path.dirname(rec.stored), { recursive: true, force: true });
   }

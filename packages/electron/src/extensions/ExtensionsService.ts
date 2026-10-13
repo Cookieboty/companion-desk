@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
+import { t } from '../i18n';
 
 import {
   MCP_PRESETS,
@@ -331,9 +332,9 @@ export class ExtensionsService {
 
   async connect(id: string): Promise<Live> {
     const s = this.servers.find((x) => x.id === id);
-    if (!s) throw new McpConfigError('服务器不存在');
+    if (!s) throw new McpConfigError(t('服务器不存在'));
     const svc = this.mcp?.();
-    if (!svc || !this.registry) throw new McpConfigError('AI 服务还没准备好，稍后再试');
+    if (!svc || !this.registry) throw new McpConfigError(t('AI 服务还没准备好，稍后再试'));
     this.live.set(id, { status: 'connecting', tools: [] });
     this.changed();
     const t0 = Date.now();
@@ -402,9 +403,13 @@ export class ExtensionsService {
             tool: def.name,
             // 信任级别已判定需要确认 → 至少按「写」处理，避免只读工具被默认策略放行
             danger: def.dangerous ? 'destructive' : 'write',
-            summary: `扩展工具 ${def.name.replace(`${serverId}__`, '')}（${s?.name ?? serverId}）`,
+            summary: t(
+              '扩展工具 {0}（{1}）',
+              def.name.replace(`${serverId}__`, ''),
+              s?.name ?? serverId,
+            ),
             args: input,
-            preview: `参数：\n${JSON.stringify(input ?? {}, null, 2).slice(0, 1200)}`,
+            preview: t('参数：\n{0}', JSON.stringify(input ?? {}, null, 2).slice(0, 1200)),
             signal: ctx.signal,
             ...(def.dangerous
               ? { force: { dialog: true } }
@@ -416,7 +421,7 @@ export class ExtensionsService {
             this.audit(def.name, { server: serverId }, decision, 'denied', 'mcp');
             return {
               ok: false,
-              error: { code: 'user_denied', message: '用户没有允许这次调用' },
+              error: { code: 'user_denied', message: t('用户没有允许这次调用') },
             } as never;
           }
         }
@@ -472,7 +477,7 @@ export class ExtensionsService {
   }
   private skillDir(name: string) {
     const s = this.listSkills().find((x) => x.name === name && !x.error);
-    if (!s) throw new SkillError(`没有名为 ${name} 的技能`);
+    if (!s) throw new SkillError(t('没有名为 {0} 的技能', name));
     return path.join(this.d.skillsRoot, s.dir);
   }
   getSkill(name: string) {
@@ -486,12 +491,12 @@ export class ExtensionsService {
       name: String(p.meta.name ?? '').trim(),
       description: String(p.meta.description ?? '').trim(),
     };
-    if (!validSkillName(meta.name)) throw new SkillError('名称只能用小写字母、数字和连字符');
-    if (!meta.description) throw new SkillError('请写一句话描述：什么时候该用这个技能');
-    if (!p.body.trim()) throw new SkillError('技能说明不能为空');
+    if (!validSkillName(meta.name)) throw new SkillError(t('名称只能用小写字母、数字和连字符'));
+    if (!meta.description) throw new SkillError(t('请写一句话描述：什么时候该用这个技能'));
+    if (!p.body.trim()) throw new SkillError(t('技能说明不能为空'));
     const existing = this.listSkills();
     if (meta.name !== p.originalName && existing.some((s) => s.name === meta.name))
-      throw new SkillError('已经有同名技能');
+      throw new SkillError(t('已经有同名技能'));
     let dir = path.join(this.d.skillsRoot, meta.name);
     if (p.originalName && p.originalName !== meta.name) {
       const old = this.skillDir(p.originalName);
@@ -522,13 +527,13 @@ export class ExtensionsService {
   /** 从文件夹导入（复制进 skills 目录；不跟随符号链接，总大小 ≤ 5 MB） */
   importSkillDir(src: string) {
     const md = path.join(src, 'SKILL.md');
-    if (!fs.existsSync(md)) throw new SkillError('这个文件夹里没有 SKILL.md');
+    if (!fs.existsSync(md)) throw new SkillError(t('这个文件夹里没有 SKILL.md'));
     const { meta } = parseSkillMd(fs.readFileSync(md, 'utf8'));
     if (this.listSkills().some((s) => s.name === meta.name))
-      throw new SkillError(`已经有名为 ${meta.name} 的技能`);
+      throw new SkillError(t('已经有名为 {0} 的技能', meta.name));
     let total = 0;
     for (const f of listFiles(src)) total += fs.statSync(path.join(src, f)).size;
-    if (total > MAX_SKILL_BYTES) throw new SkillError('技能包太大（上限 5 MB）');
+    if (total > MAX_SKILL_BYTES) throw new SkillError(t('技能包太大（上限 5 MB）'));
     const dest = path.join(this.d.skillsRoot, meta.name);
     for (const f of listFiles(src)) {
       const to = path.join(dest, f);
@@ -542,7 +547,7 @@ export class ExtensionsService {
   }
   async importSkillDialog() {
     const r = await dialog.showOpenDialog({
-      title: '选择技能文件夹（包含 SKILL.md）',
+      title: t('选择技能文件夹（包含 SKILL.md）'),
       properties: ['openDirectory'],
     });
     if (r.canceled || !r.filePaths[0]) return null;
@@ -553,23 +558,24 @@ export class ExtensionsService {
   }
 
   tools(): ToolDefinition[] {
-    const load = z.object({ name: z.string().min(1).max(64).describe('技能名称') }).strict();
+    const load = z.object({ name: z.string().min(1).max(64).describe(t('技能名称')) }).strict();
     const read = z
       .object({
         name: z.string().min(1).max(64),
-        path: z.string().min(1).max(200).describe('技能文件夹内的相对路径'),
+        path: z.string().min(1).max(200).describe(t('技能文件夹内的相对路径')),
       })
       .strict();
     const enabled = (name: string) => {
       const s = this.listSkills().find((x) => x.name === name);
-      if (!s || s.error) throw new SkillError(`没有名为 ${name} 的技能`);
-      if (!s.enabled) throw new SkillError(`技能 ${name} 已被用户停用`);
+      if (!s || s.error) throw new SkillError(t('没有名为 {0} 的技能', name));
+      if (!s.enabled) throw new SkillError(t('技能 {0} 已被用户停用', name));
     };
     return [
       {
         name: 'skill_load',
-        description:
+        description: t(
           '读取一个已启用技能的完整说明（SKILL.md 正文和附带文件列表）。只在用户请求符合该技能描述时调用。',
+        ),
         input: load,
         readOnly: true,
         execute: async (raw: unknown) => {
@@ -587,7 +593,7 @@ export class ExtensionsService {
       } as unknown as ToolDefinition,
       {
         name: 'skill_read_file',
-        description: '读取技能文件夹里的参考文件（纯文本，最多 64 KB）。',
+        description: t('读取技能文件夹里的参考文件（纯文本，最多 64 KB）。'),
         input: read,
         readOnly: true,
         execute: async (raw: unknown) => {
@@ -596,9 +602,9 @@ export class ExtensionsService {
             enabled(name);
             const abs = safeJoin(this.skillDir(name), rel);
             const st = fs.lstatSync(abs);
-            if (!st.isFile()) throw new SkillError('不是文件');
+            if (!st.isFile()) throw new SkillError(t('不是文件'));
             const buf = fs.readFileSync(abs).subarray(0, MAX_READ);
-            if (buf.includes(0)) throw new SkillError('只能读取文本文件');
+            if (buf.includes(0)) throw new SkillError(t('只能读取文本文件'));
             this.audit('skill_read_file', { name, path: rel }, 'auto', 'ok', 'skill');
             return { ok: true, data: { content: buf.toString('utf8') } };
           } catch (e) {
@@ -653,10 +659,14 @@ function listFiles(root: string, rel = '', out: string[] = [], depth = 0): strin
 export function friendlyError(err: unknown): string {
   const m = err instanceof Error ? err.message : String(err);
   if (/ENOENT|not found|spawn/i.test(m))
-    return `启动失败：找不到命令（${m.slice(0, 120)}）。请确认已安装 Node.js / uv，或填写完整路径`;
-  if (/ECONNREFUSED|fetch failed|ENOTFOUND/i.test(m)) return `连不上服务器：${m.slice(0, 120)}`;
-  if (/401|403|unauthori[sz]ed/i.test(m)) return '服务器拒绝访问：请检查令牌 / Authorization 头';
-  if (/timeout|timed out/i.test(m)) return '连接超时';
+    return t(
+      '启动失败：找不到命令（{0}）。请确认已安装 Node.js / uv，或填写完整路径',
+      m.slice(0, 120),
+    );
+  if (/ECONNREFUSED|fetch failed|ENOTFOUND/i.test(m))
+    return t('连不上服务器：{0}', m.slice(0, 120));
+  if (/401|403|unauthori[sz]ed/i.test(m)) return t('服务器拒绝访问：请检查令牌 / Authorization 头');
+  if (/timeout|timed out/i.test(m)) return t('连接超时');
   return m.slice(0, 200);
 }
 

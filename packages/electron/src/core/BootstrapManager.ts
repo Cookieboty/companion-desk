@@ -3,6 +3,7 @@
  * 实现延迟加载、异步初始化和启动性能监控
  */
 
+import { t as tr } from '../i18n';
 import { type ILoggerService } from '../services/LoggerService';
 
 import { eventBus } from './EventBus';
@@ -236,7 +237,7 @@ export class BootstrapManager implements IBootstrapManager {
       if (task.dependencies) {
         for (const dep of task.dependencies) {
           if (!this.completedTasks.has(dep)) {
-            throw new Error(`依赖任务未完成: ${dep}`);
+            throw new Error(tr('依赖任务未完成: {0}', dep));
           }
         }
       }
@@ -260,7 +261,7 @@ export class BootstrapManager implements IBootstrapManager {
         await Promise.race([
           task.execute(),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`任务超时: ${task.name}`)), task.timeout),
+            setTimeout(() => reject(new Error(tr('任务超时: {0}', task.name))), task.timeout),
           ),
         ]);
       } else {

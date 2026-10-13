@@ -16,6 +16,8 @@ import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { getDesktopService } from '../desktop/DesktopService';
 import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
+import { t as tr } from '../i18n';
+import { LocaleService } from '../i18n';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getLocalHubService, initLocalHubService } from '../local/LocalHubService';
 import { getLocalModelService, initLocalModelService } from '../local/LocalModelService';
@@ -115,6 +117,9 @@ export class Application implements IApplication {
       // 等待Electron app ready事件
       await app.whenReady();
       perfMark('app-ready');
+
+      // 界面语言（默认跟随系统：zh* → 中文，其余 → English）；须早于托盘 / 通知等主进程文案
+      new LocaleService(path.join(app.getPath('userData'), 'locale.json')).registerIpc();
       this.logger.info('Electron应用准备就绪');
 
       // 模型注册表 / 商店 / 用户导入（cdmodel:// 协议 + models:* IPC）
@@ -140,7 +145,7 @@ export class Application implements IApplication {
         chatProvider: () => desktop.providerFor('chat'),
         complete: async (messages, signal) => {
           const rt = this.aiRuntime;
-          if (!rt) throw new Error('AI 服务未就绪');
+          if (!rt) throw new Error(tr('AI 服务未就绪'));
           const resp = await rt.client.chat.sendMessage({
             role: 'chat',
             messages,
@@ -158,7 +163,7 @@ export class Application implements IApplication {
         desktop,
         complete: async (messages, signal) => {
           const rt = this.aiRuntime;
-          if (!rt) throw new Error('AI 服务未就绪');
+          if (!rt) throw new Error(tr('AI 服务未就绪'));
           const resp = await rt.client.chat.sendMessage({
             role: 'chat',
             messages,
@@ -178,7 +183,7 @@ export class Application implements IApplication {
         desktop,
         complete: async (messages, signal) => {
           const rt = this.aiRuntime;
-          if (!rt) throw new Error('AI 服务未就绪');
+          if (!rt) throw new Error(tr('AI 服务未就绪'));
           const resp = await rt.client.chat.sendMessage({
             role: 'chat',
             messages,
@@ -189,12 +194,15 @@ export class Application implements IApplication {
         // 记忆 + 今日日历（日历服务在下方创建，这里按需读取）
         memory: async (q) => {
           const cal = (getLocalHubService()?.today() ?? [])
-            .map(
-              (o) =>
-                `- ${o.allDay ? '全天' : new Date(o.start).toTimeString().slice(0, 5)} ${o.summary}`,
+            .map((o) =>
+              tr(
+                '- {0} {1}',
+                o.allDay ? tr('全天') : new Date(o.start).toTimeString().slice(0, 5),
+                o.summary,
+              ),
             )
             .join('\n');
-          return [(await mem.context(q)).text, cal && `今日日历：\n${cal}`]
+          return [(await mem.context(q)).text, cal && tr('今日日历：\n{0}', cal)]
             .filter(Boolean)
             .join('\n\n');
         },

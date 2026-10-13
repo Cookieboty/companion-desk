@@ -1,4 +1,5 @@
 import { toErrorHint, type ErrorAction } from '@ig-live/ai-sdk-client';
+import { t } from '@ig-live/ui';
 import { Button, IconButton } from '@ig-live/ui';
 import React from 'react';
 
@@ -29,22 +30,22 @@ export const ErrorHint: React.FC<ErrorHintProps> = ({ error, onAction, onDismiss
         <span className={styles.errorHintIcon} aria-hidden>
           ⚠️
         </span>
-        <strong className={styles.errorHintTitle}>{hint.title}</strong>
+        <strong className={styles.errorHintTitle}>{t(hint.title)}</strong>
         {onDismiss && (
           <IconButton
             size="sm"
             className={styles.errorHintDismiss}
-            label="关闭错误提示"
+            label={t('关闭错误提示')}
             icon="×"
             onClick={onDismiss}
           />
         )}
       </div>
-      <p className={styles.errorHintDesc}>{hint.description}</p>
+      <p className={styles.errorHintDesc}>{t(hint.description)}</p>
       {hint.action && (
         <div className={styles.errorHintActions}>
           <Button size="sm" variant="primary" onClick={handleAction}>
-            {hint.action.label}
+            {t(hint.action.label)}
           </Button>
         </div>
       )}

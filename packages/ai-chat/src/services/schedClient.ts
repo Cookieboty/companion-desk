@@ -1,4 +1,6 @@
 /** 主动日程客户端：`ai:sched:*` IPC */
+import { t as tr } from '@ig-live/ui';
+
 import type { RepeatRule } from './desktopClient';
 
 export type Frequency = 'low' | 'medium' | 'high';
@@ -64,7 +66,7 @@ const bridge = (): AiBridge | undefined => {
 
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new Error('日程功能需要在桌面应用中使用');
+  if (!b) throw new Error(tr('日程功能需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:sched:${method}`, ...args)) as T & {
     __error?: { code: string; message: string };
   };

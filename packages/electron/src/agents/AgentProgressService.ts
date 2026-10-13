@@ -10,6 +10,7 @@ import { BrowserWindow, Notification, ipcMain } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
+import { t as tr } from '../i18n';
 
 import {
   type AgentKind,
@@ -101,10 +102,10 @@ const LABEL: Record<AgentKind, string> = {
 };
 
 const REMIND: Record<AgentStatus, (label: string, summary?: string) => string> = {
-  running: (l, s) => `${l} 还在忙：${s || '处理中…'}`,
-  completed: (l, s) => `${l} 做完啦～${s ? ` ${s}` : ''}`,
-  failed: (l, s) => `${l} 出错了：${s || '请看看终端'}`,
-  stalled: (l) => `${l} 好像卡住了，要不要去看看？`,
+  running: (l, s) => tr('{0} 还在忙：{1}', l, s || tr('处理中…')),
+  completed: (l, s) => tr('{0} 做完啦～{1}', l, s ? ` ${s}` : ''),
+  failed: (l, s) => tr('{0} 出错了：{1}', l, s || tr('请看看终端')),
+  stalled: (l) => tr('{0} 好像卡住了，要不要去看看？', l),
   idle: () => '',
 };
 
@@ -343,10 +344,13 @@ export class AgentProgressService {
                 : parseCursorHeuristic(fresh, age, this.settings.stallMs);
 
     if (parsed.status === 'running' && age > this.settings.stallMs) {
-      parsed = { status: 'stalled', summary: parsed.summary || `${LABEL[kind]} 长时间无更新` };
+      parsed = {
+        status: 'stalled',
+        summary: parsed.summary || tr('{0} 长时间无更新', LABEL[kind]),
+      };
     }
     if (parsed.status === 'idle' && fresh && age < 60_000) {
-      parsed = { status: 'running', summary: `${LABEL[kind]} 刚有活动` };
+      parsed = { status: 'running', summary: tr('{0} 刚有活动', LABEL[kind]) };
     }
     return parsed;
   }

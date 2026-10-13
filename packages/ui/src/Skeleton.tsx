@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { cx } from './cx';
+import { t as tr } from './i18n';
 
 export interface SkeletonProps {
   width?: number | string;
@@ -23,7 +24,7 @@ export function Skeleton({ width = '100%', height = 14, radius, className }: Ske
 /** 多行占位列表 */
 export function SkeletonList({ rows = 3, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cx('cd-skeleton-list', className)} role="status" aria-label="加载中">
+    <div className={cx('cd-skeleton-list', className)} role="status" aria-label={tr('加载中')}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} height={32} width={`${100 - ((i * 13) % 30)}%`} />
       ))}

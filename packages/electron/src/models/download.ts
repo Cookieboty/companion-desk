@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { createReadStream, promises as fsp } from 'node:fs';
 
+import { t } from '../i18n';
+
 import { isAllowedUrl, type CatalogFile, type UrlPolicy } from './catalog';
 
 export interface DownloadProgress {
@@ -50,7 +52,7 @@ export async function downloadVerified(
   for (const url of file.urls) {
     if (!isAllowedUrl(url, opts.policy)) continue;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      if (opts.signal?.aborted) throw new DownloadError('已取消');
+      if (opts.signal?.aborted) throw new DownloadError(t('已取消'));
       try {
         let have = await sizeOf(part);
         if (have > file.size) {
@@ -65,14 +67,14 @@ export async function downloadVerified(
           });
           // 重定向后仍需 https
           if (res.url && !isAllowedUrl(res.url, opts.policy))
-            throw new DownloadError(`重定向到不安全地址: ${res.url}`);
+            throw new DownloadError(t('重定向到不安全地址: {0}', res.url));
           if (res.status === 200 && have > 0) {
             have = 0; // 服务端不支持 Range：从头开始
             await fsp.rm(part, { force: true });
           } else if (res.status !== 200 && res.status !== 206) {
             throw new DownloadError(`HTTP ${res.status}`);
           }
-          if (!res.body) throw new DownloadError('空响应');
+          if (!res.body) throw new DownloadError(t('空响应'));
           const fh = await fsp.open(part, have > 0 ? 'a' : 'w');
           try {
             const reader = res.body.getReader();
@@ -82,7 +84,7 @@ export async function downloadVerified(
               have += value.byteLength;
               if (have > file.size) {
                 await reader.cancel();
-                throw new DownloadError('文件大小超过目录声明，已中止');
+                throw new DownloadError(t('文件大小超过目录声明，已中止'));
               }
               await fh.write(value);
               opts.onProgress?.({ received: have, total: file.size });
@@ -91,21 +93,21 @@ export async function downloadVerified(
             await fh.close();
           }
         }
-        if ((await sizeOf(part)) !== file.size) throw new DownloadError('文件不完整');
+        if ((await sizeOf(part)) !== file.size) throw new DownloadError(t('文件不完整'));
         const digest = await sha256File(part);
         if (digest !== file.sha256) {
           await fsp.rm(part, { force: true });
-          throw new DownloadError('sha256 校验失败，已丢弃文件');
+          throw new DownloadError(t('sha256 校验失败，已丢弃文件'));
         }
         await fsp.rename(part, dest);
         return;
       } catch (err) {
         lastError = err;
         if (opts.signal?.aborted) {
-          throw new DownloadError('已取消');
+          throw new DownloadError(t('已取消'));
         }
       }
     }
   }
-  throw lastError instanceof Error ? lastError : new DownloadError('没有可用的下载地址');
+  throw lastError instanceof Error ? lastError : new DownloadError(t('没有可用的下载地址'));
 }

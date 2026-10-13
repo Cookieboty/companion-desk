@@ -2,6 +2,7 @@
  * 按住说话按钮：按下开始录音，松开识别；按住时把指针移出按钮 → 松开即取消。
  * 键盘：聚焦后按住 空格 / 回车 说话，Esc 取消。光环随音量起伏。
  */
+import { t } from '@ig-live/ui';
 import { Tooltip, cx } from '@ig-live/ui';
 import React, { useRef, useState } from 'react';
 
@@ -69,11 +70,11 @@ export const MicButton: React.FC<MicButtonProps> = ({
 
   const label = recording
     ? armedCancel
-      ? '松开取消'
-      : '松开发送'
+      ? t('松开取消')
+      : t('松开发送')
     : busy
-      ? '识别中…'
-      : (tooltip ?? '按住说话（聚焦后按住空格）');
+      ? t('识别中…')
+      : (tooltip ?? t('按住说话（聚焦后按住空格）'));
 
   return (
     <Tooltip content={label} placement={tooltipPlacement}>

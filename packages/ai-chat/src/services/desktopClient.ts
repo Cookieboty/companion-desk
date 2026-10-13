@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /**
  * 桌面能力（文件授权 / 工具权限 / 审计 / 撤销）客户端：`ai:desktop:*` IPC（经 preload 的 window.aiIPC）。
  * 授权文件夹一律由主进程弹出系统选择框，渲染层无法直接传入路径授权。
@@ -78,21 +79,24 @@ export type RepeatRule =
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 export function describeRepeat(r?: RepeatRule): string {
-  if (!r) return '不重复';
+  if (!r) return t('不重复');
   switch (r.kind) {
     case 'daily':
-      return '每天';
+      return t('每天');
     case 'weekdays':
-      return '工作日';
+      return t('工作日');
     case 'monthly':
-      return '每月';
+      return t('每月');
     case 'weekly':
-      return `每周${[...r.days]
-        .sort()
-        .map((d) => WEEK[d])
-        .join('、')}`;
+      return t(
+        '每周{0}',
+        [...r.days]
+          .sort()
+          .map((d) => WEEK[d])
+          .join('、'),
+      );
     case 'interval':
-      return r.minutes % 60 === 0 ? `每 ${r.minutes / 60} 小时` : `每 ${r.minutes} 分钟`;
+      return r.minutes % 60 === 0 ? t('每 {0} 小时', r.minutes / 60) : t('每 {0} 分钟', r.minutes);
   }
 }
 
@@ -109,7 +113,7 @@ function bridge(): AiBridge | undefined {
 
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new Error('桌面能力需要在桌面应用中使用');
+  if (!b) throw new Error(t('桌面能力需要在桌面应用中使用'));
   return (await b.invoke(`ai:desktop:${method}`, ...args)) as T;
 }
 

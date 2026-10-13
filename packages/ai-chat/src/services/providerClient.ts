@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /**
  * 渲染进程侧的 provider 配置客户端：`ai:providers:*` IPC（经 preload 的 window.aiIPC）。
  *
@@ -162,7 +163,7 @@ export const providerClientAvailable = (): boolean => Boolean(bridge());
 
 const call = async <T>(method: string, ...args: unknown[]): Promise<T> => {
   const b = bridge();
-  if (!b) throw new Error('window.aiIPC 不可用');
+  if (!b) throw new Error(t('window.aiIPC 不可用'));
   try {
     return (await b.invoke(`ai:providers:${method}`, ...args)) as T;
   } catch (err) {
@@ -238,13 +239,19 @@ export function selectableProviders(
         id: p.id,
         label: p.name,
         disabled: false,
-        group: '我的供应商',
+        group: t('我的供应商'),
         brand: p.presetId,
       })),
     // 没配 key 的环境变量 provider 不可用，不在选择器里占位
     ...s.envProviders
       .filter((e) => e.hasKey)
-      .map((e) => ({ id: e.id, label: e.name, disabled: false, group: '环境变量', brand: e.id })),
+      .map((e) => ({
+        id: e.id,
+        label: e.name,
+        disabled: false,
+        group: t('环境变量'),
+        brand: e.id,
+      })),
   ];
 }
 

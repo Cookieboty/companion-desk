@@ -38,7 +38,8 @@
     "changeset:version": "changeset version",
     "preinstall": "node scripts/check-node.cjs",
     "prepare": "husky",
-    "check:licenses": "node scripts/check-licenses.mjs"
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check:i18n": "node scripts/i18n/check.cjs"
   },
   "author": "",
   "license": "MIT",

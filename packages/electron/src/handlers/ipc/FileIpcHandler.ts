@@ -8,6 +8,7 @@ import * as path from 'path';
 
 import { app, dialog } from 'electron';
 
+import { t } from '../../i18n';
 import { type ICacheService } from '../../services/CacheService';
 import { type ILoggerService } from '../../services/LoggerService';
 import { resolveUnpackagedAssetPath } from '../../utils/localAssetPath';
@@ -223,7 +224,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         }
 
         if (!fs.statSync(resolvedPath).isDirectory()) {
-          throw new Error('指定路径不是目录');
+          throw new Error(t('指定路径不是目录'));
         }
 
         const items = fs.readdirSync(resolvedPath).map((item) => {
@@ -265,7 +266,7 @@ export class FileIpcHandler extends BaseIpcHandler {
         return this.createSuccessResponse();
       } else {
         this.logger.warn('缓存服务不可用');
-        return this.createErrorResponse(new Error('缓存服务不可用'));
+        return this.createErrorResponse(new Error(t('缓存服务不可用')));
       }
     });
 

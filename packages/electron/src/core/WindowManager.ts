@@ -7,6 +7,7 @@ import * as url from 'url';
 
 import { BrowserWindow, screen, app } from 'electron';
 
+import { t } from '../i18n';
 import { MascotWindowController } from '../mascot/MascotWindowController';
 import { type IConfigService } from '../services/ConfigService';
 import { type ILoggerService } from '../services/LoggerService';
@@ -203,7 +204,7 @@ export class WindowManager implements IWindowManager {
         alwaysOnTop: false,
         resizable: true,
         show: false,
-        title: 'TTS语音配置',
+        title: t('TTS语音配置'),
         preloadScript: 'preload.bundle.js',
       };
 

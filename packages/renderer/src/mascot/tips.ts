@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /**
  * 看板娘提示文案。本文件为 Companion Desk 原创内容，随项目以 MIT 许可发布。
  * （取代此前来自第三方项目、GPL-3.0 许可的 waifu-tips.json）
@@ -48,7 +49,7 @@ export const MESSAGES = {
   welcome: '你好，我是你的桌面伙伴～',
   copy: '复制好了，记得注明出处哦。',
   visibility: '欢迎回来！',
-  modelSwitched: (name: string) => `${name} 来啦！`,
+  modelSwitched: (name: string) => t('{0} 来啦！', name),
 };
 
 export function greetingFor(hour: number): string {

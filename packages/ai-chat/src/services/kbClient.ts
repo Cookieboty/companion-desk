@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /**
  * 本地知识库客户端：`ai:kb:*` IPC（经 preload 的 window.aiIPC）。
  * 文件夹一律由主进程弹系统选择框加入；渲染层拿不到 key，也不能直接传路径授权。
@@ -121,7 +122,7 @@ export class KbCallError extends Error {
 
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new KbCallError('unavailable', '知识库需要在桌面应用中使用');
+  if (!b) throw new KbCallError('unavailable', t('知识库需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:kb:${method}`, ...args)) as T & {
     __error?: { code: string; message: string };
   };
@@ -170,7 +171,7 @@ export const fmtBytes = (n: number) =>
 
 /** 显示用：Windows / POSIX 路径都只取最后两级 */
 export function shortPath(p: string): string {
-  if (p.startsWith('note:')) return '笔记';
+  if (p.startsWith('note:')) return t('笔记');
   const parts = p.split(/[\\/]+/).filter(Boolean);
   return parts.length > 2 ? `…/${parts.slice(-2).join('/')}` : p;
 }

@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 
+import { t } from '../../i18n';
 import { type IConfigService } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
 import {
@@ -96,7 +97,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
     this.registerListener('start-keyboard-listener', () => {
       if (!this.globalKeyboardListener) {
         this.logger.error('全局键盘监听器不可用');
-        this.sendKeyboardListenerError('全局键盘监听器未初始化，可能是依赖未正确安装');
+        this.sendKeyboardListenerError(t('全局键盘监听器未初始化，可能是依赖未正确安装'));
         return;
       }
 
@@ -197,9 +198,9 @@ export class VoiceIpcHandler extends BaseIpcHandler {
       try {
         // 这里是获取可用语音的模拟实现
         const voices = [
-          { id: 'voice1', name: '标准女声', language: 'zh-CN' },
-          { id: 'voice2', name: '标准男声', language: 'zh-CN' },
-          { id: 'voice3', name: '英文女声', language: 'en-US' },
+          { id: 'voice1', name: t('标准女声'), language: 'zh-CN' },
+          { id: 'voice2', name: t('标准男声'), language: 'zh-CN' },
+          { id: 'voice3', name: t('英文女声'), language: 'en-US' },
         ];
 
         this.logger.debug('获取可用语音列表', { voices });
@@ -220,7 +221,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
 
         // 播放测试音频
         const testConfig = {
-          text: '这是语音测试',
+          text: t('这是语音测试'),
           voice: voiceId,
           speed: 1.0,
           volume: 0.8,
@@ -244,7 +245,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
 
       try {
         if (volume < 0 || volume > 1) {
-          throw new Error('音量值必须在0-1之间');
+          throw new Error(t('音量值必须在0-1之间'));
         }
 
         this.configService.set('voiceSettings.volume', volume);
@@ -266,7 +267,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
       try {
         const validModes = ['fixed', 'tts', 'mixed'];
         if (!validModes.includes(mode)) {
-          throw new Error(`无效的语音模式: ${mode}，支持的模式: ${validModes.join(', ')}`);
+          throw new Error(t('无效的语音模式: {0}，支持的模式: {1}', mode, validModes.join(', ')));
         }
 
         this.configService.set('voiceSettings.voiceMode', mode);

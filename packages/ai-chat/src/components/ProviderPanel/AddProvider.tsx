@@ -2,6 +2,7 @@
  * 添加供应商：搜索 + 分类（自定义配置 / 模型厂商 / 第三方平台）+ 预设卡片。
  * 预设只是表单预填模板，点开后进入编辑页，所有字段都可改。
  */
+import { t } from '@ig-live/ui';
 import { Input } from '@ig-live/ui';
 import React, { useMemo, useState } from 'react';
 
@@ -41,7 +42,7 @@ export const AddProvider: React.FC<{
       <Input
         autoFocus
         data-testid="preset-search"
-        placeholder="🔍 搜索名称或网址，例如 kimi、智谱、openrouter"
+        placeholder={t('🔍 搜索名称或网址，例如 kimi、智谱、openrouter')}
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
@@ -55,7 +56,7 @@ export const AddProvider: React.FC<{
               className={`${styles.catItem} ${cat === c ? styles.catActive : ''}`}
               onClick={() => setCat(c)}
             >
-              <span>{c === 'all' ? '全部' : CATEGORY_LABELS[c]}</span>
+              <span>{c === 'all' ? t('全部') : CATEGORY_LABELS[c]}</span>
               <span className="cd-muted">{count(c)}</span>
             </button>
           ))}
@@ -78,7 +79,7 @@ export const AddProvider: React.FC<{
                     >
                       <Monogram name={p.id === 'custom' ? '⚙' : p.name} brand={p.id} />
                       <span className={styles.presetText}>
-                        <span className={styles.presetName}>{p.name}</span>
+                        <span className={styles.presetName}>{t(p.name)}</span>
                         <span className="cd-muted">
                           {p.hint ?? hostOf(p.websiteUrl)}
                           {p.id !== 'custom' && ` · ${PROTOCOL_LABELS[p.protocol]}`}
@@ -91,7 +92,7 @@ export const AddProvider: React.FC<{
             );
           })}
           {hits.length === 0 && (
-            <div className="cd-muted">没有匹配的预设，试试「自定义配置」。</div>
+            <div className="cd-muted">{t('没有匹配的预设，试试「自定义配置」。')}</div>
           )}
         </div>
       </div>

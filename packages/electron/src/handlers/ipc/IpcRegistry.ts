@@ -3,17 +3,18 @@
  * 负责IPC处理器的注册、初始化和清理
  */
 
-import { BaseIpcHandler } from './BaseIpcHandler';
-import { WindowIpcHandler } from './WindowIpcHandler';
+import { type IWindowManager } from '../../core/WindowManager';
+import { t } from '../../i18n';
+import { type ICacheService } from '../../services/CacheService';
+import { type IConfigService } from '../../services/ConfigService';
+import { type ILoggerService } from '../../services/LoggerService';
+
+import { type BaseIpcHandler } from './BaseIpcHandler';
 import { ConfigIpcHandler } from './ConfigIpcHandler';
 import { FileIpcHandler } from './FileIpcHandler';
-import { VoiceIpcHandler } from './VoiceIpcHandler';
 import { McpIpcHandler } from './McpIpcHandler';
-
-import { ILoggerService } from '../../services/LoggerService';
-import { IConfigService } from '../../services/ConfigService';
-import { ICacheService } from '../../services/CacheService';
-import { IWindowManager } from '../../core/WindowManager';
+import { VoiceIpcHandler } from './VoiceIpcHandler';
+import { WindowIpcHandler } from './WindowIpcHandler';
 
 export interface IpcRegistryOptions {
   logger: ILoggerService;
@@ -54,38 +55,23 @@ export class IpcRegistry implements IIpcRegistry {
       this.options.logger.info('开始初始化IPC处理器...');
 
       // 注册窗口处理器
-      const windowHandler = new WindowIpcHandler(
-        this.options.logger,
-        this.options.windowManager
-      );
+      const windowHandler = new WindowIpcHandler(this.options.logger, this.options.windowManager);
       this.registerHandler('window', windowHandler);
 
       // 注册配置处理器
-      const configHandler = new ConfigIpcHandler(
-        this.options.logger,
-        this.options.configService
-      );
+      const configHandler = new ConfigIpcHandler(this.options.logger, this.options.configService);
       this.registerHandler('config', configHandler);
 
       // 注册文件处理器
-      const fileHandler = new FileIpcHandler(
-        this.options.logger,
-        this.options.cacheService
-      );
+      const fileHandler = new FileIpcHandler(this.options.logger, this.options.cacheService);
       this.registerHandler('file', fileHandler);
 
       // 注册语音处理器
-      const voiceHandler = new VoiceIpcHandler(
-        this.options.logger,
-        this.options.configService
-      );
+      const voiceHandler = new VoiceIpcHandler(this.options.logger, this.options.configService);
       this.registerHandler('voice', voiceHandler);
 
       // 注册MCP处理器
-      const mcpHandler = new McpIpcHandler(
-        this.options.logger,
-        this.options.mcpService
-      );
+      const mcpHandler = new McpIpcHandler(this.options.logger, this.options.mcpService);
       this.registerHandler('mcp', mcpHandler);
 
       // 初始化所有处理器
@@ -93,11 +79,11 @@ export class IpcRegistry implements IIpcRegistry {
         try {
           handler.initialize();
           this.options.logger.info(`IPC处理器初始化成功: ${name}`, {
-            channels: handler.getRegisteredChannels().length
+            channels: handler.getRegisteredChannels().length,
           });
         } catch (error) {
           this.options.logger.error(`IPC处理器初始化失败: ${name}`, {
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
           // 继续初始化其他处理器，不因单个失败而停止
         }
@@ -106,11 +92,12 @@ export class IpcRegistry implements IIpcRegistry {
       this.isInitialized = true;
       this.options.logger.info('IPC注册器初始化完成', {
         handlerCount: this.handlers.size,
-        totalChannels: this.getTotalChannelCount()
+        totalChannels: this.getTotalChannelCount(),
       });
-
     } catch (error) {
-      this.options.logger.error('IPC注册器初始化失败', { error: error instanceof Error ? error.message : String(error) });
+      this.options.logger.error('IPC注册器初始化失败', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -133,7 +120,7 @@ export class IpcRegistry implements IIpcRegistry {
           this.options.logger.debug(`IPC处理器清理完成: ${name}`);
         } catch (error) {
           this.options.logger.error(`IPC处理器清理失败: ${name}`, {
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }
@@ -142,9 +129,10 @@ export class IpcRegistry implements IIpcRegistry {
       this.isInitialized = false;
 
       this.options.logger.info('IPC注册器清理完成');
-
     } catch (error) {
-      this.options.logger.error('IPC注册器清理失败', { error: error instanceof Error ? error.message : String(error) });
+      this.options.logger.error('IPC注册器清理失败', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -185,7 +173,7 @@ export class IpcRegistry implements IIpcRegistry {
         this.options.logger.info(`动态注册的IPC处理器初始化成功: ${name}`);
       } catch (error) {
         this.options.logger.error(`动态注册的IPC处理器初始化失败: ${name}`, {
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -208,7 +196,7 @@ export class IpcRegistry implements IIpcRegistry {
       return true;
     } catch (error) {
       this.options.logger.error(`注销IPC处理器失败: ${name}`, {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return false;
     }
@@ -238,13 +226,13 @@ export class IpcRegistry implements IIpcRegistry {
       name,
       type: handler.getName(),
       channels: handler.getRegisteredChannels().length,
-      channelList: handler.getRegisteredChannels()
+      channelList: handler.getRegisteredChannels(),
     }));
 
     return {
       handlerCount: this.handlers.size,
       totalChannels: this.getTotalChannelCount(),
-      handlers
+      handlers,
     };
   }
 
@@ -268,27 +256,26 @@ export class IpcRegistry implements IIpcRegistry {
         // 检查处理器是否正常
         const channels = handler.getRegisteredChannels();
         if (channels.length === 0) {
-          issues.push(`处理器 ${name} 没有注册任何通道`);
+          issues.push(t('处理器 {0} 没有注册任何通道', name));
         }
 
         // 检查是否有重复的通道
         const channelSet = new Set();
         for (const channel of channels) {
           if (channelSet.has(channel)) {
-            issues.push(`发现重复的通道: ${channel} (处理器: ${name})`);
+            issues.push(t('发现重复的通道: {0} (处理器: {1})', channel, name));
           }
           channelSet.add(channel);
         }
-
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        issues.push(`处理器 ${name} 验证失败: ${errorMessage}`);
+        issues.push(t('处理器 {0} 验证失败: {1}', name, errorMessage));
       }
     }
 
     return {
       valid: issues.length === 0,
-      issues
+      issues,
     };
   }
 

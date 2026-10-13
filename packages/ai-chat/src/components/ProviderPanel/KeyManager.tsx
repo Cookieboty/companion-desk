@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 import { Badge, Button, Input } from '@ig-live/ui';
 import React, { useState } from 'react';
 
@@ -25,23 +26,25 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
 
   return (
     <div className={styles.keys}>
-      {p.keys.length === 0 && <div className="cd-muted">未配置 Token</div>}
+      {p.keys.length === 0 && <div className="cd-muted">{tr('未配置 Token')}</div>}
       {p.keys.map((k, i) => (
         <div key={k.id} className={styles.keyRow}>
           <code className="cd-code" data-testid="masked-key">
             {k.masked}
           </code>
-          <Badge tone={i === 0 ? 'accent' : 'neutral'}>{i === 0 ? '主' : `备用 ${i}`}</Badge>
+          <Badge tone={i === 0 ? 'accent' : 'neutral'}>
+            {i === 0 ? tr('主') : tr('备用 {0}', i)}
+          </Badge>
           {k.encryption === 'none' ? (
-            <Badge tone="warning">⚠️ 未加密</Badge>
+            <Badge tone="warning">{tr('⚠️ 未加密')}</Badge>
           ) : (
-            <span className="cd-muted" title="safeStorage 加密">
+            <span className="cd-muted" title={tr('safeStorage 加密')}>
               🔒
             </span>
           )}
           {k.lastError && (
             <Badge tone="danger" title={k.lastError}>
-              上次失败
+              {tr('上次失败')}
             </Badge>
           )}
           <span className="cd-spacer" />
@@ -51,7 +54,7 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
               variant="ghost"
               onClick={run(() => providerClient.promoteKey(p.id, k.id))}
             >
-              设为主
+              {tr('设为主')}
             </Button>
           )}
           <Button
@@ -59,17 +62,17 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
             variant="ghost"
             onClick={() => setRotating(rotating === k.id ? null : k.id)}
           >
-            轮换
+            {tr('轮换')}
           </Button>
           <Button size="sm" variant="ghost" onClick={test(k.id)}>
-            测试
+            {tr('测试')}
           </Button>
           <Button
             size="sm"
             variant="danger"
             onClick={run(() => providerClient.removeKey(p.id, k.id))}
           >
-            删除
+            {tr('删除')}
           </Button>
           <TestBadge r={tests[k.id]} />
           {rotating === k.id && (
@@ -77,7 +80,7 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
               <Input
                 size="sm"
                 type="password"
-                placeholder="新的 Token"
+                placeholder={tr('新的 Token')}
                 value={rotateValue}
                 autoComplete="off"
                 onChange={(e) => setRotateValue(e.target.value)}
@@ -92,7 +95,7 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
                   setRotating(null);
                 })}
               >
-                保存
+                {tr('保存')}
               </Button>
             </div>
           )}
@@ -102,7 +105,7 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
         <Input
           size="sm"
           type="password"
-          placeholder="添加备用 Token（主 Token 失败时自动切换）"
+          placeholder={tr('添加备用 Token（主 Token 失败时自动切换）')}
           value={newKey}
           autoComplete="off"
           onChange={(e) => setNewKey(e.target.value)}
@@ -115,7 +118,7 @@ export const KeyManager: React.FC<{ p: ProviderView; onError: (e: unknown) => vo
             setNewKey('');
           })}
         >
-          添加
+          {tr('添加')}
         </Button>
       </div>
     </div>

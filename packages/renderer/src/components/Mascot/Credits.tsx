@@ -1,4 +1,5 @@
 import type { LicenseTermsView } from '@ig-live/types';
+import { t } from '@ig-live/ui';
 import { Badge, Modal } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
@@ -46,7 +47,7 @@ export function collectCredits(
   if (ual.length) {
     rows.push({
       key: 'motions-ual',
-      title: `身体动作（${ual.length} 个片段，重定向到 VRM）`,
+      title: t('身体动作（{0} 个片段，重定向到 VRM）', ual.length),
       author: 'Quaternius — Universal Animation Library',
       license: 'CC0-1.0',
       source: 'https://quaternius.com/packs/universalanimationlibrary.html',
@@ -56,24 +57,24 @@ export function collectCredits(
   if (own.length) {
     rows.push({
       key: 'motions-own',
-      title: `手势动作（${own.length} 个）`,
+      title: t('手势动作（{0} 个）', own.length),
       author: 'Companion Desk contributors',
       license: 'MIT',
     });
   }
   rows.push({
     key: 'ui-icons',
-    title: '工具栏图标',
+    title: t('工具栏图标'),
     author: 'Lucide contributors',
     license: 'ISC',
     source: 'https://lucide.dev/license',
   });
   rows.push({
     key: 'icon',
-    title: '应用图标',
+    title: t('应用图标'),
     author: 'Cookieboty',
     license: 'First-party',
-    note: '作者原创，保留所有权利',
+    note: t('作者原创，保留所有权利'),
   });
   return rows;
 }
@@ -100,14 +101,14 @@ export const Credits: React.FC = () => {
     <Modal
       open
       onClose={() => dispatch({ type: 'SET_PANEL', payload: null })}
-      title="致谢 / Credits"
+      title={t('致谢 / Credits')}
       data-testid="credits"
     >
       <ul className={styles.credits}>
         {rows.map((r) => (
           <li key={r.key} data-testid={`credit-${r.key}`}>
             <div className={styles.creditHead}>
-              <strong>{r.title}</strong>
+              <strong>{t(r.title)}</strong>
               <Badge
                 tone={r.license.startsWith('CC-BY') ? 'accent' : r.termsUrl ? 'warning' : 'neutral'}
               >
@@ -119,14 +120,24 @@ export const Credits: React.FC = () => {
               {r.note ? ` · ${r.note}` : ''}
             </div>
             {r.source && <div className={styles.creditSource}>{r.source}</div>}
-            {r.termsUrl && <div className={styles.creditSource}>条款：{r.termsUrl}</div>}
+            {r.termsUrl && (
+              <div className={styles.creditSource}>
+                {t('条款：')}
+                {r.termsUrl}
+              </div>
+            )}
             {r.licenseFileUrl && (
-              <div className={styles.creditSource}>许可文件：{r.licenseFileUrl}</div>
+              <div className={styles.creditSource}>
+                {t('许可文件：')}
+                {r.licenseFileUrl}
+              </div>
             )}
           </li>
         ))}
       </ul>
-      <p className={styles.credit}>完整清单见 THIRD_PARTY_NOTICES.md 与 assets-licenses.json。</p>
+      <p className={styles.credit}>
+        {t('完整清单见 THIRD_PARTY_NOTICES.md 与 assets-licenses.json。')}
+      </p>
     </Modal>
   );
 };

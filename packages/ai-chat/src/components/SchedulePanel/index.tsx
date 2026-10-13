@@ -1,6 +1,7 @@
 /**
  * SchedulePanel —— 主动日程：提醒（含重复）、定时任务（每日简报等）、主动聊天、免打扰与通知。
  */
+import { t as tr } from '@ig-live/ui';
 import {
   Badge,
   Button,
@@ -79,7 +80,7 @@ const TaskEditor: React.FC<{
       rep === 'weekly' ? { kind: 'weekly', days } : ({ kind: rep } as RepeatRule);
     try {
       const t = await schedClient.upsertTask({ id: task?.id, name, prompt, time, repeat });
-      onDone(`已保存，下次运行：${fmt(t.nextRunAt)}`);
+      onDone(tr('已保存，下次运行：{0}', fmt(t.nextRunAt)));
     } catch (e) {
       setErr(errText(e));
     }
@@ -100,7 +101,7 @@ const TaskEditor: React.FC<{
         <Input
           size="sm"
           className={styles.grow}
-          placeholder="任务名称，例如「每日简报」"
+          placeholder={tr('任务名称，例如「每日简报」')}
           value={name}
           maxLength={40}
           onChange={(e) => setName(e.target.value)}
@@ -137,14 +138,15 @@ const TaskEditor: React.FC<{
                 setDays((d) => (d.includes(i) ? d.filter((x) => x !== i) : [...d, i].sort()))
               }
             >
-              周{w}
+              {tr('周')}
+              {w}
             </Button>
           ))}
         </div>
       )}
       <Textarea
         rows={3}
-        placeholder="让助手做什么？例如：总结今天的提醒，给我一句鼓励"
+        placeholder={tr('让助手做什么？例如：总结今天的提醒，给我一句鼓励')}
         value={prompt}
         maxLength={2000}
         onChange={(e) => setPrompt(e.target.value)}
@@ -153,10 +155,12 @@ const TaskEditor: React.FC<{
       {err && <span className={styles.err}>{err}</span>}
       <div className={styles.row}>
         <span className={`${styles.hint} ${styles.grow}`}>
-          到点后用当前对话模型生成，结果出现在看板娘气泡、系统通知和对话窗口。Ctrl/⌘ + Enter 保存
+          {tr(
+            '到点后用当前对话模型生成，结果出现在看板娘气泡、系统通知和对话窗口。Ctrl/⌘ + Enter 保存',
+          )}
         </span>
         <Button size="sm" variant="ghost" onClick={() => onDone()}>
-          取消
+          {tr('取消')}
         </Button>
         <Button
           size="sm"
@@ -165,7 +169,7 @@ const TaskEditor: React.FC<{
           onClick={() => void save()}
           data-testid="task-save"
         >
-          保存
+          {tr('保存')}
         </Button>
       </div>
     </div>
@@ -242,13 +246,13 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
   const addBriefing = async () => {
     try {
       const t = await schedClient.upsertTask({
-        name: '每日简报',
+        name: tr('每日简报'),
         prompt: BRIEFING_PROMPT,
         time: '08:30',
         repeat: { kind: 'daily' },
         template: 'briefing',
       });
-      setMsg(`已添加「每日简报」，下次：${fmt(t.nextRunAt)}`);
+      setMsg(tr('已添加「每日简报」，下次：{0}', fmt(t.nextRunAt)));
     } catch (e) {
       setMsg(errText(e));
     }
@@ -258,7 +262,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
     setMsg('');
     try {
       const r = await schedClient.runTask(id);
-      setMsg(r.ok ? `「${r.name}」已运行，结果已发到对话窗口` : `运行失败：${r.text}`);
+      setMsg(r.ok ? tr('「{0}」已运行，结果已发到对话窗口', r.name) : tr('运行失败：{0}', r.text));
     } catch (e) {
       setMsg(errText(e));
     }
@@ -270,7 +274,13 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
   }, [loadAgents]);
 
   return (
-    <Modal open onClose={onClose} title="🗓️ 日程与主动提醒" size="lg" data-testid="sched-panel">
+    <Modal
+      open
+      onClose={onClose}
+      title={tr('🗓️ 日程与主动提醒')}
+      size="lg"
+      data-testid="sched-panel"
+    >
       <div className={styles.stack}>
         {err && <Notice tone="danger">{err}</Notice>}
         {!st && !err && <Skeleton height={120} />}
@@ -278,15 +288,23 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
           <>
             <div className={styles.statusRow}>
               <Badge tone={st.quietNow ? 'warning' : 'success'} data-testid="quiet-badge">
-                {st.quietNow ? `🌙 免打扰中（至 ${st.settings.quiet.end}）` : '🔔 正常提醒'}
+                {st.quietNow
+                  ? tr('🌙 免打扰中（至 {0}）', st.settings.quiet.end)
+                  : tr('🔔 正常提醒')}
               </Badge>
-              {st.deferred > 0 && <Badge tone="warning">{st.deferred} 条提醒待补报</Badge>}
+              {st.deferred > 0 && (
+                <Badge tone="warning">
+                  {st.deferred} {tr('条提醒待补报')}
+                </Badge>
+              )}
               <Badge>
                 {st.settings.proactive.enabled
-                  ? `💬 主动聊天：今天 ${st.proactive.today} 次`
-                  : '💬 主动聊天：关'}
+                  ? tr('💬 主动聊天：今天 {0} 次', st.proactive.today)
+                  : tr('💬 主动聊天：关')}
               </Badge>
-              <Badge>📋 定时任务 {st.tasks.filter((t) => t.enabled).length} 个</Badge>
+              <Badge>
+                {tr('📋 定时任务')} {st.tasks.filter((t) => t.enabled).length} {tr('个')}
+              </Badge>
             </div>
             <Tabs
               value={tab}
@@ -295,11 +313,11 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 setMsg('');
               }}
               items={[
-                { value: 'reminders', label: '提醒' },
-                { value: 'tasks', label: '定时任务' },
-                { value: 'proactive', label: '主动聊天' },
-                { value: 'agents', label: '编程助手' },
-                { value: 'quiet', label: '免打扰与通知' },
+                { value: 'reminders', label: tr('提醒') },
+                { value: 'tasks', label: tr('定时任务') },
+                { value: 'proactive', label: tr('主动聊天') },
+                { value: 'agents', label: tr('编程助手') },
+                { value: 'quiet', label: tr('免打扰与通知') },
               ]}
             />
             {msg && (
@@ -327,7 +345,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                       onClick={() => setEditing('new')}
                       data-testid="task-new"
                     >
-                      ＋ 新建任务
+                      {tr('＋ 新建任务')}
                     </Button>
                     {!st.tasks.some((t) => t.template === 'briefing') && (
                       <Button
@@ -335,7 +353,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                         onClick={() => void addBriefing()}
                         data-testid="task-add-briefing"
                       >
-                        ☀️ 添加每日简报
+                        {tr('☀️ 添加每日简报')}
                       </Button>
                     )}
                   </div>
@@ -343,24 +361,28 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 {st.tasks.length === 0 && !editing ? (
                   <EmptyState
                     icon="📋"
-                    title="还没有定时任务"
-                    description="让看板娘每天早上给你一份简报，或者每周五提醒你写周报。"
+                    title={tr('还没有定时任务')}
+                    description={tr('让看板娘每天早上给你一份简报，或者每周五提醒你写周报。')}
                   />
                 ) : (
                   st.tasks.map((t) => (
                     <Card
                       key={t.id}
                       data-testid="task-card"
-                      title={t.name}
-                      subtitle={`${describeRepeat(t.repeat)} ${t.time} · 下次 ${fmt(t.nextRunAt)}${
-                        t.lastRunAt ? ` · 上次 ${fmt(t.lastRunAt)}` : ''
-                      }`}
+                      title={tr(t.name)}
+                      subtitle={tr(
+                        '{0} {1} · 下次 {2}{3}',
+                        describeRepeat(t.repeat),
+                        t.time,
+                        fmt(t.nextRunAt),
+                        t.lastRunAt ? tr(' · 上次 {0}', fmt(t.lastRunAt)) : '',
+                      )}
                       actions={
                         <>
                           <Switch
                             checked={t.enabled}
                             onChange={(v) => void schedClient.toggleTask(t.id, v)}
-                            label={t.enabled ? '启用' : '停用'}
+                            label={t.enabled ? tr('启用') : tr('停用')}
                           />
                           <Button
                             size="sm"
@@ -369,24 +391,27 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                             onClick={() => void runNow(t.id)}
                             data-testid="task-run"
                           >
-                            {st.running.includes(t.id) ? '运行中…' : '立即运行'}
+                            {st.running.includes(t.id) ? tr('运行中…') : tr('立即运行')}
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => setEditing(t)}>
-                            编辑
+                            {tr('编辑')}
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => void schedClient.removeTask(t.id)}
                           >
-                            删除
+                            {tr('删除')}
                           </Button>
                         </>
                       }
                     >
                       <p className={styles.prompt}>{t.prompt}</p>
                       {t.lastStatus === 'error' && (
-                        <span className={styles.err}>上次失败：{t.lastError}</span>
+                        <span className={styles.err}>
+                          {tr('上次失败：')}
+                          {t.lastError}
+                        </span>
                       )}
                     </Card>
                   ))
@@ -394,24 +419,24 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 {results.length > 0 && (
                   <section className={styles.stack}>
                     <div className={styles.row}>
-                      <h4 className={`${styles.sectionTitle} ${styles.grow}`}>最近结果</h4>
+                      <h4 className={`${styles.sectionTitle} ${styles.grow}`}>{tr('最近结果')}</h4>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => void schedClient.clearResults()}
                       >
-                        清空
+                        {tr('清空')}
                       </Button>
                     </div>
                     {results.slice(0, 5).map((r) => (
                       <div key={r.id} className={styles.result} data-testid="task-result">
                         <div className={styles.row}>
-                          <strong className={styles.grow}>{r.name}</strong>
-                          {r.catchUp && <Badge tone="warning">补跑</Badge>}
-                          {!r.ok && <Badge tone="danger">失败</Badge>}
+                          <strong className={styles.grow}>{tr(r.name)}</strong>
+                          {r.catchUp && <Badge tone="warning">{tr('补跑')}</Badge>}
+                          {!r.ok && <Badge tone="danger">{tr('失败')}</Badge>}
                           <span className={styles.hint}>{fmt(r.at)}</span>
                         </div>
-                        <span className={r.ok ? styles.resultText : styles.err}>{r.text}</span>
+                        <span className={r.ok ? styles.resultText : styles.err}>{tr(r.text)}</span>
                       </div>
                     ))}
                   </section>
@@ -422,16 +447,18 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
             {tab === 'proactive' && (
               <div className={styles.stack} data-testid="sched-proactive">
                 <Notice>
-                  开启后，看板娘会在你空闲时偶尔主动搭话（结合长期记忆里的话题）。默认关闭；免打扰时段、你刚聊过天或不在电脑前时不会打扰。
+                  {tr(
+                    '开启后，看板娘会在你空闲时偶尔主动搭话（结合长期记忆里的话题）。默认关闭；免打扰时段、你刚聊过天或不在电脑前时不会打扰。',
+                  )}
                 </Notice>
                 <Switch
                   checked={st.settings.proactive.enabled}
                   onChange={(v) => set({ proactive: { enabled: v } })}
-                  label="允许主动聊天"
+                  label={tr('允许主动聊天')}
                   data-testid="proactive-enabled"
                 />
                 <div className={styles.row}>
-                  <span className={styles.grow}>频率</span>
+                  <span className={styles.grow}>{tr('频率')}</span>
                   <span style={{ width: 220 }}>
                     <Select
                       size="sm"
@@ -446,7 +473,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                   </span>
                 </div>
                 <div className={styles.row}>
-                  <span className={styles.grow}>只在这个时段</span>
+                  <span className={styles.grow}>{tr('只在这个时段')}</span>
                   <Input
                     size="sm"
                     type="time"
@@ -455,7 +482,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                     onChange={(e) => set({ proactive: { activeStart: e.target.value } })}
                     style={{ width: 110 }}
                   />
-                  <span className={styles.hint}>至</span>
+                  <span className={styles.hint}>{tr('至')}</span>
                   <Input
                     size="sm"
                     type="time"
@@ -469,10 +496,10 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                   <span className={`${styles.hint} ${styles.grow}`} data-testid="proactive-gate">
                     {st.settings.proactive.enabled
                       ? st.proactive.gate.ok
-                        ? '现在可以搭话，空闲时会随机开口'
-                        : `暂不搭话：${st.proactive.gate.reason}`
-                      : '已关闭'}
-                    {st.proactive.lastAt ? ` · 上次 ${fmt(st.proactive.lastAt)}` : ''}
+                        ? tr('现在可以搭话，空闲时会随机开口')
+                        : tr('暂不搭话：{0}', st.proactive.gate.reason)
+                      : tr('已关闭')}
+                    {st.proactive.lastAt ? tr(' · 上次 {0}', fmt(st.proactive.lastAt)) : ''}
                   </span>
                   <Button
                     size="sm"
@@ -482,13 +509,13 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                       setBusy(true);
                       void schedClient
                         .proactiveNow()
-                        .then((t) => setMsg(`看板娘说：「${t}」`))
+                        .then((t) => setMsg(tr('看板娘说：「{0}」', t)))
                         .catch((e) => setMsg(errText(e)))
                         .finally(() => setBusy(false));
                     }}
                     data-testid="proactive-try"
                   >
-                    {busy ? '想一想…' : '现在试一下'}
+                    {busy ? tr('想一想…') : tr('现在试一下')}
                   </Button>
                 </div>
               </div>
@@ -497,11 +524,12 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
             {tab === 'agents' && (
               <div className={styles.stack} data-testid="sched-agents">
                 <p className={styles.hint}>
-                  监视本机已安装的编程助手会话文件（Codex / Claude Code / Aider / Cline / Continue /
-                  Cursor），进度变化时看板娘气泡提醒。只读本地日志，不登录、不刮取任何账号。
+                  {tr(
+                    '监视本机已安装的编程助手会话文件（Codex / Claude Code / Aider / Cline / Continue / Cursor），进度变化时看板娘气泡提醒。只读本地日志，不登录、不刮取任何账号。',
+                  )}
                 </p>
                 {!agentsClient.available() && (
-                  <Notice tone="warning">当前环境无法访问主进程监视器。</Notice>
+                  <Notice tone="warning">{tr('当前环境无法访问主进程监视器。')}</Notice>
                 )}
                 {agents && (
                   <>
@@ -510,7 +538,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                       onChange={(v) =>
                         void agentsClient.setSettings({ enabled: v }).then(loadAgents)
                       }
-                      label="监视编程助手进度"
+                      label={tr('监视编程助手进度')}
                       data-testid="agents-enabled"
                     />
                     <Switch
@@ -518,7 +546,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                       onChange={(v) =>
                         void agentsClient.setSettings({ osNotify: v }).then(loadAgents)
                       }
-                      label="同时发送系统通知"
+                      label={tr('同时发送系统通知')}
                       data-testid="agents-os-notify"
                     />
                     <div className={styles.row} style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -554,26 +582,26 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                         onClick={() => void agentsClient.scan().then(setAgents)}
                         data-testid="agents-scan"
                       >
-                        立即扫描
+                        {tr('立即扫描')}
                       </Button>
                       <span className={styles.hint}>
-                        已检测：
+                        {tr('已检测：')}
                         {agents.detected.length
                           ? agents.detected.map((k) => AGENT_LABEL[k]).join('、')
-                          : '无'}
+                          : tr('无')}
                       </span>
                     </div>
                     {agents.sessions.length === 0 ? (
                       <EmptyState
-                        title="暂无活跃会话"
-                        description="启动 Codex 或 Claude Code 等工具后会出现在这里。"
+                        title={tr('暂无活跃会话')}
+                        description={tr('启动 Codex 或 Claude Code 等工具后会出现在这里。')}
                       />
                     ) : (
                       <div className={styles.stack} data-testid="agents-sessions">
                         {agents.sessions.slice(0, 12).map((s) => (
                           <Card key={s.id} flat>
                             <div className={styles.row}>
-                              <strong>{s.label}</strong>
+                              <strong>{tr(s.label)}</strong>
                               <Badge
                                 tone={
                                   s.status === 'failed' || s.status === 'stalled'
@@ -601,11 +629,11 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 <Switch
                   checked={st.settings.quiet.enabled}
                   onChange={(v) => set({ quiet: { enabled: v } })}
-                  label="免打扰时段"
+                  label={tr('免打扰时段')}
                   data-testid="quiet-enabled"
                 />
                 <div className={styles.row}>
-                  <span className={styles.grow}>从</span>
+                  <span className={styles.grow}>{tr('从')}</span>
                   <Input
                     size="sm"
                     type="time"
@@ -615,7 +643,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                     style={{ width: 110 }}
                     data-testid="quiet-start"
                   />
-                  <span className={styles.hint}>到</span>
+                  <span className={styles.hint}>{tr('到')}</span>
                   <Input
                     size="sm"
                     type="time"
@@ -627,20 +655,24 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                   />
                 </div>
                 <p className={styles.hint}>
-                  免打扰期间到点的提醒会先攒着，结束后一起告诉你；定时任务照常运行，结果只写进对话窗口。支持跨午夜（如
-                  22:30 – 08:00）。
+                  {tr(
+                    '免打扰期间到点的提醒会先攒着，结束后一起告诉你；定时任务照常运行，结果只写进对话窗口。支持跨午夜（如 22:30 – 08:00）。',
+                  )}
                 </p>
                 <Switch
                   checked={st.settings.osNotify}
                   onChange={(v) => set({ osNotify: v })}
-                  label="同时发送系统通知"
+                  label={tr('同时发送系统通知')}
                 />
                 {!st.notifySupported && (
-                  <span className={styles.hint}>当前系统不支持通知，只会在看板娘气泡里提醒。</span>
+                  <span className={styles.hint}>
+                    {tr('当前系统不支持通知，只会在看板娘气泡里提醒。')}
+                  </span>
                 )}
                 <p className={styles.hint}>
-                  快捷键：<span className={styles.kbd}>Ctrl/⌘ + Shift + D</span> 打开日程 ·{' '}
-                  <span className={styles.kbd}>Alt + 1~5</span> 切换标签
+                  {tr('快捷键：')}
+                  <span className={styles.kbd}>Ctrl/⌘ + Shift + D</span> {tr('打开日程 ·')}{' '}
+                  <span className={styles.kbd}>Alt + 1~5</span> {tr('切换标签')}
                 </p>
               </div>
             )}

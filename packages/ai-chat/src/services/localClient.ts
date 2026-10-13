@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /** 本地中心客户端：本机模型（llama.cpp / Ollama）、日历、剪贴板历史、数据导出（`ai:local:*` / `ai:hub:*`） */
 export type Fit = 'ok' | 'tight' | 'too-big';
 export interface Progress {
@@ -110,7 +111,7 @@ const bridge = (): AiBridge | undefined => {
 };
 async function call<T>(ch: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new Error('本地中心需要在桌面应用中使用');
+  if (!b) throw new Error(t('本地中心需要在桌面应用中使用'));
   const r = (await b.invoke(ch, ...args)) as T & { __error?: { code: string; message: string } };
   if (r && typeof r === 'object' && '__error' in r && r.__error) throw new Error(r.__error.message);
   return r;
@@ -220,6 +221,6 @@ export function fmtWhen(o: Pick<Occurrence, 'start' | 'end' | 'allDay'>, now = n
   const hm = (d: Date) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   const same = s.toDateString() === now.toDateString();
-  const day = same ? '今天' : `${s.getMonth() + 1}月${s.getDate()}日`;
-  return o.allDay ? `${day} 全天` : `${day} ${hm(s)}–${hm(new Date(o.end))}`;
+  const day = same ? t('今天') : t('{0}月{1}日', s.getMonth() + 1, s.getDate());
+  return o.allDay ? t('{0} 全天', day) : `${day} ${hm(s)}–${hm(new Date(o.end))}`;
 }

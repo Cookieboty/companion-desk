@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import React, { useState, useEffect } from 'react';
 
 import { DEFAULT_VRM_MODEL_PATH } from '../../config/vrm';
@@ -49,7 +50,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
         // 触发就绪回调
         onReady?.();
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : '初始化失败';
+        const errorMessage = err instanceof Error ? err.message : t('初始化失败');
         setError(errorMessage);
         onError?.(errorMessage);
         console.error('VirtualCharacter3D: 初始化失败:', err);
@@ -121,7 +122,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
         }}
       >
         <div>
-          <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>3D角色加载失败</div>
+          <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>{t('3D角色加载失败')}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>{error}</div>
         </div>
       </div>
@@ -145,9 +146,9 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
         }}
       >
         <div style={{ textAlign: 'center', color: '#666' }}>
-          <div style={{ marginBottom: '8px' }}>正在初始化3D系统...</div>
+          <div style={{ marginBottom: '8px' }}>{t('正在初始化3D系统...')}</div>
           <div style={{ fontSize: '12px', opacity: 0.7 }}>
-            {mcpConnected ? 'MCP已连接' : '等待MCP连接'}
+            {mcpConnected ? t('MCP已连接') : t('等待MCP连接')}
           </div>
         </div>
       </div>
@@ -195,8 +196,10 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
             zIndex: 1000,
           }}
         >
-          <div>模型: {isLoaded ? '已加载' : '加载中'}</div>
-          <div>MCP: {mcpConnected ? '已连接' : '断开'}</div>
+          <div>
+            {t('模型:')} {isLoaded ? t('已加载') : t('加载中')}
+          </div>
+          <div>MCP: {mcpConnected ? t('已连接') : t('断开')}</div>
         </div>
       )}
     </div>

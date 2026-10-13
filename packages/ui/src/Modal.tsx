@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useId } from 'react';
 
 import { cx } from './cx';
+import { t } from './i18n';
 
 export interface ModalProps {
   open: boolean;
@@ -37,7 +38,7 @@ export const Modal: React.FC<ModalProps> = ({
   footer,
   size = 'md',
   closeOnOverlay = true,
-  closeLabel = '关闭',
+  closeLabel = t('关闭'),
   className,
   bodyClassName,
   children,
@@ -108,7 +109,7 @@ export const Modal: React.FC<ModalProps> = ({
               onClick={host.onOpenSettings}
               data-testid="open-in-settings"
             >
-              在设置中打开
+              {t('在设置中打开')}
             </button>
           )}
           <button

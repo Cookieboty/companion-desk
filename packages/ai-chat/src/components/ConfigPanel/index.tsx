@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import { Badge, Button, Card, EmptyState, FormField, Input, Modal, Switch } from '@ig-live/ui';
 import React, { useState, useEffect } from 'react';
 
@@ -36,10 +37,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
       setEditingModel(null);
       setFormData({});
 
-      alert('模型配置已保存');
+      alert(t('模型配置已保存'));
     } catch (error) {
       console.error('保存模型配置失败:', error);
-      alert(`保存失败: ${error}`);
+      alert(t('保存失败: {0}', error));
     }
   };
 
@@ -59,23 +60,25 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
     try {
       const result = await state.ipcClient.testModelConnection(modelId);
       if (result) {
-        alert('连接测试成功！');
+        alert(t('连接测试成功！'));
       } else {
-        alert('连接测试失败，请检查配置');
+        alert(t('连接测试失败，请检查配置'));
       }
     } catch (error) {
-      alert(`连接测试失败: ${error}`);
+      alert(t('连接测试失败: {0}', error));
     }
   };
 
   if (!isVisible) return null;
 
   return (
-    <Modal open onClose={onClose} title="AI模型配置" closeOnOverlay={false}>
+    <Modal open onClose={onClose} title={t('AI模型配置')} closeOnOverlay={false}>
       {editingModel ? (
         <div className={styles.editForm}>
-          <h3 className="cd-section-title">编辑模型: {editingModel.name}</h3>
-          <FormField label="模型名称">
+          <h3 className="cd-section-title">
+            {t('编辑模型:')} {t(editingModel.name)}
+          </h3>
+          <FormField label={t('模型名称')}>
             <Input
               type="text"
               value={formData.name || ''}
@@ -89,15 +92,15 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
               onChange={(e) => handleInputChange('apiUrl', e.target.value)}
             />
           </FormField>
-          <FormField label="API 密钥">
+          <FormField label={t('API 密钥')}>
             <Input
               type="password"
               value={formData.apiKey || ''}
               onChange={(e) => handleInputChange('apiKey', e.target.value)}
-              placeholder="输入API密钥"
+              placeholder={t('输入API密钥')}
             />
           </FormField>
-          <FormField label="模型">
+          <FormField label={t('模型')}>
             <Input
               type="text"
               value={formData.model || ''}
@@ -105,7 +108,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
             />
           </FormField>
           <div className={styles.twoCol}>
-            <FormField label="温度 (0-1)">
+            <FormField label={t('温度 (0-1)')}>
               <Input
                 type="number"
                 min="0"
@@ -115,7 +118,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
                 onChange={(e) => handleInputChange('temperature', parseFloat(e.target.value))}
               />
             </FormField>
-            <FormField label="最大Token数">
+            <FormField label={t('最大Token数')}>
               <Input
                 type="number"
                 min="1"
@@ -128,28 +131,28 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
           <Switch
             checked={formData.enabled || false}
             onChange={(v) => handleInputChange('enabled', v)}
-            label="启用此模型"
+            label={t('启用此模型')}
           />
           <div className="cd-row">
             <Button variant="primary" onClick={handleSaveModel}>
-              保存
+              {t('保存')}
             </Button>
-            <Button onClick={handleCancelEdit}>取消</Button>
+            <Button onClick={handleCancelEdit}>{t('取消')}</Button>
           </div>
         </div>
       ) : (
         <div className={styles.modelList}>
-          <h3 className="cd-section-title">可用模型</h3>
-          {state.models.length === 0 && <EmptyState icon="🤖" title="暂无模型" />}
+          <h3 className="cd-section-title">{t('可用模型')}</h3>
+          {state.models.length === 0 && <EmptyState icon="🤖" title={t('暂无模型')} />}
           {state.models.map((model) => (
             <Card
               key={model.id}
               flat
               title={
                 <>
-                  {model.name}{' '}
+                  {t(model.name)}{' '}
                   <Badge tone={model.enabled ? 'success' : 'neutral'}>
-                    {model.enabled ? '已启用' : '已禁用'}
+                    {model.enabled ? t('已启用') : t('已禁用')}
                   </Badge>
                 </>
               }
@@ -162,7 +165,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
               actions={
                 <>
                   <Button size="sm" onClick={() => handleEditModel(model)}>
-                    编辑
+                    {t('编辑')}
                   </Button>
                   {model.enabled && model.apiKey && (
                     <Button
@@ -170,7 +173,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
                       variant="primary"
                       onClick={() => handleTestConnection(model.id)}
                     >
-                      测试连接
+                      {t('测试连接')}
                     </Button>
                   )}
                 </>

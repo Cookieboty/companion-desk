@@ -2,6 +2,7 @@
  * 语音输入设置：识别引擎 / 语言、本地模型管理（按需下载：进度、许可、来源、校验）、
  * 云端识别同意、免按键灵敏度、打断、唤醒词。全部只存本机。
  */
+import { t } from '@ig-live/ui';
 import { Badge, Button, FormField, Input, Notice, Select, Switch } from '@ig-live/ui';
 import React, { useEffect, useState } from 'react';
 
@@ -47,18 +48,18 @@ const AssetRow: React.FC<{
     >
       <div className="cd-voice-asset__main">
         <div className="cd-voice-asset__title">
-          {a.name}
-          {a.installed && <Badge tone="success">已安装</Badge>}
-          {selected && <Badge>使用中</Badge>}
+          {t(a.name)}
+          {a.installed && <Badge tone="success">{t('已安装')}</Badge>}
+          {selected && <Badge>{t('使用中')}</Badge>}
         </div>
         <div className="cd-voice-asset__desc">
-          {a.description} · {fmtBytes(a.bytes)} · 许可{' '}
+          {t(a.description)} · {fmtBytes(a.bytes)} {t('· 许可')}{' '}
           <a href={a.licenseUrl} target="_blank" rel="noreferrer">
             {a.license}
           </a>{' '}
           ·{' '}
           <a href={a.sourceUrl} target="_blank" rel="noreferrer">
-            来源
+            {t('来源')}
           </a>
         </div>
         {a.downloading && (
@@ -79,8 +80,8 @@ const AssetRow: React.FC<{
         {error && <div className="cd-voice-asset__error">{error}</div>}
         {confirming && (
           <Notice className="cd-voice-asset__confirm">
-            将从 {new URL(a.sourceUrl).host} 下载 {fmtBytes(a.bytes)}（{a.license}{' '}
-            许可），下载后校验 SHA-256，仅保存在本机。
+            {t('将从')} {new URL(a.sourceUrl).host} {t('下载')} {fmtBytes(a.bytes)}（{a.license}{' '}
+            {t('许可），下载后校验 SHA-256，仅保存在本机。')}
             <div className="cd-voice-row">
               <Button
                 size="sm"
@@ -91,10 +92,10 @@ const AssetRow: React.FC<{
                   void api.download(a.id);
                 }}
               >
-                同意许可并下载
+                {t('同意许可并下载')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
-                取消
+                {t('取消')}
               </Button>
             </div>
           </Notice>
@@ -108,13 +109,13 @@ const AssetRow: React.FC<{
             onClick={() => void api.cancel(a.id)}
             data-testid={`voice-cancel-${a.id}`}
           >
-            取消
+            {t('取消')}
           </Button>
         ) : a.installed ? (
           <>
             {onSelect && !selected && (
               <Button size="sm" onClick={onSelect}>
-                使用
+                {t('使用')}
               </Button>
             )}
             <Button
@@ -123,7 +124,7 @@ const AssetRow: React.FC<{
               onClick={() => void api.remove(a.id)}
               data-testid={`voice-remove-${a.id}`}
             >
-              删除
+              {t('删除')}
             </Button>
           </>
         ) : (
@@ -134,7 +135,7 @@ const AssetRow: React.FC<{
               onClick={() => setConfirming(true)}
               data-testid={`voice-download-${a.id}`}
             >
-              下载
+              {t('下载')}
             </Button>
           )
         )}
@@ -152,13 +153,14 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
   useEffect(
     () =>
       api.onProgress((e) => {
-        if (e.phase === 'error') setErrors((x) => ({ ...x, [e.id]: `下载失败：${e.error ?? ''}` }));
+        if (e.phase === 'error')
+          setErrors((x) => ({ ...x, [e.id]: t('下载失败：{0}', e.error ?? '') }));
         if (e.phase === 'start' || e.phase === 'done') setErrors((x) => ({ ...x, [e.id]: '' }));
         onRefresh();
       }),
     [api, onRefresh],
   );
-  if (!config) return <div className="cd-voice-loading">加载语音设置…</div>;
+  if (!config) return <div className="cd-voice-loading">{t('加载语音设置…')}</div>;
   const s = config.settings;
   const set = (p: Partial<VoiceSettingsView>) => void api.setSettings(p).then(onRefresh);
   const engines = config.assets.filter((a) => a.kind === 'whisper-bin');
@@ -169,14 +171,15 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
   return (
     <div className="cd-voice-settings" data-testid="voice-settings">
       <Notice>
-        🔒
-        录音只在内存中处理，识别完立即丢弃，不保存音频。本地引擎完全离线；使用云端识别前会先征得你的同意。
+        {t(
+          '🔒 录音只在内存中处理，识别完立即丢弃，不保存音频。本地引擎完全离线；使用云端识别前会先征得你的同意。',
+        )}
       </Notice>
 
       <div className={`cd-voice-ready ${r.ok ? 'is-ok' : 'is-warn'}`} data-testid="voice-readiness">
         {r.ok
-          ? `✅ 语音输入可用（${r.local ? '本地识别' : '云端识别'}）`
-          : `⚠️ ${r.message ?? '尚未就绪'}`}
+          ? t('✅ 语音输入可用（{0}）', r.local ? t('本地识别') : t('云端识别'))
+          : t('⚠️ {0}', r.message ?? t('尚未就绪'))}
         {!r.ok && r.code === 'cloud_not_acked' && (
           <Button
             size="sm"
@@ -184,24 +187,24 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
             onClick={() => void api.ackCloud().then(onRefresh)}
             data-testid="voice-ack-cloud"
           >
-            同意发送录音
+            {t('同意发送录音')}
           </Button>
         )}
       </div>
 
       <div className="cd-voice-grid">
-        <FormField label="识别引擎">
+        <FormField label={t('识别引擎')}>
           <Select
             value={s.engine}
             onChange={(e) => set({ engine: e.target.value as VoiceSettingsView['engine'] })}
             options={[
-              { value: 'whisper-cpp', label: '本地 whisper.cpp（离线，推荐）' },
-              { value: 'openai-compat', label: 'OpenAI 兼容服务（云端 / 本地服务）' },
+              { value: 'whisper-cpp', label: t('本地 whisper.cpp（离线，推荐）') },
+              { value: 'openai-compat', label: t('OpenAI 兼容服务（云端 / 本地服务）') },
             ]}
             data-testid="voice-engine"
           />
         </FormField>
-        <FormField label="语言">
+        <FormField label={t('语言')}>
           <Select
             value={s.language}
             onChange={(e) => set({ language: e.target.value })}
@@ -213,18 +216,28 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
 
       {s.engine === 'whisper-cpp' ? (
         <section className="cd-voice-section">
-          <h4>本地引擎</h4>
+          <h4>{t('本地引擎')}</h4>
           <div className="cd-voice-hint" data-testid="voice-cli">
             {config.cli
-              ? `whisper-cli：${config.cli.source === 'downloaded' ? '已下载' : config.cli.source === 'path' ? '系统 PATH' : '自定义路径'} · ${config.cli.path}`
+              ? t(
+                  'whisper-cli：{0} · {1}',
+                  config.cli.source === 'downloaded'
+                    ? t('已下载')
+                    : config.cli.source === 'path'
+                      ? t('系统 PATH')
+                      : t('自定义路径'),
+                  config.cli.path,
+                )
               : engines.length
-                ? '还没有 whisper.cpp 引擎，下载后即可离线识别。'
-                : '本平台没有官方预编译包：macOS 请 `brew install whisper-cpp`（会自动找到），或在下方填写 whisper-cli 路径。'}
+                ? t('还没有 whisper.cpp 引擎，下载后即可离线识别。')
+                : t(
+                    '本平台没有官方预编译包：macOS 请 `brew install whisper-cpp`（会自动找到），或在下方填写 whisper-cli 路径。',
+                  )}
           </div>
           {engines.map((a) => (
             <AssetRow key={a.id} a={a} api={api} error={errors[a.id]} />
           ))}
-          <FormField label="whisper-cli 路径（可选）" hint="留空则自动查找">
+          <FormField label={t('whisper-cli 路径（可选）')} hint={t('留空则自动查找')}>
             <Input
               defaultValue={s.whisperCliPath}
               placeholder={
@@ -238,7 +251,7 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
               data-testid="voice-cli-path"
             />
           </FormField>
-          <h4>识别模型</h4>
+          <h4>{t('识别模型')}</h4>
           {models.map((a) => (
             <AssetRow
               key={a.id}
@@ -252,12 +265,15 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
         </section>
       ) : (
         <section className="cd-voice-section">
-          <h4>OpenAI 兼容识别服务</h4>
+          <h4>{t('OpenAI 兼容识别服务')}</h4>
           <div className="cd-voice-grid">
-            <FormField label="使用供应商" hint="使用其 API Key 调用 /audio/transcriptions">
+            <FormField
+              label={t('使用供应商')}
+              hint={t('使用其 API Key 调用 /audio/transcriptions')}
+            >
               <Select
                 value={s.customBaseURL ? '__custom' : s.providerId}
-                placeholder="选择已保存的供应商"
+                placeholder={t('选择已保存的供应商')}
                 onChange={(e) =>
                   e.target.value === '__custom'
                     ? set({ customBaseURL: s.customBaseURL || 'http://127.0.0.1:8080/v1' })
@@ -267,14 +283,14 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
                   ...config.providers.map((p) => ({
                     value: p.id,
                     label: p.name,
-                    description: p.local ? '本地' : '云端',
+                    description: p.local ? t('本地') : t('云端'),
                   })),
-                  { value: '__custom', label: '自定义地址（如本地 whisper.cpp server）' },
+                  { value: '__custom', label: t('自定义地址（如本地 whisper.cpp server）') },
                 ]}
                 data-testid="voice-provider"
               />
             </FormField>
-            <FormField label="模型" hint="如 whisper-1、gpt-4o-mini-transcribe">
+            <FormField label={t('模型')} hint={t('如 whisper-1、gpt-4o-mini-transcribe')}>
               <Input
                 defaultValue={s.cloudModel}
                 onBlur={(e) =>
@@ -285,7 +301,10 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
             </FormField>
           </div>
           {s.customBaseURL && (
-            <FormField label="服务地址" hint="填到 /v1 为止，会请求 {地址}/audio/transcriptions">
+            <FormField
+              label={t('服务地址')}
+              hint={t('填到 /v1 为止，会请求 {地址}/audio/transcriptions')}
+            >
               <Input
                 defaultValue={s.customBaseURL}
                 onBlur={(e) => set({ customBaseURL: e.target.value })}
@@ -297,22 +316,29 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
       )}
 
       <section className="cd-voice-section">
-        <h4>交互</h4>
+        <h4>{t('交互')}</h4>
         <Switch
           checked={s.autoSend}
           onChange={(v) => set({ autoSend: v })}
-          label="识别后自动发送（关闭则填入输入框，便于修改）"
+          label={t('识别后自动发送（关闭则填入输入框，便于修改）')}
           data-testid="voice-autosend"
         />
         <Switch
           checked={s.bargeIn}
           onChange={(v) => set({ bargeIn: v })}
-          label="开口即打断看板娘说话（barge-in）"
+          label={t('开口即打断看板娘说话（barge-in）')}
           data-testid="voice-bargein"
         />
         <FormField
-          label={`免按键灵敏度：${s.vadThreshold <= 0.4 ? '灵敏' : s.vadThreshold >= 0.65 ? '稳妥（嘈杂环境）' : '适中'}`}
-          hint="越靠右越不容易被环境声误触发"
+          label={t(
+            '免按键灵敏度：{0}',
+            s.vadThreshold <= 0.4
+              ? t('灵敏')
+              : s.vadThreshold >= 0.65
+                ? t('稳妥（嘈杂环境）')
+                : t('适中'),
+          )}
+          hint={t('越靠右越不容易被环境声误触发')}
         >
           <input
             type="range"
@@ -332,20 +358,21 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
 
       <section className="cd-voice-section">
         <h4>
-          唤醒词 <Badge tone="neutral">实验</Badge>
+          {t('唤醒词')} <Badge tone="neutral">{t('实验')}</Badge>
         </h4>
         <div className="cd-voice-hint">
-          开启后在后台持续监听麦克风（状态栏会一直显示「等待唤醒词」）。每句话只在本机用 whisper.cpp
-          检查是否为唤醒词，从不上传；需要先下载本地引擎与模型。
+          {t(
+            '开启后在后台持续监听麦克风（状态栏会一直显示「等待唤醒词」）。每句话只在本机用 whisper.cpp 检查是否为唤醒词，从不上传；需要先下载本地引擎与模型。',
+          )}
         </div>
         <Switch
           checked={s.wakeWord.enabled}
           onChange={(v) => set({ wakeWord: { ...s.wakeWord, enabled: v } })}
-          label="启用唤醒词"
+          label={t('启用唤醒词')}
           data-testid="voice-wake-enabled"
         />
         <div className="cd-voice-grid">
-          <FormField label="唤醒词" hint="2~8 个字，中英文都可以；避免日常高频词">
+          <FormField label={t('唤醒词')} hint={t('2~8 个字，中英文都可以；避免日常高频词')}>
             <Input
               defaultValue={s.wakeWord.phrase}
               maxLength={24}
@@ -356,13 +383,13 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
               data-testid="voice-wake-phrase"
             />
           </FormField>
-          <FormField label="唤醒后等待指令（秒）">
+          <FormField label={t('唤醒后等待指令（秒）')}>
             <Select
               value={String(s.wakeWord.windowSec)}
               onChange={(e) =>
                 set({ wakeWord: { ...s.wakeWord, windowSec: Number(e.target.value) } })
               }
-              options={[5, 8, 12, 20].map((n) => ({ value: String(n), label: `${n} 秒` }))}
+              options={[5, 8, 12, 20].map((n) => ({ value: String(n), label: t('{0} 秒', n) }))}
             />
           </FormField>
         </div>

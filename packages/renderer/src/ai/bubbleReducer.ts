@@ -1,3 +1,5 @@
+import { t } from '@ig-live/ui';
+
 import { shortReply } from '@/mascot/bubblePlacement';
 
 export interface BubbleAgentStep {
@@ -89,7 +91,7 @@ export function deriveBubble(evt: BubbleEvent): BubbleDirective | null {
   switch (evt.kind) {
     case 'agent:step': {
       const reason = evt.payload.reason ?? 'llm-call';
-      const label = AGENT_STEP_LABEL[reason] ?? '正在处理…';
+      const label = AGENT_STEP_LABEL[reason] ?? t('正在处理…');
       const step = typeof evt.payload.step === 'number' ? evt.payload.step : 0;
       return {
         text: step > 0 ? `${label} (step ${step})` : label,
@@ -120,8 +122,8 @@ export function deriveBubble(evt: BubbleEvent): BubbleDirective | null {
     case 'tool:executed': {
       const name = evt.payload.toolName || 'tool';
       const text = evt.payload.ok
-        ? `✅ 已完成：${name}`
-        : `⚠️ ${name} 失败${evt.payload.error ? `：${evt.payload.error}` : ''}`;
+        ? t('✅ 已完成：{0}', name)
+        : t('⚠️ {0} 失败{1}', name, evt.payload.error ? `：${evt.payload.error}` : '');
       return {
         text: truncateForBubble(text),
         priority: BUBBLE_PRIORITY.toolExecuted,
@@ -131,7 +133,7 @@ export function deriveBubble(evt: BubbleEvent): BubbleDirective | null {
     case 'live2d:touch': {
       const hit = evt.payload.hitArea || 'body';
       return {
-        text: `摸到「${hit}」了~`,
+        text: t('摸到「{0}」了~', hit),
         priority: BUBBLE_PRIORITY.touch,
         timeout: BUBBLE_TIMEOUT.touch,
       };

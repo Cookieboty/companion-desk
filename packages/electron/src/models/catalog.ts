@@ -1,3 +1,5 @@
+import { t as tr } from '../i18n';
+
 import {
   REVIEWED_MODEL_LICENSES,
   isAllowedLicense,
@@ -124,7 +126,7 @@ export interface CatalogValidation {
 export function validateCatalog(raw: unknown, policy: UrlPolicy = {}): CatalogValidation {
   const c = raw as { schemaVersion?: unknown; models?: unknown } | null;
   if (!c || c.schemaVersion !== 1 || !Array.isArray(c.models))
-    throw new Error('不支持的模型目录格式');
+    throw new Error(tr('不支持的模型目录格式'));
   const rejected: CatalogValidation['rejected'] = [];
   const models: CatalogEntry[] = [];
   const seen = new Set<string>();

@@ -1,3 +1,4 @@
+import { t as tr } from '@ig-live/ui';
 /**
  * 长期记忆客户端：`ai:mem:*` IPC（经 preload 的 window.aiIPC）。数据只在主进程 userData/memory。
  */
@@ -80,7 +81,7 @@ export class MemCallError extends Error {
 
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new MemCallError('unavailable', '长期记忆需要在桌面应用中使用');
+  if (!b) throw new MemCallError('unavailable', tr('长期记忆需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:mem:${method}`, ...args)) as T & {
     __error?: { code: string; message: string };
   };

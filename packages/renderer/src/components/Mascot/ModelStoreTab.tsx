@@ -1,4 +1,5 @@
 import type { ModelDownloadProgress, StoreEntryView, StoreStateView } from '@ig-live/types';
+import { t } from '@ig-live/ui';
 import { Badge, Button, EmptyState, Notice } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -47,7 +48,7 @@ export const ModelStoreTab: React.FC = () => {
     };
   }, [api, load]);
 
-  if (!api) return <EmptyState title="模型商店仅在桌面应用中可用" />;
+  if (!api) return <EmptyState title={t('模型商店仅在桌面应用中可用')} />;
 
   const install = async (e: StoreEntryView) => {
     setProgress((p) => ({
@@ -61,7 +62,9 @@ export const ModelStoreTab: React.FC = () => {
     <div data-testid="model-store">
       <div className={styles.storeBar}>
         <span className={styles.credit}>
-          {state?.offline ? '离线：显示缓存的目录' : `目录：${hostOf(state?.catalogUrls[0])}`}
+          {state?.offline
+            ? t('离线：显示缓存的目录')
+            : t('目录：{0}', hostOf(state?.catalogUrls[0]))}
           {state?.fetchedAt ? ` · ${new Date(state.fetchedAt).toLocaleString()}` : ''}
         </span>
         <Button
@@ -71,18 +74,21 @@ export const ModelStoreTab: React.FC = () => {
           onClick={() => void load(true)}
           data-testid="store-refresh"
         >
-          {loading ? '刷新中…' : '刷新'}
+          {loading ? t('刷新中…') : t('刷新')}
         </Button>
       </div>
       {state?.error && !state.entries.length && (
         <Notice tone="warning" data-testid="store-error">
-          无法获取模型目录：{state.error}
+          {t('无法获取模型目录：')}
+          {state.error}
         </Notice>
       )}
       {!!state?.rejectedCount && (
-        <Notice tone="warning">已忽略 {state.rejectedCount} 个不符合许可 / 安全要求的条目。</Notice>
+        <Notice tone="warning">
+          {t('已忽略')} {state.rejectedCount} {t('个不符合许可 / 安全要求的条目。')}
+        </Notice>
       )}
-      {state && !state.entries.length && !state.error && <EmptyState title="目录为空" />}
+      {state && !state.entries.length && !state.error && <EmptyState title={t('目录为空')} />}
       <div className={styles.storeList}>
         {state?.entries.map((e) => {
           const p = progress[e.id];
@@ -94,18 +100,18 @@ export const ModelStoreTab: React.FC = () => {
           return (
             <div key={e.id} className={styles.storeItem} data-testid={`store-item-${e.id}`}>
               {e.thumbnailUrl ? (
-                <img src={e.thumbnailUrl} alt={e.name} className={styles.thumb} />
+                <img src={e.thumbnailUrl} alt={t(e.name)} className={styles.thumb} />
               ) : (
                 <div className={styles.thumb} />
               )}
               <div className={styles.storeInfo}>
                 <div className={styles.creditHead}>
-                  <strong>{e.name}</strong>
+                  <strong>{t(e.name)}</strong>
                   <Badge tone={e.licenseTerms ? 'warning' : 'success'}>
                     {licenseLabel(e.license)}
                   </Badge>
                   <Badge tone="neutral">v{e.version}</Badge>
-                  {e.updateAvailable && <Badge tone="accent">有更新</Badge>}
+                  {e.updateAvailable && <Badge tone="accent">{t('有更新')}</Badge>}
                 </div>
                 <div className={styles.creditMeta}>
                   {e.author} · VRM {e.vrmVersion} · {mb(e.size)}
@@ -126,13 +132,16 @@ export const ModelStoreTab: React.FC = () => {
                   </div>
                 )}
                 {p?.state === 'error' && (
-                  <div className={styles.errorText}>下载失败：{p.error}</div>
+                  <div className={styles.errorText}>
+                    {t('下载失败：')}
+                    {p.error}
+                  </div>
                 )}
               </div>
               <div className={styles.storeActions}>
                 {busy ? (
                   <Button size="sm" variant="ghost" onClick={() => void api.cancel(e.id)}>
-                    取消
+                    {t('取消')}
                   </Button>
                 ) : e.installedVersion ? (
                   <>
@@ -143,7 +152,7 @@ export const ModelStoreTab: React.FC = () => {
                         onClick={() => void install(e)}
                         data-testid={`store-update-${e.id}`}
                       >
-                        更新
+                        {t('更新')}
                       </Button>
                     )}
                     <Button
@@ -151,7 +160,7 @@ export const ModelStoreTab: React.FC = () => {
                       onClick={() => selectModel(e.id)}
                       data-testid={`store-use-${e.id}`}
                     >
-                      使用
+                      {t('使用')}
                     </Button>
                     <Button
                       size="sm"
@@ -159,11 +168,11 @@ export const ModelStoreTab: React.FC = () => {
                       onClick={() => void api.remove(e.id)}
                       data-testid={`store-remove-${e.id}`}
                     >
-                      删除
+                      {t('删除')}
                     </Button>
                   </>
                 ) : installed ? (
-                  <Badge tone="neutral">已内置</Badge>
+                  <Badge tone="neutral">{t('已内置')}</Badge>
                 ) : (
                   <Button
                     size="sm"
@@ -171,7 +180,7 @@ export const ModelStoreTab: React.FC = () => {
                     onClick={() => void install(e)}
                     data-testid={`store-install-${e.id}`}
                   >
-                    下载
+                    {t('下载')}
                   </Button>
                 )}
               </div>

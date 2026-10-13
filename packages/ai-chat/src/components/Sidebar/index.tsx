@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -16,10 +17,10 @@ type Meta = Omit<ChatSession, 'messages'>;
 
 const rel = (ts: number) => {
   const d = Date.now() - ts;
-  if (d < 60_000) return '刚刚';
-  if (d < 3_600_000) return `${Math.floor(d / 60_000)} 分钟前`;
-  if (d < 86_400_000) return `${Math.floor(d / 3_600_000)} 小时前`;
-  return `${Math.floor(d / 86_400_000)} 天前`;
+  if (d < 60_000) return t('刚刚');
+  if (d < 3_600_000) return t('{0} 分钟前', Math.floor(d / 60_000));
+  if (d < 86_400_000) return t('{0} 小时前', Math.floor(d / 3_600_000));
+  return t('{0} 天前', Math.floor(d / 86_400_000));
 };
 
 /** Codex 风格的极简侧栏：新对话 + 历史线程列表，⌘/Ctrl+B 收起 */
@@ -58,8 +59,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
         <button
           className={styles.iconBtn}
           onClick={onToggle}
-          title={collapsed ? '展开侧边栏 (⌘/Ctrl+B)' : '收起侧边栏 (⌘/Ctrl+B)'}
-          aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          title={collapsed ? t('展开侧边栏 (⌘/Ctrl+B)') : t('收起侧边栏 (⌘/Ctrl+B)')}
+          aria-label={collapsed ? t('展开侧边栏') : t('收起侧边栏')}
           data-testid="sidebar-toggle"
         >
           <svg
@@ -80,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
       <button
         className={styles.newChat}
         onClick={onNewChat}
-        title="开始新对话"
+        title={t('开始新对话')}
         data-testid="new-chat"
       >
         <svg
@@ -93,22 +94,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
         >
           <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
         </svg>
-        {!collapsed && <span>新对话</span>}
+        {!collapsed && <span>{t('新对话')}</span>}
       </button>
 
       {!collapsed && (
-        <nav className={styles.threads} aria-label="历史对话">
-          <div className={styles.sectionTitle}>对话</div>
-          {list.length === 0 && <div className={styles.empty}>还没有历史对话</div>}
+        <nav className={styles.threads} aria-label={t('历史对话')}>
+          <div className={styles.sectionTitle}>{t('对话')}</div>
+          {list.length === 0 && <div className={styles.empty}>{t('还没有历史对话')}</div>}
           {list.map((c) => (
             <button
               key={c.id}
               className={`${styles.thread} ${c.id === current ? styles.threadActive : ''}`}
               onClick={() => void open(c.id)}
-              title={c.name}
+              title={t(c.name)}
               data-testid="history-item"
             >
-              <span className={styles.threadName}>{c.name || '新对话'}</span>
+              <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
               <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
             </button>
           ))}
@@ -118,11 +119,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
         <button
           className={`${styles.newChat} ${styles.bottom}`}
           onClick={onSettings}
-          title="设置 (⌘/Ctrl+,)"
+          title={t('设置 (⌘/Ctrl+,)')}
           data-testid="sidebar-settings"
         >
           <span aria-hidden>⚙</span>
-          {!collapsed && <span>设置</span>}
+          {!collapsed && <span>{t('设置')}</span>}
         </button>
       )}
     </aside>

@@ -1,5 +1,6 @@
 import type { ModelVoiceConfig } from '@ig-live/types';
 import { type VoiceSettings as VoiceSettingsType } from '@ig-live/types';
+import { t as tr } from '@ig-live/ui';
 import { Modal, Switch } from '@ig-live/ui';
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -112,20 +113,22 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     <Modal
       open
       onClose={onClose}
-      title="语音设置"
+      title={tr('语音设置')}
       className={styles.panel}
       data-testid="voice-settings"
     >
       <section className={styles.group}>
-        <h4 className="cd-section-title">基本设置</h4>
+        <h4 className="cd-section-title">{tr('基本设置')}</h4>
         <Switch
           checked={settings.enabled}
           onChange={(v) => handleSettingChange('enabled', v)}
           disabled={isLoading}
-          label="启用语音功能"
+          label={tr('启用语音功能')}
         />
         <label className={styles.range}>
-          <span>音量: {Math.round(settings.volume * 100)}%</span>
+          <span>
+            {tr('音量:')} {Math.round(settings.volume * 100)}%
+          </span>
           <input
             type="range"
             min="0"
@@ -139,18 +142,20 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
       </section>
 
       <section className={styles.group}>
-        <h4 className="cd-section-title">当前角色音色</h4>
+        <h4 className="cd-section-title">{tr('当前角色音色')}</h4>
         <p
           className="cd-muted"
           style={{ marginBottom: 8, fontSize: 12 }}
           data-testid="char-voice-label"
         >
-          角色：<strong>{charName ?? '（未选择）'}</strong>
+          {tr('角色：')}
+          <strong>{charName ?? tr('（未选择）')}</strong>
           <br />
-          将使用：{preview}
+          {tr('将使用：')}
+          {preview}
         </p>
         <label className={styles.range}>
-          <span>音色（本角色）</span>
+          <span>{tr('音色（本角色）')}</span>
           <select
             data-testid="char-speech-voice"
             value={charPrefs.voiceURI}
@@ -158,17 +163,19 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             onChange={(e) => void patchCharacter({ voiceURI: e.target.value })}
             style={{ width: '100%', marginTop: 4 }}
           >
-            <option value="">自动（角色默认 / 柔和女声）</option>
+            <option value="">{tr('自动（角色默认 / 柔和女声）')}</option>
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
                 {v.neural ? '✦ ' : ''}
-                {v.name} ({v.lang})
+                {tr(v.name)} ({v.lang})
               </option>
             ))}
           </select>
         </label>
         <label className={styles.range}>
-          <span>语速: {charPrefs.rate.toFixed(2)}×</span>
+          <span>
+            {tr('语速:')} {charPrefs.rate.toFixed(2)}×
+          </span>
           <input
             type="range"
             min="0.7"
@@ -181,7 +188,9 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
           />
         </label>
         <label className={styles.range}>
-          <span>音高: {charPrefs.pitch.toFixed(2)}</span>
+          <span>
+            {tr('音高:')} {charPrefs.pitch.toFixed(2)}
+          </span>
           <input
             type="range"
             min="0.85"
@@ -200,12 +209,12 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             data-testid="char-speech-test"
             disabled={off}
             onClick={() =>
-              speakForActiveCharacter('你好，我是看板娘。今天也一起加油吧。', {
+              speakForActiveCharacter(tr('你好，我是看板娘。今天也一起加油吧。'), {
                 prefs: { ...charPrefs, volume: settings.volume },
               })
             }
           >
-            试听本角色
+            {tr('试听本角色')}
           </button>
           <button
             type="button"
@@ -218,56 +227,60 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
               refreshCharacter();
             }}
           >
-            恢复角色默认
+            {tr('恢复角色默认')}
           </button>
         </div>
       </section>
 
       <section className={styles.group}>
-        <h4 className="cd-section-title">全局柔和偏好</h4>
+        <h4 className="cd-section-title">{tr('全局柔和偏好')}</h4>
         <Switch
           checked={soft.preferNeural}
           onChange={(v) => patchGlobal({ preferNeural: v })}
           disabled={off}
-          label="优先 Edge / 在线自然语音（Neural）"
+          label={tr('优先 Edge / 在线自然语音（Neural）')}
         />
         <p className="cd-muted" style={{ fontSize: 12 }}>
-          全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/VOICE.md。
+          {tr(
+            '全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/VOICE.md。',
+          )}
         </p>
       </section>
 
       <section className={styles.group}>
-        <h4 className="cd-section-title">功能设置</h4>
+        <h4 className="cd-section-title">{tr('功能设置')}</h4>
         <Switch
           checked={settings.keyboardListening}
           onChange={(v) => handleSettingChange('keyboardListening', v)}
           disabled={off}
-          label="键盘监听（根据输入内容播放语音）"
+          label={tr('键盘监听（根据输入内容播放语音）')}
         />
         <Switch
           checked={settings.timeAnnouncement}
           onChange={(v) => handleSettingChange('timeAnnouncement', v)}
           disabled={off}
-          label="定时播报（根据时间播放问候语音）"
+          label={tr('定时播报（根据时间播放问候语音）')}
         />
       </section>
 
       <section className={styles.group}>
-        <h4 className="cd-section-title">使用说明</h4>
+        <h4 className="cd-section-title">{tr('使用说明')}</h4>
         <ul className={styles.help}>
           <li>
-            <strong>按角色绑定</strong>：每个模型可有独立 OS 音色 + 语速/音高；切换角色自动切换。
+            <strong>{tr('按角色绑定')}</strong>
+            {tr('：每个模型可有独立 OS 音色 + 语速/音高；切换角色自动切换。')}
           </li>
           <li>
-            <strong>持久化</strong>：覆盖写入 localStorage，并尽量写入模型
-            config.voice（用户导入模型）。
+            <strong>{tr('持久化')}</strong>
+            {tr('：覆盖写入 localStorage，并尽量写入模型 config.voice（用户导入模型）。')}
           </li>
           <li>
-            <strong>键盘 / 定时</strong>：同样走当前角色的柔和朗读。
+            <strong>{tr('键盘 / 定时')}</strong>
+            {tr('：同样走当前角色的柔和朗读。')}
           </li>
         </ul>
       </section>
-      {isLoading && <div className="cd-muted">保存中…</div>}
+      {isLoading && <div className="cd-muted">{tr('保存中…')}</div>}
     </Modal>
   );
 };

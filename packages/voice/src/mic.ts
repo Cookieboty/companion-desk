@@ -2,8 +2,10 @@
  * 麦克风采集：getUserMedia（开启回声消除 / 降噪 / 自动增益，减少把看板娘自己的 TTS 录进去）
  * → ScriptProcessor（不需要额外脚本文件，兼容严格 CSP）→ 16 kHz → 512 样本帧。
  */
-import { FRAME } from './vad';
+import { t as tr } from '@ig-live/ui';
+
 import { levelOf, resampleTo16k } from './audio';
+import { FRAME } from './vad';
 
 export class MicError extends Error {
   constructor(
@@ -19,13 +21,13 @@ export function micErrorFrom(e: unknown): MicError {
   if (name === 'NotAllowedError' || name === 'SecurityError')
     return new MicError(
       'mic_denied',
-      '麦克风权限被拒绝。请在系统设置 → 隐私 → 麦克风中允许 Companion Desk。',
+      tr('麦克风权限被拒绝。请在系统设置 → 隐私 → 麦克风中允许 Companion Desk。'),
     );
   if (name === 'NotFoundError' || name === 'OverconstrainedError')
-    return new MicError('mic_missing', '没有找到可用的麦克风。');
+    return new MicError('mic_missing', tr('没有找到可用的麦克风。'));
   if (name === 'NotReadableError' || name === 'AbortError')
-    return new MicError('mic_busy', '麦克风被其他程序占用了。');
-  return new MicError('mic_failed', `无法打开麦克风：${(e as Error)?.message ?? String(e)}`);
+    return new MicError('mic_busy', tr('麦克风被其他程序占用了。'));
+  return new MicError('mic_failed', tr('无法打开麦克风：{0}', (e as Error)?.message ?? String(e)));
 }
 
 export interface MicHandlers {

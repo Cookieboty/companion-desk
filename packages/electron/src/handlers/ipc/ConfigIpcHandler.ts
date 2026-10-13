@@ -11,6 +11,7 @@ import path from 'path';
 import { type TTSConfig, type TTSTestResult } from '@ig-live/types';
 import { app } from 'electron';
 
+import { t } from '../../i18n';
 import { type IConfigService, type VoiceSettings } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
 
@@ -249,13 +250,13 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
       try {
         if (!importData.config) {
-          throw new Error('导入数据格式错误，缺少config字段');
+          throw new Error(t('导入数据格式错误，缺少config字段'));
         }
 
         // 验证导入的配置
         const validation = this.configService.validateConfig(importData.config);
         if (!validation.isValid) {
-          throw new Error(`配置验证失败: ${validation.errors.join(', ')}`);
+          throw new Error(t('配置验证失败: {0}', validation.errors.join(', ')));
         }
 
         // 更新配置
@@ -313,7 +314,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         // 验证配置格式
         const validation = this.validateTTSConfig(config);
         if (!validation.isValid) {
-          throw new Error(`TTS配置验证失败: ${validation.errors.join(', ')}`);
+          throw new Error(t('TTS配置验证失败: {0}', validation.errors.join(', ')));
         }
 
         // 添加时间戳
@@ -358,7 +359,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
         return {
           success: false,
-          message: `连接测试失败: ${errorMessage}`,
+          message: t('连接测试失败: {0}', errorMessage),
         } as TTSTestResult;
       }
     });
@@ -389,7 +390,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
           // 验证配置
           const validation = this.validateTTSConfig(testConfig);
           if (!validation.isValid) {
-            throw new Error(`TTS配置验证失败: ${validation.errors.join(', ')}`);
+            throw new Error(t('TTS配置验证失败: {0}', validation.errors.join(', ')));
           }
 
           // 创建VoiceService实例进行测试
@@ -431,7 +432,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
             await voiceService.playTextToSpeech(testConfig.testText);
 
             this.logger.info('TTS语音测试成功', { testText: testConfig.testText });
-            return { success: true, message: '语音测试成功' };
+            return { success: true, message: t('语音测试成功') };
           } finally {
             // 恢复原始配置
             configManager.updateVoiceMode(originalConfig.voiceMode);
@@ -445,7 +446,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
           return {
             success: false,
-            message: `语音测试失败: ${errorMessage}`,
+            message: t('语音测试失败: {0}', errorMessage),
           };
         }
       },
@@ -460,46 +461,46 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
     // 验证hostname
     if (!config.hostname || typeof config.hostname !== 'string') {
-      errors.push('hostname是必需的且必须是字符串');
+      errors.push(t('hostname是必需的且必须是字符串'));
     } else if (config.hostname.trim().length === 0) {
-      errors.push('hostname不能为空');
+      errors.push(t('hostname不能为空'));
     }
 
     // 验证port
     if (typeof config.port !== 'number') {
-      errors.push('port必须是数字');
+      errors.push(t('port必须是数字'));
     } else if (config.port < 1 || config.port > 65535) {
-      errors.push('port必须在1-65535范围内');
+      errors.push(t('port必须在1-65535范围内'));
     }
 
     // 验证path
     if (!config.path || typeof config.path !== 'string') {
-      errors.push('path是必需的且必须是字符串');
+      errors.push(t('path是必需的且必须是字符串'));
     } else if (!config.path.startsWith('/')) {
-      errors.push('path必须以/开头');
+      errors.push(t('path必须以/开头'));
     }
 
     // 验证audioUrl
     if (!config.audioUrl || typeof config.audioUrl !== 'string') {
-      errors.push('audioUrl是必需的且必须是字符串');
+      errors.push(t('audioUrl是必需的且必须是字符串'));
     } else {
       try {
         const url = new URL(config.audioUrl);
         if (!['http:', 'https:'].includes(url.protocol)) {
-          errors.push('audioUrl必须是有效的HTTP或HTTPS URL');
+          errors.push(t('audioUrl必须是有效的HTTP或HTTPS URL'));
         }
       } catch {
-        errors.push('audioUrl格式无效');
+        errors.push(t('audioUrl格式无效'));
       }
     }
 
     // 验证promptText
     if (!config.promptText || typeof config.promptText !== 'string') {
-      errors.push('promptText是必需的且必须是字符串');
+      errors.push(t('promptText是必需的且必须是字符串'));
     } else if (config.promptText.trim().length === 0) {
-      errors.push('promptText不能为空');
+      errors.push(t('promptText不能为空'));
     } else if (config.promptText.length > 500) {
-      errors.push('promptText长度不能超过500字符');
+      errors.push(t('promptText长度不能超过500字符'));
     }
 
     return {
@@ -520,7 +521,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
 
       // 构建测试用的请求体
       const testData = JSON.stringify({
-        text: 'TTS连接测试',
+        text: t('TTS连接测试'),
         ref_audio_path: config.audioUrl,
         prompt_text: config.promptText.substring(0, 100), // 截取前100个字符作为测试
       });
@@ -541,12 +542,12 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 400) {
           resolve({
             success: true,
-            message: '连接成功，TTS服务可正常访问',
+            message: t('连接成功，TTS服务可正常访问'),
           });
         } else {
           resolve({
             success: false,
-            message: `服务器返回状态码: ${res.statusCode}`,
+            message: t('服务器返回状态码: {0}', res.statusCode),
           });
         }
       });
@@ -554,7 +555,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       req.on('error', (error) => {
         resolve({
           success: false,
-          message: `连接失败: ${error.message}`,
+          message: t('连接失败: {0}', error.message),
         });
       });
 
@@ -562,7 +563,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         req.destroy();
         resolve({
           success: false,
-          message: '连接超时',
+          message: t('连接超时'),
         });
       });
 

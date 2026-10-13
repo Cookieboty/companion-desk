@@ -1,6 +1,8 @@
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 
+import { t } from '../i18n';
+
 import {
   DEFAULT_CATALOG_URLS,
   compareVersions,
@@ -128,7 +130,7 @@ export class ModelStore {
           }
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const text = await res.text();
-          if (text.length > 2 * 1024 * 1024) throw new Error('目录过大');
+          if (text.length > 2 * 1024 * 1024) throw new Error(t('目录过大'));
           fresh = { body: JSON.parse(text), url, etag: res.headers.get('etag') ?? undefined };
           break;
         } catch (err) {
@@ -213,8 +215,8 @@ export class ModelStore {
   async install(id: string, onProgress?: (p: DownloadProgress) => void): Promise<InstalledRemote> {
     if (!this.catalog) await this.getState(false);
     const entry = this.catalog?.models.find((m) => m.id === id);
-    if (!entry) throw new Error(`目录中没有模型 ${id}`);
-    if (this.inflight.has(id)) throw new Error('正在下载中');
+    if (!entry) throw new Error(t('目录中没有模型 {0}', id));
+    if (this.inflight.has(id)) throw new Error(t('正在下载中'));
     const ac = new AbortController();
     this.inflight.set(id, ac);
     const dir = path.join(this.remoteDir, id);

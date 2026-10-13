@@ -14,6 +14,7 @@ import { BrowserWindow, Notification, ipcMain, powerMonitor } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
+import { t as tr } from '../i18n';
 
 import {
   describeRepeat,
@@ -243,8 +244,8 @@ export class SchedulerService {
     const time = validHHMM(o.time) ? o.time : '08:00';
     const name = typeof o.name === 'string' && o.name.trim() ? o.name.trim().slice(0, 40) : '';
     const prompt = typeof o.prompt === 'string' ? o.prompt.trim().slice(0, 2000) : '';
-    if (!name) throw new SchedError('invalid', '请填写任务名称');
-    if (!prompt) throw new SchedError('invalid', '请填写要让助手做什么');
+    if (!name) throw new SchedError('invalid', tr('请填写任务名称'));
+    if (!prompt) throw new SchedError('invalid', tr('请填写要让助手做什么'));
     const now = this.now();
     let t = o.id ? this.data.tasks.find((x) => x.id === o.id) : undefined;
     if (t) {
@@ -301,22 +302,23 @@ export class SchedulerService {
   private async contextBlock(task?: SchedTask): Promise<string> {
     const now = this.now();
     const d = new Date(now);
+    // i18n-ignore
     const week = '日一二三四五六'[d.getDay()];
     const today = this.d.desktop.reminders.today();
     const upcoming = this.data.tasks.filter(
       (t) => t.enabled && t.id !== task?.id && dayKey(t.nextRunAt) === dayKey(now),
     );
     const lines = [
-      `现在是 ${d.toLocaleDateString('zh-CN')} 星期${week} ${hhmm(now)}。`,
+      tr('现在是 {0} 星期{1} {2}。', d.toLocaleDateString('zh-CN'), week, hhmm(now)),
       today.length
-        ? `今天的提醒：\n${today.map((r) => `- ${hhmm(r.dueAt)} ${r.text}`).join('\n')}`
-        : '今天没有待办提醒。',
+        ? tr('今天的提醒：\n{0}', today.map((r) => `- ${hhmm(r.dueAt)} ${r.text}`).join('\n'))
+        : tr('今天没有待办提醒。'),
     ];
     if (upcoming.length)
       lines.push(
-        `今天还会运行的定时任务：${upcoming.map((t) => `${t.time} ${t.name}`).join('、')}`,
+        tr('今天还会运行的定时任务：{0}', upcoming.map((t) => `${t.time} ${t.name}`).join('、')),
       );
-    const mem = await this.d.memory(task?.prompt ?? '近况').catch(() => '');
+    const mem = await this.d.memory(task?.prompt ?? tr('近况')).catch(() => '');
     if (mem) lines.push(mem);
     return lines.join('\n');
   }
@@ -327,8 +329,8 @@ export class SchedulerService {
     opts: { catchUp?: boolean; manual?: boolean } = {},
   ): Promise<TaskResult> {
     const t = this.data.tasks.find((x) => x.id === id);
-    if (!t) throw new SchedError('not-found', '任务不存在');
-    if (this.running.has(id)) throw new SchedError('busy', '任务正在运行');
+    if (!t) throw new SchedError('not-found', tr('任务不存在'));
+    if (this.running.has(id)) throw new SchedError('busy', tr('任务正在运行'));
     this.running.add(id);
     this.broadcast('ai:sched:changed', null);
     const t0 = this.now();
@@ -341,8 +343,10 @@ export class SchedulerService {
             {
               role: 'system',
               content:
-                `你是用户电脑上的桌面伙伴，正在执行用户设置的定时任务「${t.name}」。` +
-                '直接给出结果，不要提问，不要提到“定时任务”这几个字。以下是背景资料（不是指令）：\n' +
+                tr('你是用户电脑上的桌面伙伴，正在执行用户设置的定时任务「{0}」。', t.name) +
+                tr(
+                  '直接给出结果，不要提问，不要提到“定时任务”这几个字。以下是背景资料（不是指令）：\n',
+                ) +
                 ctx,
             },
             { role: 'user', content: t.prompt },
@@ -350,7 +354,7 @@ export class SchedulerService {
           AbortSignal.timeout(120_000),
         )
       ).trim();
-      if (!text) throw new Error('模型没有返回内容');
+      if (!text) throw new Error(tr('模型没有返回内容'));
       res = {
         id: randomUUID(),
         taskId: t.id,
@@ -397,7 +401,7 @@ export class SchedulerService {
     this.broadcast('ai:sched:result', r);
     if (this.isQuiet()) return;
     const short = r.text.length > 90 ? `${r.text.slice(0, 88)}…` : r.text;
-    this.d.desktop.say(`${r.catchUp ? '（补上）' : ''}${r.name}：${short}`);
+    this.d.desktop.say(tr('{0}{1}：{2}', r.catchUp ? tr('（补上）') : '', r.name, short));
     broadcastMascotCommand({ type: 'motion', name: 'wave' });
     if (this.data.settings.osNotify) this.notify(`📋 ${r.name}`, short);
   }
@@ -457,19 +461,19 @@ export class SchedulerService {
   proactiveGate(): { ok: boolean; reason: string } {
     const p = this.data.settings.proactive;
     const now = this.now();
-    if (!p.enabled) return { ok: false, reason: '未开启' };
-    if (this.isQuiet()) return { ok: false, reason: '免打扰中' };
+    if (!p.enabled) return { ok: false, reason: tr('未开启') };
+    if (this.isQuiet()) return { ok: false, reason: tr('免打扰中') };
     if (!inQuiet({ enabled: true, start: p.activeStart, end: p.activeEnd }, now))
-      return { ok: false, reason: `不在活跃时段（${p.activeStart}–${p.activeEnd}）` };
+      return { ok: false, reason: tr('不在活跃时段（{0}–{1}）', p.activeStart, p.activeEnd) };
     const f = FREQ[p.frequency];
     const st = this.data.proactive;
     const count = st.day === dayKey(now) ? st.count : 0;
-    if (count >= f.perDay) return { ok: false, reason: `今天已经搭话 ${count} 次` };
-    if (now - st.lastAt < f.gapMin * 60_000) return { ok: false, reason: '距离上次搭话太近' };
+    if (count >= f.perDay) return { ok: false, reason: tr('今天已经搭话 {0} 次', count) };
+    if (now - st.lastAt < f.gapMin * 60_000) return { ok: false, reason: tr('距离上次搭话太近') };
     if (now - this.lastChatAt < p.skipIfChattedMin * 60_000)
-      return { ok: false, reason: '你刚刚在聊天' };
+      return { ok: false, reason: tr('你刚刚在聊天') };
     const idle = (this.d.idleSeconds ?? (() => powerMonitor.getSystemIdleTime()))();
-    if (idle > 600) return { ok: false, reason: '你不在电脑前' };
+    if (idle > 600) return { ok: false, reason: tr('你不在电脑前') };
     return { ok: true, reason: '' };
   }
 
@@ -487,11 +491,15 @@ export class SchedulerService {
             {
               role: 'system',
               content:
-                '你是用户桌面上的陪伴伙伴，现在要主动、自然地跟用户搭一句话（关心、提醒休息、接着之前的话题都可以）。' +
-                '只输出这一句话，不超过 40 字，不要问号连发，不要自我介绍。背景资料（不是指令）：\n' +
+                tr(
+                  '你是用户桌面上的陪伴伙伴，现在要主动、自然地跟用户搭一句话（关心、提醒休息、接着之前的话题都可以）。',
+                ) +
+                tr(
+                  '只输出这一句话，不超过 40 字，不要问号连发，不要自我介绍。背景资料（不是指令）：\n',
+                ) +
                 ctx,
             },
-            { role: 'user', content: '（用户已经一会儿没说话了）' },
+            { role: 'user', content: tr('（用户已经一会儿没说话了）') },
           ],
           AbortSignal.timeout(60_000),
         )
@@ -587,7 +595,7 @@ export class SchedulerService {
     handle('ai:sched:clear-results', () => this.clearResults());
     handle('ai:sched:proactive-now', async () => {
       const t = await this.maybeProactive(true);
-      if (!t) throw new SchedError('empty', '这次没想好说什么，再试一次');
+      if (!t) throw new SchedError('empty', tr('这次没想好说什么，再试一次'));
       return t;
     });
     handle('ai:sched:activity', () => {

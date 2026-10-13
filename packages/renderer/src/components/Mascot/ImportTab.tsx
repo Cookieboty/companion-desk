@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 import { Button, Notice } from '@ig-live/ui';
 import React, { useState } from 'react';
 
@@ -52,23 +53,25 @@ export const ImportTab: React.FC<{ onImported?: () => void }> = ({ onImported })
           const f = e.dataTransfer.files[0];
           if (!f || !api) return;
           if (!/\.vrm$/i.test(f.name)) {
-            setError('请拖入 .vrm 文件');
+            setError(t('请拖入 .vrm 文件'));
             return;
           }
           void run(api.pathForFile(f));
         }}
       >
-        <p>把 .vrm 文件拖到这里</p>
+        <p>{t('把 .vrm 文件拖到这里')}</p>
         <Button
           variant="primary"
           disabled={busy}
           onClick={() => void run()}
           data-testid="import-vrm"
         >
-          {busy ? '正在导入…' : '选择 VRM 文件…'}
+          {busy ? t('正在导入…') : t('选择 VRM 文件…')}
         </Button>
         <p className={styles.credit}>
-          支持 VRM 0.x / 1.0，最大 300 MB。导入后可在「我的角色」里调整缩放、取景、表情映射与动作。
+          {t(
+            '支持 VRM 0.x / 1.0，最大 300 MB。导入后可在「我的角色」里调整缩放、取景、表情映射与动作。',
+          )}
         </p>
       </div>
       {error && (

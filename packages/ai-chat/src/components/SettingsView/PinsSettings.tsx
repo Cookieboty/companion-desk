@@ -1,4 +1,5 @@
 /** 设置 → 通用 → 常驻入口：勾选要固定到左上角的功能，拖拽或 Alt+↑/↓ 排序，可恢复默认。 */
+import { t } from '@ig-live/ui';
 import React, { useState } from 'react';
 
 import {
@@ -23,7 +24,7 @@ export const PinsSettings: React.FC = () => {
     const next = movePin(pins, from, to);
     if (next === pins) return;
     update(next);
-    setLive(`${pinDef(pins[from]!)!.label} 移到第 ${to + 1} 位`);
+    setLive(t('{0} 移到第 {1} 位', pinDef(pins[from]!)!.label, to + 1));
     requestAnimationFrame(() =>
       document.querySelector<HTMLElement>(`[data-testid="pin-order-${pins[from]}"]`)?.focus(),
     );
@@ -31,18 +32,20 @@ export const PinsSettings: React.FC = () => {
 
   return (
     <section className={styles.block} data-testid="pins-settings" id="pins-settings">
-      <h2 className={styles.h2}>常驻入口（左上角）</h2>
+      <h2 className={styles.h2}>{t('常驻入口（左上角）')}</h2>
       <p className={styles.note}>
-        选择要固定在对话窗口左上角的功能（最多 {MAX_PINS} 个）。拖动或用 Alt+↑/↓
-        调整顺序；也可以在左上角图标上右键「取消固定」，或在 ＋ 菜单、右上角图标上固定。
+        {t('选择要固定在对话窗口左上角的功能（最多')} {MAX_PINS}{' '}
+        {t(
+          '个）。拖动或用 Alt+↑/↓ 调整顺序；也可以在左上角图标上右键「取消固定」，或在 ＋ 菜单、右上角图标上固定。',
+        )}
       </p>
       <div className={styles.pinsGrid}>
         <div>
           <div className={styles.sub}>
-            已固定 · {pins.length}/{MAX_PINS}
+            {t('已固定 ·')} {pins.length}/{MAX_PINS}
           </div>
-          {pins.length === 0 && <div className={styles.note}>还没有固定任何入口</div>}
-          <ol className={styles.order} aria-label="常驻入口顺序">
+          {pins.length === 0 && <div className={styles.note}>{t('还没有固定任何入口')}</div>}
+          <ol className={styles.order} aria-label={t('常驻入口顺序')}>
             {pins.map((id, i) => {
               const d = pinDef(id)!;
               return (
@@ -68,20 +71,20 @@ export const PinsSettings: React.FC = () => {
                       move(i, i + (e.key === 'ArrowUp' ? -1 : 1));
                     }
                   }}
-                  aria-label={`${i + 1}. ${d.label}，Alt+↑/↓ 调整顺序`}
+                  aria-label={t('{0}. {1}，Alt+↑/↓ 调整顺序', i + 1, d.label)}
                   data-testid={`pin-order-${id}`}
                 >
                   <span className={styles.grip} aria-hidden>
                     ⋮⋮
                   </span>
                   <span aria-hidden>{d.icon}</span>
-                  <span className={styles.orderLabel}>{d.label}</span>
+                  <span className={styles.orderLabel}>{t(d.label)}</span>
                   <button
                     type="button"
                     className={styles.mini}
                     onClick={() => move(i, i - 1)}
                     disabled={i === 0}
-                    aria-label={`上移${d.label}`}
+                    aria-label={t('上移{0}', d.label)}
                     data-testid={`pin-up-${id}`}
                   >
                     ↑
@@ -91,7 +94,7 @@ export const PinsSettings: React.FC = () => {
                     className={styles.mini}
                     onClick={() => move(i, i + 1)}
                     disabled={i === pins.length - 1}
-                    aria-label={`下移${d.label}`}
+                    aria-label={t('下移{0}', d.label)}
                     data-testid={`pin-down-${id}`}
                   >
                     ↓
@@ -106,14 +109,14 @@ export const PinsSettings: React.FC = () => {
             onClick={() => update([...DEFAULT_PINS])}
             data-testid="pins-reset"
           >
-            恢复默认
+            {t('恢复默认')}
           </button>
           <span className={styles.srOnly} aria-live="polite">
             {live}
           </span>
         </div>
         <div>
-          <div className={styles.sub}>全部功能</div>
+          <div className={styles.sub}>{t('全部功能')}</div>
           <ul className={styles.pool}>
             {PIN_POOL.map((d) => {
               const on = pins.includes(d.id);
@@ -128,14 +131,18 @@ export const PinsSettings: React.FC = () => {
                       data-testid={`pin-check-${d.id}`}
                     />
                     <span aria-hidden>{d.icon}</span>
-                    <span className={styles.orderLabel}>{d.label}</span>
-                    {d.shortcut && <span className={styles.hint}>{d.shortcut}</span>}
+                    <span className={styles.orderLabel}>{t(d.label)}</span>
+                    {d.shortcut && <span className={styles.hint}>{t(d.shortcut)}</span>}
                   </label>
                 </li>
               );
             })}
           </ul>
-          {full && <div className={styles.note}>已达上限 {MAX_PINS} 个，先取消一个再添加。</div>}
+          {full && (
+            <div className={styles.note}>
+              {t('已达上限')} {MAX_PINS} {t('个，先取消一个再添加。')}
+            </div>
+          )}
         </div>
       </div>
     </section>

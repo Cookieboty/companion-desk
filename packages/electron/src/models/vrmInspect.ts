@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /**
  * VRM（glTF 2.0 二进制）静态解析：只读 JSON 块与缩略图字节，不执行任何代码。
  * 支持 VRM 0.x（extensions.VRM）与 VRM 1.0（extensions.VRMC_vrm）。
@@ -45,8 +46,8 @@ interface GltfJson {
 
 export function inspectVrm(buf: Buffer): VrmInspection {
   if (buf.length < 20 || buf.readUInt32LE(0) !== GLB_MAGIC)
-    throw new VrmFormatError('不是 glTF 二进制（.glb/.vrm）文件');
-  if (buf.readUInt32LE(4) !== 2) throw new VrmFormatError('仅支持 glTF 2.0');
+    throw new VrmFormatError(t('不是 glTF 二进制（.glb/.vrm）文件'));
+  if (buf.readUInt32LE(4) !== 2) throw new VrmFormatError(t('仅支持 glTF 2.0'));
   const total = Math.min(buf.readUInt32LE(8), buf.length);
   let offset = 12;
   let json: GltfJson | null = null;
@@ -59,14 +60,14 @@ export function inspectVrm(buf: Buffer): VrmInspection {
       try {
         json = JSON.parse(body.toString('utf8')) as GltfJson;
       } catch {
-        throw new VrmFormatError('glTF JSON 块无法解析');
+        throw new VrmFormatError(t('glTF JSON 块无法解析'));
       }
     } else if (type === CHUNK_BIN && !bin) {
       bin = body;
     }
     offset += 8 + len + ((4 - (len % 4)) % 4);
   }
-  if (!json) throw new VrmFormatError('缺少 glTF JSON 块');
+  if (!json) throw new VrmFormatError(t('缺少 glTF JSON 块'));
 
   const ext = json.extensions ?? {};
   const v1 = ext.VRMC_vrm as
@@ -119,7 +120,7 @@ export function inspectVrm(buf: Buffer): VrmInspection {
     const tex = typeof m.texture === 'number' ? json.textures?.[m.texture] : undefined;
     thumbImage = tex?.source;
   } else {
-    throw new VrmFormatError('文件没有 VRM / VRMC_vrm 扩展，不是 VRM 模型');
+    throw new VrmFormatError(t('文件没有 VRM / VRMC_vrm 扩展，不是 VRM 模型'));
   }
 
   let thumbnail: VrmInspection['thumbnail'];
@@ -150,9 +151,9 @@ export async function inspectVrmFile(file: string, withThumbnail = false): Promi
     const head = Buffer.alloc(20);
     await fh.read(head, 0, 20, 0);
     if (head.readUInt32LE(0) !== GLB_MAGIC)
-      throw new VrmFormatError('不是 glTF 二进制（.glb/.vrm）文件');
+      throw new VrmFormatError(t('不是 glTF 二进制（.glb/.vrm）文件'));
     const jsonLen = head.readUInt32LE(12);
-    if (jsonLen > 64 * 1024 * 1024) throw new VrmFormatError('glTF JSON 块过大');
+    if (jsonLen > 64 * 1024 * 1024) throw new VrmFormatError(t('glTF JSON 块过大'));
     const buf = Buffer.alloc(20 + jsonLen);
     await fh.read(buf, 0, buf.length, 0);
     return inspectVrm(buf);

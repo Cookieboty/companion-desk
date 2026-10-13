@@ -4,6 +4,7 @@
  * Overrides persist in localStorage; user-imported models also try models.updateConfig({ voice }).
  */
 import type { ModelConfig, ModelVoiceConfig } from '@ig-live/types';
+import { t } from '@ig-live/ui';
 
 import {
   DEFAULT_SOFT_SPEECH,
@@ -190,9 +191,9 @@ export function clearCharacterVoiceOverride(modelName: string): void {
 
 /** Preview pick for UI: show which OS voice would be used. */
 export function previewVoiceName(prefs: SoftSpeechPrefs): string {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return '（无系统语音）';
+  if (typeof window === 'undefined' || !window.speechSynthesis) return t('（无系统语音）');
   const v = pickSoftVoice(window.speechSynthesis.getVoices(), prefs);
-  return v ? v.name : '自动柔和女声';
+  return v ? v.name : t('自动柔和女声');
 }
 
 // Re-export for settings that still tweak global preferNeural / volume

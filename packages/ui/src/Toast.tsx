@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 
 import { cx } from './cx';
+import { t as tr } from './i18n';
 
 export type ToastTone = 'info' | 'success' | 'warning' | 'danger';
 
@@ -45,7 +46,7 @@ export const Toast: React.FC<{
       <button
         type="button"
         className="cd-btn cd-btn--ghost cd-btn--sm cd-icon-btn"
-        aria-label="关闭提示"
+        aria-label={tr('关闭提示')}
         onClick={onClose}
       >
         ✕

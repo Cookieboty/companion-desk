@@ -9,6 +9,8 @@
  * 无 localStorage（测试 / 非浏览器）时退化为内存存储。
  */
 
+import { t } from '@ig-live/ui';
+
 import type { ChatMessage, ChatSession } from '../types/chat';
 
 export interface KeyValueStorage {
@@ -81,7 +83,7 @@ export class ConversationStore {
     const ts = this.now();
     const meta: ConversationMeta = {
       id: this.newId(),
-      name: name ?? '新对话',
+      name: name ?? t('新对话'),
       createdAt: ts,
       updatedAt: ts,
     };
@@ -140,7 +142,7 @@ export class ConversationStore {
     if (!legacy) return;
     this.storage.removeItem(LEGACY_HISTORY_KEY);
     if (legacy.length === 0) return;
-    const meta = this.create('历史对话');
+    const meta = this.create(t('历史对话'));
     this.write(messagesKey(meta.id), legacy.slice(-this.maxMessages));
   }
 

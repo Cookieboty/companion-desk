@@ -1,3 +1,4 @@
+import { t } from '@ig-live/ui';
 /** 截图提问 / 图片附件 / 屏幕记忆客户端：`ai:screen:*` IPC */
 
 export interface ImageAttachment {
@@ -58,7 +59,7 @@ const bridge = (): AiBridge | undefined => {
 };
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
-  if (!b) throw new Error('截图功能需要在桌面应用中使用');
+  if (!b) throw new Error(t('截图功能需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:screen:${method}`, ...args)) as T & {
     __error?: { code: string; message: string };
   };
@@ -75,7 +76,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('图片无法解析'));
+    img.onerror = () => reject(new Error(t('图片无法解析')));
     img.src = src;
   });
 }
@@ -88,7 +89,7 @@ function draw(img: HTMLImageElement, maxSide: number, quality: number) {
   c.width = w;
   c.height = h;
   const ctx = c.getContext('2d');
-  if (!ctx) throw new Error('canvas 不可用');
+  if (!ctx) throw new Error(t('canvas 不可用'));
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
@@ -119,12 +120,12 @@ export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 export async function attachmentFromFile(f: File): Promise<ImageAttachment> {
   if (!/^image\/(png|jpeg|webp|gif|bmp)$/.test(f.type))
-    throw new Error(`不支持的图片格式：${f.type || f.name}`);
-  if (f.size > MAX_FILE_BYTES) throw new Error('图片太大（上限 20 MB）');
+    throw new Error(t('不支持的图片格式：{0}', f.type || f.name));
+  if (f.size > MAX_FILE_BYTES) throw new Error(t('图片太大（上限 20 MB）'));
   const url = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(new Error('读取图片失败'));
+    r.onerror = () => reject(new Error(t('读取图片失败')));
     r.readAsDataURL(f);
   });
   return attachmentFromDataUrl(url, 'paste');
@@ -180,6 +181,6 @@ export const SKIP_REASONS: Record<string, string> = {
   error: '采样出错',
 };
 export function describeSkip(r: string): string {
-  if (r.startsWith('excluded:')) return `检测到排除窗口「${r.slice(9)}」，已跳过`;
+  if (r.startsWith('excluded:')) return t('检测到排除窗口「{0}」，已跳过', r.slice(9));
   return SKIP_REASONS[r] ?? r;
 }
