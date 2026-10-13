@@ -12,6 +12,9 @@ Then run stage 3 (build-nomi-body-parts.py).
 
 v5: eye opening fitted to the lash lower edge; lash layer limited to the eye
 border ring (pixel-aligned); eye region inpainted out of head and bangs.
+
+v6: crisp neck column + opaque collar-adjacent hair tips; closed/happy lids
+improved in the renderer (thicker taper, crease, lid shade, lower-lash hint).
 """
 import sys, json, math
 import numpy as np, cv2
@@ -53,16 +56,29 @@ a = np.minimum(a, soft(~bg, 0.7) * 1.0 + 0.0)
 BGC = np.median(img[bg], axis=0); aa = np.clip(a, 0.05, 1)[..., None]
 img = np.where(a[..., None] < 0.98, np.clip((img - (1 - aa) * BGC) / aa, 0, 255), img)
 # head = everything above the neck cut (collar / jacket of this image are dropped)
-neckw = np.clip((NECK_CUT - yy) / 6.0 + 0.5, 0, 1)
+# v6: keep the neck column and hair tips opaque/crisp — no soft fade into empty space
+neck_col_src = (xx > 560) & (xx < 720)
+neckw = np.where(neck_col_src, np.clip((NECK_CUT + 2 - yy) / 3.0 + 0.5, 0, 1),
+                 np.clip((NECK_CUT - yy) / 4.0 + 0.5, 0, 1))
 # jacket collar pokes above the cut at the sides — remove anything below the hair tips that is collar-ish
 collar = (yy > 440) & ((xx < 560) | (xx > 720)) & ((hsv[..., 1] < 40) & (lum > 200) | ((hsv[..., 0] > 5) & (hsv[..., 0] < 22) & (hsv[..., 1] > 150) & (yy > 455)))
-a = a * neckw * (1 - soft(collar, 1.2))
-# beside the neck: hair behind the neck fades out softly (no hard cut line), grey shadow strands go
+a = a * neckw * (1 - soft(collar, 0.6))
+# beside the neck: drop grey shadow strands; hair tips that hang toward the collar stay opaque
 side_n = (xx < 596) | (xx > 684)
 greyh = side_n & (yy > 440) & (hsv[..., 1] < 70) & (lum > 80)
-a = a * np.where(side_n, np.clip((NECK_CUT - 4 - yy) / 26.0, 0, 1), 1) * (1 - soft(greyh, 1.0))
+# steep cut for non-hair side pixels; hair itself keeps a hard tip (see keep_low below)
+a = a * np.where(side_n & ~((hsv[..., 1] > 70) & (lum < 160)), np.clip((NECK_CUT - yy) / 8.0, 0, 1), 1)
+a = a * (1 - soft(greyh, 0.6))
+# behind-neck band: drop jacket leftovers only; keep hair (and its tips) fully opaque to the collar
 behind_neck = ((xx > 490) & (xx < 596)) | ((xx > 684) & (xx < 795))
-a = a * np.where(behind_neck, np.clip((456 + 9 * np.sin(xx / 6.3) + 5 * np.sin(xx / 2.7 + 1) - yy) / 12.0, 0, 1), 1)
+hair_tip = behind_neck & (hsv[..., 1] > 55) & (lum < 185) & (yy < NECK_CUT + 6)
+jacket_left = behind_neck & ~hair_tip & (yy > 445) & (
+    ((hsv[..., 0] > 4) & (hsv[..., 0] < 24) & (hsv[..., 1] > 100)) |  # orange collar
+    ((hsv[..., 1] < 40) & (lum > 190))  # white shirt
+)
+a = a * (1 - soft(jacket_left, 0.5))
+# hair tips over the collar: harden alpha so they rest on the body, not feather into empty space
+a = np.where(hair_tip & (a > 0.12), np.maximum(a, 0.96), a)
 # below the jaw only hair (and the neck) belongs to the head: drop jacket outlines / lapels
 hairlike = ((lum < 140) & ((hsv[..., 0] < 30) | (hsv[..., 2] < 90))) | ((hsv[..., 0] > 4) & (hsv[..., 0] < 22) & (hsv[..., 1] > 120) & (lum < 200))
 hairlike = cv2.morphologyEx(hairlike.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
@@ -77,7 +93,30 @@ attached = (tops < 430)[lc] & (lc > 0)        # strands that hang from the head,
 sat_hair = attached & (hsv[..., 1] > 70) & ~(skinlike & (lum > 150) & ((xx < 560) | (xx > 720)))
 collar_or = (yy > 440) & (((xx > 530) & (xx < 600)) | ((xx > 680) & (xx < 750))) & (hsv[..., 0] > 4) & (hsv[..., 0] < 24) & (hsv[..., 1] > 120)
 keep_low = (sat_hair | (skinlike & (xx > 560) & (xx < 720)) | ((xx > 575) & (xx < 705) & (hsv[..., 0] < 25) & (lum > 100))) & ~collar_or
-a = np.where(lower, a * soft(keep_low, 0.8), a)
+# hard mask + 1px AA (prefer precise mask over heavy blur)
+a = np.where(lower, a * np.clip(soft(keep_low, 0.35) * 1.15, 0, 1), a)
+# opaque neck skin under the jaw (no notch / transparent gap)
+jaw_neck = skinlike & neck_col_src & (yy > 430) & (yy < NECK_CUT + 1) & (a > 0.05)
+a = np.where(jaw_neck, np.maximum(a, 0.98), a)
+# hard bottom edge on the neck column (1px AA) so it sits on the body choker without a fade gap
+neck_bottom = neck_col_src & (yy >= NECK_CUT - 2) & (yy <= NECK_CUT + 1) & skinlike
+a = np.where(neck_col_src & (yy > NECK_CUT + 1), 0, a)
+a = np.where(neck_col_src & skinlike & (yy <= NECK_CUT), np.maximum(a, 0.98), a)
+# side gaps next to the neck: keep hanging hair opaque down to the collar line
+hang = ((xx > 500) & (xx < 575) | (xx > 705) & (xx < 800)) & (yy > 420) & (yy < NECK_CUT + 8)
+hang &= (hsv[..., 1] > 50) & (lum < 190) & (a > 0.08)
+a = np.where(hang, np.maximum(a, 0.97), a)
+# fill any remaining transparent holes inside the hanging hair silhouette
+hang_mask = hang.astype(np.uint8)
+hang_fill = cv2.morphologyEx(hang_mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool)
+holes = hang_fill & (a < 0.2) & (hsv[..., 1] > 40)
+if holes.any():
+    # sample from nearby opaque hair
+    donor = hang & (a > 0.9)
+    ref = np.median(img[donor], axis=0) if donor.sum() > 20 else np.array([70, 45, 35], np.float32)
+    img = np.where(holes[..., None], ref, img)
+    a = np.where(holes, 0.97, a)
+
 # --- colour harmonise to the body (neck skin)
 # reference = the stage-1 (half-body) head's lit cheek, which shares the body's lighting
 ref = np.asarray(Image.open(OUT + 'head.png').convert('RGBA')).astype(np.float32); ro = rig['layers']['head']
@@ -378,8 +417,41 @@ barr[..., :3] = brgb
 alpha = barr[..., 3].copy()
 alpha[(old_hair & ~fix) | wisps] = 0
 alpha[fix] = 255
-alpha[(ry < 380) & ~neck_col] = 0
-barr[..., 3] = cv2.GaussianBlur(alpha, (0, 0), 0.6)
-Image.fromarray(barr.astype(np.uint8), 'RGBA').save(OUT + 'body.png', optimize=True)
+alpha[(ry < 368) & ~neck_col] = 0
+# v6: crisp alpha on the neck column; light AA only away from the join
+neck_zone = neck_col & (ry >= 368) & (ry < 410)
+alpha_blur = cv2.GaussianBlur(alpha, (0, 0), 0.4)
+barr[..., 3] = np.where(neck_zone, np.where(alpha > 12, 255, alpha), alpha_blur)
+# replace the stage-1 soft pale rectangle with a short under-jaw pad matched to chest
+brgb = barr[..., :3].astype(np.float32)
+bl = brgb @ np.array([.299, .587, .114])
+bhsv = cv2.cvtColor(np.clip(brgb, 0, 255).astype(np.uint8), cv2.COLOR_RGB2HSV).astype(np.float32)
+chest = (ry > 412) & (ry < 448) & (np.abs(rx - 474) < 32) & (barr[..., 3] > 200)
+chest &= (bhsv[..., 0] < 25) & (bhsv[..., 1] > 18) & (bhsv[..., 2] > 130)
+nc_body = np.median(brgb[chest], axis=0) if chest.sum() > 30 else np.array([232, 178, 154], np.float32)
+half_w = 18 + 14 * np.clip((ry - 372) / 26.0, 0, 1)
+neck_mask = (np.abs(rx - 474) < half_w) & (ry >= 372) & (ry < 398) & neck_col
+choker = (ry >= 392) & (ry <= 410) & (np.abs(rx - 474) < 42) & (bl < 90) & (barr[..., 3] > 180)
+neck_mask &= ~choker
+old_pale = neck_col & (ry >= 300) & (ry < 390) & (bl > 200) & (bhsv[..., 1] < 55)
+# clear old pale rect above the pad
+clear = old_pale & (ry < 372)
+t = np.clip((ry - 372) / 24.0, 0, 1)
+shade = 0.82 + 0.18 * np.sin(np.clip(t, 0, 1) * np.pi) - 0.05 * np.clip((t - 0.8) / 0.2, 0, 1)
+fill_rgb = nc_body * shade[..., None]
+write = neck_mask | (old_pale & (ry >= 372) & ~choker)
+brgb = np.where(write[..., None], fill_rgb, brgb)
+brgb = np.where(clear[..., None], 0, brgb)
+alpha = barr[..., 3].astype(np.float32)
+alpha = np.where(write, 255, alpha)
+alpha = np.where(clear, 0, alpha)
+# 1px AA on pad edge only
+edge = soft((write & ~clear).astype(np.float32), 0.35)
+brgb = np.where((edge > 0.01)[..., None] & ~write[..., None] & ~clear[..., None],
+                brgb * (1 - edge[..., None]) + fill_rgb * edge[..., None], brgb)
+alpha = np.where(~clear, np.maximum(alpha, edge * 255), alpha)
+barr[..., :3] = brgb
+barr[..., 3] = alpha
+Image.fromarray(np.clip(barr, 0, 255).astype(np.uint8), 'RGBA').save(OUT + 'body.png', optimize=True)
 json.dump(rig, open(OUT + 'rig.json', 'w'), indent=1)
 print(json.dumps({k: [round(v, 1) for v in val] if isinstance(val, list) else val for k, val in rig['anchors'].items()}))

@@ -744,8 +744,9 @@ function scratchCanvas(w: number, h: number, slot = 0) {
 type Eye = RigEyeMetrics;
 
 /**
- * Anime-style lid stroke: tapered line in the lash colour plus a few lash ticks at the
- * outer corner. `kind` closed = gentle ∪ on the lower third, happy = ∩ arc (^^).
+ * Anime-style lid stroke: thick tapered lash in the lash colour, outer-corner ticks,
+ * a faint eyelid crease, and a tiny lower-lash hint. `kind` closed = gentle ∪,
+ * happy = ∩ arc (^^).
  */
 function lidStroke(
   ctx: CanvasRenderingContext2D,
@@ -760,27 +761,27 @@ function lidStroke(
   const w = e.x1 - e.x0;
   const h = e.bottom - e.top;
   const outerRight = side === 'r';
-  const inner = outerRight ? e.x0 + w * 0.02 : e.x1 - w * 0.02;
-  const outer = outerRight ? e.x1 + w * 0.07 : e.x0 - w * 0.07;
-  const N = 18;
+  const inner = outerRight ? e.x0 + w * 0.01 : e.x1 - w * 0.01;
+  const outer = outerRight ? e.x1 + w * 0.1 : e.x0 - w * 0.1;
+  const N = 22;
   const top: [number, number][] = [];
   const bot: [number, number][] = [];
   const at = (t: number) => {
     const x = inner + (outer - inner) * t;
     const yc =
       kind === 'closed'
-        ? y + h * 0.14 * Math.sin(Math.PI * t) + h * 0.05 * t
-        : y - h * 0.36 * Math.sin(Math.PI * Math.pow(t, 0.9)) + h * 0.04 * t;
+        ? y + h * 0.18 * Math.sin(Math.PI * t) + h * 0.04 * t
+        : y - h * 0.42 * Math.sin(Math.PI * Math.pow(t, 0.88)) + h * 0.03 * t;
     return [x, yc] as [number, number];
   };
+  // thicker mid-lash, sharp taper at both ends (matches the open-eye source stroke)
   const thickness = (t: number) =>
     e.lash *
-    (kind === 'closed' ? 0.8 : 0.85) *
-    (0.16 + 0.84 * Math.pow(Math.sin(Math.PI * Math.pow(t, 0.72)), 0.75));
+    (kind === 'closed' ? 1.28 : 1.18) *
+    (0.12 + 0.88 * Math.pow(Math.sin(Math.PI * Math.pow(t, 0.68)), 0.62));
   for (let i = 0; i <= N; i++) {
     const t = i / N;
     const [x, yc] = at(t);
-    // normal of the curve
     const [x2, y2] = at(Math.min(1, t + 0.01));
     const [x1, y1] = at(Math.max(0, t - 0.01));
     let nx = -(y2 - y1);
@@ -805,23 +806,67 @@ function lidStroke(
   for (let i = bot.length - 1; i >= 0; i--) ctx.lineTo(bot[i][0], bot[i][1]);
   ctx.closePath();
   ctx.fill();
-  // lash ticks at the outer corner (pointing down/out when closed)
+  // outer-corner ticks (winged clumps, matching the open-eye source)
   const dir = outerRight ? 1 : -1;
-  const ticks = kind === 'closed' ? [0.74, 0.86, 0.97] : [0.95];
-  ticks.forEach((t, k) => {
+  const ticks =
+    kind === 'closed'
+      ? [
+          [0.7, 0.09, 28],
+          [0.82, 0.15, 40],
+          [0.93, 0.13, 52],
+        ]
+      : [
+          [0.88, 0.1, 28],
+          [0.97, 0.12, 42],
+        ];
+  for (const [t, lenF, angDeg] of ticks) {
     const [x, yc] = at(t);
-    const len = w * (kind === 'closed' ? [0.1, 0.14, 0.12][k] : 0.1);
-    const ang = kind === 'closed' ? (35 + k * 12) * DEG : 30 * DEG;
+    const len = w * lenF;
+    const ang = angDeg * DEG;
     const ex = x + dir * Math.cos(ang) * len;
-    const ey = yc + Math.sin(ang) * len + (kind === 'closed' ? 0 : e.lash * 0.2);
-    const bw = e.lash * 0.32;
+    const ey = yc + Math.sin(ang) * len + (kind === 'closed' ? h * 0.02 : e.lash * 0.15);
+    const bw = e.lash * 0.4;
     ctx.beginPath();
-    ctx.moveTo(x - dir * bw, yc);
-    ctx.quadraticCurveTo(x + dir * len * 0.5, yc + len * 0.1, ex, ey);
-    ctx.quadraticCurveTo(x + dir * len * 0.4, yc + len * 0.45, x + dir * bw, yc + bw);
+    ctx.moveTo(x - dir * bw * 0.6, yc - e.lash * 0.15);
+    ctx.quadraticCurveTo(x + dir * len * 0.45, yc + len * 0.05, ex, ey);
+    ctx.quadraticCurveTo(x + dir * len * 0.35, yc + len * 0.5, x + dir * bw, yc + bw * 0.8);
     ctx.closePath();
     ctx.fill();
-  });
+  }
+  // faint eyelid crease above the lash (gives the lid depth instead of a flat pale patch)
+  ctx.globalAlpha *= 0.42;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(0.7, e.lash * 0.28);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    if (t < 0.08 || t > 0.92) continue;
+    const [x, yc] = at(t);
+    const cy = yc - h * (kind === 'closed' ? 0.22 : 0.18) * Math.sin(Math.PI * t);
+    if (i === 0 || t <= 0.08 + 1 / N) ctx.moveTo(x, cy);
+    else ctx.lineTo(x, cy);
+  }
+  ctx.stroke();
+  // tiny lower-lash hints (closed only; happy arcs sit above)
+  if (kind === 'closed') {
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.lineWidth = Math.max(0.55, e.lash * 0.22);
+    const lowerY = y + h * 0.38;
+    for (const t of [0.22, 0.4, 0.58, 0.75]) {
+      const x = inner + (outer - inner) * t;
+      const len = h * 0.1;
+      ctx.beginPath();
+      ctx.moveTo(x, lowerY);
+      ctx.quadraticCurveTo(
+        x + dir * len * 0.2,
+        lowerY + len * 0.7,
+        x + dir * len * 0.15,
+        lowerY + len,
+      );
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
@@ -992,20 +1037,36 @@ export function drawRig(
           }
           ctx.restore();
         }
-        // light lid shading just above the closing line
-        const shadeA = Math.max(smooth(0.3, 1, cl), happyA * 0.7) * 0.13;
-        if (shadeA > 0.01) {
-          const sy = closeY * (1 - happyA) + (m.top + h * 0.45) * happyA;
-          const gr = ctx.createRadialGradient(cx, sy, 0, cx, sy, w * 0.62);
-          gr.addColorStop(0, `rgba(200,116,104,${shadeA})`);
-          gr.addColorStop(1, 'rgba(200,116,104,0)');
+        // lid mound: soft warm fill so closed/happy lids are not pale flat inpaint
+        const lidFill = Math.max(smooth(0.25, 1, cl), happyA * 0.85);
+        if (lidFill > 0.01) {
+          const sy = closeY * (1 - happyA) + (m.top + h * 0.42) * happyA;
+          const gr = ctx.createRadialGradient(cx, sy - h * 0.05, w * 0.08, cx, sy, w * 0.72);
+          gr.addColorStop(0, `rgba(236, 176, 156, ${0.55 * lidFill})`);
+          gr.addColorStop(0.45, `rgba(220, 150, 130, ${0.32 * lidFill})`);
+          gr.addColorStop(1, 'rgba(210, 140, 120, 0)');
           ctx.fillStyle = gr;
           ctx.beginPath();
-          ctx.ellipse(cx, sy, w * 0.62, h * 0.42, 0, 0, Math.PI * 2);
+          ctx.ellipse(cx, sy, w * 0.7, h * 0.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // cooler shadow tucked under the brow / upper crease
+          const sh = ctx.createRadialGradient(
+            cx,
+            m.top + h * 0.1,
+            0,
+            cx,
+            m.top + h * 0.15,
+            w * 0.55,
+          );
+          sh.addColorStop(0, `rgba(180, 110, 95, ${0.22 * lidFill})`);
+          sh.addColorStop(1, 'rgba(180, 110, 95, 0)');
+          ctx.fillStyle = sh;
+          ctx.beginPath();
+          ctx.ellipse(cx, m.top + h * 0.18, w * 0.55, h * 0.28, 0, 0, Math.PI * 2);
           ctx.fill();
         }
         lidStroke(ctx, m, side, closeY, 'closed', color, pose.lidAlpha * openA);
-        lidStroke(ctx, m, side, m.top + h * 0.6, 'happy', color, happyA);
+        lidStroke(ctx, m, side, m.top + h * 0.58, 'happy', color, happyA);
       },
       0,
       pose.eyeScale,
