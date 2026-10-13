@@ -289,6 +289,18 @@ export const ToolBar: React.FC = () => {
   }, [showMessage, voiceService, voiceEnabled]);
 
   // 切换语音模式（保存到应用配置）
+  // 新手引导选择声音风格时开关语音（与工具栏按钮状态同步）
+  useEffect(() => {
+    const on = (e: Event) => {
+      const enabled = Boolean((e as CustomEvent<{ enabled?: boolean }>).detail?.enabled);
+      if (!globalVoiceService) return;
+      void globalVoiceService.updateSettings({ enabled });
+      setVoiceEnabled(enabled);
+    };
+    window.addEventListener('mascot:voice-enabled', on);
+    return () => window.removeEventListener('mascot:voice-enabled', on);
+  }, []);
+
   const toggleVoiceMode = useCallback(async () => {
     if (!voiceService) {
       showMessage(tr('语音服务尚未初始化，请稍后再试...'));

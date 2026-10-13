@@ -56,7 +56,7 @@ export const AddProvider: React.FC<{
               className={`${styles.catItem} ${cat === c ? styles.catActive : ''}`}
               onClick={() => setCat(c)}
             >
-              <span>{c === 'all' ? t('全部') : CATEGORY_LABELS[c]}</span>
+              <span>{c === 'all' ? t('全部') : t(CATEGORY_LABELS[c])}</span>
               <span className="cd-muted">{count(c)}</span>
             </button>
           ))}

@@ -23,6 +23,7 @@ import { getLocalHubService, initLocalHubService } from '../local/LocalHubServic
 import { getLocalModelService, initLocalModelService } from '../local/LocalModelService';
 import { getMemoryService, initMemoryService } from '../memory/MemoryService';
 import { getModelService } from '../models/ModelService';
+import { OnboardingService } from '../onboarding/OnboardingService';
 import { getSchedulerService, initSchedulerService } from '../schedule/SchedulerService';
 import { getScreenService, initScreenService } from '../screen/ScreenService';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
@@ -250,6 +251,27 @@ export class Application implements IApplication {
 
       // 界面主题（设置 → 通用 → 主题），对话窗口与看板娘同步
       new ThemeService(path.join(app.getPath('userData'), 'theme.json')).registerIpc();
+
+      // 首次启动引导（语言 / 主题 / 角色与声音 / 称呼与语气 / 供应商 / 隐私），显示在对话窗口里
+      const onboarding = new OnboardingService({
+        userData: app.getPath('userData'),
+        openChat: async () => {
+          await this.windowManager.createAiChatWindow();
+        },
+        listCharacters: async () =>
+          (
+            (await getModelService(this.logger).list()) as Array<{
+              id: string;
+              name: string;
+              origin?: string;
+            }>
+          ).map((m) => ({ id: m.id, name: m.name, source: m.origin })),
+      });
+      onboarding.registerIpc();
+      if (onboarding.shouldAutoOpen()) {
+        // 等看板娘窗口先出来，再打开引导（她会在引导中打招呼）
+        setTimeout(() => void this.windowManager.createAiChatWindow(), 1500);
+      }
 
       // 编程助手进度：监视本机 Codex / Claude Code 等会话文件，看板娘提醒完成/失败
       const agents = initAgentProgressService({

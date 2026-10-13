@@ -14,6 +14,7 @@ import { LocalPanel } from './components/LocalPanel';
 import { MemoryPanel } from './components/MemoryPanel';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
+import { OnboardingHost } from './components/Onboarding';
 import { ProviderPanel } from './components/ProviderPanel';
 import { SchedulePanel } from './components/SchedulePanel';
 import { ScreenPanel } from './components/ScreenPanel';
@@ -304,6 +305,8 @@ function App() {
     <ErrorBoundary>
       <AiChatContextProvider client={client}>
         <AiChatContent />
+        {/* 首次启动引导（未完成时覆盖在对话窗口上；设置 → 通用 可重新打开） */}
+        <OnboardingHost />
       </AiChatContextProvider>
     </ErrorBoundary>
   );
