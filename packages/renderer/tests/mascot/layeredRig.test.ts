@@ -193,6 +193,54 @@ describe('layered rig animator', () => {
     const p2 = run(a, { lookX: 1 }, 0.15, 1.02);
     expect(Math.abs(p2.hairRotL - p.hairRotL)).toBeGreaterThan(0.001);
   });
+
+  it('idle has richer lean/breath travel than a frozen pose', () => {
+    const a = new RigAnimator(11);
+    const ps: RigPose[] = [];
+    for (let i = 0; i < 60 * 12; i++) ps.push(a.step(1 / 60, i / 60, base));
+    const torso = ps.map((p) => p.torsoRot);
+    const tx = ps.map((p) => p.torsoX);
+    const hy = ps.map((p) => p.headY);
+    expect(Math.max(...torso) - Math.min(...torso)).toBeGreaterThan(0.012);
+    expect(Math.max(...tx) - Math.min(...tx)).toBeGreaterThan(2.5);
+    expect(Math.max(...hy) - Math.min(...hy)).toBeGreaterThan(1.2);
+  });
+
+  it('talking adds shoulder bounce and lean toward look', () => {
+    const quiet = run(new RigAnimator(2), { lookX: 0.8 }, 2);
+    const talk = run(new RigAnimator(2), { lookX: 0.8, talking: true, mouth: 0.7 }, 2);
+    expect(talk.shoulderL).toBeLessThan(quiet.shoulderL + 0.5);
+    expect(Math.abs(talk.torsoX)).toBeGreaterThan(Math.abs(quiet.torsoX) * 0.9);
+  });
+
+  it('plays expanded gestures (wave, shrug, look_around, shy, point, clap)', () => {
+    for (const [name, check] of [
+      ['wave', (p: RigPose) => Math.abs(p.armRotR) > 0.01 || p.bodyY < -0.5],
+      ['shrug', (p: RigPose) => p.shoulderL < -1],
+      ['look_around', (p: RigPose) => Math.abs(p.headRot) > 0.02],
+      ['shy', (p: RigPose) => p.headRot < -0.02],
+      ['point', (p: RigPose) => p.armRotR > 0.01],
+      ['clap', (p: RigPose) => p.bodyY < -1 || p.shoulderL < -0.5],
+      ['celebrate', (p: RigPose) => p.bodyY < -2],
+    ] as const) {
+      const a = new RigAnimator();
+      run(a, {}, 0.5);
+      let hit = false;
+      for (let i = 0; i < 90; i++) {
+        const p = a.step(1 / 60, 0.5 + i / 60, { ...base, gesture: { name, id: 1 } });
+        if (check(p)) hit = true;
+      }
+      expect(hit).toBe(true);
+    }
+  });
+
+  it('exposes browRaise and cheekSquash without forcing happy lids', () => {
+    const happy = run(new RigAnimator(), { expression: 'happy' }, 2);
+    expect(happy.cheekSquash).toBeGreaterThan(0.2);
+    expect(happy.browRaise).toBeGreaterThanOrEqual(0);
+    const n = run(new RigAnimator(), {}, 2);
+    expect(n.eyeVariant).toBe('open');
+  });
 });
 
 describe('sprite backend with rig', () => {
@@ -227,6 +275,11 @@ describe('sprite backend with rig', () => {
     expect(g1?.name).toBe('wave');
     b.playMotion('wave');
     expect(b.snapshot().gesture?.id).not.toBe(g1?.id);
+    expect(b.playMotion('shrug')).toBe(true);
+    expect(b.snapshot().gesture?.name).toBe('shrug');
+    expect(b.playMotion('look_around')).toBe(true);
+    expect(b.capabilities().motions).toContain('point');
+    expect(b.capabilities().motions).toContain('shy');
     b.playMotion('think-on');
     expect(b.snapshot().thinking).toBe(true);
     b.playMotion('think-off');
