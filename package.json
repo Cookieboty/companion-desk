@@ -39,7 +39,11 @@
     "preinstall": "node scripts/check-node.cjs",
     "prepare": "husky",
     "check:licenses": "node scripts/check-licenses.mjs",
-    "check:i18n": "node scripts/i18n/check.cjs"
+    "check:i18n": "node scripts/i18n/check.cjs",
+    "package:publish": "turbo run package:publish",
+    "package:publish:mac": "turbo run package:publish:mac",
+    "package:publish:win": "turbo run package:publish:win",
+    "package:publish:linux": "turbo run package:publish:linux"
   },
   "author": "",
   "license": "MIT",
@@ -96,5 +100,9 @@
     "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@deepseek-ai/dsh-app-boot": "0.2.0-rc.2",
     "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cookieboty/nomi-ai.git"
   }
 }

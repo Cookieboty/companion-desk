@@ -250,6 +250,9 @@ jobs:
   build-electron:
     name: build-electron (${{ matrix.os }})
     needs: [quality]
+    # Tag builds publish installers to the GitHub Release (electron-updater feed).
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -301,17 +304,32 @@ jobs:
       - name: Build workspaces
         run: pnpm turbo run build --cache-dir=.turbo/cache
 
-      - name: electron-builder package (${{ matrix.script }})
+      - name: electron-builder package (PR / push · no publish)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         env:
-          # 仅 tag 构建使用签名 / 公证凭证；其它事件显式置空
-          CSC_LINK: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_TEAM_ID || '' }}
-          # 没有证书时不要去钥匙串里自动找身份
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(github.ref, 'refs/tags/v') && 'true' || 'false' }}
+          CSC_LINK: ''
+          CSC_KEY_PASSWORD: ''
+          APPLE_ID: ''
+          APPLE_APP_SPECIFIC_PASSWORD: ''
+          APPLE_TEAM_ID: ''
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: pnpm run ${{ matrix.script }}
+
+      - name: electron-builder package + publish to GitHub Release (tag)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'true'
+          # Default GITHUB_TOKEN works with contents:write on this repo.
+          # Set repository secret GH_TOKEN (PAT, repo scope) only if the default token cannot create Releases.
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # matrix.artifact is linux | mac | win → package:publish:{linux,mac,win}
+        run: pnpm --filter @nomi-ai/electron run package:publish:${{ matrix.artifact }}
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -323,5 +341,6 @@ jobs:
             dist/*.AppImage
             dist/*.zip
             dist/*.blockmap
+            dist/latest*.yml
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 14 || 3 }}

@@ -30,6 +30,7 @@ import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
 import { LoggerService, LogLevel } from '../services/LoggerService';
+import { getUpdateService } from '../services/UpdateService';
 import { ThemeService } from '../theme/ThemeService';
 import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { perfMark } from '../utils/perfMarks';
@@ -127,6 +128,11 @@ export class Application implements IApplication {
       const models = getModelService(this.logger);
       models.registerProtocol();
       models.registerIpc();
+
+      // Auto-update (electron-updater → GitHub Releases). Packaged builds only.
+      const updates = getUpdateService(this.logger);
+      updates.registerIpc();
+      updates.start();
 
       // 桌面能力（文件工具的权限 / 审计 / 撤销）：先于 AI runtime，插件注册工具时要用
       const desktop = getDesktopService(this.logger);
@@ -416,6 +422,11 @@ export class Application implements IApplication {
     getScreenService()?.stop();
     getLocalHubService()?.stop();
     void getLocalModelService()?.stop();
+    try {
+      getUpdateService(this.logger).stop();
+    } catch {
+      /* not started */
+    }
     getAgentProgressService()?.stop();
     this.trayManager?.dispose();
     this.trayManager = undefined;

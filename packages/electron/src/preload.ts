@@ -160,6 +160,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
       };
     },
   },
+  /** Auto-update (GitHub Releases via electron-updater) */
+  updates: {
+    get: () => ipcRenderer.invoke('updates:get'),
+    check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
+    install: () => ipcRenderer.invoke('updates:install'),
+    setAutoCheck: (on: boolean) => ipcRenderer.invoke('updates:set-auto-check', on),
+    onChanged: (cb: (s: unknown) => void) => {
+      const l = (_: unknown, s: unknown) => cb(s);
+      ipcRenderer.on('updates:changed', l);
+      return () => {
+        ipcRenderer.removeListener('updates:changed', l);
+      };
+    },
+  },
   /** 主进程 → 看板娘指令（AI 工具 / 托盘：播放动作、切换表情）。返回取消订阅函数。 */
   onMascotCommand: (callback: (cmd: unknown) => void) => {
     const listener = (_: unknown, cmd: unknown) => callback(cmd);
