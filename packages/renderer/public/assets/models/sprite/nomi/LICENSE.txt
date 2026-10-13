@@ -3,3 +3,8 @@ Nomi·诺米 mascot artwork
 Owner-provided, AI-generated artwork, licensed by the project owner.
 The project owner (Cookieboty) created this artwork with AI image tools and
 grants its use in the Nomi-ai repository under the repository's MIT license.
+
+The layered rig in layers/ (body, head, side hair, ribbon, eyes, mouth and the
+painted closed/happy-eye and open/o/frown-mouth variants) was cut from the
+owner's clean half-body illustration with scripts/brand/build-nomi-rig.py
+(local tools only; occluded areas inpainted). Same licence as above.
