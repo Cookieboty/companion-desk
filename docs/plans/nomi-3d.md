@@ -1,6 +1,18 @@
 # Nomi 3D — feasibility note
 
-Status: **research only — needs a decision from the project owner.** The bundled VRM (千駄ヶ谷 渋, CC0) stays the 3D default until a Nomi 3D model is approved. The 2D Nomi sprite is the app-wide default mascot.
+Status: **decided (2026-10-13): pseudo-3D layered 2D. Real 3D is deferred.** The bundled VRM (千駄ヶ谷 渋, CC0) stays the 3D option. Nomi as a layered 2D rig is the app-wide default mascot.
+
+## Decision
+
+The owner chose a **pseudo-3D layered 2D** Nomi (a Live2D-like feel without Live2D or a 3D model) over building a VRM now.
+
+- **Source:** the owner-approved clean half-body illustration (front pose, arms down). The official poster is the design reference for face and hair; it is not shipped.
+- **Layers** (`packages/renderer/public/assets/models/sprite/nomi/layers/`): body, head, left/right side hair, ribbon, left/right eye, mouth, plus painted variants (closed eyes, happy `^^` eyes, open / `o` / frown mouths). `scripts/brand/build-nomi-rig.py` cuts them with local tools only (Pillow, NumPy, OpenCV; nothing uploaded). Occluded areas are filled with OpenCV inpainting: skin under the eyes and mouth, hair under the ribbon, neck under the chin, collar under the side hair.
+- **Renderer:** `src/mascot/layeredRig.ts` (Canvas2D, no GPU) driven by the existing sprite backend. It does idle breathing, auto blink (eye squash plus lid line), head tilt and sway, spring-driven side hair and ribbon, cursor parallax (the head moves, and the eyes and mouth move a little further), lip-sync mouth from the TTS RMS level, and expression styles for neutral / happy / relaxed / sad / angry / surprised (talking and blink map onto these). It pauses while the window is hidden and drops positional motion under `prefers-reduced-motion`.
+- **Superseded:** the nine blurry brand-board busts were removed. `neutral.png` is the static composite.
+- **Limits:** the face is about 150 px wide in the source, so it is upscaled 2×. Eye whites are not separate, so the eyes do not track inside the sockets; gaze is shown with head and feature parallax. Arms and body do not bend.
+
+The real-3D research below is kept for when the owner wants to revisit it.
 
 Goal: a rigged **VRM 1.0** Nomi (humanoid bones, blink/A-I-U-E-O visemes, the 6 emotion presets used by `expressionDirector`). It should look like the brand board (chibi proportions, brown bob, orange clips/bow, cream blouse, black choker) and be licensable for shipping in the MIT repo.
 
@@ -30,7 +42,7 @@ No sample was generated in this pass:
 - The box has **no GPU**, so TRELLIS.2 and Hunyuan3D cannot run locally.
 - Hosted demos and SaaS (Hugging Face Spaces, Tripo, Meshy) would mean **uploading the owner's artwork to a third party**. Tripo's free tier also hands output ownership to Tripo. That needs the owner's explicit OK, and for Tripo a paid plan.
 
-If approved, the quickest look test is TRELLIS.2 on a rented GPU (or the official Space) with the full-body image `packages/renderer/public/assets/models/sprite/nomi/full-body.png` as input. Then do steps 1–5 above.
+If approved, the quickest look test is TRELLIS.2 on a rented GPU (or the official Space) with the owner's half-body / poster artwork as input. Then do steps 1–5 above.
 
 ## Decision needed
 
