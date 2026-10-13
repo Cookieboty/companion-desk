@@ -5,6 +5,13 @@ import {
   loadSpriteManifest,
   type SpriteBackend,
 } from '../../mascot/backends/sprite';
+import {
+  drawRig,
+  RigAnimator,
+  RIG_LAYERS,
+  type RigImages,
+  type RigManifest,
+} from '../../mascot/layeredRig';
 import { mascotRegistry } from '../../mascot/MascotBackend';
 
 import MascotInteractionLayerLite from './InteractionLite';
@@ -33,6 +40,9 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [styleKind, setStyleKind] = useState('soft');
   const styleKindRef = useRef('soft');
+  const rigRef = useRef<RigManifest | null>(null);
+  const animRef = useRef<RigAnimator | null>(null);
+  const rigImgs = useRef<RigImages>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -46,9 +56,42 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
         const backend = createSpriteBackend(manifest, baseUrl);
         backendRef.current = backend;
         detach = mascotRegistry.attach(backend);
+        if (import.meta.env?.DEV) {
+          // dev-only handle for visual checks / screenshots over CDP
+          (globalThis as { __nomiMascot?: SpriteBackend }).__nomiMascot = backend;
+        }
         const sk = manifest.style || 'soft';
         styleKindRef.current = sk;
         setStyleKind(sk);
+        if (manifest.rig) {
+          const rig = manifest.rig;
+          rigRef.current = rig;
+          animRef.current = new RigAnimator();
+          const dir = rig.dir ?? 'layers/';
+          const rigLoads = RIG_LAYERS.filter((n) => rig.layers[n]).map(
+            (n) =>
+              new Promise<void>((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                  rigImgs.current.set(n, img);
+                  resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = `${baseUrl}${dir}${n}.png`;
+              }),
+          );
+          return Promise.all(rigLoads).then(() => {
+            if (cancelled) return;
+            if (!rigImgs.current.has('body') || !rigImgs.current.has('head')) {
+              throw new Error('rig layers missing');
+            }
+            setReady(true);
+            document.documentElement.dataset.mascotModel = manifest.id;
+            document.documentElement.dataset.mascotRig = 'layered';
+            console.info('[perf] mascot-model-loaded');
+            console.info('[perf] sprite-model-loaded', manifest.id);
+          });
+        }
         // preload
         const files = new Set([
           ...Object.values(manifest.expressions),
@@ -79,9 +122,24 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       });
 
+    rigRef.current = null;
+    animRef.current = null;
+    rigImgs.current = new Map();
+    const reduceMq =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
     let last = performance.now();
     const tick = (now: number) => {
+      // pause entirely while the window is hidden / minimised (resumed by visibilitychange)
+      if (document.hidden) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(tick);
+      const reduced = !!reduceMq?.matches;
+      // reduced motion: 30fps is plenty for blink + lip sync
+      if (reduced && now - last < 30) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const backend = backendRef.current;
@@ -100,6 +158,39 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
+      const rig = rigRef.current;
+      const anim = animRef.current;
+      if (rig && anim) {
+        const pose = anim.step(dt, now / 1000, {
+          expression: frame.expression,
+          mouth: frame.mouth,
+          talking: frame.talking,
+          blink: frame.blinkOpacity,
+          lookX: frame.lookX,
+          lookY: frame.lookY,
+          reducedMotion: reduced,
+        });
+        const [rw, rh] = rig.size;
+        // bust framing: show the top ~85% of the rig with a little headroom
+        const sc = Math.min((w * 0.98) / rw, h / (rh * 0.86));
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.save();
+        ctx.translate((w - rw * sc) / 2, rh * 0.03 * sc);
+        ctx.scale(sc, sc);
+        drawRig(ctx, rig, rigImgs.current, pose);
+        ctx.restore();
+        // soft fade at the bottom edge so the cut-off waist doesn't end in a hard line
+        const fadeH = h * 0.14;
+        const g = ctx.createLinearGradient(0, h - fadeH, 0, h);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = g;
+        ctx.fillRect(0, h - fadeH, w, fadeH);
+        ctx.globalCompositeOperation = 'source-over';
+        return;
+      }
       const img = imgs.current.get(frame.expressionUrl);
       if (!img) return;
       const scale = Math.min((w * 0.85) / img.width, (h * 0.9) / img.height);
@@ -139,9 +230,17 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       }
     };
     raf = requestAnimationFrame(tick);
+    const onVis = () => {
+      if (!document.hidden && !raf && !cancelled) {
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
 
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
       cancelAnimationFrame(raf);
       detach?.();
       backendRef.current?.dispose();

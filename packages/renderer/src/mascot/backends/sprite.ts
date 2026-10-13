@@ -1,3 +1,4 @@
+import type { RigManifest } from '../layeredRig';
 import type { MascotBackend, MascotCapabilities } from '../MascotBackend';
 
 export interface SpriteManifest {
@@ -15,6 +16,8 @@ export interface SpriteManifest {
   idleBobPx?: number;
   pixelScale?: number;
   tags?: string[];
+  /** Optional pseudo-3D layered rig; when present SpriteCanvas animates layers instead of swapping plates. */
+  rig?: RigManifest;
 }
 
 export interface SpriteBackend extends MascotBackend {
@@ -35,6 +38,11 @@ export interface SpriteFrame {
   bobY: number;
   lookX: number;
   lookY: number;
+  /** active expression name */
+  expression: string;
+  talking: boolean;
+  /** raw lip-sync level 0..1 */
+  mouth: number;
 }
 
 function approach(current: number, target: number, rate: number, dt: number): number {
@@ -71,9 +79,19 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
     manifest,
     baseUrl,
     setExpression(name, _weight = 1) {
+      if (name === 'blink') {
+        blinkT = 0;
+        return;
+      }
+      if (name === 'talking') {
+        expression = 'neutral';
+        return;
+      }
       const n = name === 'neutral' ? 'neutral' : name;
       expression = exprFile(n) ? n : 'neutral';
       if (!manifest.expressions[expression]) expression = 'neutral';
+      if (manifest.rig && ['happy', 'relaxed', 'sad', 'angry', 'surprised'].includes(n))
+        expression = n;
     },
     setMouthOpen(value) {
       mouthTarget = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
@@ -98,10 +116,12 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
     },
     capabilities(): MascotCapabilities {
       return {
-        expressions: Object.keys(manifest.expressions),
-        lipSync: !!manifest.mouthOpen,
+        expressions: manifest.rig
+          ? ['neutral', 'happy', 'relaxed', 'sad', 'angry', 'surprised']
+          : Object.keys(manifest.expressions),
+        lipSync: !!manifest.mouthOpen || !!manifest.rig,
         lookAt: true,
-        blink: !!manifest.blink,
+        blink: !!manifest.blink || !!manifest.rig,
         motions: ['wave', 'cheer', 'clap', 'shake', 'bow', 'think'],
       };
     },
@@ -129,15 +149,18 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         blinkOpacity =
           blinkT < d / 2 ? blinkT / (d / 2) : Math.max(0, 1 - (blinkT - d / 2) / (d / 2));
       }
-      const expr = expression in manifest.expressions ? expression : 'neutral';
+      const expr = expression in manifest.expressions || manifest.rig ? expression : 'neutral';
       return {
-        expressionUrl: url(manifest.expressions[expr] ?? manifest.expressions.neutral),
+        expressionUrl: url(manifest.expressions[expr] ?? manifest.expressions.neutral ?? ''),
         mouthUrl: manifest.mouthOpen ? url(manifest.mouthOpen) : null,
         mouthOpacity: mouth,
         blinkOpacity,
         bobY: bob,
         lookX,
         lookY,
+        expression: expr,
+        talking,
+        mouth,
       };
     },
   };
