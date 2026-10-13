@@ -138,7 +138,8 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
       else if (e.type === 'wall' && e.speed > 900) react('wall', 'any', 3000);
     });
 
-    const endDrag = () => {
+    const endDrag = (why: string) => {
+      document.documentElement.dataset.mascotDragEnd = why;
       api?.dragEnd();
       s.dragging = false;
       document.documentElement.dataset.mascotDragging = '0';
@@ -154,7 +155,7 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
         document.documentElement.dataset.mascotDragging = '1';
       } else if (r === 'cancel' || (!gate.isDown && s.down)) {
         // button released without a pointerup (lost during a click-through toggle)
-        if (s.dragging) endDrag();
+        if (s.dragging) endDrag('buttons');
         s.down = null;
       }
     };
@@ -169,18 +170,29 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
         /* synthetic event without a real pointer */
       }
     };
-    const finish = (click: boolean) => {
+    const finish = (click: boolean, why = 'up') => {
       const r = gate.release();
-      if (s.dragging) endDrag();
+      if (s.dragging) endDrag(why);
       else if (click && r === 'click' && s.down) classifier.click(s.down.region);
       s.down = null;
     };
     const onUp = (e: PointerEvent) => {
       if (e.button === 0) finish(true);
     };
-    const onCancel = () => {
+    // While the main process is moving the window, Windows can report blur / pointercancel /
+    // lost capture as the window slides under the cursor. Keep dragging then: the drag ends on
+    // pointerup, or on the next move without the button held (DragGate 'cancel').
+    const onCancel = (e: Event) => {
+      if (s.dragging) {
+        document.documentElement.dataset.mascotDragIgnored = e.type;
+        return;
+      }
       gate.cancel();
-      finish(false);
+      finish(false, e.type);
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      // pointerup can be swallowed after a lost capture; the compat mouseup still arrives
+      if (e.button === 0 && (s.dragging || s.down)) finish(true, 'mouseup');
     };
     canvas.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
@@ -320,6 +332,8 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('blur', onCancel);
+      window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('lostpointercapture', onCancel);
       if (s.dragging) api?.dragEnd();
       layoutStore.setHead(null);
     };

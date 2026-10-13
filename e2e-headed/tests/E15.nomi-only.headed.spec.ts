@@ -180,9 +180,12 @@ test.describe('E15 · Nomi only', () => {
       await page.mouse.move(hit.x - i * 10, hit.y - i * 6);
       await sleep(30);
     }
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.dataset.mascotDragging))
-      .toBe('1');
+    const dragDiag = () =>
+      page.evaluate(() => {
+        const d = document.documentElement.dataset;
+        return `dragging=${d.mascotDragging} end=${d.mascotDragEnd} ignored=${d.mascotDragIgnored}`;
+      });
+    await expect.poll(dragDiag).toMatch(/^dragging=1 /);
     await page.mouse.up();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.dataset.mascotDragging))
