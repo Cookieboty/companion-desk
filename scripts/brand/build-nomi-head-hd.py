@@ -9,6 +9,9 @@ one HD source, stored at native resolution with a draw scale, and updates rig.js
 v4: the eye sockets are filled with clean skin and eye metrics + lash colour are written to
 rig.json; the renderer draws the descending lid, closed and happy (^^) eyes procedurally.
 Then run stage 3 (build-nomi-body-parts.py).
+
+v5: eye opening fitted to the lash lower edge; lash layer limited to the eye
+border ring (pixel-aligned); eye region inpainted out of head and bangs.
 """
 import sys, json, math
 import numpy as np, cv2
@@ -96,10 +99,61 @@ for side, (cx, cy, r), box in [('l', (559.5, 283.5, 23.5), (494, 246, 600, 314))
     op = cv2.morphologyEx(((sclera | iris_px) & ~(dark & ~circle(cx, cy, r * 0.8))).astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
     nn, lb, st, _ = cv2.connectedComponentsWithStats(op); k = 1 + np.argmax(st[1:, 4]); op = fill_holes(lb == k)
     op &= cv2.dilate((sclera | iris_px).astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    # the dark iris rim belongs to the opening too (column-wise between the opening's top and
+    # bottom), otherwise it would be left in the lash layer and stay behind when the iris moves
+    # The opening reaches up to the lower edge of the thick upper lash: the upper sclera is in
+    # shadow (greyish) and the upper iris is dark, so threshold masks miss them. Measure the
+    # lash's lower edge in the sclera columns, fit a smooth lid curve, and fill the opening
+    # column-wise from that curve down to the lower lid.
+    disc = circle(cx, cy, r)
+    cols = [x for x in range(box[0], box[2]) if op[:, x].any()]
+    meas_x, meas_y = [], []
+    for x in cols:
+        if abs(x - cx) < r + 2: continue
+        # walk up from inside the sclera until the lash (very dark) starts
+        y = int(np.where(op[:, x])[0].mean())
+        if lum[y, x] < 120: continue
+        while y > box[1] and lum[y - 1, x] >= 85: y -= 1
+        meas_x.append(x); meas_y.append(y)
+    fit = None
+    if len(meas_x) >= 6:
+        mx, my = np.array(meas_x, float), np.array(meas_y, float)
+        for _ in range(3):  # robust: drop outliers (hair strands, highlights) and refit
+            fit = np.polyfit(mx, my, 2); res = np.abs(np.polyval(fit, mx) - my)
+            keep_ = res < max(2.0, np.percentile(res, 75) * 1.5)
+            mx, my = mx[keep_], my[keep_]
+        for x in cols:
+            bot_ = np.where(op[:, x])[0].max()
+            t = np.polyval(fit, x) + 1.5
+            ys_ = np.arange(H)
+            op[(ys_ >= t) & (ys_ <= bot_), x] = True
+    op = cv2.morphologyEx(op.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
     ring = cv2.dilate(op.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 13))).astype(bool) & ~op
     lash = (ring & (lum < 125) & bxm)
     lash = cv2.morphologyEx(lash.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
-    eyes[side] = dict(c=(cx, cy), r=r, op=op, iris=circle(cx, cy, r), lash=lash, box=box)
+    # whole eye region: opening + every dark stroke attached to it (upper lash, wing, lower lash,
+    # crease) inside a slightly expanded box. Everything in here leaves the face base layer.
+    bxe = np.zeros((H, W), bool); bxe[box[1] - 22:box[3] + 10, box[0] - 18:box[2] + 18] = True
+    near = cv2.dilate(op.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))).astype(bool)
+    darkc = bxe & (lum < 150)
+    nd, ld, _, _ = cv2.connectedComponentsWithStats(darkc.astype(np.uint8), connectivity=8)
+    att = np.zeros((H, W), bool)
+    for i in np.unique(ld[near & darkc]):
+        if i: att |= ld == i
+    region = cv2.dilate(op.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (29, 21))).astype(bool)
+    # bounded by an ellipse around the opening (wider toward the outer corner wing) and never
+    # into the side hair, so no hair ever ends up in the lash layer
+    oys, oxs = np.where(op)
+    ocx, ocy = (oxs.min() + oxs.max()) / 2, (oys.min() + oys.max()) / 2
+    orx, ory = (oxs.max() - oxs.min()) / 2, (oys.max() - oys.min()) / 2
+    outer_left = side == 'l'
+    rx_ = np.where((xx < ocx) == outer_left, orx + 26, orx + 12)
+    ell = ((xx - ocx) / rx_) ** 2 + ((yy - ocy) / (ory + 19)) ** 2 < 1
+    region = (region | cv2.dilate(att.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)) & bxe & ell
+    region &= (xx > 486) & (xx < 800)
+    if fit is not None:  # nothing far above the lash line (that is hair / brow area)
+        region &= yy > np.polyval(fit, xx) - 27
+    eyes[side] = dict(c=(cx, cy), r=r, op=op, iris=circle(cx, cy, r), lash=lash, box=box, region=region)
 # --- bangs (hair over the forehead / eye tops) → drawn above the eyes so blinks never erase them
 hair = (lum < 125) & (a > 0.3) & ((hsv[..., 0] < 30) | (hsv[..., 2] < 90))
 eye_any = np.any([e['op'] for e in eyes.values()], 0)
@@ -113,11 +167,9 @@ for i in range(1, nb):
     ys = np.where(lb == i)[0]
     if ys.min() < 230 and st[i, 4] > 30: keep |= lb == i
 bangs = soft(cv2.dilate(keep.astype(np.uint8), np.ones((3, 3), np.uint8)), 0.8) * a
-# lashes touching the fringe are not hair: clear the eye sockets below the lash top
+# nothing of the eyes may stay in the fringe layer (lash strokes there doubled the lash line)
 for e in eyes.values():
-    ys_, xs_ = np.where(e['op'] | e['lash'])
-    sock = (xx > xs_.min() - 10) & (xx < xs_.max() + 10) & (yy > ys_.min() - 3) & (yy < ys_.max() + 8)
-    bangs = bangs * (1 - soft(sock, 1.5))
+    bangs = bangs * (1 - soft(cv2.dilate(e['region'].astype(np.uint8), np.ones((3, 3), np.uint8)), 1.0))
 # --- side hair (secondary motion), ribbon
 root = np.clip((yy - 330) / 30, 0, 1)
 sideL = soft(hair & (xx < 478) & (yy < NECK_CUT), 1.0) * root * a
@@ -131,12 +183,7 @@ mouth_m = mbox & (lum < 185)
 mouth_m = cv2.morphologyEx(mouth_m.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 7), np.uint8)).astype(bool)
 hole = np.zeros((H, W), bool)
 for e in eyes.values():
-    hole |= cv2.dilate((e['op'] | e['lash']).astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool)
-    # whole eye socket (lash wings, crease lines) → clean skin, so closed lids read as skin
-    ys_, xs_ = np.where(e['op'] | e['lash'])
-    ecx, ecy = (xs_.min() + xs_.max()) / 2, (ys_.min() + ys_.max()) / 2
-    erx, ery = (xs_.max() - xs_.min()) / 2 + 9, (ys_.max() - ys_.min()) / 2 + 8
-    hole |= ((xx - ecx) / erx) ** 2 + ((yy - ecy) / ery) ** 2 < 1
+    hole |= cv2.dilate(e['region'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
 hole_m = cv2.dilate(mouth_m.astype(np.uint8), np.ones((7, 9), np.uint8)).astype(bool)
 hole |= hole_m
 valid = (~hole & (lum > 175) & (hsv[..., 1] < 120) & face_zone).astype(np.float32)
@@ -144,6 +191,16 @@ num = cv2.GaussianBlur(img * valid[..., None], (0, 0), 14); den = cv2.GaussianBl
 fillc = num / np.maximum(den, 1e-4)
 hs = np.clip(soft(hole, 2.5) * 1.2, 0, 1)[..., None]
 skin = img * (1 - hs) + fillc * hs
+# stray specks next to the eyes (isolated lash-tip dots) → skin
+near_eye = np.zeros((H, W), bool)
+for e in eyes.values(): near_eye |= cv2.dilate(e['region'].astype(np.uint8), np.ones((31, 31), np.uint8)).astype(bool)
+slum = skin @ np.array([.299, .587, .114])
+dots = near_eye & (slum < cv2.GaussianBlur(slum, (0, 0), 6) - 18)
+nd_, ld_, st_, _ = cv2.connectedComponentsWithStats(dots.astype(np.uint8), connectivity=8)
+speck = np.isin(ld_, [i for i in range(1, nd_) if st_[i, 4] <= 25])
+speck = cv2.dilate(speck.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+skin = cv2.cvtColor(cv2.inpaint(cv2.cvtColor(np.clip(skin, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR), speck.astype(np.uint8) * 255, 3, cv2.INPAINT_TELEA), cv2.COLOR_BGR2RGB).astype(np.float32)
+print('specks removed', int(speck.sum()))
 # under the ribbon: paint hair (inpaint) so the swaying ribbon reveals hair, not a hole
 behind = rbox & (xx < 862) & (cv2.dilate(hair.astype(np.uint8), np.ones((9, 9), np.uint8)) > 0)
 skin = cv2.cvtColor(cv2.inpaint(cv2.cvtColor(skin.astype(np.uint8), cv2.COLOR_RGB2BGR), ((rib > 0.05) & behind).astype(np.uint8) * 255, 5, cv2.INPAINT_TELEA), cv2.COLOR_BGR2RGB).astype(np.float32)
@@ -163,21 +220,41 @@ save('bangs', img, bangs)
 save('hair-side-l', img, sideL); save('hair-side-r', img, sideR); save('ribbon', img, rib)
 for side, e in eyes.items():
     op = soft(e['op'], 0.6)
-    sv = (e['op'] & ~e['iris'] & (lum > 185) & (hsv[..., 1] < 40)).astype(np.float32)
+    bx = e['box']; ys0, ys1, xs0, xs1 = bx[1] - 16, bx[3] + 12, bx[0] - 14, bx[2] + 14
+    # white: the source's own sclera where visible; under the iris a smooth white sampled
+    # from the sclera (with the art's top shading), so a moved iris never reveals dark pixels
+    scl = e['op'] & ~cv2.dilate(e['iris'].astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & (lum > 170)
+    sv = scl.astype(np.float32)
     nm = cv2.GaussianBlur(img * sv[..., None], (0, 0), 6); dn = cv2.GaussianBlur(sv, (0, 0), 6)[..., None]
     base = np.where(dn > 1e-3, nm / np.maximum(dn, 1e-4), np.array([240, 236, 234], np.float32))
     ys, _ = np.where(e['op']); top, bot = ys.min(), ys.max()
     shade = np.clip((yy - top) / max(1, (bot - top) * 0.5), 0, 1)[..., None]
-    save(f'eye-white-{side}', base * (0.78 + 0.22 * shade), op)
+    base = base * (0.8 + 0.2 * shade)
+    keep_src = soft(scl, 0.8)[..., None]
+    wht = img * keep_src + base * (1 - keep_src)
+    save(f'eye-white-{side}', wht, op)
+    # lash: every pixel of the eye region that differs from the clean skin, colour un-mixed
+    # against that skin, so at rest  skin + lash  reproduces the source exactly (pixel aligned)
+    # never inside the opening (white / visible iris): those belong to the white and iris layers
+    reg = e['region'] & ~cv2.erode(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    diff = np.abs(img - skin).max(-1)
+    # only real strokes: faint skin-tone residue would show as a box once the features
+    # parallax-shift over the head, so it stays in the (clean) face layer instead
+    dl = (skin @ np.array([.299, .587, .114])) - lum   # darker than the clean skin
+    la = np.maximum(np.clip((diff - 16) / 22, 0, 1), np.clip((dl - 6) / 16, 0, 1)) * soft(reg, 1.0)
+    la = cv2.morphologyEx((la * 255).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8)).astype(np.float32) / 255
+    la[la < 0.06] = 0
+    col = img  # straight source colour: no un-mixing artefacts (halo) at the stroke edges
+    save(f'lash-{side}', col, la)
+    e['la'] = la
     # iris pixels hidden under the lashes are NOT kept (they are lash pixels): repaint that part
     # of the disc from the visible iris so a moving iris never drags lash lines over the eye
-    vis = e['iris'] & cv2.erode(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool) & (lum > 40)
+    vis = e['iris'] & cv2.erode(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
     hid = (e['iris'] & ~vis).astype(np.uint8) * 255
     bx = e['box']; sub = np.ascontiguousarray(img[bx[1]:bx[3], bx[0]:bx[2]].astype(np.uint8))
     rep = img.copy()
     rep[bx[1]:bx[3], bx[0]:bx[2]] = cv2.inpaint(sub, np.ascontiguousarray(hid[bx[1]:bx[3], bx[0]:bx[2]]), 4, cv2.INPAINT_TELEA)
     save(f'iris-{side}', rep, soft(e['iris'], 0.6))
-    save(f'lash-{side}', img, soft(e['lash'], 0.5))
     cx, cy = e['c']; r = e['r']
     # closed / happy eyes are drawn procedurally by the renderer from these metrics
     ys, xs = np.where(e['op'])
@@ -191,6 +268,12 @@ for side, e in eyes.items():
     rig['anchors'][f'iris{side.upper()}'] = to_rig(cx, cy)
     rig['anchors'][f'eye{side.upper()}'] = to_rig(cx, cy + r * 0.9)  # squash pivot on the lower lid
     rig.setdefault('irisRadius', {})[side] = r * K
+# strokes already in the lash layers must not be drawn a second time by the fringe
+bangs_f = bangs * (1 - np.clip(sum(e['la'] for e in eyes.values()), 0, 1))
+nb2, lb2, st2, _ = cv2.connectedComponentsWithStats((bangs_f > 0.1).astype(np.uint8), connectivity=8)
+small = np.isin(lb2, [i for i in range(1, nb2) if st2[i, 4] < 40])
+bangs_f = bangs_f * (1 - soft(cv2.dilate(small.astype(np.uint8), np.ones((3, 3), np.uint8)), 0.7))
+save('bangs', img, bangs_f)
 # --- mouths, painted in this art's style around its own lip line
 lipline = soft(mouth_m, 0.6)
 LINE = np.array([120, 62, 58], np.float32)
