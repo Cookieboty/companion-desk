@@ -174,7 +174,7 @@ test.describe('UI surfaces', () => {
     await shot(chat, '14-provider-panel-draft');
     await chat.click('[aria-label="关闭"]');
 
-    const collapse = chat.locator('[title="收起侧边栏"]');
+    const collapse = chat.locator('[data-testid="sidebar-toggle"]');
     if (await collapse.count()) {
       await collapse.click();
       await chat.waitForTimeout(400);

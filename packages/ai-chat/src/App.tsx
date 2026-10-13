@@ -143,9 +143,9 @@ const AiChatContent: React.FC = () => {
                 <h2 className="welcome-title">今天想做点什么？</h2>
                 <div className="quick-actions">
                   {[
+                    ['你好，请介绍一下自己', '打个招呼'],
                     ['帮我写一段代码', '写一段代码'],
                     ['帮我整理今天的待办', '整理今天的待办'],
-                    ['解释一个概念', '解释一个概念'],
                   ].map(([prompt, label]) => (
                     <button
                       key={label}
