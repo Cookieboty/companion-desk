@@ -41,8 +41,14 @@ export function format(s: string, args: unknown[]): string {
   });
 }
 
-export function t(key: string, ...args: unknown[]): string {
-  return format(locale === 'zh-CN' ? key : (EN[key] ?? key), args);
+export function t(key: string, ...args: unknown[]): string;
+export function t<T>(key: T): T;
+export function t(key: unknown, ...args: unknown[]): unknown {
+  if (typeof key !== 'string') return key;
+  if (locale === 'zh-CN') return format(key, args);
+  // 插值参数若本身是词典里的文案（常量里的标签），一并翻译
+  const tx = args.map((a) => (typeof a === 'string' ? (EN[a] ?? a) : a));
+  return format(EN[key] ?? key, tx);
 }
 export const getLocale = (): Locale => locale;
 /** 语言变化时回调（托盘菜单等需要重建的地方） */
@@ -103,5 +109,8 @@ export class LocaleService {
     ipcMain.removeHandler('ai:locale:set');
     ipcMain.handle('ai:locale:get', () => this.get());
     ipcMain.handle('ai:locale:set', (_e, p: unknown) => this.set(p));
+    // 主进程常量（模型目录、预设名称等）会原样发给界面，界面用这份词典补充翻译
+    ipcMain.removeHandler('ai:locale:dict');
+    ipcMain.handle('ai:locale:dict', () => EN);
   }
 }

@@ -177,7 +177,7 @@ export class TrayManager {
       {
         label: t('看板娘动作'),
         submenu: TRAY_MOTIONS.map(([name, label]) => ({
-          label,
+          label: t(label),
           click: () => broadcastMascotCommand({ type: 'motion', name }),
         })),
       },
@@ -186,7 +186,7 @@ export class TrayManager {
             {
               label: t('切换角色'),
               submenu: this.models.map((m) => ({
-                label: `${m.name}${ORIGIN_LABEL[m.origin] ?? ''}`,
+                label: `${m.name}${t(ORIGIN_LABEL[m.origin] ?? '')}`,
                 click: () => broadcastMascotCommand({ type: 'select-model', id: m.id }),
               })),
             } satisfies MenuItemConstructorOptions,

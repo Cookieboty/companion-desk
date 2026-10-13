@@ -54,6 +54,9 @@ describe('main-process i18n', () => {
     expect(JSON.parse(fs.readFileSync(f, 'utf8'))).toEqual({ locale: 'en' });
     expect(t('退出')).toBe('Quit');
     expect(t('读取失败：{0}', 'x')).toBe('Read failed: x');
+    // 常量标签作为参数时一并翻译；非字符串原样返回
+    expect(t('{0}{1}', 'Miku', ' · 商店')).toBe('Miku · Store');
+    expect(t(undefined)).toBeUndefined();
     expect(() => s.set('fr')).toThrow();
     off();
     s.set('zh-CN');

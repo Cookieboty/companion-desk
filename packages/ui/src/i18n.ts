@@ -125,6 +125,16 @@ export function initLocale(): () => void {
   applyLocale(isLocalePref(cached) ? cached : 'system');
   const b = bridge();
   if (!b) return () => undefined;
+  // 主进程词典：主进程常量（模型目录 / 预设名称等）原样发给界面，在这里补充英文
+  void b
+    .invoke('ai:locale:dict')
+    .then((d) => {
+      if (d && typeof d === 'object') {
+        DICTS.en = { ...(d as Record<string, string>), ...(en as Record<string, string>) };
+        subs.forEach((f) => f());
+      }
+    })
+    .catch(() => undefined);
   void b
     .invoke('ai:locale:get')
     .then((v) => {
