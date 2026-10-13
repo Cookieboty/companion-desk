@@ -96,6 +96,17 @@ const AiChatContent: React.FC = () => {
   }, []);
   const screenActive = !!screenSt?.settings.enabled && screenSt.settings.pausedUntil <= Date.now();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // ⌘/Ctrl+B 收起/展开侧栏（与 Codex 一致）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setSidebarCollapsed((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleNewChat = () => {
     actions.newConversation();
@@ -127,54 +138,27 @@ const AiChatContent: React.FC = () => {
         {/* 对话区域 */}
         <main className="chat-container">
           {state.messages.length === 0 ? (
-            <div className="welcome-screen">
+            <div className="welcome-screen" data-testid="welcome-screen">
               <div className="welcome-content">
-                <h2 className="welcome-title">开始新的对话</h2>
-                <p className="welcome-subtitle">选择一个AI模型，然后开始与AI助手对话</p>
+                <h2 className="welcome-title">今天想做点什么？</h2>
                 <div className="quick-actions">
-                  <button
-                    className="quick-action-btn"
-                    onClick={() => actions.sendMessage('你好，请介绍一下自己')}
-                  >
-                    <span>👋</span>
-                    <span>打个招呼</span>
-                  </button>
-                  <button
-                    className="quick-action-btn"
-                    onClick={() => actions.sendMessage('帮我写一段代码')}
-                  >
-                    <span>💻</span>
-                    <span>编程助手</span>
-                  </button>
-                  <button
-                    className="quick-action-btn"
-                    onClick={() => actions.sendMessage('解释一个概念')}
-                  >
-                    <span>📚</span>
-                    <span>学习助手</span>
-                  </button>
-                  <button
-                    className="quick-action-btn"
-                    onClick={() => actions.sendMessage('帮我分析问题')}
-                  >
-                    <span>🔍</span>
-                    <span>分析助手</span>
-                  </button>
-                  <button
-                    className="quick-action-btn"
-                    onClick={() => actions.sendMessage('帮我写一篇文章')}
-                  >
-                    <span>✍️</span>
-                    <span>写作助手</span>
-                  </button>
-                  <button
-                    className="quick-action-btn"
-                    onClick={() => actions.sendMessage('帮我翻译内容')}
-                  >
-                    <span>🌐</span>
-                    <span>翻译助手</span>
-                  </button>
+                  {[
+                    ['帮我写一段代码', '写一段代码'],
+                    ['帮我整理今天的待办', '整理今天的待办'],
+                    ['解释一个概念', '解释一个概念'],
+                  ].map(([prompt, label]) => (
+                    <button
+                      key={label}
+                      className="quick-action-btn"
+                      onClick={() => actions.sendMessage(prompt)}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
+                <p className="welcome-subtitle">
+                  输入 / 查看命令 · ＋ 打开知识库、语音、模型与设置
+                </p>
               </div>
             </div>
           ) : (

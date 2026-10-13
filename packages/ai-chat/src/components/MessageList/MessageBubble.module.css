@@ -133,3 +133,77 @@
     transform: translateY(0);
   }
 }
+
+/* ===== Codex 风格：用户消息淡色小块，助手回复为纯文本；元信息悬停才显示 ===== */
+.messageContainer {
+  gap: 4px;
+}
+.messageHeader {
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-size: 11px;
+  margin: 2px 0 0;
+}
+.messageContainer:hover .messageHeader {
+  opacity: 1;
+}
+.userMessage .messageContent {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--cd-color-text);
+  border: none;
+  box-shadow: none;
+  border-radius: 16px;
+  padding: 8px 14px;
+}
+.assistantMessage .messageContent {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 100%;
+}
+.assistantMessage .contentText {
+  line-height: 1.75;
+}
+.model,
+.kbTag {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--cd-color-text-subtle);
+}
+.errorText {
+  color: #f0a3a3;
+}
+.stepRow {
+  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+  margin: 2px 0;
+}
+.stepRow > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.stepRow > summary::-webkit-details-marker {
+  display: none;
+}
+.stepRow > summary:hover {
+  color: var(--cd-color-text-muted);
+}
+.stepIcon {
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.stepRow[open] .stepIcon {
+  transform: rotate(90deg);
+}
+.stepBody {
+  margin: 4px 0 4px 14px;
+  padding: 0 0 0 10px;
+  border-left: 1px solid var(--cd-color-border);
+  list-style: none;
+}

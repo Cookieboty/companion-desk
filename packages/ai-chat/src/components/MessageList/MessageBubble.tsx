@@ -27,21 +27,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     <div
       className={`${styles.messageContainer} ${isUser ? styles.userMessage : styles.assistantMessage}`}
     >
-      <div className={styles.messageHeader}>
-        <span className={styles.role}>{isUser ? '你' : 'AI助手'}</span>
-        <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
-        {message.kb && <span className={styles.kbTag}>📚 知识库</span>}
-        {!!message.memories?.length && (
-          <span
-            className={styles.kbTag}
-            title={message.memories.map((m) => `· ${m.title}`).join('\n')}
-            data-testid="memory-tag"
-          >
-            🧠 参考了 {message.memories.length} 条记忆
-          </span>
-        )}
-        {message.modelId && <span className={styles.model}>{message.modelId}</span>}
-      </div>
+      {/* Codex 风格：过程/工具信息是一行可折叠的紧凑行，默认收起 */}
+      {!isUser && !!message.memories?.length && (
+        <details className={styles.stepRow} data-testid="memory-tag">
+          <summary>
+            <span className={styles.stepIcon}>›</span>参考了 {message.memories.length} 条记忆
+          </summary>
+          <ul className={styles.stepBody}>
+            {message.memories.map((m) => (
+              <li key={m.id}>{m.title}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <div className={`${styles.messageContent} ${isError ? styles.errorMessage : ''}`}>
         {!!message.images?.length && (
@@ -58,7 +56,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           </div>
         )}
         {isError ? (
-          <div className={styles.errorText}>❌ {message.error}</div>
+          <div className={styles.errorText}>{message.error}</div>
         ) : (
           <div className={styles.contentText}>
             {sources.length ? (
@@ -68,7 +66,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             )}
           </div>
         )}
-        {sources.length > 0 && <SourceList sources={sources} onPick={setPick} />}
+        {sources.length > 0 && (
+          <details className={styles.stepRow} open>
+            <summary>
+              <span className={styles.stepIcon}>›</span>
+              {message.kb ? '知识库' : '来源'} · {sources.length} 处出处
+            </summary>
+            <SourceList sources={sources} onPick={setPick} />
+          </details>
+        )}
+      </div>
+      <div className={styles.messageHeader}>
+        <span className={styles.role}>{isUser ? '你' : 'AI助手'}</span>
+        <span className={styles.timestamp}>{formatTime(message.timestamp)}</span>
+        {message.kb && !sources.length && <span className={styles.kbTag}>知识库</span>}
+        {message.modelId && <span className={styles.model}>{message.modelId}</span>}
       </div>
       <SourcePreview source={pick} onClose={() => setPick(null)} />
     </div>

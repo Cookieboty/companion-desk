@@ -51,6 +51,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onLocalClick,
 }) => {
   const [message, setMessage] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [slashIdx, setSlashIdx] = useState(0);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { state, actions } = useAiChat();
@@ -204,6 +207,35 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     // 处理输入法组合状态
     if (isComposing) return;
 
+    // 斜杠命令：↑↓ 选择，Enter/Tab 执行，Esc 关闭
+    if (slashOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const d = e.key === 'ArrowDown' ? 1 : -1;
+        setSlashIdx((i) => (i + d + slashMatches.length) % slashMatches.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        runCommand(slashMatches[Math.min(slashIdx, slashMatches.length - 1)]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMessage('');
+        return;
+      }
+    }
+    // ↑ 在空输入框里找回上一条提问（同 Codex）
+    if (e.key === 'ArrowUp' && !message) {
+      const last = [...state.messages].reverse().find((m) => m.role === 'user');
+      if (last) {
+        e.preventDefault();
+        setMessage(last.content);
+      }
+      return;
+    }
+
     // Ctrl/Cmd + Enter 发送消息
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -229,6 +261,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
+    setSlashIdx(0);
 
     // 自动调整高度
     if (textareaRef.current) {
@@ -258,6 +291,165 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     [onSend, actions, kbMode, kbAvailable],
   );
   const cv = useChatVoice({ disabled: disabled || !state.currentModelId, onText: onVoiceText });
+
+  const provOk = providerClientAvailable();
+  const openModels = provOk ? () => onProvidersClick?.() : onConfigClick;
+  type Cmd = {
+    id: string;
+    icon: string;
+    label: string;
+    hint?: string;
+    testId: string;
+    run: () => void;
+    show: boolean;
+    active?: boolean;
+  };
+  const commands: Cmd[] = [
+    {
+      id: 'kb',
+      icon: '📚',
+      label: kbMode ? '知识库问答：开' : '知识库问答：关',
+      hint: '⌘/Ctrl+Shift+K',
+      testId: 'kb-mode-toggle',
+      run: toggleKb,
+      show: kbAvailable,
+      active: kbMode,
+    },
+    {
+      id: 'snip',
+      icon: '✂️',
+      label: '截图提问',
+      hint: '⌘/Ctrl+Shift+S',
+      testId: 'snip-button',
+      run: () => void snip(),
+      show: screenOk && !isDisabled && !snipping,
+    },
+    {
+      id: 'model',
+      icon: '⚙️',
+      label: provOk ? '供应商与模型' : '配置模型',
+      testId: 'open-config',
+      run: () => openModels?.(),
+      show: true,
+    },
+    {
+      id: 'voice',
+      icon: '🎙',
+      label: '语音设置',
+      hint: 'F2 说话',
+      testId: 'open-voice-settings',
+      run: () => cv.setShowSettings(true),
+      show: cv.v.available,
+    },
+    {
+      id: 'kbm',
+      icon: '🗂',
+      label: '知识库管理',
+      hint: '⌘/Ctrl+Shift+L',
+      testId: 'open-kb-panel',
+      run: () => onKnowledgeClick?.(),
+      show: !!onKnowledgeClick && kbAvailable,
+    },
+    {
+      id: 'memory',
+      icon: '🧠',
+      label: '长期记忆',
+      hint: '⌘/Ctrl+Shift+M',
+      testId: 'open-mem-panel',
+      run: () => onMemoryClick?.(),
+      show: !!onMemoryClick && memClient.available(),
+    },
+    {
+      id: 'schedule',
+      icon: '🗓',
+      label: '日程 · 提醒 · 编程助手',
+      hint: '⌘/Ctrl+Shift+D',
+      testId: 'open-sched-panel',
+      run: () => onScheduleClick?.(),
+      show: !!onScheduleClick && schedClient.available(),
+    },
+    {
+      id: 'screen',
+      icon: '🖥',
+      label: '截图与屏幕记忆',
+      hint: '⌘/Ctrl+Shift+O',
+      testId: 'open-screen-panel',
+      run: () => onScreenClick?.(),
+      show: !!onScreenClick && screenOk,
+    },
+    {
+      id: 'ext',
+      icon: '🧩',
+      label: '扩展：MCP 与技能',
+      hint: '⌘/Ctrl+Shift+E',
+      testId: 'open-ext-panel',
+      run: () => onExtClick?.(),
+      show: !!onExtClick && extClient.available(),
+    },
+    {
+      id: 'desktop',
+      icon: '📁',
+      label: '桌面能力',
+      testId: 'open-desktop-panel',
+      run: () => onDesktopClick?.(),
+      show: !!onDesktopClick,
+    },
+    {
+      id: 'local',
+      icon: '🏠',
+      label: '本地中心（辅助）',
+      hint: '⌘/Ctrl+Shift+J',
+      testId: 'open-local-panel',
+      run: () => onLocalClick?.(),
+      show: !!onLocalClick && extClient.available(),
+    },
+  ].filter((c) => c.show);
+  const slashQuery = /^\/(\S*)$/.exec(message)?.[1];
+  const slashMatches =
+    slashQuery === undefined
+      ? []
+      : commands.filter(
+          (c) => c.id.startsWith(slashQuery.toLowerCase()) || c.label.includes(slashQuery),
+        );
+  const slashOpen = slashMatches.length > 0;
+  function runCommand(c: Cmd | undefined) {
+    if (!c) return;
+    setMenuOpen(false);
+    setMessage('');
+    c.run();
+  }
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onEsc = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onEsc);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onEsc);
+    };
+  }, [menuOpen]);
+
+  const renderItems = (list: Cmd[], slash: boolean) =>
+    list.map((c, i) => (
+      <button
+        key={c.id}
+        type="button"
+        role="menuitem"
+        className={`${styles.menuItem} ${slash && i === slashIdx ? styles.menuItemActive : ''}`}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => runCommand(c)}
+        data-testid={slash ? `slash-${c.id}` : c.testId}
+        aria-pressed={c.active}
+        title={c.label}
+      >
+        <span className={styles.menuIcon}>{c.icon}</span>
+        <span className={styles.menuLabel}>{slash ? `/${c.id}` : c.label}</span>
+        <span className={styles.menuHint}>{slash ? c.label : c.hint}</span>
+      </button>
+    ));
 
   return (
     <div className={styles.messageInputContainer}>
@@ -314,6 +506,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           }
         }}
       >
+        {slashOpen && (
+          <div className={styles.menu} role="menu" data-testid="slash-menu">
+            {renderItems(slashMatches, true)}
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={message}
@@ -340,161 +537,70 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           rows={1}
         />
 
-        {kbAvailable && (
+        <div className={styles.composerBar}>
+          <div className={styles.moreWrap} ref={menuRef}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              title="更多：知识库、语音、模型、设置…（也可输入 / ）"
+              aria-label="更多功能"
+              data-testid="composer-more"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11 5h2v14h-2zM5 11h14v2H5z" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className={styles.menu} role="menu" data-testid="composer-menu">
+                {renderItems(commands, false)}
+              </div>
+            )}
+          </div>
+          {kbMode && kbAvailable && (
+            <button
+              type="button"
+              className={styles.chip}
+              onClick={toggleKb}
+              title="知识库问答已开启，点击关闭"
+              data-testid="kb-mode-chip"
+            >
+              📚 知识库
+            </button>
+          )}
+          <div className={styles.modelStatus}>
+            {provOk ? (
+              <ProviderSwitcher
+                className={styles.currentModel}
+                onManage={() => onProvidersClick?.()}
+              />
+            ) : state.models.filter((m) => m.enabled).length === 0 ? (
+              <span className={styles.noModel}>没有可用的AI模型</span>
+            ) : (
+              <span className={styles.currentModel}>
+                {state.models.find((m) => m.id === state.currentModelId)?.name || 'DeepSeek Chat'}
+              </span>
+            )}
+          </div>
+          <span className={styles.spacer} />
+          <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
           <button
-            type="button"
-            onClick={toggleKb}
-            className={`${styles.kbToggle} ${kbMode ? styles.kbToggleOn : ''}`}
-            aria-pressed={kbMode}
-            title={
-              kbMode
-                ? '知识库问答：开（Ctrl/⌘+Shift+K 关闭）'
-                : '知识库问答：关（Ctrl/⌘+Shift+K 开启）'
-            }
-            data-testid="kb-mode-toggle"
+            onClick={handleSend}
+            disabled={isDisabled || (!message.trim() && !images.length)}
+            className={styles.sendButton}
+            title="发送消息 (Enter)"
+            aria-label="发送"
           >
-            📚{kbMode && <span className={styles.kbToggleLabel}>知识库</span>}
+            {state.isLoading ? (
+              <div className={styles.loadingSpinner} />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4l-7 7 1.4 1.4L11 7.8V20h2V7.8l4.6 4.6L19 11z" />
+              </svg>
+            )}
           </button>
-        )}
-        {screenOk && (
-          <button
-            type="button"
-            onClick={() => void snip()}
-            className={styles.kbToggle}
-            disabled={isDisabled || snipping}
-            title="截图提问（Ctrl/⌘+Shift+S；任意界面 Ctrl/⌘+Alt+A）"
-            data-testid="snip-button"
-          >
-            {snipping ? '…' : '✂️'}
-          </button>
-        )}
-        <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
-        <button
-          onClick={handleSend}
-          disabled={isDisabled || (!message.trim() && !images.length)}
-          className={styles.sendButton}
-          title="发送消息 (Ctrl+Enter)"
-        >
-          {state.isLoading ? (
-            <div className={styles.loadingSpinner} />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      <div className={styles.inputHint}>
-        <span className={styles.hintText}>
-          Enter 发送 · F2 说话{screenOk ? ' · ⌘/Ctrl+Shift+S 截图' : ''} · 可粘贴/拖入图片
-          {kbAvailable ? ' · ⌘/Ctrl+Shift+K 知识库' : ''}
-        </span>
-        <div className={styles.modelStatus}>
-          {providerClientAvailable() ? (
-            <ProviderSwitcher
-              className={styles.currentModel}
-              onManage={() => onProvidersClick?.()}
-            />
-          ) : state.models.filter((m) => m.enabled).length === 0 ? (
-            <span className={styles.noModel}>❌ 没有可用的AI模型</span>
-          ) : (
-            <span className={styles.currentModel}>
-              当前模型:{' '}
-              {state.models.find((m) => m.id === state.currentModelId)?.name || 'DeepSeek Chat'}
-            </span>
-          )}
-          {cv.v.available && (
-            <button
-              className={styles.configButton}
-              onClick={() => cv.setShowSettings(true)}
-              title="语音输入设置"
-              data-testid="open-voice-settings"
-            >
-              🎙
-            </button>
-          )}
-          {onKnowledgeClick && kbAvailable && (
-            <button
-              className={styles.configButton}
-              onClick={onKnowledgeClick}
-              title="本地知识库（来源 / 索引 / OCR）"
-              data-testid="open-kb-panel"
-            >
-              📚
-            </button>
-          )}
-          {onMemoryClick && memClient.available() && (
-            <button
-              className={styles.configButton}
-              onClick={onMemoryClick}
-              title="长期记忆（Ctrl/⌘+Shift+M）"
-              data-testid="open-mem-panel"
-            >
-              🧠
-            </button>
-          )}
-          {onScheduleClick && schedClient.available() && (
-            <button
-              className={styles.configButton}
-              onClick={onScheduleClick}
-              title="日程与主动提醒（Ctrl/⌘+Shift+D）"
-              data-testid="open-sched-panel"
-            >
-              🗓
-            </button>
-          )}
-          {onScreenClick && screenOk && (
-            <button
-              className={styles.configButton}
-              onClick={onScreenClick}
-              title="截图与屏幕记忆（Ctrl/⌘+Shift+O）"
-              data-testid="open-screen-panel"
-            >
-              🖥
-            </button>
-          )}
-          {onExtClick && extClient.available() && (
-            <button
-              className={styles.configButton}
-              onClick={onExtClick}
-              title="扩展：MCP 与技能（Ctrl/⌘+Shift+E）"
-              data-testid="open-ext-panel"
-            >
-              🧩
-            </button>
-          )}
-          {onDesktopClick && (
-            <button
-              className={styles.configButton}
-              onClick={onDesktopClick}
-              title="桌面能力（文件授权 / 操作记录）"
-              data-testid="open-desktop-panel"
-            >
-              📁
-            </button>
-          )}
-          <button
-            className={styles.configButton}
-            onClick={providerClientAvailable() ? () => onProvidersClick?.() : onConfigClick}
-            title={providerClientAvailable() ? '供应商与模型（第三方优先）' : '配置模型'}
-            data-testid="open-config"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
-            </svg>
-          </button>
-          {onLocalClick && extClient.available() && (
-            <button
-              className={`${styles.configButton} ${styles.auxButton}`}
-              onClick={onLocalClick}
-              title="本地中心（辅助：日历 / 剪贴板 / 可选本机小模型，Ctrl/⌘+Shift+J）"
-              data-testid="open-local-panel"
-              aria-label="本地中心"
-            >
-              🏠
-            </button>
-          )}
         </div>
       </div>
       <VoiceSettingsModal cv={cv} />

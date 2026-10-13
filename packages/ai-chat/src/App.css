@@ -209,3 +209,59 @@ body {
     opacity: 0.35;
   }
 }
+
+/* ===== Codex 风格：平静的空状态 ===== */
+.welcome-content {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  max-width: 620px;
+}
+.welcome-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--cd-color-text);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  margin-bottom: 18px;
+}
+.welcome-subtitle {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+}
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.quick-action-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--cd-color-border);
+  color: var(--cd-color-text-muted);
+  box-shadow: none;
+  transform: none;
+}
+.quick-action-btn:hover {
+  transform: none;
+  color: var(--cd-color-text);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+}
+.input-container {
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
+}
+.welcome-content .quick-action-btn {
+  min-height: 0;
+  flex-direction: row;
+}
+.welcome-content .quick-actions {
+  width: auto;
+  margin-top: 0;
+}

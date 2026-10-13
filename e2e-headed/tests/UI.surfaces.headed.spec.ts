@@ -157,6 +157,7 @@ test.describe('UI surfaces', () => {
     await chat.fill('textarea', '你好，帮我写一段 TypeScript 示例');
     await shot(chat, '11-chat-typing');
 
+    await chat.click('[data-testid="composer-more"]');
     await chat.click('[data-testid="open-config"]');
     await chat.waitForTimeout(500);
     await shot(chat, '12-chat-config-panel');
