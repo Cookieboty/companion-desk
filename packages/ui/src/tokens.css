@@ -209,7 +209,7 @@
   --cd-bubble-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-/* B · Warm Ink：暖调墨色暗色 + 陶土橙强调（参考 Claude / Notion 暗色的暖中性） */
+/* B · Warm Ink：暖调墨色暗色 + Nomi 品牌橙强调 #FB9466（参考 Claude / Notion 暗色的暖中性） */
 [data-theme='ink'] {
   color-scheme: dark;
   --cd-color-bg: #1a1917;
@@ -222,15 +222,15 @@
   --cd-color-text: #ece8e1;
   --cd-color-text-muted: #a8a196;
   --cd-color-text-subtle: #78726a;
-  --cd-color-text-on-accent: #ffffff;
-  --cd-accent-rgb: 196, 116, 79;
-  --cd-accent-2-rgb: 224, 163, 131;
-  --cd-accent-3-rgb: 184, 154, 133;
-  --cd-color-accent: #c4744f;
-  --cd-color-accent-hover: #b0653f;
-  --cd-color-accent-2: #e0a383;
-  --cd-color-accent-3: #b89a85;
-  --cd-color-accent-soft: rgba(196, 116, 79, 0.15);
+  --cd-color-text-on-accent: #2a211a; /* 深墨字：在品牌橙上对比度 ≥ 7:1 */
+  --cd-accent-rgb: 251, 148, 102; /* Nomi Orange #FB9466 */
+  --cd-accent-2-rgb: 253, 186, 148;
+  --cd-accent-3-rgb: 201, 164, 138;
+  --cd-color-accent: #fb9466;
+  --cd-color-accent-hover: #f17f4e;
+  --cd-color-accent-2: #fdba94;
+  --cd-color-accent-3: #c9a48a;
+  --cd-color-accent-soft: rgba(251, 148, 102, 0.15);
   --cd-color-success: #7fae6e;
   --cd-color-warning: #d6a24a;
   --cd-color-danger: #d4574a;
@@ -247,11 +247,11 @@
   --cd-shadow-md: 0 1px 0 rgba(255, 245, 230, 0.035) inset, 0 8px 24px rgba(0, 0, 0, 0.4);
   --cd-shadow-lg: 0 1px 0 rgba(255, 245, 230, 0.04) inset, 0 24px 48px rgba(0, 0, 0, 0.5);
   --cd-shadow-glow: 0 0 0 1px rgba(240, 228, 210, 0.06);
-  --cd-focus-ring: 0 0 0 2px rgba(196, 116, 79, 0.5);
+  --cd-focus-ring: 0 0 0 2px rgba(251, 148, 102, 0.55);
   --cd-bubble-bg: rgba(246, 241, 233, 0.97);
   --cd-bubble-border: rgba(120, 100, 80, 0.22);
   --cd-bubble-text: #3d362d;
-  --cd-bubble-link: #a65a37;
+  --cd-bubble-link: #c4602f;
   --cd-bubble-shadow: 0 6px 18px rgba(40, 30, 20, 0.22);
 }
 

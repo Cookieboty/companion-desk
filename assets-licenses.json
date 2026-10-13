@@ -156,12 +156,10 @@
       ]
     },
     {
-      "pattern": "packages/electron/assets/{icon.png,logo.jpg}",
-      "license": "LicenseRef-FirstParty",
-      "author": "Cookieboty (project owner) — all rights reserved, first-party artwork",
-      "source": "this repository (first-party)",
-      "firstParty": true,
-      "owner": "Cookieboty"
+      "pattern": "packages/electron/assets/{icon.png,icon.ico,icon.icns,logo.svg,tray.png,tray@2x.png,trayTemplate.png,trayTemplate@2x.png,icons/**}",
+      "license": "MIT",
+      "author": "Nomi-ai project owner (Cookieboty) — owner-provided, AI-generated, licensed by project owner; vector recreation in docs/brand/*.svg",
+      "source": "docs/BRAND.md (Nomi brand board)"
     },
     {
       "pattern": "packages/electron/assets/completion/**",

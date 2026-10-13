@@ -78,7 +78,7 @@ mac:
       arch:
         - x64
         - arm64
-  icon: assets/icon.png
+  icon: assets/icon.icns
   hardenedRuntime: true
   gatekeeperAssess: false
 
@@ -91,7 +91,7 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: assets/icon.png
+  icon: assets/icon.ico
 
 # ---------------------------------------------------------------
 # Linux · AppImage（P9-9 alpha 首发目标）
@@ -106,4 +106,4 @@ linux:
   executableName: companion-desk
   # electron-builder 26+: derive .desktop / WM_CLASS from package.json desktopName
   syncDesktopName: true
-  icon: assets/icon.png
+  icon: assets/icons
