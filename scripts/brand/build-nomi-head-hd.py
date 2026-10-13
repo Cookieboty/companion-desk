@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Stage 2 (v3): rebuild the whole Nomi head from the owner's front-facing HD head image.
+"""Stage 2 (v4): rebuild the whole Nomi head from the owner's front-facing HD head image.
 
 Local only (numpy, Pillow, opencv-python-headless). Usage:
   python3 scripts/brand/build-nomi-head-hd.py <nomi-head-front-hd.jpg> <rig-out-dir/>
 Needs <rig-out-dir>/rig.json + body.png from stage 1 (build-nomi-rig.py). Replaces the
-head-related layers (head, bangs, side hair, ribbon, eyes, lids, mouths) with layers cut
-from the one HD source, stored at native resolution with a draw scale, and updates rig.json.
+head-related layers (head, bangs, side hair, ribbon, eyes, mouths) with layers cut from the
+one HD source, stored at native resolution with a draw scale, and updates rig.json.
+v4: the eye sockets are filled with clean skin and eye metrics + lash colour are written to
+rig.json; the renderer draws the descending lid, closed and happy (^^) eyes procedurally.
+Then run stage 3 (build-nomi-body-parts.py).
 """
 import sys, json, math
 import numpy as np, cv2
@@ -17,8 +20,8 @@ img = np.asarray(Image.open(SRC).convert('RGB')).astype(np.float32)
 H, W = img.shape[:2]
 yy, xx = np.mgrid[0:H, 0:W]
 # --- placement: source px -> rig px (uniform scale, chin onto the body's neck)
-K = 0.64                       # head width/chin-to-eyes matched to the half-body rig
-SRC_CHIN = (640.0, 470.0); RIG_CHIN = (474.0, 376.0)
+K = 0.66                       # head width/chin-to-eyes matched to the half-body rig
+SRC_CHIN = (640.0, 470.0); RIG_CHIN = (474.0, 381.0)
 def to_rig(x, y): return [RIG_CHIN[0] + (x - SRC_CHIN[0]) * K, RIG_CHIN[1] + (y - SRC_CHIN[1]) * K]
 NECK_CUT = 500                 # source y; just above the source choker, overlaps the body choker
 def soft(m, s): return cv2.GaussianBlur(m.astype(np.float32), (0, 0), s)
@@ -51,6 +54,12 @@ neckw = np.clip((NECK_CUT - yy) / 6.0 + 0.5, 0, 1)
 # jacket collar pokes above the cut at the sides — remove anything below the hair tips that is collar-ish
 collar = (yy > 440) & ((xx < 560) | (xx > 720)) & ((hsv[..., 1] < 40) & (lum > 200) | ((hsv[..., 0] > 5) & (hsv[..., 0] < 22) & (hsv[..., 1] > 150) & (yy > 455)))
 a = a * neckw * (1 - soft(collar, 1.2))
+# beside the neck: hair behind the neck fades out softly (no hard cut line), grey shadow strands go
+side_n = (xx < 596) | (xx > 684)
+greyh = side_n & (yy > 440) & (hsv[..., 1] < 70) & (lum > 80)
+a = a * np.where(side_n, np.clip((NECK_CUT - 4 - yy) / 26.0, 0, 1), 1) * (1 - soft(greyh, 1.0))
+behind_neck = ((xx > 490) & (xx < 596)) | ((xx > 684) & (xx < 795))
+a = a * np.where(behind_neck, np.clip((456 + 9 * np.sin(xx / 6.3) + 5 * np.sin(xx / 2.7 + 1) - yy) / 12.0, 0, 1), 1)
 # below the jaw only hair (and the neck) belongs to the head: drop jacket outlines / lapels
 hairlike = ((lum < 140) & ((hsv[..., 0] < 30) | (hsv[..., 2] < 90))) | ((hsv[..., 0] > 4) & (hsv[..., 0] < 22) & (hsv[..., 1] > 120) & (lum < 200))
 hairlike = cv2.morphologyEx(hairlike.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
@@ -104,6 +113,11 @@ for i in range(1, nb):
     ys = np.where(lb == i)[0]
     if ys.min() < 230 and st[i, 4] > 30: keep |= lb == i
 bangs = soft(cv2.dilate(keep.astype(np.uint8), np.ones((3, 3), np.uint8)), 0.8) * a
+# lashes touching the fringe are not hair: clear the eye sockets below the lash top
+for e in eyes.values():
+    ys_, xs_ = np.where(e['op'] | e['lash'])
+    sock = (xx > xs_.min() - 10) & (xx < xs_.max() + 10) & (yy > ys_.min() - 3) & (yy < ys_.max() + 8)
+    bangs = bangs * (1 - soft(sock, 1.5))
 # --- side hair (secondary motion), ribbon
 root = np.clip((yy - 330) / 30, 0, 1)
 sideL = soft(hair & (xx < 478) & (yy < NECK_CUT), 1.0) * root * a
@@ -116,7 +130,13 @@ mbox = np.zeros((H, W), bool); mbox[380:405, 600:692] = True
 mouth_m = mbox & (lum < 185)
 mouth_m = cv2.morphologyEx(mouth_m.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 7), np.uint8)).astype(bool)
 hole = np.zeros((H, W), bool)
-for e in eyes.values(): hole |= cv2.dilate((e['op'] | e['lash']).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+for e in eyes.values():
+    hole |= cv2.dilate((e['op'] | e['lash']).astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool)
+    # whole eye socket (lash wings, crease lines) → clean skin, so closed lids read as skin
+    ys_, xs_ = np.where(e['op'] | e['lash'])
+    ecx, ecy = (xs_.min() + xs_.max()) / 2, (ys_.min() + ys_.max()) / 2
+    erx, ery = (xs_.max() - xs_.min()) / 2 + 9, (ys_.max() - ys_.min()) / 2 + 8
+    hole |= ((xx - ecx) / erx) ** 2 + ((yy - ecy) / ery) ** 2 < 1
 hole_m = cv2.dilate(mouth_m.astype(np.uint8), np.ones((7, 9), np.uint8)).astype(bool)
 hole |= hole_m
 valid = (~hole & (lum > 175) & (hsv[..., 1] < 120) & face_zone).astype(np.float32)
@@ -127,8 +147,8 @@ skin = img * (1 - hs) + fillc * hs
 # under the ribbon: paint hair (inpaint) so the swaying ribbon reveals hair, not a hole
 behind = rbox & (xx < 862) & (cv2.dilate(hair.astype(np.uint8), np.ones((9, 9), np.uint8)) > 0)
 skin = cv2.cvtColor(cv2.inpaint(cv2.cvtColor(skin.astype(np.uint8), cv2.COLOR_RGB2BGR), ((rib > 0.05) & behind).astype(np.uint8) * 255, 5, cv2.INPAINT_TELEA), cv2.COLOR_BGR2RGB).astype(np.float32)
-side_cut = np.maximum(sideL, sideR) * (yy > 362) / np.maximum(a, 1e-3)
-head_a = a * (1 - np.clip(side_cut, 0, 1)) * np.where(behind, 1, (1 - rib / np.maximum(a, 1e-3)).clip(0, 1))
+# side hair stays in the head layer too: swaying strands reveal hair, never a seam
+head_a = a * np.where(behind, 1, (1 - rib / np.maximum(a, 1e-3)).clip(0, 1))
 # --- save helpers (trimmed, native res, scale K)
 def save(name, rgb, alpha):
     arr = np.dstack([np.clip(rgb, 0, 255), np.clip(alpha, 0, 1) * 255]).astype(np.uint8); arr[arr[..., 3] < 3] = 0
@@ -136,7 +156,7 @@ def save(name, rgb, alpha):
     bb = (max(bb[0] - 2, 0), max(bb[1] - 2, 0), min(bb[2] + 2, W), min(bb[3] + 2, H))
     im.crop(bb).save(OUT + name + '.png', optimize=True)
     rig['layers'][name] = [*to_rig(bb[0], bb[1]), K]
-for k in ['eye-l', 'eye-r', 'eyes-closed', 'eyes-happy', 'mouth', 'mouth-open', 'mouth-o', 'mouth-frown', 'hair-side-l', 'hair-side-r', 'ribbon', 'head']:
+for k in ['eye-l', 'eye-r', 'eyes-closed', 'eyes-happy', 'mouth', 'mouth-open', 'mouth-o', 'mouth-frown', 'hair-side-l', 'hair-side-r', 'ribbon', 'head', 'lid-l', 'lid-r', 'happy-l', 'happy-r']:
     rig['layers'].pop(k, None)
 save('head', skin, head_a)
 save('bangs', img, bangs)
@@ -149,22 +169,25 @@ for side, e in eyes.items():
     ys, _ = np.where(e['op']); top, bot = ys.min(), ys.max()
     shade = np.clip((yy - top) / max(1, (bot - top) * 0.5), 0, 1)[..., None]
     save(f'eye-white-{side}', base * (0.78 + 0.22 * shade), op)
-    save(f'iris-{side}', img, soft(e['iris'], 0.6))
+    # iris pixels hidden under the lashes are NOT kept (they are lash pixels): repaint that part
+    # of the disc from the visible iris so a moving iris never drags lash lines over the eye
+    vis = e['iris'] & cv2.erode(e['op'].astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool) & (lum > 40)
+    hid = (e['iris'] & ~vis).astype(np.uint8) * 255
+    bx = e['box']; sub = np.ascontiguousarray(img[bx[1]:bx[3], bx[0]:bx[2]].astype(np.uint8))
+    rep = img.copy()
+    rep[bx[1]:bx[3], bx[0]:bx[2]] = cv2.inpaint(sub, np.ascontiguousarray(hid[bx[1]:bx[3], bx[0]:bx[2]]), 4, cv2.INPAINT_TELEA)
+    save(f'iris-{side}', rep, soft(e['iris'], 0.6))
     save(f'lash-{side}', img, soft(e['lash'], 0.5))
-    # closed lid: the upper lash stroke flipped (∩ → ∪) and flattened onto the lower lid
     cx, cy = e['c']; r = e['r']
-    up = e['lash'] & (yy < cy - r * 0.2)
-    ys, xs = np.where(up); x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
-    strip = np.dstack([img, soft(up, 0.5) * 255])[y0:y1 + 1, x0:x1 + 1][::-1]
-    hgt = max(5, int((y1 - y0 + 1) * 0.5))
-    strip = cv2.resize(strip, (strip.shape[1], hgt), interpolation=cv2.INTER_AREA)
-    can = np.zeros((H, W, 4), np.float32); oy = int(cy + r * 0.45); can[oy:oy + hgt, x0:x1 + 1] = strip
-    save(f'lid-{side}', can[..., :3], can[..., 3] / 255)
-    # happy ^^: the lash arc itself, a bit lower and thinner
-    s2 = np.dstack([img, soft(up, 0.5) * 255])[y0:y1 + 1, x0:x1 + 1]
-    s2 = cv2.resize(s2, (s2.shape[1], max(5, int((y1 - y0 + 1) * 0.7))), interpolation=cv2.INTER_AREA)
-    can = np.zeros((H, W, 4), np.float32); oy = int(cy - r * 0.25); can[oy:oy + s2.shape[0], x0:x1 + 1] = s2
-    save(f'happy-{side}', can[..., :3], can[..., 3] / 255)
+    # closed / happy eyes are drawn procedurally by the renderer from these metrics
+    ys, xs = np.where(e['op'])
+    lx0, ly0 = to_rig(xs.min(), ys.min()); lx1, ly1 = to_rig(xs.max(), ys.max())
+    lp = e['lash'] & (yy < e['c'][1])
+    col = np.median(img[lp & (lum < 90)], axis=0) if (lp & (lum < 90)).sum() > 10 else np.array([60, 34, 30])
+    lys = np.where(lp)[0]
+    thick = float(np.median(lp[:, xs.min():xs.max()].sum(0)[lp[:, xs.min():xs.max()].sum(0) > 0])) * K
+    rig.setdefault('eyes', {})[side] = {'x0': lx0, 'x1': lx1, 'top': ly0, 'bottom': ly1, 'lash': max(1.6, min(thick, 5.0))}
+    rig['lashColor'] = '#%02x%02x%02x' % tuple(int(v) for v in col)
     rig['anchors'][f'iris{side.upper()}'] = to_rig(cx, cy)
     rig['anchors'][f'eye{side.upper()}'] = to_rig(cx, cy + r * 0.9)  # squash pivot on the lower lid
     rig.setdefault('irisRadius', {})[side] = r * K
