@@ -55,6 +55,9 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
       cursor: { x: -1e6, y: -1e6, inside: false, fresh: false },
       hit: null as boolean | null,
       down: null as { region: BodyRegion; sx: number; sy: number } | null,
+      /** true between our pointerdown and pointerup/mouseup — Playwright on Windows
+       *  often reports e.buttons=0 on move even while the button is held. */
+      buttonHeld: false,
       dragging: false,
       hover: null as BodyRegion | null,
       hoverSince: 0,
@@ -144,16 +147,19 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
       s.dragging = false;
       document.documentElement.dataset.mascotDragging = '0';
     };
-    const onMove = (e: PointerEvent) => {
+    const onMove = (e: PointerEvent | MouseEvent) => {
       s.cursor = { x: e.clientX, y: e.clientY, inside: true, fresh: true };
-      if (s.dragging && e.buttons & 1) api?.dragMove(e.screenX, e.screenY);
-      const r = gate.move(e.clientX, e.clientY, performance.now(), e.buttons);
+      // Prefer our own held flag: under setPointerCapture / click-through toggles,
+      // Chromium on Windows frequently delivers move events with buttons=0.
+      const buttons = s.buttonHeld ? e.buttons | 1 : e.buttons;
+      if (s.dragging && buttons & 1) api?.dragMove(e.screenX, e.screenY);
+      const r = gate.move(e.clientX, e.clientY, performance.now(), buttons);
       if (r === 'start' && s.down) {
         s.dragging = true;
         api?.dragStart(s.down.sx, s.down.sy);
         api?.dragMove(e.screenX, e.screenY);
         document.documentElement.dataset.mascotDragging = '1';
-      } else if (r === 'cancel' || (!gate.isDown && s.down)) {
+      } else if (r === 'cancel' || (!gate.isDown && s.down && !s.buttonHeld)) {
         // button released without a pointerup (lost during a click-through toggle)
         if (s.dragging) endDrag('buttons');
         s.down = null;
@@ -162,6 +168,7 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
     const onDown = (e: PointerEvent) => {
       if (e.button !== 0 || e.target !== canvas) return;
       if (!hitTest(e.clientX, e.clientY, true)) return;
+      s.buttonHeld = true;
       gate.press(e.clientX, e.clientY, performance.now());
       s.down = { region: regionAt(e.clientX, e.clientY), sx: e.screenX, sy: e.screenY };
       try {
@@ -171,6 +178,7 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
       }
     };
     const finish = (click: boolean, why = 'up') => {
+      s.buttonHeld = false;
       const r = gate.release();
       if (s.dragging) endDrag(why);
       else if (click && r === 'click' && s.down) classifier.click(s.down.region);
@@ -329,6 +337,7 @@ const InteractionLite: FC<InteractionLiteProps> = ({ canvasRef, geometry, regist
       classifier.dispose();
       canvas.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('mousemove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('blur', onCancel);

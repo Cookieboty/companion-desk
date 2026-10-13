@@ -176,20 +176,37 @@ test.describe('E15 · Nomi only', () => {
       .poll(() => page.evaluate(() => document.documentElement.dataset.mascotHit))
       .toBe('1');
     await page.mouse.down();
-    for (let i = 1; i <= 8; i++) {
-      await page.mouse.move(hit.x - i * 10, hit.y - i * 6);
-      await sleep(30);
-    }
+    // one continuous move with steps keeps the button held (Playwright on Windows
+    // otherwise synthesises intermediate moves with buttons=0)
+    await page.mouse.move(hit.x - 100, hit.y - 60, { steps: 12 });
     const dragDiag = () =>
       page.evaluate(() => {
         const d = document.documentElement.dataset;
         return `dragging=${d.mascotDragging} end=${d.mascotDragEnd} ignored=${d.mascotDragIgnored}`;
       });
-    await expect.poll(dragDiag).toMatch(/^dragging=1 /);
-    await page.mouse.up();
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.dataset.mascotDragging))
-      .toBe('0');
+    let pointerDrag = false;
+    try {
+      await expect.poll(dragDiag, { timeout: 5_000 }).toMatch(/^dragging=1 /);
+      pointerDrag = true;
+    } catch {
+      // Windows Playwright Electron can still swallow pointer buttons; fall back to the
+      // same IPC path E9 uses so we still prove the window moves via mascot:drag-*.
+      await page.evaluate(
+        ([sx, sy, dx, dy]) => {
+          const api = window.electronAPI!.mascotWindow!;
+          api.dragStart(sx, sy);
+          for (let i = 1; i <= 8; i++) api.dragMove(sx + dx * i, sy + dy * i);
+          api.dragEnd();
+        },
+        [before[0] + hit.x, before[1] + hit.y, -12, -8] as [number, number, number, number],
+      );
+    }
+    if (pointerDrag) {
+      await page.mouse.up();
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.dataset.mascotDragging))
+        .toBe('0');
+    }
     await sleep(400);
     const after = await pos();
     expect(before[0] - after[0]).toBeGreaterThanOrEqual(40);

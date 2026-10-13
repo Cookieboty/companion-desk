@@ -48,6 +48,7 @@ const MascotInteractionLayer: FC = () => {
       sy: number;
       region: BodyRegion | null;
     } | null,
+    buttonHeld: false,
     dragging: false,
     lastGeom: '',
     geomAt: 0,
@@ -149,16 +150,17 @@ const MascotInteractionLayer: FC = () => {
       s.dragging = false;
       document.documentElement.dataset.mascotDragging = '0';
     };
-    const onMove = (e: PointerEvent) => {
+    const onMove = (e: PointerEvent | MouseEvent) => {
       s.cursor = { x: e.clientX, y: e.clientY, inside: true, fresh: true };
-      if (s.dragging && e.buttons & 1) api?.dragMove(e.screenX, e.screenY);
-      const r = gate.current.move(e.clientX, e.clientY, performance.now(), e.buttons);
+      const buttons = s.buttonHeld ? e.buttons | 1 : e.buttons;
+      if (s.dragging && buttons & 1) api?.dragMove(e.screenX, e.screenY);
+      const r = gate.current.move(e.clientX, e.clientY, performance.now(), buttons);
       if (r === 'start' && s.down) {
         s.dragging = true;
         api?.dragStart(s.down.sx, s.down.sy);
         api?.dragMove(e.screenX, e.screenY);
         document.documentElement.dataset.mascotDragging = '1';
-      } else if (r === 'cancel' || (!gate.current.isDown && s.down)) {
+      } else if (r === 'cancel' || (!gate.current.isDown && s.down && !s.buttonHeld)) {
         // 按键已松开却没收到 pointerup（点击穿透切换时可能丢）：结束，不算点击
         if (s.dragging) endDrag();
         s.down = null;
@@ -167,6 +169,7 @@ const MascotInteractionLayer: FC = () => {
     const onDown = (e: PointerEvent) => {
       if (e.button !== 0 || e.target !== canvas) return;
       if (!hitTest(e.clientX, e.clientY, true)) return;
+      s.buttonHeld = true;
       gate.current.press(e.clientX, e.clientY, performance.now());
       s.down = {
         x: e.clientX,
@@ -182,6 +185,7 @@ const MascotInteractionLayer: FC = () => {
       }
     };
     const finish = (click: boolean) => {
+      s.buttonHeld = false;
       const r = gate.current.release();
       if (s.dragging) endDrag();
       else if (click && r === 'click' && s.down) classifier.click(s.down.region ?? 'body');
@@ -196,6 +200,7 @@ const MascotInteractionLayer: FC = () => {
     };
     canvas.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
+    window.addEventListener('mousemove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onCancel);
     window.addEventListener('blur', onCancel);
@@ -206,6 +211,7 @@ const MascotInteractionLayer: FC = () => {
       classifier.dispose();
       canvas.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('mousemove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('blur', onCancel);
