@@ -73,7 +73,7 @@ const DEFAULT_CONFIG: ChatConfig = {
   autoSave: true,
   maxHistoryLength: 1000,
   systemPrompt:
-    '你是 Nomi，一个运行在用户电脑上的本地 AI 助手。请结合之前的对话内容，简洁、准确地回答。',
+    '你是 Nomi（诺米），住在用户桌面上的 AI 伙伴，运行在用户自己的电脑上。语气温暖、专业、可信赖：先给结论，再给步骤；不确定时坦诚说明。请结合之前的对话内容，简洁、准确地回答。',
 };
 
 const DEFAULT_MODELS: AIModelConfig[] = [
