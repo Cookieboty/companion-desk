@@ -10,6 +10,7 @@ import type { ProviderService, ProviderState } from '@ig-live/ai-runtime';
 import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { APP_DISPLAY_NAME } from '../brand';
 import { onLocaleChange, t } from '../i18n';
 import type { ILoggerService } from '../services/LoggerService';
 
@@ -111,10 +112,14 @@ export class TrayManager {
   start(): void {
     if (process.env.IG_DISABLE_TRAY === '1' || this.tray) return;
     try {
-      const iconPath = path.join(__dirname, '..', '..', 'assets', 'icon.png');
-      const icon = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
+      // macOS 用单色 Template 图（随菜单栏明暗自动反色），其余平台用彩色 Nomi 标
+      const assets = path.join(__dirname, '..', '..', 'assets');
+      const icon = nativeImage.createFromPath(
+        path.join(assets, process.platform === 'darwin' ? 'trayTemplate.png' : 'tray.png'),
+      );
+      if (process.platform === 'darwin') icon.setTemplateImage(true);
       this.tray = new Tray(icon);
-      this.tray.setToolTip('Companion Desk');
+      this.tray.setToolTip(APP_DISPLAY_NAME);
       this.rebuild();
       this.unsubscribe = this.opts.providers.onChange(() => this.rebuild());
       this.unsubscribeModels = this.opts.models?.onChange(() => void this.refreshModels());

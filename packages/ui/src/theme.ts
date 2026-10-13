@@ -19,8 +19,8 @@ export const THEMES: ThemeInfo[] = [
   {
     id: 'ink',
     name: 'Warm Ink 暖墨（默认）',
-    desc: '暖中性暗色 + 陶土橙',
-    swatch: ['#1a1917', '#272522', '#ece8e1', '#c4744f'],
+    desc: '暖中性暗色 + Nomi 品牌橙',
+    swatch: ['#1a1917', '#272522', '#ece8e1', '#fb9466'],
   },
   {
     id: 'graphite',
