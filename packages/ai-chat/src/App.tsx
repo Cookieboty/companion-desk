@@ -98,7 +98,13 @@ const AiChatContent: React.FC = () => {
     };
   }, []);
   const screenActive = !!screenSt?.settings.enabled && screenSt.settings.pausedUntil <= Date.now();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 720);
+  // 窗口变窄时自动收起侧栏，避免挤压对话区
+  useEffect(() => {
+    const onResize = () => window.innerWidth < 720 && setSidebarCollapsed(true);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   // ⌘/Ctrl+B 收起/展开侧栏（与 Codex 一致）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -187,6 +193,8 @@ const AiChatContent: React.FC = () => {
           onExt={() => setShowExt(true)}
           onLocal={() => setShowLocal(true)}
           onSettings={() => openSettings()}
+          onNewChat={handleNewChat}
+          onCustomize={() => openSettings('general')}
         >
           {screenActive && (
             <button

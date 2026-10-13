@@ -163,12 +163,6 @@ body {
 }
 
 @media (max-width: 768px) {
-  .ai-chat-app {
-    flex-direction: column;
-  }
-  .main-content {
-    height: calc(100vh - 60px);
-  }
   .input-container {
     padding: var(--cd-space-3) var(--cd-space-4);
   }

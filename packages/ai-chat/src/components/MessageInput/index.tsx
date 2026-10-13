@@ -4,6 +4,7 @@ import { useAiChat } from '../../contexts/AiChatContext';
 import { extClient } from '../../services/extClient';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
+import { MAX_PINS, pinDef, togglePin, usePins } from '../../services/pins';
 import { providerClientAvailable } from '../../services/providerClient';
 import { schedClient } from '../../services/schedClient';
 import {
@@ -55,6 +56,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const { pins, update: updatePins } = usePins();
   const [slashIdx, setSlashIdx] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isComposing, setIsComposing] = useState(false);
@@ -430,6 +432,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           (c) => c.id.startsWith(slashQuery.toLowerCase()) || c.label.includes(slashQuery),
         );
   const slashOpen = slashMatches.length > 0;
+  // 左上角常驻入口 / 其它地方通过 `cd:cmd` 事件触发同一套动作
+  const cmdRef = useRef<{ list: Cmd[]; hf: () => void }>({ list: [], hf: () => undefined });
+  cmdRef.current = { list: commands, hf: cv.toggleHandsFree };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const id = String((e as CustomEvent<string>).detail ?? '');
+      if (id === 'handsfree') return void cmdRef.current.hf();
+      cmdRef.current.list.find((c) => c.id === id)?.run();
+    };
+    window.addEventListener('cd:cmd', on);
+    return () => window.removeEventListener('cd:cmd', on);
+  }, []);
   function runCommand(c: Cmd | undefined) {
     if (!c) return;
     setMenuOpen(false);
@@ -451,23 +465,46 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   }, [menuOpen]);
 
   const renderItems = (list: Cmd[], slash: boolean) =>
-    list.map((c, i) => (
-      <button
-        key={c.id}
-        type="button"
-        role="menuitem"
-        className={`${styles.menuItem} ${slash && i === slashIdx ? styles.menuItemActive : ''}`}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => runCommand(c)}
-        data-testid={slash ? `slash-${c.id}` : c.testId}
-        aria-pressed={c.active}
-        title={c.label}
-      >
-        <span className={styles.menuIcon}>{c.icon}</span>
-        <span className={styles.menuLabel}>{slash ? `/${c.id}` : c.label}</span>
-        <span className={styles.menuHint}>{slash ? c.label : c.hint}</span>
-      </button>
-    ));
+    list.map((c, i) => {
+      const item = (
+        <button
+          key={c.id}
+          type="button"
+          role="menuitem"
+          className={`${styles.menuItem} ${slash && i === slashIdx ? styles.menuItemActive : ''}`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => runCommand(c)}
+          data-testid={slash ? `slash-${c.id}` : c.testId}
+          aria-pressed={c.active}
+          title={c.label}
+        >
+          <span className={styles.menuIcon}>{c.icon}</span>
+          <span className={styles.menuLabel}>{slash ? `/${c.id}` : c.label}</span>
+          <span className={styles.menuHint}>{slash ? c.label : c.hint}</span>
+        </button>
+      );
+      if (slash || !pinDef(c.id)) return item;
+      const pinned = pins.includes(c.id);
+      const full = !pinned && pins.length >= MAX_PINS;
+      return (
+        <div key={c.id} className={styles.menuRow}>
+          {item}
+          <button
+            type="button"
+            className={`${styles.pinBtn} ${pinned ? styles.pinOn : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => updatePins(togglePin(pins, c.id))}
+            disabled={full}
+            title={pinned ? '取消固定' : full ? `左上角最多 ${MAX_PINS} 个` : '固定到左上角'}
+            aria-label={pinned ? `取消固定${c.label}` : `固定${c.label}到左上角`}
+            aria-pressed={pinned}
+            data-testid={`pin-toggle-${c.id}`}
+          >
+            📌
+          </button>
+        </div>
+      );
+    });
 
   return (
     <div className={styles.messageInputContainer}>
