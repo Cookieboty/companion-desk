@@ -1,7 +1,9 @@
 import type { ClientAIClient } from '@ig-live/ai-sdk-client';
 import * as AISdkReact from '@ig-live/ai-sdk-client/react';
-import React, { useEffect, useState } from 'react';
+import { ModalHostContext, type ModalHost } from '@ig-live/ui';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ChatHeader } from './components/ChatHeader';
 import { ConfigPanel } from './components/ConfigPanel';
 import { DesktopPanel } from './components/DesktopPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -14,6 +16,7 @@ import { MessageList } from './components/MessageList';
 import { ProviderPanel } from './components/ProviderPanel';
 import { SchedulePanel } from './components/SchedulePanel';
 import { ScreenPanel } from './components/ScreenPanel';
+import { SettingsView, type SettingsSection } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
@@ -108,9 +111,62 @@ const AiChatContent: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const [settings, setSettings] = useState<SettingsSection | null>(null);
+  const openSettings = useCallback((sec: SettingsSection = 'general') => {
+    setShowKb(false);
+    setShowMem(false);
+    setShowSched(false);
+    setShowScreen(false);
+    setShowExt(false);
+    setShowLocal(false);
+    setShowDesktop(false);
+    setShowConfig(false);
+    setShowProviders(false);
+    setSettings(sec);
+  }, []);
+  // ⌘/Ctrl+, 打开设置（与 Codex app 一致）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setSettings((s) => (s ? null : 'general'));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  // 快速视图：右侧抽屉 + 「在设置中打开」
+  const drawerHost = useMemo(() => {
+    const mk = (sec: SettingsSection): ModalHost => ({
+      mode: 'drawer',
+      onOpenSettings: () => openSettings(sec),
+    });
+    return {
+      kb: mk('kb'),
+      memory: mk('memory'),
+      schedule: mk('schedule'),
+      screen: mk('screen'),
+      ext: mk('ext'),
+      desktop: mk('desktop'),
+      local: mk('local'),
+    };
+  }, [openSettings]);
+
   const handleNewChat = () => {
     actions.newConversation();
   };
+
+  if (settings) {
+    return (
+      <div className="ai-chat-app">
+        <SettingsView
+          section={settings}
+          onSection={setSettings}
+          onClose={() => setSettings(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="ai-chat-app">
@@ -119,22 +175,32 @@ const AiChatContent: React.FC = () => {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onNewChat={handleNewChat}
+        onSettings={() => openSettings()}
       />
 
       {/* 主内容区域 */}
       <div className="main-content">
-        {screenActive && (
-          <button
-            type="button"
-            className="screen-mem-indicator"
-            onClick={() => setShowScreen(true)}
-            title="屏幕记忆开启中（仅保存在本机），点击管理或暂停"
-            data-testid="screen-mem-indicator"
-          >
-            <span className="screen-mem-dot" />
-            屏幕记忆中
-          </button>
-        )}
+        <ChatHeader
+          onMemory={() => setShowMem(true)}
+          onKnowledge={() => setShowKb(true)}
+          onSchedule={() => setShowSched(true)}
+          onExt={() => setShowExt(true)}
+          onLocal={() => setShowLocal(true)}
+          onSettings={() => openSettings()}
+        >
+          {screenActive && (
+            <button
+              type="button"
+              className="screen-mem-indicator"
+              onClick={() => setShowScreen(true)}
+              title="屏幕记忆开启中（仅保存在本机），点击管理或暂停"
+              data-testid="screen-mem-indicator"
+            >
+              <span className="screen-mem-dot" />
+              屏幕记忆中
+            </button>
+          )}
+        </ChatHeader>
         {/* 对话区域 */}
         <main className="chat-container">
           {state.messages.length === 0 ? (
@@ -171,6 +237,7 @@ const AiChatContent: React.FC = () => {
           <MessageInput
             onConfigClick={() => setShowConfig(true)}
             onProvidersClick={() => setShowProviders(true)}
+            onSettingsClick={(sec) => openSettings(sec as SettingsSection)}
             onDesktopClick={() => setShowDesktop(true)}
             onKnowledgeClick={() => setShowKb(true)}
             onMemoryClick={() => setShowMem(true)}
@@ -182,16 +249,30 @@ const AiChatContent: React.FC = () => {
         </footer>
       </div>
 
-      {/* 配置面板 */}
+      {/* 模型配置保持为弹窗；日常功能为右侧抽屉（快速视图） */}
       <ConfigPanel isVisible={showConfig} onClose={() => setShowConfig(false)} />
       <ProviderPanel isVisible={showProviders} onClose={() => setShowProviders(false)} />
-      <DesktopPanel isVisible={showDesktop} onClose={() => setShowDesktop(false)} />
-      <KnowledgePanel isVisible={showKb} onClose={() => setShowKb(false)} />
-      <MemoryPanel isVisible={showMem} onClose={() => setShowMem(false)} />
-      <SchedulePanel isVisible={showSched} onClose={() => setShowSched(false)} />
-      <ScreenPanel isVisible={showScreen} onClose={() => setShowScreen(false)} />
-      <ExtensionsPanel isVisible={showExt} onClose={() => setShowExt(false)} />
-      <LocalPanel isVisible={showLocal} onClose={() => setShowLocal(false)} />
+      <ModalHostContext.Provider value={drawerHost.desktop}>
+        <DesktopPanel isVisible={showDesktop} onClose={() => setShowDesktop(false)} />
+      </ModalHostContext.Provider>
+      <ModalHostContext.Provider value={drawerHost.kb}>
+        <KnowledgePanel isVisible={showKb} onClose={() => setShowKb(false)} />
+      </ModalHostContext.Provider>
+      <ModalHostContext.Provider value={drawerHost.memory}>
+        <MemoryPanel isVisible={showMem} onClose={() => setShowMem(false)} />
+      </ModalHostContext.Provider>
+      <ModalHostContext.Provider value={drawerHost.schedule}>
+        <SchedulePanel isVisible={showSched} onClose={() => setShowSched(false)} />
+      </ModalHostContext.Provider>
+      <ModalHostContext.Provider value={drawerHost.screen}>
+        <ScreenPanel isVisible={showScreen} onClose={() => setShowScreen(false)} />
+      </ModalHostContext.Provider>
+      <ModalHostContext.Provider value={drawerHost.ext}>
+        <ExtensionsPanel isVisible={showExt} onClose={() => setShowExt(false)} />
+      </ModalHostContext.Provider>
+      <ModalHostContext.Provider value={drawerHost.local}>
+        <LocalPanel isVisible={showLocal} onClose={() => setShowLocal(false)} />
+      </ModalHostContext.Provider>
     </div>
   );
 };

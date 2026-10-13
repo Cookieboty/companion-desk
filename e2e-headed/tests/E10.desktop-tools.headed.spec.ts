@@ -216,8 +216,9 @@ test.describe('E10 · real app · desktop file tools', () => {
       await chat.waitForSelector('textarea', { timeout: 20_000 });
 
       // ---- 1. 授权文件夹（读写） ----
-      await chat.click('[data-testid="composer-more"]');
-      await chat.click('[data-testid="open-desktop-panel"]');
+      // 桌面权限在统一设置页里（⌘/Ctrl+, → 桌面权限）
+      await chat.click('[data-testid="open-settings"]');
+      await chat.click('[data-testid="settings-nav-desktop"]');
       await chat.waitForSelector('[data-testid="desktop-panel"]');
       await chat.click('[data-testid="desktop-grant-rw"]');
       await expect(chat.locator('[data-testid="desktop-scope"]')).toContainText('Docs');
@@ -288,8 +289,9 @@ test.describe('E10 · real app · desktop file tools', () => {
       expect(existsSync(target)).toBe(false);
 
       // 撤销（设置面板 → 操作记录）
-      await chat.click('[data-testid="composer-more"]');
-      await chat.click('[data-testid="open-desktop-panel"]');
+      // 桌面权限在统一设置页里（⌘/Ctrl+, → 桌面权限）
+      await chat.click('[data-testid="open-settings"]');
+      await chat.click('[data-testid="settings-nav-desktop"]');
       await chat.getByRole('tab', { name: '操作记录' }).click();
       await chat.click('[data-testid="desktop-undo"]');
       await expect(chat.locator('[data-testid="desktop-msg"]')).toContainText('已撤销');

@@ -172,17 +172,20 @@ const TaskEditor: React.FC<{
   );
 };
 
-export const SchedulePanel: React.FC<{ isVisible: boolean; onClose: () => void }> = ({
-  isVisible,
-  onClose,
-}) => (isVisible ? <Body onClose={onClose} /> : null);
+export type ScheduleTab = Tab;
+export const SchedulePanel: React.FC<{
+  isVisible: boolean;
+  onClose: () => void;
+  initialTab?: Tab;
+}> = ({ isVisible, onClose, initialTab }) =>
+  isVisible ? <Body onClose={onClose} initialTab={initialTab} /> : null;
 
-const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, initialTab }) => {
   const [st, setSt] = useState<SchedState | null>(null);
   const [results, setResults] = useState<TaskResult[]>([]);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
-  const [tab, setTab] = useState<Tab>('reminders');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'reminders');
   const [agents, setAgents] = useState<AgentWatchState | null>(null);
   const loadAgents = useCallback(() => {
     if (!agentsClient.available()) return;

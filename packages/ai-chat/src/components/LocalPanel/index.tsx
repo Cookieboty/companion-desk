@@ -73,11 +73,12 @@ interface Confirm {
   extra?: string;
 }
 
-export const LocalPanel: React.FC<{ isVisible: boolean; onClose: () => void }> = ({
-  isVisible,
-  onClose,
-}) => {
-  const [tab, setTab] = useState<Tab>('calendar');
+export const LocalPanel: React.FC<{
+  isVisible: boolean;
+  onClose: () => void;
+  initialTab?: Tab;
+}> = ({ isVisible, onClose, initialTab }) => {
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'calendar');
   const [st, setSt] = useState<LocalState | null>(null);
   const [prog, setProg] = useState<Record<string, Progress>>({});
   const [err, setErr] = useState('');

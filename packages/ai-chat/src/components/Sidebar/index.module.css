@@ -100,3 +100,10 @@
   color: var(--cd-color-text-subtle);
   white-space: nowrap;
 }
+.bottom {
+  margin-top: auto;
+  color: var(--cd-color-text-muted);
+}
+.threads {
+  flex: 1;
+}
