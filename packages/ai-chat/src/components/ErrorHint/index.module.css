@@ -10,7 +10,7 @@
   backdrop-filter: var(--cd-blur);
   -webkit-backdrop-filter: var(--cd-blur);
   box-shadow: var(--cd-shadow-md);
-  color: #fecaca;
+  color: var(--cd-color-danger-text);
   font-size: var(--cd-font-size-md);
 }
 
@@ -27,11 +27,11 @@
 .errorHintTitle {
   flex: 1;
   font-weight: var(--cd-font-weight-bold);
-  color: #fee2e2;
+  color: var(--cd-color-danger-text);
 }
 
 .errorHintDismiss {
-  color: #fecaca;
+  color: var(--cd-color-danger-text);
 }
 
 .errorHintDesc {

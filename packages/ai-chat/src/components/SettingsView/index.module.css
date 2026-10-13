@@ -12,7 +12,7 @@
   gap: 1px;
   padding: 12px 8px;
   border-right: 1px solid var(--cd-color-border);
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--cd-color-bg-subtle);
   overflow-y: auto;
 }
 .back,
@@ -32,7 +32,7 @@
 }
 .back:hover,
 .navItem:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--cd-color-hover);
   color: var(--cd-color-text);
 }
 .navTitle {
@@ -123,7 +123,7 @@
   border: 1px solid var(--cd-color-border);
   border-radius: 8px;
   font-size: 13px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--cd-color-bg-subtle);
   cursor: grab;
 }
 .orderItem:focus-visible {
@@ -151,7 +151,7 @@
   cursor: pointer;
 }
 .mini:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--cd-color-active);
 }
 .mini:disabled {
   opacity: 0.25;
@@ -167,7 +167,7 @@
   cursor: pointer;
 }
 .check:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--cd-color-hover);
 }
 .checkOff {
   opacity: 0.45;
@@ -183,4 +183,69 @@
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+.themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.theme {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--cd-color-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--cd-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.theme:hover {
+  background: var(--cd-color-hover);
+}
+.themeOn {
+  border-color: var(--cd-color-accent);
+  box-shadow: 0 0 0 1px var(--cd-color-accent);
+}
+.themePreview {
+  display: block;
+  height: 64px;
+  border-radius: 6px;
+  border: 1px solid;
+  padding: 10px;
+  margin-bottom: 4px;
+}
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 100%;
+  border-radius: 4px;
+  padding: 7px 8px;
+  position: relative;
+}
+.themeLine {
+  display: block;
+  height: 4px;
+  width: 60%;
+  border-radius: 2px;
+}
+.themeDot {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.themeName {
+  font-size: 13px;
+  font-weight: 500;
+}
+.themeDesc {
+  font-size: 11px;
+  color: var(--cd-color-text-subtle);
 }

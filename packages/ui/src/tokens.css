@@ -33,6 +33,32 @@
   --cd-color-danger-soft: rgba(239, 68, 68, 0.16);
   --cd-color-overlay: rgba(2, 6, 23, 0.6);
 
+  /* 交互层 / 细节（主题可覆盖；默认值保持 Cool Mist 原样） */
+  --cd-color-hover: rgba(255, 255, 255, 0.05);
+  --cd-color-active: rgba(255, 255, 255, 0.08);
+  --cd-color-bg-subtle: rgba(255, 255, 255, 0.015);
+  --cd-color-user-msg: rgba(255, 255, 255, 0.06);
+  --cd-color-danger-text: #fecaca;
+  --cd-title-fill: linear-gradient(135deg, var(--cd-color-accent-2), var(--cd-color-accent));
+  --cd-title-color: transparent;
+  --cd-app-glow:
+    radial-gradient(
+      ellipse 60% 40% at 15% 90%,
+      rgba(var(--cd-accent-rgb), 0.06) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 50% 35% at 85% 10%,
+      rgba(var(--cd-accent-2-rgb), 0.05) 0%,
+      transparent 50%
+    );
+  /* 看板娘气泡 */
+  --cd-bubble-bg: rgba(250, 244, 235, 0.95);
+  --cd-bubble-border: rgba(196, 170, 136, 0.55);
+  --cd-bubble-text: #5f4a27;
+  --cd-bubble-link: #8a6430;
+  --cd-bubble-shadow: 0 4px 14px rgba(120, 96, 64, 0.18);
+
   /* radius */
   --cd-radius-xs: 4px;
   --cd-radius-sm: 6px;
@@ -128,4 +154,151 @@
   --cd-color-overlay: rgba(15, 23, 42, 0.35);
   --cd-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --cd-shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.15);
+}
+
+/* ======================================================================
+ * 可选主题（设置 → 通用 → 主题）。默认仍为 Cool Mist（不设 data-theme）。
+ * 原则：中性色优先、只有一个克制的强调色、细线边框、无辉光、无装饰渐变，
+ * 层级靠明度阶梯（bg < surface < raised）而不是彩色。
+ * ==================================================================== */
+
+/* A · Graphite：中性石墨暗色 + 低饱和靛蓝（参考 Linear / Codex 桌面端） */
+[data-theme='graphite'] {
+  color-scheme: dark;
+  --cd-color-bg: #0f0f11;
+  --cd-color-bg-gradient: #0f0f11;
+  --cd-color-surface: #151517;
+  --cd-color-surface-raised: #1b1b1e;
+  --cd-color-surface-sunken: #0b0b0c;
+  --cd-color-border: rgba(255, 255, 255, 0.075);
+  --cd-color-border-strong: rgba(255, 255, 255, 0.16);
+  --cd-color-text: #ededef;
+  --cd-color-text-muted: #a0a0a8;
+  --cd-color-text-subtle: #6c6c74;
+  --cd-color-text-on-accent: #ffffff;
+  --cd-accent-rgb: 104, 114, 229;
+  --cd-accent-2-rgb: 165, 171, 245;
+  --cd-accent-3-rgb: 138, 144, 200;
+  --cd-color-accent: #6872e5;
+  --cd-color-accent-hover: #5a63d1;
+  --cd-color-accent-2: #a5abf5;
+  --cd-color-accent-3: #8a90c8;
+  --cd-color-accent-soft: rgba(104, 114, 229, 0.14);
+  --cd-color-success: #3fb27f;
+  --cd-color-warning: #d9a03f;
+  --cd-color-danger: #e5484d;
+  --cd-color-danger-text: #ff9592;
+  --cd-color-overlay: rgba(0, 0, 0, 0.55);
+  --cd-color-hover: rgba(255, 255, 255, 0.045);
+  --cd-color-active: rgba(255, 255, 255, 0.075);
+  --cd-color-bg-subtle: #121214;
+  --cd-color-user-msg: #1f1f23;
+  --cd-title-fill: none;
+  --cd-title-color: var(--cd-color-text);
+  --cd-app-glow: none;
+  --cd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --cd-shadow-md: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.45);
+  --cd-shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 48px rgba(0, 0, 0, 0.55);
+  --cd-shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --cd-focus-ring: 0 0 0 2px rgba(104, 114, 229, 0.55);
+  --cd-bubble-bg: rgba(27, 27, 30, 0.96);
+  --cd-bubble-border: rgba(255, 255, 255, 0.1);
+  --cd-bubble-text: #ededef;
+  --cd-bubble-link: #a5abf5;
+  --cd-bubble-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* B · Warm Ink：暖调墨色暗色 + 陶土橙强调（参考 Claude / Notion 暗色的暖中性） */
+[data-theme='ink'] {
+  color-scheme: dark;
+  --cd-color-bg: #1a1917;
+  --cd-color-bg-gradient: #1a1917;
+  --cd-color-surface: #201f1c;
+  --cd-color-surface-raised: #272522;
+  --cd-color-surface-sunken: #141311;
+  --cd-color-border: rgba(240, 228, 210, 0.08);
+  --cd-color-border-strong: rgba(240, 228, 210, 0.17);
+  --cd-color-text: #ece8e1;
+  --cd-color-text-muted: #a8a196;
+  --cd-color-text-subtle: #78726a;
+  --cd-color-text-on-accent: #ffffff;
+  --cd-accent-rgb: 196, 116, 79;
+  --cd-accent-2-rgb: 224, 163, 131;
+  --cd-accent-3-rgb: 184, 154, 133;
+  --cd-color-accent: #c4744f;
+  --cd-color-accent-hover: #b0653f;
+  --cd-color-accent-2: #e0a383;
+  --cd-color-accent-3: #b89a85;
+  --cd-color-accent-soft: rgba(196, 116, 79, 0.15);
+  --cd-color-success: #7fae6e;
+  --cd-color-warning: #d6a24a;
+  --cd-color-danger: #d4574a;
+  --cd-color-danger-text: #f2a497;
+  --cd-color-overlay: rgba(10, 9, 8, 0.55);
+  --cd-color-hover: rgba(240, 228, 210, 0.05);
+  --cd-color-active: rgba(240, 228, 210, 0.085);
+  --cd-color-bg-subtle: #1d1c1a;
+  --cd-color-user-msg: #2a2825;
+  --cd-title-fill: none;
+  --cd-title-color: var(--cd-color-text);
+  --cd-app-glow: none;
+  --cd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --cd-shadow-md: 0 1px 0 rgba(255, 245, 230, 0.035) inset, 0 8px 24px rgba(0, 0, 0, 0.4);
+  --cd-shadow-lg: 0 1px 0 rgba(255, 245, 230, 0.04) inset, 0 24px 48px rgba(0, 0, 0, 0.5);
+  --cd-shadow-glow: 0 0 0 1px rgba(240, 228, 210, 0.06);
+  --cd-focus-ring: 0 0 0 2px rgba(196, 116, 79, 0.5);
+  --cd-bubble-bg: rgba(246, 241, 233, 0.97);
+  --cd-bubble-border: rgba(120, 100, 80, 0.22);
+  --cd-bubble-text: #3d362d;
+  --cd-bubble-link: #a65a37;
+  --cd-bubble-shadow: 0 6px 18px rgba(40, 30, 20, 0.22);
+}
+
+/* C · Light Paper：干净浅色 + 克制的系统蓝（参考 Apple / Vercel Geist 浅色） */
+[data-theme='paper'] {
+  color-scheme: light;
+  --cd-color-bg: #fafaf9;
+  --cd-color-bg-gradient: #fafaf9;
+  --cd-color-surface: #ffffff;
+  --cd-color-surface-raised: #ffffff;
+  --cd-color-surface-sunken: #f3f3f1;
+  --cd-color-border: rgba(0, 0, 0, 0.085);
+  --cd-color-border-strong: rgba(0, 0, 0, 0.18);
+  --cd-color-text: #1c1c1e;
+  --cd-color-text-muted: #5c5c62;
+  --cd-color-text-subtle: #8c8c92;
+  --cd-color-text-on-accent: #ffffff;
+  --cd-accent-rgb: 37, 99, 214;
+  --cd-accent-2-rgb: 37, 99, 214;
+  --cd-accent-3-rgb: 90, 104, 135;
+  --cd-color-accent: #2563d6;
+  --cd-color-accent-hover: #1e52b4;
+  --cd-color-accent-2: #2563d6;
+  --cd-color-accent-3: #5a6887;
+  --cd-color-accent-soft: rgba(37, 99, 214, 0.09);
+  --cd-color-success: #1a7f4b;
+  --cd-color-success-soft: rgba(26, 127, 75, 0.1);
+  --cd-color-warning: #a15c07;
+  --cd-color-warning-soft: rgba(161, 92, 7, 0.1);
+  --cd-color-danger: #c4302b;
+  --cd-color-danger-soft: rgba(196, 48, 43, 0.08);
+  --cd-color-danger-text: #b42318;
+  --cd-color-overlay: rgba(20, 20, 22, 0.22);
+  --cd-color-hover: rgba(0, 0, 0, 0.04);
+  --cd-color-active: rgba(0, 0, 0, 0.07);
+  --cd-color-bg-subtle: #f4f4f2;
+  --cd-color-user-msg: #efefed;
+  --cd-title-fill: none;
+  --cd-title-color: var(--cd-color-text);
+  --cd-app-glow: none;
+  --cd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --cd-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 18px rgba(0, 0, 0, 0.07);
+  --cd-shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.04), 0 20px 40px rgba(0, 0, 0, 0.12);
+  --cd-shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --cd-focus-ring: 0 0 0 2px rgba(37, 99, 214, 0.35);
+  --cd-bubble-bg: rgba(255, 255, 255, 0.97);
+  --cd-bubble-border: rgba(0, 0, 0, 0.1);
+  --cd-bubble-text: #1c1c1e;
+  --cd-bubble-link: #2563d6;
+  --cd-bubble-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }

@@ -2,8 +2,8 @@
 .messageBubble {
   --tail-offset: 50%;
   --bubble-scale: 1;
-  --bubble-bg: rgba(250, 244, 235, 0.95);
-  --bubble-border: rgba(196, 170, 136, 0.55);
+  --bubble-bg: var(--cd-bubble-bg, rgba(250, 244, 235, 0.95));
+  --bubble-border: var(--cd-bubble-border, rgba(196, 170, 136, 0.55));
 
   box-sizing: border-box;
   position: fixed;
@@ -14,14 +14,14 @@
   border: 1px solid var(--bubble-border);
   border-radius: var(--cd-radius-lg);
   background-color: var(--bubble-bg);
-  box-shadow: 0 4px 14px rgba(120, 96, 64, 0.18);
+  box-shadow: var(--cd-bubble-shadow, 0 4px 14px rgba(120, 96, 64, 0.18));
   font-family: var(--cd-font-sans);
   font-size: calc(var(--cd-font-size-md) * var(--bubble-scale));
   letter-spacing: var(--cd-tracking-normal);
   line-height: 1.6;
   white-space: pre-line;
   overflow-wrap: anywhere;
-  color: #5f4a27;
+  color: var(--cd-bubble-text, #5f4a27);
   opacity: 0;
   /* 位置不做过渡：跟随头部时必须立即到位，避免动画中途压到脸 */
   transition: opacity 0.3s ease-in-out;
@@ -53,7 +53,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #8a6430;
+  color: var(--cd-bubble-link, #8a6430);
   font: inherit;
   font-size: var(--cd-font-size-xs);
   font-weight: var(--cd-font-weight-medium);
@@ -62,7 +62,7 @@
   cursor: pointer;
 }
 .more:focus-visible {
-  outline: 2px solid #8a6430 !important;
+  outline: 2px solid var(--cd-bubble-link, #8a6430) !important;
   outline-offset: 2px;
 }
 

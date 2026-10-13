@@ -292,10 +292,10 @@
   margin: 0;
   font-size: var(--cd-font-size-lg);
   font-weight: var(--cd-font-weight-bold);
-  background: linear-gradient(135deg, var(--cd-color-accent-2), var(--cd-color-accent));
+  background: var(--cd-title-fill);
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;
+  color: var(--cd-title-color);
 }
 .cd-modal__body {
   flex: 1;
