@@ -148,10 +148,12 @@ test.describe('E8 · model store + local import', () => {
 
     // preloadGuard 可能在首次加载缺 preload 时 reload 一次：等 API 就绪
     await page.waitForFunction(() => !!window.electronAPI?.models, undefined, { timeout: 20_000 });
-    // Bundled: default VRM + 2D sprites
+    // Bundled: Nomi (default 2D) + VRM + alternate 2D sprites
     const bundled = await page.evaluate(() => window.electronAPI!.models!.list());
+    // CD_DEFAULT_MODEL=default-character 把 VRM 排到首位（见 playwright.config）
     expect(bundled.map((m) => m.id)).toEqual([
       'default-character',
+      'nomi',
       'pastel-girl',
       'michona',
     ]);

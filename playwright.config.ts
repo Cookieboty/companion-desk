@@ -4,6 +4,8 @@ import { defineConfig } from '@playwright/test';
 process.env.CD_LOCALE ||= 'zh-CN';
 // 首次启动引导默认不弹出（引导自己的用例里显式开启）
 process.env.CD_ONBOARDING ||= 'off';
+// 默认角色是 2D Nomi；既有 E2E 基于 3D VRM 编写，测试中固定为 VRM
+process.env.CD_DEFAULT_MODEL ||= 'default-character';
 
 export default defineConfig({
   testDir: './e2e-headed/tests',

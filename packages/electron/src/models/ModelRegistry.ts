@@ -117,7 +117,12 @@ export class ModelRegistry {
         meta: u.meta,
       });
     }
-    return [...byId.values()];
+    const all = [...byId.values()];
+    // CD_DEFAULT_MODEL（测试 / 调试用）把指定角色排到首位，渲染层默认选首位
+    const pin = process.env.CD_DEFAULT_MODEL;
+    const i = pin ? all.findIndex((m) => m.id === pin) : -1;
+    if (i > 0) all.unshift(...all.splice(i, 1));
+    return all;
   }
 }
 

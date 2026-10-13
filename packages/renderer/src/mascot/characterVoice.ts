@@ -20,6 +20,11 @@ const OVERRIDE_KEY = 'mascot.characterVoice.v1';
 
 /** Built-in softer defaults by model id / tag family. */
 export const CHARACTER_VOICE_DEFAULTS: Record<string, ModelVoiceConfig> = {
+  nomi: {
+    voiceHint: 'xiaoxiao',
+    rate: 0.92,
+    pitch: 1.1,
+  },
   'default-character': {
     voiceHint: 'xiaoxiao',
     rate: 0.88,
