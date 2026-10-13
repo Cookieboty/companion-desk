@@ -329,6 +329,7 @@ export type RigImages = Map<string, CanvasImageSource & { width: number; height:
 export const RIG_LAYERS = [
   'body',
   'head',
+  'crown',
   'face-hd',
   'eye-white-l',
   'eye-white-r',
@@ -352,6 +353,7 @@ export const RIG_LAYERS = [
   'hair-side-l',
   'hair-side-r',
   'ribbon',
+  'bangs',
 ] as const;
 
 const scratches: (HTMLCanvasElement | OffscreenCanvas | undefined)[] = [];
@@ -474,6 +476,7 @@ export function drawRig(
 
   // tint only the head's own pixels (source-atop on scratch canvases)
   tintedLayer('head', 0);
+  tintedLayer('crown', 5);
   tintedLayer('face-hd', 1);
 
   // blush (soft radial gradients on the cheeks)
@@ -524,6 +527,9 @@ export function drawRig(
     );
   }
   ctx.restore();
+
+  // fringe sits above the eyes so blinks / iris moves never erase it
+  tintedLayer('bangs', 4);
 
   // secondary motion layers (hang from their roots)
   if (A.hairL) pivot(A.hairL, () => layer('hair-side-l'), pose.hairRotL);
