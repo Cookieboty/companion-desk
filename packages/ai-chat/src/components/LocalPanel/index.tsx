@@ -7,7 +7,9 @@ import {
   Badge,
   Button,
   EmptyState,
+  ErrorState,
   Input,
+  LoadingState,
   Modal,
   Notice,
   Select,
@@ -211,15 +213,34 @@ export const LocalPanel: React.FC<{
             )
           : undefined,
     });
+  // 下载失败的模型：在模型卡片上就地显示错误 + 重试（许可已确认，重试不再弹确认）
+  const [failed, setFailed] = useState<Record<string, { error: string; c: Confirm }>>({});
   const doDownload = async (c: Confirm) => {
     setConfirm(null);
+    setFailed(({ [c.id]: _drop, ...rest }) => rest);
+    let error = '';
     await run(`d:${c.id}`, async () => {
-      if (st && !st.runtime.installed) {
-        const r = await localClient.downloadRuntime();
-        if (!r.ok) return r;
+      try {
+        let r: { ok?: boolean; error?: string } | undefined;
+        if (st && !st.runtime.installed) {
+          r = await localClient.downloadRuntime();
+          if (!r.ok) {
+            error = r.error || t('未知错误');
+            return r;
+          }
+        }
+        r = await localClient.download(c.id);
+        if (r && r.ok === false) error = r.error || t('未知错误');
+        return r;
+      } catch (e) {
+        error = (e as Error).message || t('未知错误');
+        throw e;
       }
-      return localClient.download(c.id);
     });
+    if (error) {
+      setErr('');
+      setFailed((f) => ({ ...f, [c.id]: { error, c } }));
+    }
   };
 
   const srv = st?.server;
@@ -333,6 +354,16 @@ export const LocalPanel: React.FC<{
                 {t('GB 内存 ·')} {t(m.description)}
               </div>
               {p && busy === `d:${m.id}` && <Bar p={p} />}
+              {failed[m.id] && !m.installed && busy !== `d:${m.id}` && (
+                <ErrorState
+                  compact
+                  data-testid={`local-download-error-${m.id}`}
+                  title={t('下载失败')}
+                  detail={failed[m.id]!.error}
+                  onRetry={() => void doDownload(failed[m.id]!.c)}
+                  retryTestId={`local-retry-${m.id}`}
+                />
+              )}
               <div className={styles.row}>
                 {!m.installed ? (
                   busy === `d:${m.id}` ? (
@@ -1006,12 +1037,8 @@ export const LocalPanel: React.FC<{
           onChange={setTab}
           aria-label={t('本地中心')}
         />
-        {err && (
-          <Notice tone="danger" data-testid="local-error">
-            {err}
-          </Notice>
-        )}
-        {!st && !err && <SkeletonList rows={3} />}
+        {err && <ErrorState data-testid="local-error" detail={err} onRetry={() => void load()} />}
+        {!st && !err && <LoadingState rows={3} />}
         {st && tab === 'models' && models}
         {st && tab === 'ollama' && ollamaTab}
         {tab === 'calendar' && calendar}

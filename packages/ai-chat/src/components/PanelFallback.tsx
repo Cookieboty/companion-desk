@@ -1,15 +1,9 @@
-import { t } from '@nomi-ai/ui';
+import { LoadingState } from '@nomi-ai/ui';
 import React from 'react';
 
-/** 懒加载分区的占位（加载中）。 */
+/** 懒加载分区的占位（统一骨架屏）。 */
 export const PanelFallback: React.FC = () => (
-  <div
-    role="status"
-    aria-busy="true"
-    aria-label={t('加载中…')}
-    data-testid="panel-fallback"
-    style={{ padding: 24, opacity: 0.6, fontSize: 13 }}
-  >
-    {t('加载中…')}
+  <div style={{ padding: 24 }} data-testid="panel-fallback">
+    <LoadingState rows={4} />
   </div>
 );

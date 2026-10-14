@@ -2,7 +2,7 @@
  * ExtensionsPanel —— 扩展：MCP 服务器（添加 / 预设 / 导入 JSON / 连接 / 工具与信任级别）
  * 和 SKILL.md 技能包（启用、编辑、新建、从文件夹导入）。
  */
-import { t as tr } from '@nomi-ai/ui';
+import { ErrorState, LoadingState, t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -227,8 +227,8 @@ export const ExtensionsPanel: React.FC<{ isVisible: boolean; onClose: () => void
           onChange={setTab}
           aria-label={tr('扩展')}
         />
-        {err && <Notice tone="danger">{err}</Notice>}
-        {!list && !err && <SkeletonList rows={3} />}
+        {err && <ErrorState detail={err} onRetry={() => void load()} data-testid="panel-error" />}
+        {!list && !err && <LoadingState rows={3} />}
 
         {list && tab === 'mcp' && (
           <div className={styles.stack}>

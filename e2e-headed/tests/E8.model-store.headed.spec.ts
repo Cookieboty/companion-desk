@@ -18,6 +18,7 @@ import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
  * - 目录里有一个 CC0 模型和一个专有许可模型：只显示前者
  * - 下载（进度 + sha256）→ 出现在「我的角色」→ 切换后 VRM 加载成功（cdmodel:// 协议）
  * - 导入用户 VRM 1.0：读取 meta、显示责任提示；修改配置；删除
+ * - 第一次下载失败（服务器 503）→ 卡片上显示统一错误状态 + 重试 → 重试成功
  * - 目录服务器下线后刷新：离线模式显示缓存目录
  */
 const electronPkgDir = resolve(repoRoot(), 'packages', 'electron');
@@ -74,8 +75,11 @@ test.describe('E8 · model store + local import', () => {
       ['/m/store-girl.vrm', vrm],
       ['/m/store-girl.png', thumb],
     ]);
+    // 模型文件先返回 503，直到测试确认出现了「下载失败 + 重试」
+    let vrmAvailable = false;
     server = http.createServer((req, res) => {
       const p = (req.url ?? '/').split('?')[0]!;
+      if (p === '/m/store-girl.vrm' && !vrmAvailable) return void res.writeHead(503).end();
       const body = files.get(p);
       if (!body) return void res.writeHead(404).end();
       res.writeHead(200, { 'content-length': body.length });
@@ -167,6 +171,15 @@ test.describe('E8 · model store + local import', () => {
     await expect(page.getByTestId('store-terms-sample-girl')).toContainText('可商用 · 可再分发');
     await shot(page, 'store-browse');
     await page.getByTestId('store-install-store-girl').click();
+    // 下载失败：统一错误状态 + 重试
+    const failure = page.getByTestId('store-download-error-store-girl');
+    await expect(failure).toBeVisible({ timeout: 20_000 });
+    await expect(failure).toHaveAttribute('role', 'alert');
+    await failure.scrollIntoViewIfNeeded();
+    await shot(page, 'store-download-failed');
+    vrmAvailable = true;
+    await page.getByTestId('store-retry-store-girl').click();
+    await expect(failure).toHaveCount(0);
     await expect(page.getByTestId('store-progress-store-girl')).toBeVisible({ timeout: 10_000 });
     await shot(page, 'store-downloading');
     await expect(page.getByTestId('store-use-store-girl')).toBeVisible({ timeout: 60_000 });
