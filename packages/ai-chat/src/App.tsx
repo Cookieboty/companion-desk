@@ -5,21 +5,25 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
-import { ConfigPanel } from './components/ConfigPanel';
-import { DesktopPanel } from './components/DesktopPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ExtensionsPanel } from './components/ExtensionsPanel';
-import { KnowledgePanel } from './components/KnowledgePanel';
-import { LocalPanel } from './components/LocalPanel';
-import { MemoryPanel } from './components/MemoryPanel';
+import {
+  ConfigPanel,
+  DesktopPanel,
+  ExtensionsPanel,
+  KnowledgePanel,
+  LocalPanel,
+  MemoryPanel,
+  ProviderPanel,
+  SchedulePanel,
+  ScreenPanel,
+  SettingsView,
+  prefetchPanels,
+} from './components/lazyPanels';
 import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
-import { ProviderPanel } from './components/ProviderPanel';
-import { SchedulePanel } from './components/SchedulePanel';
-import { ScreenPanel } from './components/ScreenPanel';
-import { SettingsView, type SettingsSection } from './components/SettingsView';
+import type { SettingsSection } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
@@ -35,6 +39,18 @@ const AiChatContent: React.FC = () => {
   const [showProviders, setShowProviders] = useState(false);
 
   // 托盘「Provider 设置…」→ 主进程通知打开面板
+  // 首屏后空闲时预取设置 / 面板 chunk（不占首屏，打开时无需等待）
+  useEffect(() => {
+    const ric = (window as { requestIdleCallback?: (cb: () => void, o?: object) => number })
+      .requestIdleCallback;
+    const id = ric
+      ? ric(prefetchPanels, { timeout: 2000 })
+      : window.setTimeout(prefetchPanels, 500);
+    return () => {
+      if (ric) (window as { cancelIdleCallback?: (n: number) => void }).cancelIdleCallback?.(id);
+      else window.clearTimeout(id);
+    };
+  }, []);
   useEffect(() => providerClient.onOpenPanel(() => setShowProviders(true)), []);
   // mascot holds a thinking pose while a reply is being generated
   useEffect(() => {
