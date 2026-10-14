@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -6,6 +6,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * 快捷键 + 命令面板（真实应用）：
@@ -31,7 +32,7 @@ test.describe('Shortcuts and command palette', () => {
       ]);
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
-    rmSync(userData, { recursive: true, force: true });
+    safeRm(userData);
   });
 
   test('palette, focus/new-chat/settings keys, rebinding with conflict hint', async () => {

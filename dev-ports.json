@@ -1,5 +1,5 @@
 {
-  "$comment": "Nomi local dev/debug ports (6xxx/7xxx, uncommon). Override with env: CD_RENDERER_PORT, CD_CHAT_PORT, CD_DEMO_PORT. See docs/PORTS.md.",
+  "$comment": "Nomi local dev/debug ports (6xxx/7xxx, uncommon). Override with env: CD_RENDERER_PORT, CD_CHAT_PORT, CD_DEMO_PORT. See docs/development/building.md.",
   "renderer": 6127,
   "chat": 6128,
   "demo": 6129,

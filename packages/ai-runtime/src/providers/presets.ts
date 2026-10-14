@@ -33,7 +33,7 @@ export interface ProviderPreset {
   docsUrl?: string;
   /** 官方文档是否写明支持 GET {base}/models：true 支持 / false 不支持 / null 文档未写明 */
   modelsEndpoint?: boolean | null;
-  /** 已按官方文档核对（核对日期见 docs/PROVIDERS.md） */
+  /** 已按官方文档核对（核对日期见 PRESETS_CHECKED_AT / checkedAt） */
   verified: boolean;
   /** 单独核对日期（缺省为 PRESETS_CHECKED_AT） */
   checkedAt?: string;
@@ -41,7 +41,7 @@ export interface ProviderPreset {
   icon?: string;
 }
 
-/** 预设核对日期（docs/PROVIDERS.md 同步） */
+/** 预设核对日期 */
 export const PRESETS_CHECKED_AT = '2026-10-11';
 
 const P = (p: ProviderPreset): ProviderPreset => p;

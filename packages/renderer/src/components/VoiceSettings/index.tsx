@@ -242,7 +242,7 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         />
         <p className="cd-muted" style={{ fontSize: 12 }}>
           {tr(
-            '全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/VOICE.md。',
+            '全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/features/voice.md。',
           )}
         </p>
       </section>

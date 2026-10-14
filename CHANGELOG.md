@@ -39,3 +39,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 
 - **BREAKING** remove leftover files, duplicate icons and stale docs; remove dsh and the legacy standalone MCP subsystem (breaking for anyone scripting `dsh`).
 - P9 Polish Package B —— CI/打包骨架 + E2E 补齐 + Changesets 骨架
+
+### Other
+
+- Documentation rewritten by feature module (docs/README.md); links in code and settings updated.

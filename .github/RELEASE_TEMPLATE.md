@@ -1,7 +1,6 @@
 # Release Notes · {{VERSION}}
 
-> 首个 alpha 目标：`v0.1.0-alpha.1`
-> 面向消费方的迁移背景：[docs/archive/plans/README.md](../docs/archive/plans/README.md)
+> 发布流程：[docs/RELEASE.md](../docs/RELEASE.md)
 
 ## 摘要
 
@@ -19,7 +18,7 @@
 
 ## 变更
 
-> 逐条从 [docs/archive/plans/CHANGELOG.md](../docs/archive/plans/CHANGELOG.md) 的 `[Unreleased]` 复制，按分类：
+> 逐条从根目录 [CHANGELOG.md](../CHANGELOG.md) 的本版本条目复制，按分类：
 
 ### Added
 
@@ -62,9 +61,9 @@
 - [ ] `xvfb-run -a pnpm test:e2e:headed` 全绿
 - [ ] `pnpm changeset status` 无未消费 changeset
 - [ ] 三平台 CI matrix build 全绿（[ci.yml · build-electron](workflows/ci.yml)）
-- [ ] 手工验收 [P9-11 E5 同意路径](../docs/archive/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)（危险工具确认弹窗 → 同意 → fs 写入成功）
-- [ ] `docs/archive/plans/CHANGELOG.md` 已把 `[Unreleased]` 归档到本版本号
-- [ ] 内部 npm registry / GitHub Releases 上传完成
+- [ ] 手工验收危险工具确认弹窗同意路径（确认弹窗 → 同意 → 文件写入成功）
+- [ ] `pnpm changelog:check` 通过，根目录 `CHANGELOG.md` 已包含本版本
+- [ ] GitHub Releases 安装包上传完成
 - [ ] Release notes 中的 SHA256 与产物大小已填写
 
 ## 致谢

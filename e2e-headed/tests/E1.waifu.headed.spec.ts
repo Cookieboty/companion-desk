@@ -40,14 +40,13 @@ test.describe('E1 · waifu · tts chunk → renderer 收到 rms 序列', () => {
 
     // 广播是异步的：poll 到 chunks.length === 2
     await expect
-      .poll(
-        () => page!.evaluate(() => (window as any).__e2eProbe.getTtsChunks().length),
-        { timeout: 5_000 },
-      )
+      .poll(() => page!.evaluate(() => (window as any).__e2eProbe.getTtsChunks().length), {
+        timeout: 5_000,
+      })
       .toBe(2);
 
-    const chunks = await page!.evaluate(() =>
-      (window as any).__e2eProbe.getTtsChunks() as Array<{ rms: number; seq: number }>,
+    const chunks = await page!.evaluate(
+      () => (window as any).__e2eProbe.getTtsChunks() as Array<{ rms: number; seq: number }>,
     );
     expect(chunks.map((c) => c.rms)).toEqual([0.65, 0.42]);
     expect(chunks.every((c) => c.rms > 0)).toBe(true);

@@ -56,25 +56,9 @@
       "outputs": ["coverage/**"],
       "inputs": ["src/**", "tests/**", "vitest.config.ts", "vitest.config.mts", "package.json"]
     },
-    "test:e2e": {
-      "dependsOn": ["^build"],
-      "cache": false
-    },
     "@nomi-ai/electron#package": {
       "cache": false,
       "dependsOn": ["@nomi-ai/electron#build", "@nomi-ai/renderer#build", "@nomi-ai/ai-chat#build"]
-    },
-    "@nomi-ai/renderer#package": {
-      "cache": false,
-      "dependsOn": ["@nomi-ai/renderer#build"]
-    },
-    "@nomi-ai/types#package": {
-      "cache": false,
-      "dependsOn": ["@nomi-ai/types#build"]
-    },
-    "package:prod": {
-      "cache": false,
-      "dependsOn": ["build"]
     },
     "package:prod:mac": {
       "cache": false,
@@ -89,18 +73,6 @@
       "dependsOn": ["build"]
     },
     "package:debug": {
-      "cache": false,
-      "dependsOn": ["build"]
-    },
-    "package:debug:mac": {
-      "cache": false,
-      "dependsOn": ["build"]
-    },
-    "package:debug:win": {
-      "cache": false,
-      "dependsOn": ["build"]
-    },
-    "package:debug:linux": {
       "cache": false,
       "dependsOn": ["build"]
     }

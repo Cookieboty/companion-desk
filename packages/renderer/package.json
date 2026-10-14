@@ -7,7 +7,7 @@
     "build": "node ../../scripts/run-bin.mjs tsc && node ../../scripts/run-bin.mjs vite build",
     "clean": "node ../../scripts/run-bin.mjs rimraf dist",
     "test": "node ../../scripts/run-bin.mjs vitest run --passWithNoTests",
-    "package": "echo 'Renderer build completed, no packaging needed'"
+    "lint": "eslint ."
   },
   "author": "",
   "license": "MIT",

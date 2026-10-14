@@ -22,9 +22,13 @@ export default defineConfig({
         handler(html: string, ctx: { filename: string }) {
           // index.html（看板娘）与 tts-config.html 都经 file:// 加载，都需要 meta CSP
           if (!/\.html$/.test(ctx.filename)) return html;
+          const anchor = /<meta charset="UTF-8"\s*\/?>/i;
+          // 找不到锚点时宁可构建失败，也不能静默产出没有 CSP 的页面
+          if (!anchor.test(html))
+            throw new Error(`mascot-csp: no <meta charset> in ${ctx.filename}`);
           return html.replace(
-            '<meta charset="UTF-8">',
-            `<meta charset="UTF-8">\n    <meta http-equiv="Content-Security-Policy" content="${mascotCspString()}">`,
+            anchor,
+            `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${mascotCspString()}" />`,
           );
         },
       },

@@ -17,7 +17,7 @@
 ## 添加模型
 
 应用只内置 Nomi，不再接受内置 `.vrm`（`pnpm check:licenses` 会拒绝）。新角色请加到模型商店目录
-（见 docs/MODELS.md），或在应用内「导入 VRM」。
+（`COMPANION_MODEL_CATALOG_URL`，见 docs/features/mascot.md），或在应用内「导入 VRM」。
 `pnpm check:licenses` 会拒绝没有开源许可（CC0 / CC-BY / MIT 等白名单）的资源。
 
 > 历史：v1 曾使用 Live2D Cubism 2 运行时与第三方模型；因许可原因已整体移除。

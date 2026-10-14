@@ -43,8 +43,8 @@ test.describe('E2 · chat-only · window.aiIPC 联通 + tool:executed 广播', (
       .poll(() => page!.evaluate(() => (window as any).__e2eProbe.getToolExecuted().length))
       .toBeGreaterThanOrEqual(1);
 
-    const events = await page!.evaluate(() =>
-      (window as any).__e2eProbe.getToolExecuted() as any[],
+    const events = await page!.evaluate(
+      () => (window as any).__e2eProbe.getToolExecuted() as any[],
     );
     expect(events[0]).toMatchObject({
       tool: 'echo',

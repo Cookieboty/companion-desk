@@ -8,7 +8,7 @@
     "dev": "node ../../scripts/run-bin.mjs tsc --watch",
     "build": "node ../../scripts/run-bin.mjs tsc",
     "clean": "node ../../scripts/run-bin.mjs rimraf dist",
-    "package": "echo 'Types build completed, no packaging needed'"
+    "lint": "eslint ."
   },
   "author": "",
   "license": "MIT",

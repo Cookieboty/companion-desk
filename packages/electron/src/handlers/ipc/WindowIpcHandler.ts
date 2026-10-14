@@ -4,9 +4,11 @@
  */
 
 import { app, screen } from 'electron';
+
+import { type IWindowManager } from '../../core/WindowManager';
+import { type ILoggerService } from '../../services/LoggerService';
+
 import { BaseIpcHandler } from './BaseIpcHandler';
-import { ILoggerService } from '../../services/LoggerService';
-import { IWindowManager } from '../../core/WindowManager';
 
 export class WindowIpcHandler extends BaseIpcHandler {
   private windowManager: IWindowManager;
@@ -88,14 +90,14 @@ export class WindowIpcHandler extends BaseIpcHandler {
         this.logger.debug('窗口移动', {
           from: [currentX, currentY],
           to: [newX, newY],
-          delta: [intDeltaX, intDeltaY]
+          delta: [intDeltaX, intDeltaY],
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('移动窗口失败', {
           error: errorMessage,
           deltaX,
-          deltaY
+          deltaY,
         });
       }
     });
@@ -133,7 +135,7 @@ export class WindowIpcHandler extends BaseIpcHandler {
         this.logger.error('设置窗口位置失败', {
           error: errorMessage,
           x,
-          y
+          y,
         });
       }
     });
@@ -160,7 +162,7 @@ export class WindowIpcHandler extends BaseIpcHandler {
           bounds: display.bounds,
           workArea: display.workAreaSize,
           scaleFactor: display.scaleFactor,
-          rotation: display.rotation
+          rotation: display.rotation,
         };
         this.logger.debug('获取屏幕信息', { screenInfo });
         return screenInfo;
@@ -173,9 +175,10 @@ export class WindowIpcHandler extends BaseIpcHandler {
 
     // 最小化窗口
     this.registerListener('minimize-window', (_, windowType: string = 'main') => {
-      const window = windowType === 'main'
-        ? this.windowManager.getMainWindow()
-        : this.windowManager.getAiChatWindow();
+      const window =
+        windowType === 'main'
+          ? this.windowManager.getMainWindow()
+          : this.windowManager.getAiChatWindow();
 
       if (window) {
         window.minimize();
@@ -187,9 +190,10 @@ export class WindowIpcHandler extends BaseIpcHandler {
 
     // 恢复窗口
     this.registerListener('restore-window', (_, windowType: string = 'main') => {
-      const window = windowType === 'main'
-        ? this.windowManager.getMainWindow()
-        : this.windowManager.getAiChatWindow();
+      const window =
+        windowType === 'main'
+          ? this.windowManager.getMainWindow()
+          : this.windowManager.getAiChatWindow();
 
       if (window) {
         if (window.isMinimized()) {
@@ -205,9 +209,10 @@ export class WindowIpcHandler extends BaseIpcHandler {
 
     // 隐藏窗口
     this.registerListener('hide-window', (_, windowType: string = 'main') => {
-      const window = windowType === 'main'
-        ? this.windowManager.getMainWindow()
-        : this.windowManager.getAiChatWindow();
+      const window =
+        windowType === 'main'
+          ? this.windowManager.getMainWindow()
+          : this.windowManager.getAiChatWindow();
 
       if (window) {
         window.hide();
@@ -219,9 +224,10 @@ export class WindowIpcHandler extends BaseIpcHandler {
 
     // 显示窗口
     this.registerListener('show-window', (_, windowType: string = 'main') => {
-      const window = windowType === 'main'
-        ? this.windowManager.getMainWindow()
-        : this.windowManager.getAiChatWindow();
+      const window =
+        windowType === 'main'
+          ? this.windowManager.getMainWindow()
+          : this.windowManager.getAiChatWindow();
 
       if (window) {
         window.show();
@@ -233,7 +239,7 @@ export class WindowIpcHandler extends BaseIpcHandler {
     });
 
     this.logger.info('WindowIpcHandler 初始化完成', {
-      registeredChannels: this.getRegisteredChannels().length
+      registeredChannels: this.getRegisteredChannels().length,
     });
   }
 }

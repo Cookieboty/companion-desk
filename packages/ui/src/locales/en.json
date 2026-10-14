@@ -1105,7 +1105,7 @@
   "恢复角色默认": "Restore character default",
   "全局柔和偏好": "Global soft preference",
   "优先 Edge / 在线自然语音（Neural）": "Prefer Edge / online natural (Neural) voices",
-  "全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/VOICE.md。": "The global preference affects “Auto” voice choice; rate/pitch follow the current character's binding (above). See docs/VOICE.md.",
+  "全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/features/voice.md。": "The global preference affects “Auto” voice choice; rate/pitch follow the current character's binding (above). See docs/features/voice.md.",
   "功能设置": "Features",
   "键盘监听（根据输入内容播放语音）": "Keyboard listening (plays voice lines based on what you type)",
   "定时播报（根据时间播放问候语音）": "Timed greetings (plays greetings based on the time)",

@@ -34,9 +34,7 @@ describe('ClientAIClient · IPC 通道映射', () => {
 
   it('chat.stream 迭代 chunk，直到 done', async () => {
     const bridge = new FakeBridge();
-    const specStream = IPC_METHODS.find(
-      (s) => s.facade === 'chat' && s.method === 'stream',
-    );
+    const specStream = IPC_METHODS.find((s) => s.facade === 'chat' && s.method === 'stream');
     if (!specStream) throw new Error('stream spec not found');
     const chunkCh = chunkChannelName(specStream);
     bridge.handle(channelName(specStream), async (opts) => {
@@ -65,9 +63,7 @@ describe('ClientAIClient · IPC 通道映射', () => {
     const chunkCh = chunkChannelName(spec);
     bridge.handle(channelName(spec), async (opts) => {
       const reqId = (opts as { reqId?: string }).reqId ?? 'auto';
-      queueMicrotask(() =>
-        bridge.emit(chunkCh, { reqId, done: true, error: 'boom' }),
-      );
+      queueMicrotask(() => bridge.emit(chunkCh, { reqId, done: true, error: 'boom' }));
       return { ok: true, reqId };
     });
     const client = new ClientAIClient({ bridge });

@@ -26,11 +26,7 @@ export function createVitest({
         provider: 'v8',
         reporter: ['text', 'lcov', 'html'],
         include: ['src/**/*.{ts,tsx}'],
-        exclude: [
-          'src/**/*.d.ts',
-          'src/**/*.{test,spec}.{ts,tsx}',
-          'src/**/__mocks__/**',
-        ],
+        exclude: ['src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}', 'src/**/__mocks__/**'],
       },
       ...(overrides.test ?? {}),
     },

@@ -78,7 +78,7 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------
-  # E2E · headless（vitest E1..E5）+ 各包 test:e2e
+  # E2E · headless（vitest，e2e/tests）
   # ---------------------------------------------------------------
   e2e-headless:
     name: e2e-headless (${{ matrix.os }})
@@ -109,9 +109,6 @@ jobs:
 
       - name: Run headless E2E (E1..E5)
         run: pnpm run test:e2e
-
-      - name: Run package-level E2E
-        run: pnpm run test:e2e:pkg
 
   # ---------------------------------------------------------------
   # E2E · headed（Playwright + 真实 Electron，xvfb 虚拟显示）
