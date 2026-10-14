@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- 启动测速打点，测速脚本解析 stdout */
 /**
  * 启动性能打点：`IG_PERF_LOG=1` 时输出 `[perf] <mark> +<ms since process start> @<epoch ms>`。
  * 供 scripts/measure-startup.mjs 统计冷启动；默认关闭，零开销。

@@ -4,8 +4,9 @@
  */
 
 import { type IpcApi } from '@nomi-ai/types';
+import { createLogger } from '@nomi-ai/ui';
 
-import logger from './logger';
+const log = createLogger('Cache');
 
 // 声明全局电子API类型
 declare global {
@@ -30,7 +31,7 @@ export async function getCache<T>(key: string, defaultValue?: T): Promise<T | nu
     if (window.electronAPI && key === 'modelName') {
       const value = await window.electronAPI.getSavedModel();
       if (value) {
-        console.info(`[Cache] 从Electron获取缓存成功: ${key}=${value}`);
+        log.info(`[Cache] 从Electron获取缓存成功: ${key}=${value}`);
         return value as unknown as T;
       }
     }
@@ -65,7 +66,7 @@ export async function setCache<T>(key: string, data: T): Promise<boolean> {
         // 这些值仅保存在localStorage，不同步到Electron
       } else if (key === 'modelName') {
         await window.electronAPI.saveModel(data as unknown as string);
-        console.info(`[Cache] 保存到Electron配置成功: ${key}=${data}`);
+        log.info(`[Cache] 保存到Electron配置成功: ${key}=${data}`);
       }
     }
   } catch (err) {
@@ -76,7 +77,7 @@ export async function setCache<T>(key: string, data: T): Promise<boolean> {
   // 同时保存到localStorage
   try {
     localStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(data));
-    console.info(`[Cache] 保存到localStorage成功: ${key}`);
+    log.info(`[Cache] 保存到localStorage成功: ${key}`);
   } catch (error) {
     console.error('[Cache] 保存到localStorage失败:', error);
     success = false;
@@ -97,7 +98,7 @@ export async function removeCache(key: string): Promise<boolean> {
   try {
     if (window.electronAPI && key === 'modelName') {
       await window.electronAPI.saveModel('');
-      console.info(`[Cache] 从Electron删除缓存成功: ${key}`);
+      log.info(`[Cache] 从Electron删除缓存成功: ${key}`);
     }
   } catch (err) {
     console.warn(`[Cache] 从Electron删除缓存失败: ${key}`, err);
@@ -107,7 +108,7 @@ export async function removeCache(key: string): Promise<boolean> {
   // 从localStorage删除
   try {
     localStorage.removeItem(`${CACHE_PREFIX}${key}`);
-    console.info(`[Cache] 从localStorage删除缓存成功: ${key}`);
+    log.info(`[Cache] 从localStorage删除缓存成功: ${key}`);
   } catch (error) {
     console.error('[Cache] 从localStorage删除缓存失败:', error);
     success = false;
@@ -127,7 +128,7 @@ export async function clearAllCache(): Promise<boolean> {
   try {
     if (window.electronAPI) {
       await window.electronAPI.saveModel('');
-      console.info('[Cache] 从Electron清除模型成功');
+      log.info('[Cache] 从Electron清除模型成功');
     }
   } catch (err) {
     console.warn('[Cache] 从Electron清除模型失败:', err);
@@ -142,7 +143,7 @@ export async function clearAllCache(): Promise<boolean> {
         localStorage.removeItem(key);
       }
     }
-    console.info('[Cache] 从localStorage清除所有缓存成功');
+    log.info('[Cache] 从localStorage清除所有缓存成功');
   } catch (error) {
     console.error('[Cache] 从localStorage清除所有缓存失败:', error);
     success = false;

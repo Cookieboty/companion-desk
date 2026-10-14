@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- LoggerService：集中日志实现 */
 /**
  * 日志服务 - 提供分级日志功能
  * 支持控制台输出和文件输出
@@ -116,6 +117,8 @@ export class LoggerService implements ILoggerService {
    * 输出到控制台
    */
   private logToConsole(entry: LogEntry): void {
+    // 打包后控制台只输出 WARN / ERROR（INFO / DEBUG 仍写入日志文件）；NOMI_DEBUG=1 可恢复
+    if (entry.level > LogLevel.WARN && app.isPackaged && process.env.NOMI_DEBUG !== '1') return;
     const levelName = LogLevel[entry.level];
     const contextStr = entry.context ? `[${entry.context}] ` : '';
     const metaStr = entry.meta ? ` ${JSON.stringify(entry.meta)}` : '';

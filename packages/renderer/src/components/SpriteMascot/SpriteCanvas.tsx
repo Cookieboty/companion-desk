@@ -1,3 +1,4 @@
+import { perfMark } from '@nomi-ai/ui';
 import React, { useEffect, useRef, useState } from 'react';
 
 import {
@@ -104,8 +105,8 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
             setReady(true);
             document.documentElement.dataset.mascotModel = manifest.id;
             document.documentElement.dataset.mascotRig = 'layered';
-            console.info('[perf] mascot-model-loaded');
-            console.info('[perf] sprite-model-loaded', manifest.id);
+            perfMark('mascot-model-loaded');
+            perfMark('sprite-model-loaded', manifest.id);
           });
         }
         // preload
@@ -130,8 +131,8 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           if (cancelled) return;
           setReady(true);
           document.documentElement.dataset.mascotModel = manifest.id;
-          console.info('[perf] mascot-model-loaded');
-          console.info('[perf] sprite-model-loaded', manifest.id);
+          perfMark('mascot-model-loaded');
+          perfMark('sprite-model-loaded', manifest.id);
         });
       })
       .catch((e) => {

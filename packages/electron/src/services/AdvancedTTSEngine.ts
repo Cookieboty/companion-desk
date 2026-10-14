@@ -4,6 +4,9 @@ import * as path from 'path';
 
 import { t } from '../i18n';
 import { psQuote } from '../security/shellEscape';
+import { createMainLogger } from '../utils/log';
+
+const log = createMainLogger('TTS');
 
 /**
  * TTS音色配置接口
@@ -75,7 +78,7 @@ export class AdvancedTTSEngine {
         const configData = fs.readFileSync(configPath, 'utf8');
         const fullConfig = JSON.parse(configData);
         this.config = fullConfig.tts;
-        console.log('AdvancedTTSEngine: 配置加载成功');
+        log.info('AdvancedTTSEngine: 配置加载成功');
       }
     } catch (error) {
       console.error('AdvancedTTSEngine: 配置加载失败:', error);
@@ -170,7 +173,7 @@ export class AdvancedTTSEngine {
 
     this.config.currentVoice = voiceId;
     await this.saveConfig();
-    console.log(`AdvancedTTSEngine: 切换到音色: ${voiceId}`);
+    log.info(`AdvancedTTSEngine: 切换到音色: ${voiceId}`);
     return true;
   }
 
@@ -182,7 +185,7 @@ export class AdvancedTTSEngine {
 
     this.config.settings = { ...this.config.settings, ...settings };
     await this.saveConfig();
-    console.log('AdvancedTTSEngine: 设置已更新', settings);
+    log.info('AdvancedTTSEngine: 设置已更新', settings);
   }
 
   /**
@@ -236,7 +239,7 @@ export class AdvancedTTSEngine {
 
         const settings = { ...this.config!.settings, ...options };
 
-        console.log(`AdvancedTTSEngine: 使用音色 ${voice.name} 播放: ${text}`);
+        log.info(`AdvancedTTSEngine: 使用音色 ${voice.name} 播放: ${text}`);
 
         // 根据平台选择播放方式
         this.currentProcess = this.createTTSProcess(text, voice, settings);
@@ -350,7 +353,7 @@ export class AdvancedTTSEngine {
 
     // 如果espeak失败，尝试festival
     process.on('error', () => {
-      console.log('AdvancedTTSEngine: espeak失败，尝试festival');
+      log.info('AdvancedTTSEngine: espeak失败，尝试festival');
       return spawn('echo', [text, '|', 'festival', '--tts']);
     });
 
@@ -364,7 +367,7 @@ export class AdvancedTTSEngine {
     if (this.currentProcess) {
       this.currentProcess.kill();
       this.currentProcess = null;
-      console.log('AdvancedTTSEngine: 停止播放');
+      log.info('AdvancedTTSEngine: 停止播放');
     }
   }
 

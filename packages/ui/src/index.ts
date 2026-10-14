@@ -32,3 +32,5 @@ export * from './i18n';
 export { useFocusTrap } from './useFocusTrap';
 export { ErrorState, LoadingState } from './ErrorState';
 export type { ErrorStateProps } from './ErrorState';
+export { createLogger, isVerboseLogging, perfMark, setVerboseLogging } from './logger';
+export type { Logger } from './logger';
