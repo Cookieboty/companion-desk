@@ -1469,7 +1469,6 @@
   "Anthropic Messages（原生）": "Anthropic Messages (native)",
   "Anthropic Messages（需开启路由）": "Anthropic Messages (routing required)",
   "Chat Completions（需开启路由）": "Chat Completions (routing required)",
-  "Claude Code 写 ~/.claude/settings.json；Codex 写 ~/.codex/config.toml；Nomi 自有配置在 ai-providers.json。": "Claude Code writes ~/.claude/settings.json; Codex writes ~/.codex/config.toml; Nomi’s own config is ai-providers.json.",
   "Claude 错误": "Claude error",
   "Codex 错误": "Codex error",
   "Gemini Native generateContent（需开启路由）": "Gemini Native generateContent (routing required)",
@@ -1510,5 +1509,10 @@
   "（无文本输出）": "(no text output)",
   "切换对话后端（Claude / Codex / dsh 为 UI 转发）": "Switch chat backend (Claude / Codex / dsh are forwarded)",
   "转发到本机 dsh": "Forward to local dsh",
-  "未检测到 dsh": "dsh not found"
+  "未检测到 dsh": "dsh not found",
+  "OpenAI Chat Completions（原生）": "OpenAI Chat Completions (native)",
+  "OpenAI Responses（原生）": "OpenAI Responses (native)",
+  "已停用，dsh 回到自身默认供应商": "Deactivated; dsh is back on its own default provider",
+  "停用失败": "Deactivation failed",
+  "Claude Code 写 ~/.claude/settings.json；Codex 写 ~/.codex/config.toml；dsh 写 ~/.dsh/cordis.patch.yml（密钥仅在启动时注入）；Nomi 自有配置在 ai-providers.json。": "Claude Code writes ~/.claude/settings.json; Codex writes ~/.codex/config.toml; dsh writes ~/.dsh/cordis.patch.yml (the key is only injected at launch); Nomi's own config lives in ai-providers.json."
 }

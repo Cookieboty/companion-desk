@@ -3,10 +3,12 @@ import { t } from '@nomi-ai/ui';
 export type ClaudeApiFormat =
   'anthropic_messages' | 'openai_chat_completions' | 'openai_responses' | 'gemini_generate_content';
 export type CodexApiFormat = 'openai_responses' | 'openai_chat_completions' | 'anthropic_messages';
+export type DshApiFormat = CodexApiFormat;
+export type CliProviderKind = 'claude' | 'codex' | 'dsh';
 
 export interface CliProviderProfile {
   id: string;
-  kind: 'claude' | 'codex';
+  kind: CliProviderKind;
   name: string;
   baseUrl: string;
   model: string;
@@ -33,6 +35,8 @@ export interface CliProviderState {
   codexStore: string;
   claudeSettings: string;
   codexConfig: string;
+  dshStore?: string;
+  dshConfig?: string;
   routing: CliRouteSettings | null;
 }
 
@@ -71,7 +75,7 @@ export const cliProviderClient = {
   state: () => call<CliProviderState>('state'),
   upsert: (p: {
     id?: string;
-    kind: 'claude' | 'codex';
+    kind: CliProviderKind;
     name: string;
     baseUrl: string;
     model: string;
@@ -87,6 +91,7 @@ export const cliProviderClient = {
       usedRouting: boolean;
       error?: string;
     }>('activate', id),
+  deactivateDsh: () => call<{ ok: boolean; backups: string[]; error?: string }>('deactivate-dsh'),
   onChanged: (fn: (s: CliProviderState) => void) =>
     bridge()?.on('ai:cli-provider:changed', (p) => fn(p as CliProviderState)) ?? (() => undefined),
 };

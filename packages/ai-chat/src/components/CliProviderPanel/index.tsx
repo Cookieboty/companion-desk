@@ -1,5 +1,5 @@
 /**
- * Claude Code / Codex 各自独立的供应商档案 UI（与 Nomi「供应商与模型」完全分离）。
+ * Claude Code / Codex / dsh 各自独立的供应商档案 UI（与 Nomi「供应商与模型」完全分离）。
  */
 import { Button, Notice, Select, t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,6 +12,7 @@ import {
   type CliProviderState,
   type CliRouteSettings,
   type CodexApiFormat,
+  type DshApiFormat,
 } from '../../services/cliProviderClient';
 
 const CLAUDE_FORMATS: Array<{ value: ClaudeApiFormat; label: string }> = [
@@ -27,7 +28,21 @@ const CODEX_FORMATS: Array<{ value: CodexApiFormat; label: string }> = [
   { value: 'anthropic_messages', label: 'Anthropic Messages（需开启路由）' },
 ];
 
-type Tab = 'claude' | 'codex';
+const DSH_FORMATS: Array<{ value: DshApiFormat; label: string }> = [
+  { value: 'openai_chat_completions', label: 'OpenAI Chat Completions（原生）' },
+  { value: 'openai_responses', label: 'OpenAI Responses（原生）' },
+  { value: 'anthropic_messages', label: 'Anthropic Messages（原生）' },
+];
+
+const DEFAULT_FORMAT = {
+  claude: 'anthropic_messages',
+  codex: 'openai_responses',
+  dsh: 'openai_chat_completions',
+} as const;
+
+const TAB_LABEL = { claude: 'Claude Code', codex: 'Codex', dsh: 'dsh' } as const;
+
+type Tab = keyof typeof TAB_LABEL;
 
 export const CliProviderPanel: React.FC = () => {
   const [tab, setTab] = useState<Tab>('claude');
@@ -61,7 +76,7 @@ export const CliProviderPanel: React.FC = () => {
   }, [refresh]);
 
   useEffect(() => {
-    setApiFormat(tab === 'claude' ? 'anthropic_messages' : 'openai_responses');
+    setApiFormat(DEFAULT_FORMAT[tab]);
     setName('');
     setBaseUrl('');
     setModel('');
@@ -73,7 +88,7 @@ export const CliProviderPanel: React.FC = () => {
     () => (state?.profiles ?? []).filter((p) => p.kind === tab),
     [state, tab],
   );
-  const formats = tab === 'claude' ? CLAUDE_FORMATS : CODEX_FORMATS;
+  const formats = tab === 'claude' ? CLAUDE_FORMATS : tab === 'dsh' ? DSH_FORMATS : CODEX_FORMATS;
 
   if (!cliProviderClient.available()) return null;
 
@@ -83,7 +98,7 @@ export const CliProviderPanel: React.FC = () => {
     try {
       await cliProviderClient.upsert({
         kind: tab,
-        name: name || (tab === 'claude' ? 'Claude' : 'Codex'),
+        name: name || TAB_LABEL[tab],
         baseUrl,
         model,
         apiFormat: apiFormat as ClaudeApiFormat | CodexApiFormat,
@@ -121,6 +136,20 @@ export const CliProviderPanel: React.FC = () => {
     }
   };
 
+  const deactivateDsh = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const r = await cliProviderClient.deactivateDsh();
+      setMsg(r.ok ? tr('已停用，dsh 回到自身默认供应商') : r.error || tr('停用失败'));
+      refresh();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const patchRoute = async (patch: Partial<CliRouteSettings>) => {
     setBusy(true);
     try {
@@ -138,25 +167,22 @@ export const CliProviderPanel: React.FC = () => {
       <p style={{ margin: 0, fontWeight: 600 }}>{tr('编程助手供应商（与 Nomi 供应商分离）')}</p>
       <p style={{ margin: 0, fontSize: 12, opacity: 0.75 }}>
         {tr(
-          'Claude Code 写 ~/.claude/settings.json；Codex 写 ~/.codex/config.toml；Nomi 自有配置在 ai-providers.json。',
+          'Claude Code 写 ~/.claude/settings.json；Codex 写 ~/.codex/config.toml；dsh 写 ~/.dsh/cordis.patch.yml（密钥仅在启动时注入）；Nomi 自有配置在 ai-providers.json。',
         )}
       </p>
 
       <div style={{ display: 'flex', gap: 8 }} data-testid="cli-provider-tabs">
-        <Button
-          size="sm"
-          variant={tab === 'claude' ? 'primary' : 'ghost'}
-          onClick={() => setTab('claude')}
-        >
-          Claude Code
-        </Button>
-        <Button
-          size="sm"
-          variant={tab === 'codex' ? 'primary' : 'ghost'}
-          onClick={() => setTab('codex')}
-        >
-          Codex
-        </Button>
+        {(Object.keys(TAB_LABEL) as Tab[]).map((k) => (
+          <Button
+            key={k}
+            size="sm"
+            data-testid={`cli-provider-tab-${k}`}
+            variant={tab === k ? 'primary' : 'ghost'}
+            onClick={() => setTab(k)}
+          >
+            {TAB_LABEL[k]}
+          </Button>
+        ))}
       </div>
 
       <div data-testid={`cli-provider-list-${tab}`} style={{ display: 'grid', gap: 6 }}>
@@ -190,6 +216,16 @@ export const CliProviderPanel: React.FC = () => {
             <Button size="sm" disabled={busy || p.active} onClick={() => void activate(p)}>
               {tr('启用')}
             </Button>
+            {p.kind === 'dsh' && p.active && (
+              <Button
+                size="sm"
+                data-testid="cli-provider-deactivate-dsh"
+                disabled={busy}
+                onClick={() => void deactivateDsh()}
+              >
+                {tr('停用')}
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={busy}
@@ -322,7 +358,7 @@ export const CliProviderPanel: React.FC = () => {
       )}
       {state && (
         <pre style={{ fontSize: 10, opacity: 0.6, margin: 0 }} data-testid="cli-provider-paths">
-          {`Nomi: ai-providers.json\nClaude store: ${state.claudeStore}\nCodex store: ${state.codexStore}\nClaude writes: ${state.claudeSettings}\nCodex writes: ${state.codexConfig}`}
+          {`Nomi: ai-providers.json\nClaude store: ${state.claudeStore}\nCodex store: ${state.codexStore}\nClaude writes: ${state.claudeSettings}\nCodex writes: ${state.codexConfig}\ndsh store: ${state.dshStore ?? '-'}\ndsh writes: ${state.dshConfig ?? '-'}`}
         </pre>
       )}
     </div>
