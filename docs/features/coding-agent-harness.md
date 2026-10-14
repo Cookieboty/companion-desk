@@ -286,14 +286,29 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - 测试和 Mock 使用 `NOMI_DSH_BIN` 覆盖可执行文件，Mock 脚本为 `scripts/mock-cli/mock-dsh.mjs`。
 - 版本检查和更新复用 `CliUpdateService`，类型为 `dsh`，安装方式固定为 npm。
 
-### 12.4 多标签并发后端（下一里程碑）
+### 12.4 多标签并发后端（已实现）
 
-- **标签 = 会话**：每个对话标签绑定 `{backend, cliSessionId, cwd}`，各自独立运行；一个标签忙碌不会阻塞其它标签。`CliHarnessService` 从单例状态改为 `Map<tabId, HarnessSessionState>`，每个标签最多运行一个子进程，全局并发上限默认 3（防止内存吃紧）。
-- 切换标签的后端只清空该标签的 `cliSessionId`；关闭标签会终止它的子进程。
-- IPC 全部带 `tabId`，事件按 `tabId` 分发到对应窗口或标签。
-- **看板娘监视器聚合**：统一的 `AgentSessionIndex` 扫描三类来源并合并为一个列表（按最近活动排序）：
+- **标签 = 会话**：每个标签绑定 `{backend, cliSessionId, cwd}`，互不阻塞。`CliHarnessService` 维护 `Map<tabId, 标签状态>`，每个标签同一时刻最多一个子进程。
+- **Nomi 只在主标签**：主标签（`id = main`）即原有对话，后端可选 Nomi 或任一 CLI；新建的标签只能绑定 Claude Code / Codex / dsh。原因：Nomi 的对话历史、模型选择与工具状态由 `AiChatContext` 单例管理，只有一条「当前对话」，多个 Nomi 标签会互相覆盖；CLI 的会话由各自的 CLI 持久化，天然可多开。
+- **并发上限**：全局信号量，默认 3（可调 1–8，`ai:harness:set-max-concurrent`）；超出的轮次状态为 `queued`，有空位时按先来先到开始运行。标签栏右侧显示「运行 x/上限 · 排队 n」。
+- **状态与未读**：状态点 灰 = 空闲 · 蓝（脉动）= 运行中 · 黄 = 排队 · 红 = 出错 · 绿 = 有未读结果；标签不在前台（或窗口无焦点）时完成一轮，未读数 +1，切换过去即清零。关闭运行中的标签会先确认并终止子进程；切换后端或 cwd 会丢弃该标签的 `cliSessionId`。
+- **快捷键**（Mod = macOS ⌘ / 其它 Ctrl，可在设置 → 快捷键改绑）：
+
+  | 操作                     | 默认                      |
+  | ------------------------ | ------------------------- |
+  | 新建标签（弹出后端菜单） | Mod+T                     |
+  | 关闭当前标签             | Mod+Shift+W               |
+  | 下一个 / 上一个标签      | Ctrl+Tab / Ctrl+Shift+Tab |
+  | 重命名当前标签           | Mod+Shift+R（或双击标签） |
+  | 跳到第 1–9 个标签        | Mod+1 … Mod+9             |
+
+  另外：中键关闭标签，标签获得焦点时 ←/→ 切换。
+
+- **持久化**（均在 `userData/harness/` 下）：主标签 `session.json`（后端、cwd、会话、标题；消息仍走 Nomi 历史）；其它标签 `tabs.json`（`activeTabId`、`maxConcurrent`、标签元数据）与 `tabs/<tabId>.json`（消息，最多 300 条）。重启后被中断的运行回到空闲。
+- **看板娘监视器**：一个列表聚合所有端点，按最近活动排序：
   - Claude Code：`~/.claude/projects/*/*.jsonl`
   - Codex：`~/.codex/sessions/**/rollout-*.jsonl`
-  - dsh：`$DSH_HOME/sessions/*/session-*/`（有 `session.lock` 视为运行中）
-  - 以及 Nomi 自己管理的标签（实时状态优先于文件推断）。
-- 每条记录展示后端图标、cwd、最后活动时间、运行状态；点击即可在新标签中续接该会话。
+  - dsh：`$DSH_HOME/storages/session_projcache/sessions/<id>.json` 取标题与 cwd；`session.lock` 运行结束后仍存在，所以「运行中」以内核 flock 是否被持有判断（Linux 读 `/proc/locks`，其它平台退回进程扫描 + 修改时间）。
+  - Nomi 标签：实时状态优先于文件推断；由标签驱动的 CLI 会话不会在文件来源里重复出现。
+  - 顶部按端点筛选（全部 / Nomi 标签 / dsh / Codex / Claude Code），标签条目有「打开标签」按钮直达。
+- **提醒**：后台端点完成或需要处理时，看板娘说一句并做动作（成功挥手、失败思考），灵动岛显示带端点徽标与状态图标（完成 / 失败 / 需要处理 / 运行中）的事件。
