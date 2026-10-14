@@ -254,7 +254,7 @@ export const LocalPanel: React.FC<{
             }
             data-testid="local-server-status"
           >
-            {STATUS_LABEL[srv!.status]}
+            {t(STATUS_LABEL[srv!.status])}
           </Badge>
         </div>
         <div className={styles.meta}>
@@ -322,7 +322,7 @@ export const LocalPanel: React.FC<{
                 <b className={styles.grow}>{t(m.name)}</b>
                 {m.id === st.recommended && <Badge tone="accent">{t('推荐')}</Badge>}
                 <Badge tone={m.fit === 'ok' ? 'success' : m.fit === 'tight' ? 'warning' : 'danger'}>
-                  {FIT_LABEL[m.fit]}
+                  {t(FIT_LABEL[m.fit])}
                 </Badge>
                 <Badge tone="neutral">{m.license}</Badge>
                 {m.installed && <Badge tone="success">{t('已下载')}</Badge>}

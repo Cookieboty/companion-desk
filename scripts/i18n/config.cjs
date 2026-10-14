@@ -26,6 +26,8 @@ module.exports = {
       dict: 'packages/electron/src/i18n/en.json',
     },
   ],
+  /** 反向（死 key）检查额外参考的源码：这些包产出的中文会在 UI 层经 t() 翻译 */
+  keySources: ['packages/ai-runtime/src', 'packages/ai-sdk-client/src'],
   /** 这些文件里的中文是给模型看的提示词 / 工具说明，或用于解析中文输入的数据，不翻译 */
   keepZh: [
     /voice\/src\/wake\.ts$/,

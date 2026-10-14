@@ -223,7 +223,7 @@ export const ProviderEditor: React.FC<{
           ‹
         </button>
         <h3>{title}</h3>
-        <span className="cd-muted">{PROTOCOL_LABELS[protocol]}</span>
+        <span className="cd-muted">{t(PROTOCOL_LABELS[protocol])}</span>
       </div>
 
       <div className={styles.editorBody}>
@@ -532,7 +532,7 @@ export const ProviderEditor: React.FC<{
                     onChange={(e) => setProtocol(e.target.value as Protocol)}
                     options={(Object.keys(PROTOCOL_LABELS) as Protocol[]).map((p) => ({
                       value: p,
-                      label: PROTOCOL_LABELS[p],
+                      label: t(PROTOCOL_LABELS[p]),
                     }))}
                   />
                 </FormField>

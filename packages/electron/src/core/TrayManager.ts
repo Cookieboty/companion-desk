@@ -23,6 +23,13 @@ export interface ProviderMenuEntry {
   enabled: boolean;
 }
 
+/** 供应商显示名：预设名与「（环境变量）」后缀按当前语言翻译，用户自定义名字原样保留。 */
+function providerName(name: string): string {
+  const env = /^(.*)（环境变量）$/.exec(name);
+  if (env) return t('{0}（环境变量）', providerName(env[1]!));
+  return t(name);
+}
+
 /** 纯函数：state → 「切换 provider」菜单项（便于单测）。 */
 export function providerMenuEntries(state: ProviderState): ProviderMenuEntry[] {
   const current = state.effectiveProviderId;
@@ -32,7 +39,7 @@ export function providerMenuEntries(state: ProviderState): ProviderMenuEntry[] {
       id: p.id,
       label: t(
         '{0} · {1}{2}',
-        p.name,
+        providerName(p.name),
         p.defaultModel,
         p.keys.length === 0 && !['ollama', 'lmstudio', 'custom'].includes(p.presetId)
           ? t('（未配置 key）')
@@ -44,7 +51,7 @@ export function providerMenuEntries(state: ProviderState): ProviderMenuEntry[] {
   for (const e of state.envProviders) {
     entries.push({
       id: e.id,
-      label: t('{0}{1}', e.name, e.hasKey ? '' : t('（无 key）')),
+      label: t('{0}{1}', providerName(e.name), e.hasKey ? '' : t('（无 key）')),
       checked: e.id === current,
       enabled: e.hasKey,
     });

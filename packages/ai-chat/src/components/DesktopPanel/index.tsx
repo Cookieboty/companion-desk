@@ -180,7 +180,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
               {state.tools.map((t) => (
                 <tr key={t.name}>
                   <td>
-                    {TOOL_LABELS[t.name] ?? t.name}
+                    {tr(TOOL_LABELS[t.name] ?? t.name)}
                     <div className={styles.code}>{tr(t.name)}</div>
                   </td>
                   <td>
@@ -193,7 +193,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                             : 'neutral'
                       }
                     >
-                      {DANGER_LABELS[t.danger]}
+                      {tr(DANGER_LABELS[t.danger])}
                     </Badge>
                   </td>
                   <td>
@@ -213,7 +213,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                         }
                         options={(['always', 'session', 'ask'] as Policy[]).map((p) => ({
                           value: p,
-                          label: POLICY_LABELS[p],
+                          label: tr(POLICY_LABELS[p]),
                         }))}
                         data-testid={`desktop-policy-${t.name}`}
                       />
@@ -313,12 +313,12 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     <tr key={`${a.ts}-${i}`} data-testid="desktop-audit-row">
                       <td>{fmt(a.ts)}</td>
                       <td>
-                        {TOOL_LABELS[a.tool] ?? a.tool}
+                        {tr(TOOL_LABELS[a.tool] ?? a.tool)}
                         <div className={styles.code}>{a.source ?? ''}</div>
                       </td>
                       <td>
                         <Badge tone={a.result === 'ok' ? 'success' : 'danger'}>
-                          {DECISION_LABEL[a.decision] ?? a.decision} · {a.result}
+                          {tr(DECISION_LABEL[a.decision] ?? a.decision)} · {a.result}
                         </Badge>
                       </td>
                       <td className={styles.code}>{JSON.stringify(a.args)}</td>

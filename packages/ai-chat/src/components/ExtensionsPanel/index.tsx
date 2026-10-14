@@ -39,7 +39,7 @@ import styles from './index.module.css';
 type Tab = 'mcp' | 'skills';
 const TRUST_OPTIONS = (Object.keys(TRUST_LABEL) as Trust[]).map((v) => ({
   value: v,
-  label: TRUST_LABEL[v],
+  label: tr(TRUST_LABEL[v]),
 }));
 const TRANSPORTS = [
   { value: 'stdio', label: '本地命令（stdio）' },
@@ -296,7 +296,7 @@ export const ExtensionsPanel: React.FC<{ isVisible: boolean; onClose: () => void
                       </button>
                       <b className={styles.grow}>{tr(s.name)}</b>
                       <Badge tone={tone(s.status)} data-testid="mcp-status">
-                        {STATUS_LABEL[s.status]}
+                        {tr(STATUS_LABEL[s.status])}
                       </Badge>
                       {s.status === 'connected' && (
                         <Badge tone="neutral">
@@ -312,7 +312,7 @@ export const ExtensionsPanel: React.FC<{ isVisible: boolean; onClose: () => void
                     <div className={styles.meta}>
                       {s.transport === 'stdio' ? `$ ${s.command} ${joinArgs(s.args)}` : s.url}{' '}
                       {tr('· 调用：')}
-                      {TRUST_LABEL[s.trust]}
+                      {tr(TRUST_LABEL[s.trust])}
                     </div>
                     {s.error && <div className={styles.err}>{s.error}</div>}
                     {open === s.id && (

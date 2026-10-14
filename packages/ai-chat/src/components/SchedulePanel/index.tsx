@@ -580,7 +580,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                             }
                             data-testid={`agents-tool-${k}`}
                           />
-                          {AGENT_LABEL[k]}
+                          {tr(AGENT_LABEL[k])}
                           {agents.detected.includes(k) ? ' ✓' : ''}
                         </label>
                       ))}
@@ -596,7 +596,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                       <span className={styles.hint}>
                         {tr('已检测：')}
                         {agents.detected.length
-                          ? agents.detected.map((k) => AGENT_LABEL[k]).join('、')
+                          ? agents.detected.map((k) => tr(AGENT_LABEL[k])).join('、')
                           : tr('无')}
                       </span>
                     </div>

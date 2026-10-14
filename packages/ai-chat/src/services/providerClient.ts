@@ -176,8 +176,25 @@ const call = async <T>(method: string, ...args: unknown[]): Promise<T> => {
   }
 };
 
+/**
+ * 供应商显示名本地化：预设名（如「Ollama（本地）」）与主进程追加的「（环境变量）」后缀
+ * 都是中文原文，这里在进入渲染层时统一翻译；用户自己起的名字不在词典里，原样保留。
+ */
+export function providerDisplayName(name: string): string {
+  const env = /^(.*)（环境变量）$/.exec(name);
+  if (env) return t('{0}（环境变量）', providerDisplayName(env[1]!));
+  return t(name);
+}
+
+const localizeState = (s: ProviderState): ProviderState => ({
+  ...s,
+  providers: s.providers?.map((p) => ({ ...p, name: providerDisplayName(p.name) })),
+  envProviders: s.envProviders?.map((e) => ({ ...e, name: providerDisplayName(e.name) })),
+});
+
 let lastState: ProviderState | undefined;
-const remember = (s: ProviderState): ProviderState => {
+const remember = (raw: ProviderState): ProviderState => {
+  const s = localizeState(raw);
   lastState = s;
   return s;
 };
@@ -195,7 +212,10 @@ export function effectiveProviderLabel(): string | undefined {
 }
 
 export const providerClient = {
-  presets: () => call<ProviderPreset[]>('presets'),
+  presets: () =>
+    call<ProviderPreset[]>('presets').then((ps) =>
+      ps.map((p) => ({ ...p, name: providerDisplayName(p.name) })),
+    ),
   state: () => call<ProviderState>('state').then(remember),
   upsert: (input: ProviderInput) => call<ProviderView>('upsert', input),
   remove: (id: string) => call<void>('remove', id),
@@ -205,7 +225,7 @@ export const providerClient = {
   fetchModelsDraft: (input: ProviderInput) => call<FetchModelsResult>('fetchModelsDraft', input),
   setModels: (id: string, models: string[]) => call<ProviderView>('setModels', id, models),
   setRoute: (role: ProviderRole, binding: { providerId: string; model?: string } | null) =>
-    call<ProviderState>('setRoute', role, binding),
+    call<ProviderState>('setRoute', role, binding).then(remember),
   addKey: (id: string, key: string, label?: string) => call<ProviderView>('addKey', id, key, label),
   rotateKey: (id: string, keyId: string, key: string) =>
     call<ProviderView>('rotateKey', id, keyId, key),

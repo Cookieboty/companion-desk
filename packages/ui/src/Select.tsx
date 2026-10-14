@@ -426,7 +426,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         {!selected && <option value={current}>{current}</option>}
         {all.map((o) => (
           <option key={`${o.group ?? ''}:${o.value}`} value={o.value} disabled={o.disabled}>
-            {textOf(o.label) || o.value}
+            {tr(textOf(o.label)) || o.value}
           </option>
         ))}
       </select>
@@ -440,14 +440,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         aria-label={ariaLabel}
-        title={title ?? (selected ? textOf(selected.label) : undefined)}
+        title={title ?? (selected ? tr(textOf(selected.label)) : undefined)}
         disabled={disabled}
         onClick={() => (open ? close() : openMenu())}
         onKeyDown={onTriggerKey}
       >
         {selected?.icon && <span className="cd-dropdown__icon">{selected.icon}</span>}
         <span className={cx('cd-dropdown__value cd-truncate', !selected && 'is-placeholder')}>
-          {selected ? selected.label : current || placeholder}
+          {selected ? tr(selected.label) : current || placeholder}
         </span>
         <Chevron />
       </button>
