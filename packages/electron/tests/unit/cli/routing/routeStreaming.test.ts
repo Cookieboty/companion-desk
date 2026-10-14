@@ -17,13 +17,18 @@ import { SseParser } from '../../../../src/cli/routing/stream';
 function startUpstream(
   script: (req: { url: string; body: any }, res: http.ServerResponse) => void,
 ) {
-  const seen: Array<{ url: string; body: any; accept?: string }> = [];
+  const seen: Array<{
+    url: string;
+    body: any;
+    accept?: string;
+    headers: http.IncomingHttpHeaders;
+  }> = [];
   const server = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on('data', (c) => chunks.push(Buffer.from(c)));
     req.on('end', () => {
       const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
-      seen.push({ url: req.url ?? '', body, accept: req.headers.accept });
+      seen.push({ url: req.url ?? '', body, accept: req.headers.accept, headers: req.headers });
       script({ url: req.url ?? '', body }, res);
     });
   });
@@ -133,7 +138,10 @@ describe('CliRouteService streaming', () => {
       body: JSON.stringify({ stream: true, messages: [{ role: 'user', content: 'hi' }] }),
     });
     const evs = await readSse(res);
-    expect(up.seen[0].url).toBe('/models/up-model:streamGenerateContent?alt=sse');
+    expect(up.seen[0].url).toBe('/v1beta/models/up-model:streamGenerateContent?alt=sse');
+    expect(up.seen[0].headers['x-goog-api-key']).toBe('k');
+    expect(up.seen[0].headers.authorization).toBeUndefined();
+    expect(up.seen[0].body.model).toBeUndefined();
     expect(evs.find((e) => e.event === 'content_block_delta')!.data.delta.text).toBe('ok');
   });
 

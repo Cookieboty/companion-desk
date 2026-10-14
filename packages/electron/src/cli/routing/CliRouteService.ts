@@ -257,6 +257,9 @@ export class CliRouteService {
         if (up.apiFormat === 'anthropic_messages' && kind === 'codex') {
           headers['x-api-key'] = up.apiKey;
           headers['anthropic-version'] = '2023-06-01';
+        } else if (up.apiFormat === 'gemini_generate_content') {
+          // Gemini 原生 API 使用 x-goog-api-key 鉴权
+          headers['x-goog-api-key'] = up.apiKey;
         } else if (kind === 'claude' && up.apiFormat === 'anthropic_messages') {
           headers['x-api-key'] = up.apiKey;
           headers['anthropic-version'] = '2023-06-01';
@@ -389,12 +392,14 @@ export class CliRouteService {
         };
       }
       // gemini
-      const model = up.model || 'gemini-pro';
+      const model = (up.model || 'gemini-pro').replace(/^models\//, '');
+      // 仅填域名时补上 API 版本段
+      const gBase = /\/v1(beta|alpha)?\d*(\/|$)/.test(base) ? base : `${base}/v1beta`;
       return {
         upstreamUrl: wantsStream
-          ? joinUrl(base, `/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`)
-          : joinUrl(base, `/models/${encodeURIComponent(model)}:generateContent`),
-        requestBody: messagesToGemini(body, model),
+          ? joinUrl(gBase, `/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`)
+          : joinUrl(gBase, `/models/${encodeURIComponent(model)}:generateContent`),
+        requestBody: messagesToGemini(body),
         responseTransform: geminiResponseToMessages,
         stream: { from: 'gemini', to: 'messages' },
       };
