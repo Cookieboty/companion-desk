@@ -29,3 +29,4 @@ export { Skeleton, SkeletonList, Truncate } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
 export * from './theme';
 export * from './i18n';
+export { useFocusTrap } from './useFocusTrap';

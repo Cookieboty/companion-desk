@@ -89,10 +89,55 @@ describe('@nomi-ai/ui', () => {
     expect(dlg.getAttribute('aria-modal')).toBe('true');
     fireEvent.click(dlg); // 内容区点击不关闭
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: '关闭' }));
     fireEvent.click(dlg.parentElement!);
     expect(onClose).toHaveBeenCalledTimes(3);
+  });
+
+  it('Modal: focus moves in, Tab wraps, Esc closes only the top dialog, focus returns', () => {
+    const outer = vi.fn();
+    const inner = vi.fn();
+    const Host: React.FC<{ innerOpen: boolean }> = ({ innerOpen }) => (
+      <>
+        <button data-testid="opener">open</button>
+        <Modal open onClose={outer} title="Outer">
+          <input aria-label="a" />
+          <button>b</button>
+          <Modal open={innerOpen} onClose={inner} title="Inner">
+            <button>c</button>
+          </Modal>
+        </Modal>
+      </>
+    );
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    const { rerender, unmount } = render(<Host innerOpen={false} />);
+    const dlg = screen.getByRole('dialog', { name: 'Outer' });
+    expect(dlg.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('a');
+    // 首个可聚焦元素是标题栏的关闭按钮；最后一个是 b：两端循环
+    const close = screen.getByRole('button', { name: '关闭' });
+    const b = screen.getByRole('button', { name: 'b' });
+    b.focus();
+    fireEvent.keyDown(b, { key: 'Tab' });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(b);
+
+    rerender(<Host innerOpen />);
+    expect(screen.getByRole('dialog', { name: 'Inner' }).contains(document.activeElement)).toBe(
+      true,
+    );
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(inner).toHaveBeenCalledTimes(1);
+    expect(outer).not.toHaveBeenCalled();
+    rerender(<Host innerOpen={false} />);
+    expect(dlg.contains(document.activeElement)).toBe(true);
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
   });
 
   it('Tabs: click and arrow keys change selection', () => {

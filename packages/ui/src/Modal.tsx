@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useId } from 'react';
+import React, { createContext, useContext, useId, useRef } from 'react';
 
 import { cx } from './cx';
 import { t } from './i18n';
+import { useFocusTrap } from './useFocusTrap';
 
 export interface ModalProps {
   open: boolean;
@@ -30,7 +31,7 @@ export interface ModalHost {
 }
 export const ModalHostContext = createContext<ModalHost | null>(null);
 
-/** 模态对话框：遮罩点击 / Esc 关闭，role="dialog" + aria-modal。 */
+/** 模态对话框：遮罩点击 / Esc 关闭，role="dialog" + aria-modal，焦点陷阱 + 关闭后焦点归还。 */
 export const Modal: React.FC<ModalProps> = ({
   open,
   onClose,
@@ -47,14 +48,11 @@ export const Modal: React.FC<ModalProps> = ({
   const titleId = useId();
   const host = useContext(ModalHostContext);
   const inline = host?.mode === 'inline';
-  useEffect(() => {
-    if (!open || inline) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, inline]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  // 焦点进入 / Tab 循环 / Esc 关闭最上层 / 关闭后焦点归还
+  useFocusTrap(dialogRef, open && !inline, () => closeRef.current());
 
   if (!open) return null;
   const body = (
@@ -86,6 +84,7 @@ export const Modal: React.FC<ModalProps> = ({
       onClick={closeOnOverlay ? onClose : undefined}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title != null ? titleId : undefined}

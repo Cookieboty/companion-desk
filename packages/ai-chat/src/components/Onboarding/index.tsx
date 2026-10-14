@@ -11,11 +11,12 @@ import {
   setLocalePref,
   setTheme,
   t,
+  useFocusTrap,
   useLocale,
   type LocalePref,
   type ThemePref,
 } from '@nomi-ai/ui';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ProviderPanel } from '../ProviderPanel';
 
@@ -85,6 +86,9 @@ const TONES: { id: string; label: () => string; desc: () => string }[] = [
 export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ onDone }) => {
   useLocale();
   const [i, setI] = useState(0);
+  // 引导是阻断式对话框：焦点留在卡片内（Esc 不关闭，需点「跳过引导」）
+  const cardRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(cardRef, true);
   const step = STEPS[i]!;
   const [lang, setLang] = useState<LocalePref>(getLocalePref);
   const [theme, setThemeSel] = useState<ThemePref>(() => currentTheme().pref);
@@ -346,7 +350,13 @@ export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ o
   const last = i === STEPS.length - 1;
   return (
     <div className={styles.overlay} data-testid="onboarding" data-step={step}>
-      <div className={styles.card} role="dialog" aria-modal="true" aria-labelledby="onb-title">
+      <div
+        ref={cardRef}
+        className={styles.card}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onb-title"
+      >
         <header className={styles.head}>
           <div className={styles.dots} aria-label={t('第 {0} 步，共 {1} 步', i + 1, STEPS.length)}>
             {STEPS.map((s, k) => (

@@ -179,6 +179,10 @@ export function createVrmBackend(
   let motions: MotionController | null = null;
   const sway = new THREE.Quaternion();
   const swayEuler = new THREE.Euler();
+  const reduceMq =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
 
   const set = (name: string, v: number) => {
     if (em && has(name)) em.setValue(resolve(name), v);
@@ -268,6 +272,9 @@ export function createVrmBackend(
       scene.remove(lookTarget);
     },
     update(dt, t) {
+      // prefers-reduced-motion：保留眨眼 / 口型，去掉头部摆动与悬空摇摆，呼吸减到 1/3
+      const calm = reduceMq?.matches ? 0 : 1;
+      const breathAmp = calm ? 1 : 0.33;
       // 情绪表情
       for (const [name, target] of targets) {
         const v = approach(weights.get(name) ?? 0, target, 6, dt);
@@ -297,16 +304,16 @@ export function createVrmBackend(
         motions.update(dt);
         // 头部微动叠加在动画之上
         if (neck) {
-          swayEuler.set(0, Math.sin(t * 0.37) * 0.028, Math.sin(t * 0.23) * 0.014);
+          swayEuler.set(0, Math.sin(t * 0.37) * 0.028 * calm, Math.sin(t * 0.23) * 0.014 * calm);
           neck.quaternion.multiply(sway.setFromEuler(swayEuler));
         }
       } else {
         // 无动作库：程序化站姿 + 呼吸
-        const breath = Math.sin(t * 1.6);
+        const breath = Math.sin(t * 1.6) * breathAmp;
         if (spine) spine.rotation.x = breath * 0.012;
         if (chest) chest.rotation.x = breath * 0.018;
         if (neck) {
-          neck.rotation.set(0, Math.sin(t * 0.37) * 0.05, Math.sin(t * 0.23) * 0.025);
+          neck.rotation.set(0, Math.sin(t * 0.37) * 0.05 * calm, Math.sin(t * 0.23) * 0.025 * calm);
         }
         for (const n of [head, lLeg, rLeg, lKnee, rKnee, lFore, rFore]) n?.quaternion.identity();
         if (lUpper) lUpper.rotation.z = 1.2 + breath * 0.015;
@@ -321,7 +328,7 @@ export function createVrmBackend(
       lean = lowpass(lean, Math.max(-1, Math.min(1, body.vx / 2400)), 4, dt);
       const airborne = body.mode === 'held' || body.mode === 'falling';
       if (dangle > 0.001) {
-        const sw = Math.sin(t * 3.2) * 0.12;
+        const sw = Math.sin(t * 3.2) * 0.12 * calm;
         blendTo(lUpper, 0, -0.25, 0.55 + Math.sin(t * 2.1) * 0.04, dangle);
         blendTo(rUpper, 0, 0.25, -0.55 - Math.sin(t * 2.1 + 1) * 0.04, dangle);
         blendTo(lFore, 0, -0.35, 0, dangle);
