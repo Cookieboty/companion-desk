@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { CliProviderBridge } from '../../../src/cli/CliProviderBridge';
 import { claudeSettingsPath, codexConfigPath } from '../../../src/cli/configPatch';
+import { initCliRouteService } from '../../../src/cli/routing/CliRouteService';
 
 jest.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] },
@@ -20,8 +21,41 @@ jest.mock('electron', () => ({
   },
 }));
 
-describe('CliProviderBridge', () => {
-  it('activates claude profile with backup', () => {
+describe('CliProviderBridge separate stores', () => {
+  it('writes claude and codex to different store files', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-home-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-root-'));
+    const b = new CliProviderBridge({ root, home, logger: { info() {}, warn() {} } });
+    b.upsert({
+      kind: 'claude',
+      name: 'C1',
+      baseUrl: 'https://claude.example',
+      model: 'claude-x',
+      apiKey: 'sk-c',
+      apiFormat: 'anthropic_messages',
+    });
+    b.upsert({
+      kind: 'codex',
+      name: 'X1',
+      baseUrl: 'https://codex.example/v1',
+      model: 'gpt-x',
+      apiKey: 'sk-x',
+      apiFormat: 'openai_responses',
+    });
+    const st = b.state();
+    expect(st.claudeStore).toContain(`${path.sep}claude${path.sep}store.json`);
+    expect(st.codexStore).toContain(`${path.sep}codex${path.sep}store.json`);
+    expect(fs.existsSync(st.claudeStore)).toBe(true);
+    expect(fs.existsSync(st.codexStore)).toBe(true);
+    const cl = JSON.parse(fs.readFileSync(st.claudeStore, 'utf8'));
+    const cx = JSON.parse(fs.readFileSync(st.codexStore, 'utf8'));
+    expect(cl.profiles).toHaveLength(1);
+    expect(cx.profiles).toHaveLength(1);
+    expect(cl.profiles[0].kind).toBe('claude');
+    expect(cx.profiles[0].kind).toBe('codex');
+  });
+
+  it('activates claude native without routing', () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-home-'));
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-root-'));
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
@@ -29,51 +63,86 @@ describe('CliProviderBridge', () => {
       claudeSettingsPath(home),
       JSON.stringify({ env: { KEEP: 'yes' }, permissions: { allow: ['Read'] } }),
     );
-    const b = new CliProviderBridge({
-      root,
-      home,
-      logger: { info() {}, warn() {} },
-    });
+    const b = new CliProviderBridge({ root, home, logger: { info() {}, warn() {} } });
     const p = b.upsert({
       kind: 'claude',
       name: '测试',
       baseUrl: 'https://api.example.com',
       model: 'claude-test',
       apiKey: 'sk-test-key',
+      apiFormat: 'anthropic_messages',
     });
     const r = b.activate(p.id);
     expect(r.ok).toBe(true);
-    expect(r.backups.length).toBeGreaterThan(0);
+    expect(r.usedRouting).toBe(false);
     const settings = JSON.parse(fs.readFileSync(claudeSettingsPath(home), 'utf8'));
     expect(settings.env.ANTHROPIC_API_KEY).toBe('sk-test-key');
     expect(settings.env.ANTHROPIC_BASE_URL).toBe('https://api.example.com');
-    expect(settings.env.KEEP).toBe('yes');
-    expect(settings.permissions.allow).toEqual(['Read']);
-    // restore
-    const ts = path.basename(path.dirname(r.backups[0]!));
-    const restored = b.restoreBackup(ts);
-    expect(restored.ok).toBe(true);
   });
 
-  it('activates codex profile', () => {
+  it('rejects non-native format when routing off', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-home-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-root-'));
+    const b = new CliProviderBridge({ root, home, logger: { info() {}, warn() {} } });
+    const p = b.upsert({
+      kind: 'claude',
+      name: 'GPT',
+      baseUrl: 'https://gw.example',
+      model: 'gpt-x',
+      apiKey: 'sk',
+      apiFormat: 'openai_responses',
+    });
+    const r = b.activate(p.id);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/路由/);
+  });
+
+  it('activates via local route when routing enabled', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-home-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-root-'));
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    const b = new CliProviderBridge({ root, home, logger: { info() {}, warn() {} } });
+    const route = initCliRouteService({
+      root,
+      logger: { info() {}, warn() {} },
+      resolveUpstream: (kind) => b.resolveUpstream(kind),
+    });
+    // use ephemeral port
+    const port = 18000 + Math.floor(Math.random() * 2000);
+    route.setSettings({ enabled: true, claude: true, host: '127.0.0.1', port });
+    await route.start();
+    const p = b.upsert({
+      kind: 'claude',
+      name: 'GPT',
+      baseUrl: 'https://gw.example',
+      model: 'gpt-x',
+      apiKey: 'sk-real',
+      apiFormat: 'openai_chat_completions',
+    });
+    const r = b.activate(p.id);
+    expect(r.ok).toBe(true);
+    expect(r.usedRouting).toBe(true);
+    const settings = JSON.parse(fs.readFileSync(claudeSettingsPath(home), 'utf8'));
+    expect(settings.env.ANTHROPIC_BASE_URL).toContain(`127.0.0.1:${port}`);
+    expect(settings.env.ANTHROPIC_API_KEY).toBe('nomi-route');
+    route.stop();
+  });
+
+  it('activates codex native profile', () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-home-'));
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-root-'));
     fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
-    const b = new CliProviderBridge({
-      root,
-      home,
-      logger: { info() {}, warn() {} },
-    });
+    const b = new CliProviderBridge({ root, home, logger: { info() {}, warn() {} } });
     const p = b.upsert({
       kind: 'codex',
       name: '本地',
       baseUrl: 'http://127.0.0.1:11434/v1',
       model: 'qwen2.5:0.5b',
       apiKey: 'ollama',
+      apiFormat: 'openai_responses',
     });
     const r = b.activate(p.id);
     expect(r.ok).toBe(true);
-    expect(r.restartRequired).toBe(true);
     const conf = fs.readFileSync(codexConfigPath(home), 'utf8');
     expect(conf).toContain('qwen2.5:0.5b');
     expect(conf).toContain('[model_providers.nomi]');

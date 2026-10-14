@@ -19,6 +19,8 @@ export interface CodexPatch {
   /** config.toml 里 providers 段用的 name */
   providerName?: string;
   base_url?: string;
+  /** 默认 responses（Codex 原生） */
+  wire_api?: 'responses' | 'chat';
 }
 
 export function claudeSettingsPath(home = os.homedir()): string {
@@ -31,18 +33,6 @@ export function codexConfigPath(home = os.homedir()): string {
 
 export function codexAuthPath(home = os.homedir()): string {
   return path.join(home, '.codex', 'auth.json');
-}
-
-export function ccSwitchDir(home = os.homedir()): string {
-  return path.join(home, '.cc-switch');
-}
-
-export function hasCcSwitch(home = os.homedir()): boolean {
-  try {
-    return fs.existsSync(ccSwitchDir(home));
-  } catch {
-    return false;
-  }
 }
 
 export function ensureDir(p: string) {
@@ -125,7 +115,7 @@ export function patchCodexToml(raw: string | null, patch: CodexPatch): string {
   out.push('');
   out.push(providerHeader);
   if (patch.base_url) out.push(`base_url = "${escapeToml(patch.base_url)}"`);
-  out.push('wire_api = "responses"');
+  out.push(`wire_api = "${patch.wire_api ?? 'responses'}"`);
   out.push('');
   return out.join('\n');
 }

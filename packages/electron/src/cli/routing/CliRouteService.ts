@@ -1,0 +1,383 @@
+/**
+ * 本地路由：把 Claude Code / Codex 的原生请求转到真实上游，并按档案 apiFormat 做协议转换。
+ * 默认监听 127.0.0.1:18721（仅本机）。
+ */
+import fs from 'node:fs';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import path from 'node:path';
+
+import { ipcMain } from 'electron';
+
+import {
+  type ClaudeApiFormat,
+  type CodexApiFormat,
+  type CliApiFormat,
+  formatNeedsRouting,
+} from '../formats';
+
+import {
+  chatCompletionsResponseToMessages,
+  chatCompletionsResponseToResponses,
+  geminiResponseToMessages,
+  messagesResponseToChatCompletions,
+  messagesResponseToResponses,
+  messagesToChatCompletions,
+  messagesToGemini,
+  messagesToResponses,
+  responsesResponseToMessages,
+  responsesToChatCompletions,
+  responsesToMessages,
+  chatCompletionsToMessages,
+} from './transforms';
+
+export interface RouteSettings {
+  /** 总开关 */
+  enabled: boolean;
+  host: string;
+  port: number;
+  /** 接管 Claude Code → 写本地地址 */
+  claude: boolean;
+  /** 接管 Codex → 写本地地址 */
+  codex: boolean;
+}
+
+export interface RouteUpstream {
+  kind: 'claude' | 'codex';
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  apiFormat: CliApiFormat;
+}
+
+type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
+
+const DEFAULTS: RouteSettings = {
+  enabled: false,
+  host: '127.0.0.1',
+  port: 18721,
+  claude: false,
+  codex: false,
+};
+
+function readJson(req: http.IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (c) => chunks.push(Buffer.from(c)));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      if (!raw) return resolve({});
+      try {
+        resolve(JSON.parse(raw));
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function sendJson(res: http.ServerResponse, status: number, body: unknown) {
+  const data = JSON.stringify(body);
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(data),
+  });
+  res.end(data);
+}
+
+function trimSlash(u: string): string {
+  return u.replace(/\/+$/, '');
+}
+
+function joinUrl(base: string, p: string): string {
+  const b = trimSlash(base);
+  if (/^https?:\/\//i.test(p)) return p;
+  return `${b}${p.startsWith('/') ? p : `/${p}`}`;
+}
+
+export class CliRouteService {
+  private settings: RouteSettings;
+  private server: http.Server | null = null;
+  private readonly settingsPath: string;
+  private resolveUpstream: (kind: 'claude' | 'codex') => RouteUpstream | null;
+
+  constructor(
+    private readonly d: {
+      root: string;
+      logger: Logger;
+      resolveUpstream: (kind: 'claude' | 'codex') => RouteUpstream | null;
+    },
+  ) {
+    this.settingsPath = path.join(d.root, 'routing.json');
+    this.resolveUpstream = d.resolveUpstream;
+    this.settings = this.load();
+  }
+
+  private load(): RouteSettings {
+    try {
+      const raw = JSON.parse(fs.readFileSync(this.settingsPath, 'utf8')) as Partial<RouteSettings>;
+      return { ...DEFAULTS, ...raw };
+    } catch {
+      return { ...DEFAULTS };
+    }
+  }
+
+  private save() {
+    fs.mkdirSync(path.dirname(this.settingsPath), { recursive: true });
+    fs.writeFileSync(this.settingsPath, JSON.stringify(this.settings, null, 2), 'utf8');
+  }
+
+  getSettings(): RouteSettings & { listening: boolean; listenUrl: string | null } {
+    return {
+      ...this.settings,
+      listening: Boolean(this.server?.listening),
+      listenUrl: this.listenUrl(),
+    };
+  }
+
+  listenUrl(): string | null {
+    if (!this.server?.listening) return null;
+    return `http://${this.settings.host}:${this.settings.port}`;
+  }
+
+  /** CLI 配置应写入的 base（含 /v1 视应用而定） */
+  cliBaseUrl(kind: 'claude' | 'codex'): string | null {
+    if (!this.settings.enabled || !this.settings[kind]) return null;
+    const base = `http://${this.settings.host}:${this.settings.port}`;
+    return kind === 'codex' ? `${base}/v1` : base;
+  }
+
+  setSettings(
+    patch: Partial<RouteSettings>,
+  ): RouteSettings & { listening: boolean; listenUrl: string | null } {
+    this.settings = {
+      ...this.settings,
+      ...patch,
+      host: typeof patch.host === 'string' && patch.host ? patch.host : this.settings.host,
+      port:
+        typeof patch.port === 'number' && patch.port > 0 && patch.port < 65536
+          ? Math.floor(patch.port)
+          : this.settings.port,
+    };
+    this.save();
+    if (this.settings.enabled) {
+      void this.start().catch((e) => this.d.logger.warn('route start failed', e));
+    } else {
+      this.stop();
+    }
+    return this.getSettings();
+  }
+
+  async start(): Promise<void> {
+    if (this.server?.listening) return;
+    this.stop();
+    this.server = http.createServer((req, res) => {
+      void this.handle(req, res);
+    });
+    await new Promise<void>((resolve, reject) => {
+      this.server!.once('error', reject);
+      this.server!.listen(this.settings.port, this.settings.host, () => resolve());
+    });
+    this.d.logger.info('cli route listening', this.listenUrl());
+  }
+
+  stop(): void {
+    if (!this.server) return;
+    try {
+      this.server.close();
+    } catch {
+      /* */
+    }
+    this.server = null;
+  }
+
+  private detectKind(req: http.IncomingMessage, url: string): 'claude' | 'codex' | null {
+    // Codex 走 /v1/responses 或 /v1/chat/completions；Claude 走 /v1/messages 或 /messages
+    if (url.includes('/responses') || url.includes('/chat/completions')) return 'codex';
+    if (url.includes('/messages') || url.includes('/v1/messages')) return 'claude';
+    // Gemini path used when Claude upstream is gemini
+    if (url.includes(':generateContent') || url.includes('/models/')) return 'claude';
+    const via = String(req.headers['x-nomi-cli'] ?? '');
+    if (via === 'claude' || via === 'codex') return via;
+    return null;
+  }
+
+  private async handle(req: http.IncomingMessage, res: http.ServerResponse) {
+    try {
+      if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+        sendJson(res, 200, { ok: true, service: 'nomi-cli-route', settings: this.getSettings() });
+        return;
+      }
+      if (req.method !== 'POST') {
+        sendJson(res, 405, { error: 'method not allowed' });
+        return;
+      }
+      const url = req.url ?? '/';
+      const kind = this.detectKind(req, url);
+      if (!kind) {
+        sendJson(res, 404, { error: 'unknown route path' });
+        return;
+      }
+      if (!this.settings.enabled || !this.settings[kind]) {
+        sendJson(res, 503, { error: `routing disabled for ${kind}` });
+        return;
+      }
+      const up = this.resolveUpstream(kind);
+      if (!up) {
+        sendJson(res, 502, { error: `no active ${kind} provider` });
+        return;
+      }
+      if (formatNeedsRouting(kind, up.apiFormat) === false && kind === 'claude') {
+        // native passthrough still ok via route
+      }
+      const body = await readJson(req);
+      const { upstreamUrl, requestBody, responseTransform } = this.plan(kind, up, url, body);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+      if (up.apiKey) {
+        if (up.apiFormat === 'anthropic_messages' && kind === 'codex') {
+          headers['x-api-key'] = up.apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+        } else if (kind === 'claude' && up.apiFormat === 'anthropic_messages') {
+          headers['x-api-key'] = up.apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+        } else {
+          headers.Authorization = `Bearer ${up.apiKey}`;
+        }
+      }
+      const upstreamRes = await fetch(upstreamUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      });
+      const text = await upstreamRes.text();
+      let parsed: unknown = text;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        /* keep text */
+      }
+      if (!upstreamRes.ok) {
+        res.writeHead(upstreamRes.status, { 'Content-Type': 'application/json' });
+        res.end(typeof parsed === 'string' ? text : JSON.stringify(parsed));
+        return;
+      }
+      const out = responseTransform(parsed);
+      sendJson(res, 200, out);
+    } catch (e) {
+      this.d.logger.warn('cli route error', e);
+      sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  private plan(
+    kind: 'claude' | 'codex',
+    up: RouteUpstream,
+    reqUrl: string,
+    body: unknown,
+  ): {
+    upstreamUrl: string;
+    requestBody: unknown;
+    responseTransform: (u: unknown) => unknown;
+  } {
+    const base = trimSlash(up.baseUrl);
+    if (kind === 'claude') {
+      const fmt = up.apiFormat as ClaudeApiFormat;
+      if (fmt === 'anthropic_messages') {
+        return {
+          upstreamUrl: joinUrl(base.includes('/v1') ? base : `${base}/v1`, '/messages'),
+          requestBody: body,
+          responseTransform: (u) => u,
+        };
+      }
+      if (fmt === 'openai_chat_completions') {
+        return {
+          upstreamUrl: joinUrl(base, '/chat/completions'),
+          requestBody: messagesToChatCompletions(body, up.model),
+          responseTransform: chatCompletionsResponseToMessages,
+        };
+      }
+      if (fmt === 'openai_responses') {
+        return {
+          upstreamUrl: joinUrl(base, '/responses'),
+          requestBody: messagesToResponses(body, up.model),
+          responseTransform: responsesResponseToMessages,
+        };
+      }
+      // gemini
+      const model = up.model || 'gemini-pro';
+      return {
+        upstreamUrl: joinUrl(base, `/models/${encodeURIComponent(model)}:generateContent`),
+        requestBody: messagesToGemini(body, model),
+        responseTransform: geminiResponseToMessages,
+      };
+    }
+    // codex
+    const fmt = up.apiFormat as CodexApiFormat;
+    if (fmt === 'openai_responses') {
+      return {
+        upstreamUrl: joinUrl(base, '/responses'),
+        requestBody: body,
+        responseTransform: (u) => u,
+      };
+    }
+    if (fmt === 'openai_chat_completions') {
+      // Codex 原生发 responses；若请求已是 chat 则透传转换路径
+      const isChat = reqUrl.includes('chat/completions');
+      return {
+        upstreamUrl: joinUrl(base, '/chat/completions'),
+        requestBody: isChat ? body : responsesToChatCompletions(body, up.model),
+        responseTransform: isChat ? (u) => u : chatCompletionsResponseToResponses,
+      };
+    }
+    // anthropic_messages
+    return {
+      upstreamUrl: joinUrl(base.includes('/v1') ? base : `${base}/v1`, '/messages'),
+      requestBody: reqUrl.includes('chat/completions')
+        ? chatCompletionsToMessages(body, up.model)
+        : responsesToMessages(body, up.model),
+      responseTransform: reqUrl.includes('chat/completions')
+        ? messagesResponseToChatCompletions
+        : messagesResponseToResponses,
+    };
+  }
+
+  address(): AddressInfo | null {
+    const a = this.server?.address();
+    return a && typeof a === 'object' ? a : null;
+  }
+
+  registerIpc(): void {
+    const handle = (ch: string, fn: (...a: unknown[]) => unknown) => {
+      ipcMain.removeHandler(ch);
+      ipcMain.handle(ch, async (_e, ...a) => {
+        try {
+          return await fn(...a);
+        } catch (err) {
+          return { __error: { message: err instanceof Error ? err.message : String(err) } };
+        }
+      });
+    };
+    handle('ai:cli-route:state', () => this.getSettings());
+    handle('ai:cli-route:set', (p) => this.setSettings((p ?? {}) as Partial<RouteSettings>));
+    handle('ai:cli-route:start', () => this.start().then(() => this.getSettings()));
+    handle('ai:cli-route:stop', () => {
+      this.stop();
+      return this.getSettings();
+    });
+  }
+}
+
+let inst: CliRouteService | null = null;
+export function initCliRouteService(
+  d: ConstructorParameters<typeof CliRouteService>[0],
+): CliRouteService {
+  inst = new CliRouteService(d);
+  return inst;
+}
+export function getCliRouteService(): CliRouteService | null {
+  return inst;
+}

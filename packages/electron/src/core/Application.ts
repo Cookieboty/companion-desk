@@ -13,8 +13,9 @@ import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { initCliHarnessService } from '../cli/CliHarnessService';
-import { initCliProviderBridge } from '../cli/CliProviderBridge';
+import { initCliProviderBridge, getCliProviderBridge } from '../cli/CliProviderBridge';
 import { initCliUpdateService } from '../cli/CliUpdateService';
+import { initCliRouteService } from '../cli/routing/CliRouteService';
 import { getDesktopService } from '../desktop/DesktopService';
 import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
@@ -336,7 +337,14 @@ export class Application implements IApplication {
         root: path.join(app.getPath('userData'), 'cli-providers'),
         logger: this.logger as never,
       });
+      const cliRoute = initCliRouteService({
+        root: path.join(app.getPath('userData'), 'cli-providers'),
+        logger: this.logger as never,
+        resolveUpstream: (kind) => getCliProviderBridge()?.resolveUpstream(kind) ?? null,
+      });
       cliProviders.registerIpc();
+      cliRoute.registerIpc();
+      if (cliRoute.getSettings().enabled) void cliRoute.start().catch(() => undefined);
       const harness = initCliHarnessService({
         root: path.join(app.getPath('userData'), 'harness'),
         logger: this.logger as never,

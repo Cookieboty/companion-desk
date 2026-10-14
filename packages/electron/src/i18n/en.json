@@ -437,5 +437,13 @@
   "档案不存在": "Profile not found",
   "备份不存在": "Backup not found",
   "Claude 错误": "Claude error",
-  "Codex 错误": "Codex error"
+  "Codex 错误": "Codex error",
+  "该上游格式需要先开启本地路由（高级设置）": "This upstream format requires local routing (Advanced)",
+  "Anthropic Messages（原生）": "Anthropic Messages (native)",
+  "OpenAI Chat Completions（需开启路由）": "OpenAI Chat Completions (routing required)",
+  "OpenAI Responses API（需开启路由）": "OpenAI Responses API (routing required)",
+  "Gemini Native generateContent（需开启路由）": "Gemini Native generateContent (routing required)",
+  "Responses（原生）": "Responses (native)",
+  "Chat Completions（需开启路由）": "Chat Completions (routing required)",
+  "Anthropic Messages（需开启路由）": "Anthropic Messages (routing required)"
 }

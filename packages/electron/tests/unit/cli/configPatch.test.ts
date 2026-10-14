@@ -10,11 +10,15 @@ import path from 'node:path';
 import { isAllowedUpdateArgv, updateRecipes } from '../../../src/cli/CliUpdateService';
 import {
   backupFile,
-  hasCcSwitch,
   patchClaudeSettings,
   patchCodexAuth,
   patchCodexToml,
 } from '../../../src/cli/configPatch';
+import {
+  claudeFormatNeedsRouting,
+  codexFormatNeedsRouting,
+  formatNeedsRouting,
+} from '../../../src/cli/formats';
 
 describe('configPatch', () => {
   it('patches claude settings env only', () => {
@@ -45,6 +49,7 @@ describe('configPatch', () => {
     expect(out).toContain('model = "gpt-test"');
     expect(out).toContain('[model_providers.nomi]');
     expect(out).toContain('base_url = "http://127.0.0.1:11434/v1"');
+    expect(out).toContain('wire_api = "responses"');
     expect(out).toContain('other = 1');
   });
 
@@ -61,12 +66,21 @@ describe('configPatch', () => {
     expect(dest).toBeTruthy();
     expect(fs.readFileSync(dest!, 'utf8')).toBe('{"a":1}');
   });
+});
 
-  it('detects cc-switch dir', () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-home-'));
-    expect(hasCcSwitch(home)).toBe(false);
-    fs.mkdirSync(path.join(home, '.cc-switch'));
-    expect(hasCcSwitch(home)).toBe(true);
+describe('api formats routing flags', () => {
+  it('claude native does not need routing; others do', () => {
+    expect(claudeFormatNeedsRouting('anthropic_messages')).toBe(false);
+    expect(claudeFormatNeedsRouting('openai_chat_completions')).toBe(true);
+    expect(claudeFormatNeedsRouting('openai_responses')).toBe(true);
+    expect(claudeFormatNeedsRouting('gemini_generate_content')).toBe(true);
+  });
+
+  it('codex native does not need routing; others do', () => {
+    expect(codexFormatNeedsRouting('openai_responses')).toBe(false);
+    expect(codexFormatNeedsRouting('openai_chat_completions')).toBe(true);
+    expect(codexFormatNeedsRouting('anthropic_messages')).toBe(true);
+    expect(formatNeedsRouting('codex', 'openai_chat_completions')).toBe(true);
   });
 });
 

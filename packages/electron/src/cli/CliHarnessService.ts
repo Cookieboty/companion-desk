@@ -11,7 +11,6 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { t } from '../i18n';
 
-import { hasCcSwitch } from './configPatch';
 import { resolveCliBin } from './detect';
 import { parseClaudeLine, parseCodexLine } from './streamParse';
 import type { HarnessBackend, HarnessEvent, HarnessSendResult, HarnessSessionState } from './types';
@@ -79,7 +78,6 @@ export class CliHarnessService {
       cwd: this.cwd,
       cliSessionId: this.cliSessionId,
       busy: this.busy,
-      ccSwitchWarning: hasCcSwitch(this.home),
     };
     fs.writeFileSync(this.statePath, JSON.stringify(s, null, 2), 'utf8');
   }
@@ -90,7 +88,6 @@ export class CliHarnessService {
       cwd: this.cwd,
       cliSessionId: this.cliSessionId,
       busy: this.busy,
-      ccSwitchWarning: hasCcSwitch(this.home),
       toolsDisabled: this.backend !== 'nomi',
       bins: {
         claude: resolveHarnessBin('claude'),
