@@ -415,5 +415,10 @@
   "创建": "Create",
   "取消": "Cancel",
   "在系统日历中创建事件？": "Create this event in your system calendar?",
-  "Nomi": "Nomi"
+  "Nomi": "Nomi",
+  "仅支持 .vrm 文件": "Only .vrm files are supported",
+  "无效的音频 URL": "Invalid audio URL",
+  "音频 URL 只允许 http / https": "Audio URL must use http or https",
+  "音频 URL 不能包含账号密码": "Audio URL must not contain credentials",
+  "音频 URL 不能指向本机或局域网地址": "Audio URL must not point to localhost or a private network address"
 }

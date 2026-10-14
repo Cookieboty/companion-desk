@@ -6,7 +6,6 @@ import {
   Ellipsis,
   Hand,
   Info,
-  Layers,
   Mic,
   Pin,
   PinOff,
@@ -252,42 +251,6 @@ export const ToolBar: React.FC = () => {
     mascotDispatch({ type: 'SET_PANEL', payload: 'motions' });
   }, [mascotDispatch]);
 
-  // Cursor MCP注入
-  const injectCursorMCP = useCallback(async () => {
-    try {
-      showMessage(tr('正在为Cursor注入MCP配置...'));
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
-      const electronAPI = (window as any).electronAPI;
-      if (electronAPI?.mcp) {
-        // 生成MCP配置并写入Cursor配置文件
-        const result = await electronAPI.mcp.setupCursorIntegration();
-
-        if (result.success) {
-          showMessage(tr('✅ Cursor MCP配置已成功注入！请重启Cursor IDE以使配置生效'));
-
-          // 播放成功提示音
-          if (voiceService && voiceEnabled) {
-            try {
-              // 使用showMessage来播放语音提示
-              showMessage(tr('MCP配置注入成功，请重启Cursor IDE'));
-            } catch (voiceError) {
-              console.warn('ToolBar: 语音提示失败:', voiceError);
-            }
-          }
-        } else {
-          showMessage(tr('❌ MCP注入失败: {0}', result.error || tr('未知错误')));
-        }
-      } else {
-        showMessage(tr('❌ MCP功能不可用，请检查Electron环境'));
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
-    } catch (error: any) {
-      console.error('Cursor MCP注入失败:', error);
-      showMessage(tr('❌ MCP注入异常: {0}', error?.message || tr('请查看控制台')));
-    }
-  }, [showMessage, voiceService, voiceEnabled]);
-
   // 切换语音模式（保存到应用配置）
   // 新手引导选择声音风格时开关语音（与工具栏按钮状态同步）
   useEffect(() => {
@@ -420,8 +383,6 @@ export const ToolBar: React.FC = () => {
         };
       case 'motion':
         return playRandomMotion;
-      case 'cursor-mcp':
-        return injectCursorMCP;
       default:
         return () => {};
     }
@@ -578,8 +539,6 @@ export const ToolBar: React.FC = () => {
         return voiceMode === 'fixed' ? Mic : AudioLines;
       case 'tts-config':
         return Settings2;
-      case 'cursor-mcp':
-        return Layers;
       case 'toggle-top':
         return alwaysOnTop ? Pin : PinOff;
       case 'info':
@@ -615,8 +574,6 @@ export const ToolBar: React.FC = () => {
         return tr('免按键语音：开/关（工具栏麦克风按住说话）');
       case 'motion':
         return tr('做个动作（右键：动作列表）');
-      case 'cursor-mcp':
-        return tr('为 Cursor 注入 MCP 配置');
       default:
         return toolId;
     }
