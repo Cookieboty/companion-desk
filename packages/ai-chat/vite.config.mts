@@ -17,7 +17,8 @@ export default defineConfig(({ mode }) => ({
         handler: (html: string) =>
           html.replace(
             /<meta charset="UTF-8"\s*\/?>/,
-            (m) => `${m}\n    <meta http-equiv="Content-Security-Policy" content="${appCspString()}"/>`,
+            (m) =>
+              `${m}\n    <meta http-equiv="Content-Security-Policy" content="${appCspString()}"/>`,
           ),
       },
     },
