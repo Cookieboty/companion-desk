@@ -1,0 +1,99 @@
+/** 解析 Claude stream-json / Codex NDJSON 行 → HarnessEvent */
+import { t } from '../i18n';
+
+import type { HarnessEvent } from './types';
+
+export function parseClaudeLine(line: string): HarnessEvent[] {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('{')) return [];
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const type = String(j.type ?? '');
+  const out: HarnessEvent[] = [];
+  if (type === 'stream_event') {
+    const ev = j.event as { delta?: { type?: string; text?: string } } | undefined;
+    if (ev?.delta?.type === 'text_delta' && ev.delta.text) {
+      out.push({ type: 'text-delta', text: ev.delta.text });
+    }
+  } else if (type === 'assistant') {
+    const msg = j.message as { content?: unknown } | undefined;
+    const text = extractClaudeText(msg?.content);
+    if (text) out.push({ type: 'text', text });
+  } else if (type === 'result') {
+    const text = typeof j.result === 'string' ? j.result : '';
+    const sid = typeof j.session_id === 'string' ? j.session_id : undefined;
+    out.push({ type: 'done', text, sessionId: sid });
+  } else if (type === 'error' || (type === 'system' && j.subtype === 'error')) {
+    out.push({ type: 'error', message: String(j.error ?? j.message ?? t('Claude 错误')) });
+  }
+  // tool_use blocks
+  if (type === 'assistant') {
+    const msg = j.message as { content?: unknown } | undefined;
+    if (Array.isArray(msg?.content)) {
+      for (const c of msg.content as Array<Record<string, unknown>>) {
+        if (c.type === 'tool_use') {
+          out.push({
+            type: 'tool',
+            name: String(c.name ?? 'tool'),
+            status: 'start',
+            detail: typeof c.id === 'string' ? c.id : undefined,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function extractClaudeText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((c) => {
+      if (c && typeof c === 'object' && (c as { type?: string }).type === 'text') {
+        return String((c as { text?: string }).text ?? '');
+      }
+      return '';
+    })
+    .filter(Boolean)
+    .join('');
+}
+
+export function parseCodexLine(line: string): HarnessEvent[] {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('{')) return [];
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const type = String(j.type ?? '');
+  const out: HarnessEvent[] = [];
+  if (type === 'item.completed' || type === 'item.started') {
+    const item = j.item as
+      { type?: string; text?: string; command?: string; status?: string } | undefined;
+    if (!item) return out;
+    if (item.type === 'agent_message' && item.text) {
+      out.push({ type: 'text', text: item.text });
+      if (type === 'item.completed') out.push({ type: 'done', text: item.text });
+    }
+    if (item.type === 'command_execution') {
+      out.push({
+        type: 'tool',
+        name: 'bash',
+        status: type === 'item.completed' ? 'done' : 'start',
+        detail: item.command,
+      });
+    }
+  } else if (type === 'turn.failed' || type === 'error') {
+    out.push({ type: 'error', message: String(j.error ?? j.message ?? t('Codex 错误')) });
+  } else if (type === 'thread.started' && typeof j.thread_id === 'string') {
+    out.push({ type: 'done', text: '', sessionId: j.thread_id });
+  }
+  return out;
+}
