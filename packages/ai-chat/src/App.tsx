@@ -5,6 +5,7 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
+import { ChatTabs, CliTabInfo, CliTabLive } from './components/ChatTabs';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
@@ -29,20 +30,38 @@ import { Sidebar } from './components/Sidebar';
 import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
+import { HarnessTabsProvider, useHarnessTabs } from './contexts/HarnessTabsContext';
 import { desktopClient } from './services/desktopClient';
 import { providerClient } from './services/providerClient';
 import { screenClient, type ScreenState } from './services/screenClient';
 import {
   SHORTCUT_DEFS,
   formatCombo,
+  isMac,
   matchShortcut,
   useShortcutBindings,
   type ShortcutId,
 } from './services/shortcuts';
+import { type ChatMessage } from './types/chat';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
   const { state, actions } = useAiChat();
+  const tabs = useHarnessTabs();
+  const [tabRename, setTabRename] = useState(0);
+  const [tabNew, setTabNew] = useState(0);
+  const cliMessages = useMemo<ChatMessage[]>(
+    () =>
+      tabs.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.error ? '' : m.content,
+        timestamp: m.timestamp,
+        modelId: m.role === 'assistant' ? tabs.activeTab?.backend : undefined,
+        ...(m.error ? { error: m.content } : {}),
+      })),
+    [tabs.messages, tabs.activeTab?.backend],
+  );
   const [showConfig, setShowConfig] = useState(false);
   const [showProviders, setShowProviders] = useState(false);
 
@@ -139,14 +158,36 @@ const AiChatContent: React.FC = () => {
       ext: () => setShowExt((v) => !v),
       local: () => setShowLocal((v) => !v),
       screen: () => setShowScreen((v) => !v),
+      newTab: () => setTabNew((n) => n + 1),
+      closeTab: () => tabs.activeTab && void tabs.close(tabs.activeTab.id),
+      nextTab: () => tabs.cycle(1),
+      prevTab: () => tabs.cycle(-1),
+      renameTab: () => setTabRename((n) => n + 1),
     }),
-    [newChat, focusInput],
+    [newChat, focusInput, tabs],
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
       // 正在设置页里录制新快捷键时不触发
       if ((e.target as HTMLElement | null)?.closest?.('[data-shortcut-recording="true"]')) return;
+      // 标签：Ctrl+Tab / Ctrl+Shift+Tab（各平台都用 Ctrl）与 Mod+1…9
+      if (tabs.available && e.ctrlKey && e.key === 'Tab') {
+        e.preventDefault();
+        tabs.cycle(e.shiftKey ? -1 : 1);
+        return;
+      }
+      if (
+        tabs.available &&
+        (isMac() ? e.metaKey : e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        /^Digit[1-9]$/.test(e.code)
+      ) {
+        e.preventDefault();
+        tabs.selectIndex(Number(e.code.slice(5)) - 1);
+        return;
+      }
       for (const [id, run] of Object.entries(shortcutActions) as Array<[ShortcutId, () => void]>) {
         if (!matchShortcut(e, bindings[id])) continue;
         // 弹窗打开时只响应命令面板 / 面板开关，不在弹窗背后新建对话或抢焦点
@@ -160,7 +201,7 @@ const AiChatContent: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [bindings, shortcutActions]);
+  }, [bindings, shortcutActions, tabs]);
   // 快速视图：右侧抽屉 + 「在设置中打开」
   const drawerHost = useMemo(() => {
     const mk = (sec: SettingsSection): ModalHost => ({
@@ -254,9 +295,27 @@ const AiChatContent: React.FC = () => {
             </button>
           )}
         </ChatHeader>
+        <ChatTabs renameRequest={tabRename} newTabRequest={tabNew} mainLoading={state.isLoading} />
+        <CliTabInfo />
         {/* 对话区域 */}
         <main className="chat-container">
-          {state.messages.length === 0 ? (
+          {tabs.isCliTab ? (
+            <>
+              {cliMessages.length === 0 && !tabs.live[tabs.activeTab!.id] ? (
+                <div className="welcome-screen" data-testid="cli-tab-empty">
+                  <div className="welcome-content">
+                    <h2 className="welcome-title">{t('{0} · 新会话', tabs.activeTab!.title)}</h2>
+                    <p className="welcome-subtitle">
+                      {t('消息会转发给本机编程助手；多个标签可以同时运行。')}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <MessageList messages={cliMessages} />
+              )}
+              <CliTabLive />
+            </>
+          ) : state.messages.length === 0 ? (
             <div className="welcome-screen" data-testid="welcome-screen">
               <div className="welcome-content">
                 <h2 className="welcome-title">{t('今天想做点什么？')}</h2>
@@ -288,6 +347,14 @@ const AiChatContent: React.FC = () => {
         {/* 输入区域 */}
         <footer className="input-container">
           <MessageInput
+            {...(tabs.isCliTab
+              ? {
+                  onSend: (text: string) => void tabs.send(text),
+                  busyOverride:
+                    tabs.activeTab!.status === 'running' || tabs.activeTab!.status === 'queued',
+                  placeholder: t('发给 {0}…', tabs.activeTab!.title),
+                }
+              : {})}
             onConfigClick={() => setShowConfig(true)}
             onProvidersClick={() => setShowProviders(true)}
             onSettingsClick={(sec) => openSettings(sec as SettingsSection)}
@@ -348,7 +415,9 @@ function App() {
   return (
     <ErrorBoundary>
       <AiChatContextProvider client={client}>
-        <AiChatContent />
+        <HarnessTabsProvider>
+          <AiChatContent />
+        </HarnessTabsProvider>
         {/* 首次启动引导（未完成时覆盖在对话窗口上；设置 → 通用 可重新打开） */}
         <OnboardingHost />
       </AiChatContextProvider>

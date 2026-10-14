@@ -27,6 +27,8 @@ import styles from './index.module.css';
 
 interface MessageInputProps {
   onSend?: (message: string) => void;
+  /** 独立于 Nomi 对话的忙碌状态（CLI 标签）；设置后不再看 Nomi 的 isLoading / 模型 */
+  busyOverride?: boolean;
   placeholder?: string;
   disabled?: boolean;
   onConfigClick?: () => void;
@@ -44,6 +46,7 @@ interface MessageInputProps {
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
+  busyOverride,
   placeholder = tr('输入消息...'),
   disabled = false,
   onConfigClick,
@@ -189,14 +192,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleSend = async () => {
     const trimmedMessage = message.trim() || (images.length ? tr('请看看这张图片。') : '');
-    if (!trimmedMessage || state.isLoading) return;
+    if (!trimmedMessage || (busyOverride ?? state.isLoading)) return;
     const sendImages = images;
 
     try {
       setMessage('');
       setImages([]);
       setImgErr('');
-      if (sendImages.length) {
+      if (sendImages.length && busyOverride !== undefined) {
+        setImgErr(tr('编程助手后端暂不支持图片，请切回 Nomi'));
+        setImages(sendImages);
+        setMessage(trimmedMessage);
+      } else if (sendImages.length) {
         await actions.sendStreamMessage(trimmedMessage, sendImages);
       } else if (onSend) {
         onSend(trimmedMessage);
@@ -278,7 +285,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
-  const isDisabled = disabled || state.isLoading || !state.currentModelId;
+  const isDisabled =
+    disabled ||
+    (busyOverride !== undefined ? busyOverride : state.isLoading || !state.currentModelId);
 
   // 语音：自动发送（对话空闲时）或填入输入框
   const busyRef = useRef(false);
@@ -668,7 +677,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             title={tr('发送消息 (Enter)')}
             aria-label={tr('发送')}
           >
-            {state.isLoading ? (
+            {(busyOverride ?? state.isLoading) ? (
               <div className={styles.loadingSpinner} />
             ) : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

@@ -20,7 +20,12 @@ export type ShortcutId =
   | 'schedule'
   | 'ext'
   | 'local'
-  | 'screen';
+  | 'screen'
+  | 'newTab'
+  | 'closeTab'
+  | 'nextTab'
+  | 'prevTab'
+  | 'renameTab';
 
 export interface ShortcutDef {
   id: ShortcutId;
@@ -44,6 +49,11 @@ export const SHORTCUT_DEFS: ShortcutDef[] = [
   { id: 'ext', label: '扩展 / MCP', combo: 'Mod+Shift+E' },
   { id: 'local', label: '本机管理', combo: 'Mod+Shift+J' },
   { id: 'screen', label: '屏幕记忆', combo: 'Mod+Shift+O' },
+  { id: 'newTab', label: '新建编程助手标签', combo: 'Mod+T' },
+  { id: 'closeTab', label: '关闭标签', combo: 'Mod+Shift+W' },
+  { id: 'nextTab', label: '下一个标签', combo: 'Ctrl+Tab' },
+  { id: 'prevTab', label: '上一个标签', combo: 'Ctrl+Shift+Tab' },
+  { id: 'renameTab', label: '重命名标签', combo: 'Mod+Shift+R' },
 ];
 
 /** 不可改绑、仅展示的按键 */
@@ -53,6 +63,7 @@ export const FIXED_SHORTCUTS: Array<[string, string]> = [
   ['↑（输入框为空时）', '找回上一条提问'],
   ['F2（按住）', '说话'],
   ['Esc', '关闭弹窗 / 菜单'],
+  ['Mod+1…9', '切换到第 n 个标签（9 = 最后一个）'],
 ];
 
 /** 系统 / 编辑常用组合：改绑到这些上会给出冲突提示 */

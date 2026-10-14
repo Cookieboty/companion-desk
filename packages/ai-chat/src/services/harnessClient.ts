@@ -11,6 +11,47 @@ export interface HarnessState {
   bins: Record<string, string | null>;
 }
 
+export type HarnessTabStatus = 'idle' | 'queued' | 'running' | 'error';
+
+export interface HarnessTabMeta {
+  id: string;
+  title: string;
+  backend: HarnessBackend;
+  cwd: string;
+  cliSessionId: string | null;
+  status: HarnessTabStatus;
+  unread: number;
+  createdAt: number;
+  updatedAt: number;
+  lastError?: string;
+}
+
+export interface HarnessTabsState {
+  tabs: HarnessTabMeta[];
+  activeTabId: string;
+  maxConcurrent: number;
+  running: number;
+  queued: number;
+}
+
+export interface HarnessTabMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  error?: boolean;
+  tools?: string[];
+}
+
+export type HarnessLiveEvent =
+  | { tabId: string; type: 'text-delta' | 'text'; text: string }
+  | { tabId: string; type: 'tool'; name: string; status: 'start' | 'done' | 'error' }
+  | { tabId: string; type: 'done'; text: string; sessionId?: string }
+  | { tabId: string; type: 'error'; message: string }
+  | { tabId: string; type: 'permission'; id: string; summary: string };
+
+export const MAIN_TAB_ID = 'main';
+
 export interface HarnessSendResult {
   text: string;
   sessionId: string | null;
@@ -46,4 +87,22 @@ export const harnessClient = {
   onChanged: (fn: (s: HarnessState) => void) =>
     bridge()?.on('ai:harness:changed', (p) => fn(p as HarnessState)) ?? (() => undefined),
   onEvent: (fn: (e: unknown) => void) => bridge()?.on('ai:harness:event', fn) ?? (() => undefined),
+  tabs: () => call<HarnessTabsState>('tabs'),
+  createTab: (o: { backend: HarnessBackend; cwd?: string; title?: string }) =>
+    call<HarnessTabMeta>('tab-create', o),
+  closeTab: (id: string) => call<HarnessTabsState>('tab-close', id),
+  renameTab: (id: string, title: string) => call<HarnessTabMeta>('tab-rename', id, title),
+  activateTab: (id: string) => call<HarnessTabsState>('tab-activate', id),
+  setTabBackend: (id: string, b: HarnessBackend) => call<HarnessTabMeta>('tab-backend', id, b),
+  pickTabCwd: (id: string) => call<HarnessTabMeta>('tab-pick-cwd', id),
+  tabMessages: (id: string) => call<HarnessTabMessage[]>('tab-messages', id),
+  sendTab: (id: string, prompt: string) => call<HarnessSendResult>('tab-send', id, prompt),
+  cancelTab: (id: string) => call<boolean>('tab-cancel', id),
+  setMaxConcurrent: (n: number) => call<HarnessTabsState>('set-max-concurrent', n),
+  onTabs: (fn: (s: HarnessTabsState) => void) =>
+    bridge()?.on('ai:harness:tabs', (p) => fn(p as HarnessTabsState)) ?? (() => undefined),
+  onTabMessage: (fn: (e: { tabId: string; message: HarnessTabMessage }) => void) =>
+    bridge()?.on('ai:harness:tab-message', (p) =>
+      fn(p as { tabId: string; message: HarnessTabMessage }),
+    ) ?? (() => undefined),
 };
