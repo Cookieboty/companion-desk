@@ -220,3 +220,112 @@ describe('CliRouteService streaming', () => {
     expect(await res.json()).toEqual({ error: { message: 'bad key' } });
   });
 });
+
+describe('CliRouteService JSON → SSE fallback', () => {
+  const cleanup: Array<() => void> = [];
+  afterEach(() => {
+    while (cleanup.length) cleanup.pop()!();
+  });
+  const json = (body: unknown) => (_r: unknown, res: http.ServerResponse) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+
+  it('claude ← chat completions JSON with tool call becomes Messages SSE', async () => {
+    const up = await startUpstream(
+      json({
+        id: 'c1',
+        model: 'm',
+        choices: [
+          {
+            message: {
+              content: 'checking',
+              tool_calls: [
+                { id: 'call_1', type: 'function', function: { name: 'ls', arguments: '{"p":1}' } },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 4 },
+      }),
+    );
+    const { svc, url } = await startRoute('claude', up.base, 'openai_chat_completions');
+    cleanup.push(up.close, () => svc.stop());
+    const res = await fetch(`${url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ stream: true, messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const evs = await readSse(res);
+    expect(evs.map((e) => e.event)).toEqual([
+      'message_start',
+      'content_block_start',
+      'content_block_delta',
+      'content_block_stop',
+      'content_block_start',
+      'content_block_delta',
+      'content_block_stop',
+      'message_delta',
+      'message_stop',
+    ]);
+    expect(evs[4].data.content_block).toMatchObject({ type: 'tool_use', id: 'call_1', name: 'ls' });
+    expect(evs[5].data.delta.partial_json).toBe('{"p":1}');
+    expect(evs[7].data).toMatchObject({
+      delta: { stop_reason: 'tool_use' },
+      usage: { output_tokens: 4 },
+    });
+  });
+
+  it('codex ← anthropic JSON becomes Responses SSE', async () => {
+    const up = await startUpstream(
+      json({
+        id: 'msg_1',
+        type: 'message',
+        content: [{ type: 'text', text: 'hello' }],
+        stop_reason: 'max_tokens',
+        usage: { input_tokens: 1, output_tokens: 2 },
+      }),
+    );
+    const { svc, url } = await startRoute('codex', up.base, 'anthropic_messages');
+    cleanup.push(up.close, () => svc.stop());
+    const res = await fetch(`${url}/v1/responses`, {
+      method: 'POST',
+      body: JSON.stringify({ stream: true, input: 'hi' }),
+    });
+    const evs = await readSse(res);
+    const last = evs[evs.length - 1];
+    expect(last.event).toBe('response.incomplete');
+    expect(last.data.response.output[0].content[0].text).toBe('hello');
+  });
+
+  it('native passthrough JSON is also turned into SSE', async () => {
+    const up = await startUpstream(
+      json({
+        id: 'resp_1',
+        status: 'completed',
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'x' }] }],
+      }),
+    );
+    const { svc, url } = await startRoute('codex', up.base, 'openai_responses');
+    cleanup.push(up.close, () => svc.stop());
+    const res = await fetch(`${url}/v1/responses`, {
+      method: 'POST',
+      body: JSON.stringify({ stream: true, input: 'hi' }),
+    });
+    const evs = await readSse(res);
+    expect(evs[0].event).toBe('response.created');
+    expect(evs[evs.length - 1].event).toBe('response.completed');
+  });
+
+  it('non-streaming requests still get JSON', async () => {
+    const up = await startUpstream(json({ id: 'c', choices: [{ message: { content: 'pong' } }] }));
+    const { svc, url } = await startRoute('claude', up.base, 'openai_chat_completions');
+    cleanup.push(up.close, () => svc.stop());
+    const res = await fetch(`${url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    expect((await res.json()).content[0].text).toBe('pong');
+  });
+});

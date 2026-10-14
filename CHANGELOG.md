@@ -17,6 +17,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 
 ### Fixes
 
+- **electron:** the local CLI route now forwards tools, tool choice, prior tool calls and results, images, system prompts and max tokens to non-native upstreams; Gemini upstreams authenticate with `x-goog-api-key` and take the model from the URL; a plain JSON reply to a streaming request is converted into the client's SSE events.
 - **security:** CSP is injected as a `<meta>` tag into the chat and TTS-config pages so it also applies to `file://` loads in packaged builds.
 - **security:** private-address check covers IPv4-mapped/compatible IPv6, NAT64, decimal/octal/hex IPv4, 100.64.0.0/10 and 0.0.0.0/8; TTS downloads resolve DNS first and pin the checked address (rebinding mitigation).
 

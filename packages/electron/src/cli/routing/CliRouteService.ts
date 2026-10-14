@@ -18,6 +18,7 @@ import {
 
 import {
   createStreamConverter,
+  jsonToSse,
   type DownstreamStreamFormat,
   type UpstreamStreamFormat,
 } from './stream';
@@ -92,6 +93,17 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
     'Content-Length': Buffer.byteLength(data),
   });
   res.end(data);
+}
+
+/** 同协议时 JSON→SSE 回退所用的方向 */
+function nativeStreamPlan(
+  kind: 'claude' | 'codex',
+  url: string,
+): { from: UpstreamStreamFormat; to: DownstreamStreamFormat } {
+  if (kind === 'claude') return { from: 'messages', to: 'messages' };
+  return url.includes('chat/completions')
+    ? { from: 'chat', to: 'chat' }
+    : { from: 'responses', to: 'responses' };
 }
 
 function trimSlash(u: string): string {
@@ -292,6 +304,16 @@ export class CliRouteService {
       if (!upstreamRes.ok) {
         res.writeHead(upstreamRes.status, { 'Content-Type': 'application/json' });
         res.end(typeof parsed === 'string' ? text : JSON.stringify(parsed));
+        return;
+      }
+      if (wantsStream && parsed && typeof parsed === 'object') {
+        // 客户端要流式、上游却回了普通 JSON：合成目标协议的完整 SSE
+        const plan = stream ?? nativeStreamPlan(kind, url);
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        });
+        res.end(jsonToSse(plan.from, plan.to, parsed, { model: up.model }));
         return;
       }
       const out = responseTransform(parsed);

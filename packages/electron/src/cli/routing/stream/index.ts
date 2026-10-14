@@ -9,6 +9,7 @@ import {
 } from './decoders';
 import { ChatCompletionsEncoder, MessagesEncoder, ResponsesEncoder } from './encoders';
 import type { StreamDecoder, StreamEncoder } from './events';
+import { jsonToEvents } from './json';
 import { SseParser } from './sse';
 
 export type UpstreamStreamFormat = 'chat' | 'responses' | 'gemini' | 'messages';
@@ -72,5 +73,19 @@ export function createStreamConverter(
   };
 }
 
+/** 上游返回了普通 JSON（未按流式响应）→ 合成完整的目标 SSE */
+export function jsonToSse(
+  from: UpstreamStreamFormat,
+  to: DownstreamStreamFormat,
+  body: unknown,
+  opts: { model?: string } = {},
+): string {
+  const enc = makeEncoder(to, opts.model ?? '');
+  let s = '';
+  for (const n of jsonToEvents(from, body)) s += enc.encode(n);
+  return s + enc.end();
+}
+
+export { jsonToEvents } from './json';
 export { SseParser, formatSse } from './sse';
 export type { NormEvent, StopReason } from './events';
