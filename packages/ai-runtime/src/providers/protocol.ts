@@ -1,5 +1,5 @@
 /**
- * 上游协议（与 cc-switch 的「上游格式」一致）：只有三种，全部经 Vercel AI SDK 通用实现，
+ * 上游协议：只有三种，全部经 Vercel AI SDK 通用实现，
  * 没有任何按厂商写死的代码路径——厂商差异只体现在 preset 的预填值上。
  *
  *   openai-chat       OpenAI Chat Completions   POST {base}/chat/completions   (@ai-sdk/openai-compatible)
