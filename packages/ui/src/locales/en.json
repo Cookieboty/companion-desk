@@ -624,7 +624,7 @@
   "key 由环境变量提供": "Key provided by environment variable",
   "未设置 key": "No key set",
   "任务路由（可选，默认都跟随当前供应商）": "Task routing (optional; all follow the current provider by default)",
-  "优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。": "Priority: COMPANION_PROVIDER env var &gt; task routing &gt; current provider. One-click switching from the toolbar / tray changes “Chat” to the selected provider immediately.",
+  "优先级：COMPANION_PROVIDER 环境变量 → 任务路由 → 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。": "Priority: COMPANION_PROVIDER env var → task routing → current provider. One-click switching from the toolbar / tray changes “Chat” to the selected provider immediately.",
   "测速中…": "Testing speed…",
   "✓ 连通": "✓ Reachable",
   "获取中…": "Fetching…",
