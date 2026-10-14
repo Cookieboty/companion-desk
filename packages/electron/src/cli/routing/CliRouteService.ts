@@ -18,6 +18,7 @@ import {
 
 import {
   createStreamConverter,
+  jsonToJson,
   jsonToSse,
   type DownstreamStreamFormat,
   type UpstreamStreamFormat,
@@ -316,8 +317,13 @@ export class CliRouteService {
         res.end(jsonToSse(plan.from, plan.to, parsed, { model: up.model }));
         return;
       }
-      const out = responseTransform(parsed);
-      sendJson(res, 200, out);
+      if (stream) {
+        // 跨协议非流式：经中间事件重建目标 JSON，保留工具调用、停止原因与用量
+        const r = jsonToJson(stream.from, stream.to, parsed, { model: up.model });
+        sendJson(res, r.status, r.body);
+        return;
+      }
+      sendJson(res, 200, responseTransform(parsed));
     } catch (e) {
       this.d.logger.warn('cli route error', e);
       if (res.headersSent) {

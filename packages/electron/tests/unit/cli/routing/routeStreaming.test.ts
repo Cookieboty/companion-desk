@@ -329,3 +329,38 @@ describe('CliRouteService JSON → SSE fallback', () => {
     expect((await res.json()).content[0].text).toBe('pong');
   });
 });
+
+describe('CliRouteService non-streaming conversion', () => {
+  const cleanup: Array<() => void> = [];
+  afterEach(() => {
+    while (cleanup.length) cleanup.pop()!();
+  });
+
+  it('claude ← chat completions JSON keeps tool calls', async () => {
+    const up = await startUpstream((_r, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          id: 'c',
+          choices: [
+            {
+              message: {
+                tool_calls: [{ id: 'call_1', function: { name: 'ls', arguments: '{}' } }],
+              },
+              finish_reason: 'tool_calls',
+            },
+          ],
+        }),
+      );
+    });
+    const { svc, url } = await startRoute('claude', up.base, 'openai_chat_completions');
+    cleanup.push(up.close, () => svc.stop());
+    const res = await fetch(`${url}/v1/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    const body = await res.json();
+    expect(body.stop_reason).toBe('tool_use');
+    expect(body.content).toEqual([{ type: 'tool_use', id: 'call_1', name: 'ls', input: {} }]);
+  });
+});

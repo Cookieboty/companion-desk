@@ -1,6 +1,7 @@
 /**
  * 流式协议转换入口：上游 SSE 文本分片 → 下游 SSE 文本。
  */
+import { eventsToJson, type AggregateResult } from './aggregate';
 import {
   ChatCompletionsDecoder,
   GeminiDecoder,
@@ -86,6 +87,17 @@ export function jsonToSse(
   return s + enc.end();
 }
 
+/** 上游非流式 JSON → 下游非流式 JSON（经中间事件，保留工具调用/停止原因/用量） */
+export function jsonToJson(
+  from: UpstreamStreamFormat,
+  to: DownstreamStreamFormat,
+  body: unknown,
+  opts: { model?: string; customTools?: ReadonlySet<string> } = {},
+): AggregateResult {
+  return eventsToJson(to, jsonToEvents(from, body), opts);
+}
+
+export type { AggregateResult } from './aggregate';
 export { jsonToEvents } from './json';
 export { SseParser, formatSse } from './sse';
 export type { NormEvent, StopReason } from './events';
