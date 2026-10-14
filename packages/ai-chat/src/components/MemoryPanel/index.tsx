@@ -48,7 +48,7 @@ const fmt = (ts: number) =>
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const KIND_OPTIONS = (Object.keys(FACT_KIND_LABEL) as FactKind[]).map((k) => ({
   value: k,
-  label: FACT_KIND_LABEL[k],
+  label: tr(FACT_KIND_LABEL[k]),
 }));
 
 const EpisodeCard: React.FC<{ e: MemEpisode; onMsg: (m: string) => void }> = ({ e, onMsg }) => {
@@ -223,7 +223,7 @@ const FactRow: React.FC<{ f: MemFact; onMsg: (m: string) => void }> = ({ f, onMs
       ) : (
         <>
           <Badge tone={f.kind === 'identity' ? 'accent' : undefined}>
-            {FACT_KIND_LABEL[f.kind]}
+            {tr(FACT_KIND_LABEL[f.kind])}
           </Badge>
           <span className={styles.grow}>{tr(f.text)}</span>
           <span className={styles.hint}>{f.source === 'user' ? tr('手动') : tr('自动')}</span>

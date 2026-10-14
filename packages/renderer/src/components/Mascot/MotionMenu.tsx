@@ -37,7 +37,7 @@ export const MotionMenu: React.FC = () => {
                 close();
               }}
             >
-              {MOTION_LABELS[m] ?? m}
+              {t(MOTION_LABELS[m] ?? m)}
             </Button>
           ))}
         </div>

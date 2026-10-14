@@ -67,7 +67,7 @@ export const AddProvider: React.FC<{
             if (list.length === 0) return null;
             return (
               <section key={c}>
-                {c !== 'custom' && <h4 className={styles.catTitle}>{CATEGORY_LABELS[c]}</h4>}
+                {c !== 'custom' && <h4 className={styles.catTitle}>{t(CATEGORY_LABELS[c])}</h4>}
                 <div className={styles.presetGrid}>
                   {list.map((p) => (
                     <button
@@ -82,7 +82,7 @@ export const AddProvider: React.FC<{
                         <span className={styles.presetName}>{t(p.name)}</span>
                         <span className="cd-muted">
                           {p.hint ?? hostOf(p.websiteUrl)}
-                          {p.id !== 'custom' && ` · ${PROTOCOL_LABELS[p.protocol]}`}
+                          {p.id !== 'custom' && ` · ${t(PROTOCOL_LABELS[p.protocol])}`}
                         </span>
                       </span>
                     </button>

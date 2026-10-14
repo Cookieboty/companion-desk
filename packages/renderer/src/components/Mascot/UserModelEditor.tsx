@@ -142,7 +142,7 @@ export const UserModelEditor: React.FC<{ model: MascotModel; onDone: () => void 
                 setMotions(next);
               }}
             />
-            {MOTION_LABELS[m] ?? m}
+            {t(MOTION_LABELS[m] ?? m)}
           </label>
         ))}
       </div>

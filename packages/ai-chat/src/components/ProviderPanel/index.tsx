@@ -64,7 +64,7 @@ const ProviderRow: React.FC<{
       }
       subtitle={
         <span>
-          {PROTOCOL_LABELS[p.protocol]} ·{' '}
+          {t(PROTOCOL_LABELS[p.protocol])} ·{' '}
           <code className="cd-code">{endpointPreview(p.protocol, p.baseURL, p.fullUrl)}</code> ·{' '}
           {p.defaultModel}
           {p.models.length > 1 && t(' 等 {0} 个模型', p.models.length)}
@@ -143,7 +143,7 @@ const RoutesTable: React.FC<{ state: ProviderState; onError: (e: unknown) => voi
           const models = selectableModels(state, r?.providerId);
           return (
             <tr key={role}>
-              <td>{ROLE_LABELS[role]}</td>
+              <td>{t(ROLE_LABELS[role])}</td>
               <td>
                 <Select
                   size="sm"

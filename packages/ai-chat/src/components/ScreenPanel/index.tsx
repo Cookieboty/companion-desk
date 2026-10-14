@@ -17,6 +17,7 @@ import {
 } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { providerDisplayName } from '../../services/providerClient';
 import {
   describeSkip,
   likelyVision,
@@ -185,7 +186,11 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
             />
             <div className={styles.modelRow}>
               <span>{tr('当前对话模型：')}</span>
-              <b>{st.chat ? `${st.chat.name}${model ? ` · ${model}` : ''}` : tr('未配置')}</b>
+              <b>
+                {st.chat
+                  ? `${providerDisplayName(st.chat.name)}${model ? ` · ${model}` : ''}`
+                  : tr('未配置')}
+              </b>
               {st.chat && (
                 <Badge tone={st.chat.local ? 'success' : 'neutral'}>
                   {st.chat.local ? tr('本地') : tr('云端')}
