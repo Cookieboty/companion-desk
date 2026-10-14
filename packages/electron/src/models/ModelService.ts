@@ -11,6 +11,8 @@ import type {
 } from '@nomi-ai/types';
 import { BrowserWindow, app, dialog, ipcMain, protocol, type OpenDialogOptions } from 'electron';
 
+import { t } from '../i18n';
+
 import { parseConfigFile, toConfigFile } from './modelConfig';
 import { ModelRegistry } from './ModelRegistry';
 import { ModelStore } from './ModelStore';
@@ -250,7 +252,7 @@ export class ModelService {
           : await this.pickFile(win(e), vrmFilter);
       if (!src) return { ok: false, error: 'cancelled' };
       if (path.extname(src).toLowerCase() !== '.vrm') {
-        return { ok: false, error: '仅支持 .vrm 文件' };
+        return { ok: false, error: t('仅支持 .vrm 文件') };
       }
       return this.userResult(() => this.user.import(src, config ?? {}));
     });
@@ -261,7 +263,7 @@ export class ModelService {
           : await this.pickFile(win(e), vrmFilter);
       if (!src) return { ok: false, error: 'cancelled' };
       if (path.extname(src).toLowerCase() !== '.vrm') {
-        return { ok: false, error: '仅支持 .vrm 文件' };
+        return { ok: false, error: t('仅支持 .vrm 文件') };
       }
       return this.userResult(() => this.user.replace(String(id), src));
     });
