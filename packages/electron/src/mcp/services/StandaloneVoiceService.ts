@@ -4,11 +4,14 @@
  * 移除了electron依赖，适用于独立node.js环境
  */
 
-import * as path from 'path';
+import { spawn, type ChildProcess } from 'child_process';
 import * as fs from 'fs';
-import * as https from 'https';
 import * as http from 'http';
-import { spawn, ChildProcess } from 'child_process';
+import * as https from 'https';
+import * as path from 'path';
+
+import { assertPublicHttpUrl } from '../../security/netGuard';
+import { psQuote } from '../../security/shellEscape';
 import { StandaloneMCPConfigManager } from '../config/StandaloneMCPConfig.js';
 
 export class StandaloneVoiceService {
@@ -90,7 +93,10 @@ export class StandaloneVoiceService {
           break;
         default:
           // 随机选择normal语音
-          const normalFiles = ['completion/normal/completion_01.mp3', 'completion/normal/completion_02.mp3'];
+          const normalFiles = [
+            'completion/normal/completion_01.mp3',
+            'completion/normal/completion_02.mp3',
+          ];
           selectedFile = normalFiles[Math.floor(Math.random() * normalFiles.length)];
       }
 
@@ -140,7 +146,7 @@ export class StandaloneVoiceService {
         const postData = JSON.stringify({
           audio_url: apiConfig.audioUrl,
           prompt_text: apiConfig.promptText,
-          tts_text: truncatedText
+          tts_text: truncatedText,
         });
 
         const options = {
@@ -150,9 +156,9 @@ export class StandaloneVoiceService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
+            'Content-Length': Buffer.byteLength(postData),
           },
-          timeout: 30000
+          timeout: 30000,
         };
 
         console.log('MCP: 请求参数:', options);
@@ -176,10 +182,12 @@ export class StandaloneVoiceService {
               }
 
               const audioUrl = result.data.cos_url;
-              console.log('MCP: 获取到语音文件URL:', audioUrl);
+              // cos_url 来自外部 API 响应（不可信）：拒绝内网 / 非 http(s)，防 SSRF
+              const checked = assertPublicHttpUrl(audioUrl);
+              console.log('MCP: 获取到语音文件URL:', checked.href);
               console.log('MCP: 语音克隆API调用成功，开始下载音频');
 
-              await this.downloadAndPlayAudio(audioUrl);
+              await this.downloadAndPlayAudio(checked.href);
               console.log('MCP: 语音克隆播放完成');
               resolve();
             } catch (parseError) {
@@ -204,13 +212,13 @@ export class StandaloneVoiceService {
         // 发送请求数据
         req.write(postData);
         req.end();
-
       } catch (error) {
         console.error('MCP: 语音克隆API调用失败:', error);
 
         // 网络错误时fallback到系统TTS
         const errorMessage = (error as any)?.message || String(error);
-        const isNetworkError = errorMessage.includes('ENOTFOUND') ||
+        const isNetworkError =
+          errorMessage.includes('ENOTFOUND') ||
           errorMessage.includes('ECONNREFUSED') ||
           errorMessage.includes('timeout');
 
@@ -277,7 +285,6 @@ export class StandaloneVoiceService {
           request.destroy();
           resolve();
         });
-
       } catch (error) {
         console.error('MCP: 下载播放音频失败:', error);
         resolve();
@@ -295,7 +302,10 @@ export class StandaloneVoiceService {
     if (process.platform === 'darwin') {
       audioProcess = spawn('afplay', [tempFilePath]);
     } else if (process.platform === 'win32') {
-      audioProcess = spawn('powershell', ['-c', `(New-Object Media.SoundPlayer "${tempFilePath}").PlaySync()`]);
+      audioProcess = spawn('powershell', [
+        '-c',
+        `(New-Object Media.SoundPlayer ${psQuote(tempFilePath)}).PlaySync()`,
+      ]);
     } else {
       audioProcess = spawn('mpg123', [tempFilePath]);
       audioProcess.on('error', () => {
@@ -337,7 +347,7 @@ export class StandaloneVoiceService {
     if (process.platform === 'darwin') {
       spawn('afplay', [filePath]);
     } else if (process.platform === 'win32') {
-      spawn('powershell', ['-c', `(New-Object Media.SoundPlayer "${filePath}").PlaySync()`]);
+      spawn('powershell', ['-c', `(New-Object Media.SoundPlayer ${psQuote(filePath)}).PlaySync()`]);
     } else {
       spawn('mpg123', [filePath]).on('error', () => {
         spawn('ffplay', ['-nodisp', '-autoexit', filePath]);
@@ -360,15 +370,16 @@ export class StandaloneVoiceService {
         path.join(scriptDir, 'assets', selectedFile),
         path.join(currentDir, assetsPath, selectedFile),
         path.join(currentDir, 'assets', selectedFile),
-        path.resolve(currentDir, assetsPath, selectedFile)
+        path.resolve(currentDir, assetsPath, selectedFile),
       ];
 
       // 找到第一个存在的文件路径
-      const voicePath = possiblePaths.find(p => {
-        const exists = fs.existsSync(p);
-        console.log(`MCP: 检查语音文件路径: ${p} -> ${exists ? '存在' : '不存在'}`);
-        return exists;
-      }) || possiblePaths[0]; // 如果都不存在，使用第一个作为fallback
+      const voicePath =
+        possiblePaths.find((p) => {
+          const exists = fs.existsSync(p);
+          console.log(`MCP: 检查语音文件路径: ${p} -> ${exists ? '存在' : '不存在'}`);
+          return exists;
+        }) || possiblePaths[0]; // 如果都不存在，使用第一个作为fallback
 
       return voicePath;
     } else {
@@ -385,7 +396,7 @@ export class StandaloneVoiceService {
       if (process.platform === 'darwin') {
         spawn('say', ['-v', 'Ting-Ting', text]);
       } else if (process.platform === 'win32') {
-        const script = `Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.Speak('${text}')`;
+        const script = `Add-Type -AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.Speak(${psQuote(text)})`;
         spawn('powershell', ['-Command', script]);
       } else {
         spawn('espeak', [text]);
@@ -420,7 +431,10 @@ export class StandaloneVoiceService {
         if (process.platform === 'darwin') {
           spawn('afplay', ['/System/Library/Sounds/Glass.aiff']);
         } else if (process.platform === 'win32') {
-          spawn('powershell', ['-c', '(New-Object Media.SoundPlayer "C:\\Windows\\Media\\notify.wav").PlaySync()']);
+          spawn('powershell', [
+            '-c',
+            '(New-Object Media.SoundPlayer "C:\\Windows\\Media\\notify.wav").PlaySync()',
+          ]);
         } else {
           spawn('paplay', ['/usr/share/sounds/alsa/Front_Left.wav']).on('error', () => {
             spawn('aplay', ['/usr/share/sounds/alsa/Front_Left.wav']);

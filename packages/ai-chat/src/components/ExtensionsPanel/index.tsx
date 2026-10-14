@@ -380,11 +380,16 @@ export const ExtensionsPanel: React.FC<{ isVisible: boolean; onClose: () => void
                   <div key={s.id} className={styles.card}>
                     <div className={styles.cardHead}>
                       <b className={styles.grow}>{tr(s.name)}</b>
-                      <Badge tone="neutral">{tr('来自环境变量 MCP_SERVERS · 只读')}</Badge>
+                      <Badge tone="neutral">{tr('来自环境变量 MCP_SERVERS')}</Badge>
                       <Badge tone="success">
                         {s.tools.length} {tr('个工具')}
                       </Badge>
                     </div>
+                    {s.tools.some((x) => x.dangerous) && (
+                      <p className={styles.hint}>
+                        {tr('含写入 / 执行类工具，每次调用都会请你确认。')}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 
-import { app } from 'electron';
+import { app, BrowserWindow } from 'electron';
 
 import { Application } from './core/Application';
 import { registerModelSchemePrivileges } from './models/ModelService';
@@ -17,6 +17,48 @@ import {
 import { perfMark } from './utils/perfMarks';
 
 perfMark('main-entry');
+
+/**
+ * 单实例锁：避免多开导致全局快捷键 / 本地模型服务 / userData 竞争。
+ * 打包应用的 deep link（nomi://，Windows/Linux 经第二实例 argv 传入）统一聚焦到已有窗口；
+ * host 白名单当前为空——未来实现具体动作时必须在此显式登记，默认一律忽略。
+ */
+const DEEP_LINK_ALLOWED_HOSTS = new Set<string>([]);
+
+function focusExistingWindow(): void {
+  const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  }
+}
+
+function consumeDeepLink(url: string | undefined): void {
+  if (!url || !/^nomi:/i.test(url)) return;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  if (!DEEP_LINK_ALLOWED_HOSTS.has(parsed.host)) return;
+  // 白名单为空：当前没有任何可执行的 deep link 动作，仅聚焦窗口
+  focusExistingWindow();
+}
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    consumeDeepLink(argv.find((a) => /^nomi:/i.test(a)));
+    focusExistingWindow();
+  });
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    consumeDeepLink(url);
+  });
+}
 
 // 品牌更名后沿用旧 userData（需在 ready 之前）。仅当 userData 是默认目录时迁移
 // （测试 / --user-data-dir 指定的目录不动）。

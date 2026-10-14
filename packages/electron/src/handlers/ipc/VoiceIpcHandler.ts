@@ -5,7 +5,10 @@
 
 import * as path from 'path';
 
+import { type WebContents } from 'electron';
+
 import { t } from '../../i18n';
+import { isTrustedSenderUrl } from '../../security/ipcSenderGuard';
 import { type IConfigService } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
 import {
@@ -34,6 +37,8 @@ export class VoiceIpcHandler extends BaseIpcHandler {
   private keyboardListener: any = null;
   private keyServerConfig: KeyServerConfig | undefined;
   private isKeyboardListening = false;
+  // 键盘监听只能由受信窗口启动，事件仅回推给该窗口；窗口关闭后自动停止
+  private keyboardOwner: WebContents | null = null;
 
   constructor(logger: ILoggerService, configService: IConfigService) {
     super(logger);
@@ -94,20 +99,29 @@ export class VoiceIpcHandler extends BaseIpcHandler {
     });
 
     // 启动键盘监听
-    this.registerListener('start-keyboard-listener', () => {
+    this.registerListener('start-keyboard-listener', (event) => {
+      if (!isTrustedSenderUrl(event.senderFrame?.url ?? event.sender.getURL())) {
+        this.logger.warn('拒绝不受信窗口启动键盘监听');
+        return;
+      }
+
       if (!this.globalKeyboardListener) {
         this.logger.error('全局键盘监听器不可用');
-        this.sendKeyboardListenerError(t('全局键盘监听器未初始化，可能是依赖未正确安装'));
+        this.sendKeyboardListenerError(
+          event.sender,
+          t('全局键盘监听器未初始化，可能是依赖未正确安装'),
+        );
         return;
       }
 
       if (this.isKeyboardListening) {
         this.logger.info('键盘监听器已经在运行');
-        this.sendKeyboardListenerStarted();
+        this.sendKeyboardListenerStarted(event.sender);
         return;
       }
 
       try {
+        const owner = event.sender;
         this.keyboardListener = new this.globalKeyboardListener(this.keyServerConfig);
 
         const started = this.keyboardListener.addListener((e: any, down: any) => {
@@ -117,8 +131,7 @@ export class VoiceIpcHandler extends BaseIpcHandler {
             type: e.state === 'DOWN' ? 'keydown' : 'keyup',
           };
 
-          this.logger.debug('键盘事件', { keyEvent });
-          this.sendKeyboardEvent(keyEvent);
+          this.sendKeyboardEvent(owner, keyEvent);
         });
         // 原生 key server 启动失败（无权限 / macOS 未授予辅助功能权限）是异步拒绝，不能变成未处理的 rejection
         Promise.resolve(started).catch((error: unknown) => {
@@ -126,32 +139,35 @@ export class VoiceIpcHandler extends BaseIpcHandler {
           this.logger.warn('全局键盘监听不可用', { error: errorMessage });
           this.isKeyboardListening = false;
           this.keyboardListener = null;
-          this.sendKeyboardListenerError(errorMessage);
+          this.keyboardOwner = null;
+          this.sendKeyboardListenerError(owner, errorMessage);
         });
 
         this.isKeyboardListening = true;
+        this.keyboardOwner = owner;
+        // 发起窗口关闭后必须立刻结束原生监听，避免遗留键盘记录进程
+        owner.once('destroyed', () => {
+          if (this.keyboardOwner === owner) this.stopKeyboardListener();
+        });
         this.logger.info('键盘监听器启动成功');
-        this.sendKeyboardListenerStarted();
+        this.sendKeyboardListenerStarted(owner);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('启动键盘监听器失败', { error: errorMessage });
-        this.sendKeyboardListenerError(errorMessage);
+        this.sendKeyboardListenerError(event.sender, errorMessage);
       }
     });
 
     // 停止键盘监听
-    this.registerListener('stop-keyboard-listener', () => {
+    this.registerListener('stop-keyboard-listener', (event) => {
+      if (!isTrustedSenderUrl(event.senderFrame?.url ?? event.sender.getURL())) {
+        this.logger.warn('拒绝不受信窗口停止键盘监听');
+        return;
+      }
+
       if (this.keyboardListener && this.isKeyboardListening) {
-        try {
-          this.keyboardListener.kill();
-          this.keyboardListener = null;
-          this.isKeyboardListening = false;
-          this.logger.info('键盘监听器已停止');
-          this.sendKeyboardListenerStopped();
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.error('停止键盘监听器失败', { error: errorMessage });
-        }
+        this.stopKeyboardListener();
+        this.sendKeyboardListenerStopped(event.sender);
       } else {
         this.logger.warn('键盘监听器未运行');
       }
@@ -289,52 +305,56 @@ export class VoiceIpcHandler extends BaseIpcHandler {
   }
 
   /**
-   * 发送键盘事件到渲染进程
+   * 停止原生键盘监听（供停止通道、owner 窗口销毁、cleanup 复用）
    */
-  private sendKeyboardEvent(event: KeyboardEvent): void {
-    // 这里需要通过某种方式发送事件到渲染进程
-    // 可以通过事件总线或者直接发送到窗口
-    // 暂时通过日志记录
-    this.logger.debug('键盘事件已发送', { event });
+  private stopKeyboardListener(): void {
+    if (!this.keyboardListener) return;
+    try {
+      this.keyboardListener.kill();
+      this.logger.info('键盘监听器已停止');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('停止键盘监听器失败', { error: errorMessage });
+    } finally {
+      this.keyboardListener = null;
+      this.keyboardOwner = null;
+      this.isKeyboardListening = false;
+    }
+  }
+
+  /**
+   * 发送键盘事件到发起窗口
+   */
+  private sendKeyboardEvent(target: WebContents, event: KeyboardEvent): void {
+    if (!target.isDestroyed()) target.send('keyboard-event', event);
   }
 
   /**
    * 发送键盘监听器启动消息
    */
-  private sendKeyboardListenerStarted(): void {
-    this.logger.info('键盘监听器启动消息已发送');
+  private sendKeyboardListenerStarted(target: WebContents): void {
+    if (!target.isDestroyed()) target.send('keyboard-listener-started');
   }
 
   /**
    * 发送键盘监听器停止消息
    */
-  private sendKeyboardListenerStopped(): void {
-    this.logger.info('键盘监听器停止消息已发送');
+  private sendKeyboardListenerStopped(target: WebContents): void {
+    if (!target.isDestroyed()) target.send('keyboard-listener-stopped');
   }
 
   /**
    * 发送键盘监听器错误消息
    */
-  private sendKeyboardListenerError(error: string): void {
-    this.logger.error('键盘监听器错误消息已发送', { error });
+  private sendKeyboardListenerError(target: WebContents, error: string): void {
+    if (!target.isDestroyed()) target.send('keyboard-listener-error', error);
   }
 
   /**
    * 清理资源
    */
   cleanup(): void {
-    // 停止键盘监听
-    if (this.keyboardListener && this.isKeyboardListening) {
-      try {
-        this.keyboardListener.kill();
-        this.keyboardListener = null;
-        this.isKeyboardListening = false;
-        this.logger.info('键盘监听器已清理');
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error('清理键盘监听器失败', { error: errorMessage });
-      }
-    }
+    this.stopKeyboardListener();
 
     // 调用父类清理方法
     super.cleanup();

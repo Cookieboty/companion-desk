@@ -12,7 +12,7 @@ import {
   type PluginContext,
 } from '@nomi-ai/bundle-ig-base';
 
-import { AiSdkMcpService, provideAiSdkMcpService } from './mcpBridge';
+import { AiSdkMcpService, provideAiSdkMcpService, type McpToolGuard } from './mcpBridge';
 
 export interface AiSdkMcpPluginConfig {
   servers?: McpServerConfig[];
@@ -20,6 +20,8 @@ export interface AiSdkMcpPluginConfig {
   autoConnect?: boolean;
   /** Prefix MCP tool names with `${serverId}__` (default true). */
   prefixToolNames?: boolean;
+  /** 工具注册前的包装钩子（如强制用户确认） */
+  guardTool?: McpToolGuard;
 }
 
 export const AiSdkMcpPlugin = definePlugin<AiSdkMcpPluginConfig>({
@@ -27,6 +29,7 @@ export const AiSdkMcpPlugin = definePlugin<AiSdkMcpPluginConfig>({
   apply(ctx: PluginContext, cfg: AiSdkMcpPluginConfig) {
     const svc = provideAiSdkMcpService(ctx, {
       prefixToolNames: cfg.prefixToolNames,
+      guardTool: cfg.guardTool,
     });
 
     if (cfg.autoConnect) {

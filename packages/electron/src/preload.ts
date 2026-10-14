@@ -43,10 +43,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSavedModel: async () => {
     return await ipcRenderer.invoke('get-saved-model');
   },
-  // 读取本地文件
-  readLocalFile: async (filePath: string) => {
-    return await ipcRenderer.invoke('read-local-file', filePath);
-  },
   // 获取鼠标位置
   getCursorPosition: async () => {
     return await ipcRenderer.invoke('get-cursor-position');
@@ -234,11 +230,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('keyboard-listener-error');
   },
 
-  // 通用invoke方法，用于调用主进程的IPC处理器
-  invoke: async (channel: string, ...args: any[]) => {
-    return await ipcRenderer.invoke(channel, ...args);
-  },
-
   // AI对话相关API
   openAiChat: async () => {
     return await ipcRenderer.invoke('open-ai-chat');
@@ -270,14 +261,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // 获取MCP诊断信息
     getDiagnostics: async () => {
       return await ipcRenderer.invoke('mcp:getDiagnostics');
-    },
-    // 调用MCP工具
-    callTool: async (toolName: string, args: any) => {
-      return await ipcRenderer.invoke('mcp:callTool', toolName, args);
-    },
-    // 读取MCP资源
-    readResource: async (uri: string) => {
-      return await ipcRenderer.invoke('mcp:readResource', uri);
     },
     // 获取可用MCP工具列表
     getAvailableTools: async () => {

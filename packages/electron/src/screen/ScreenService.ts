@@ -28,6 +28,7 @@ import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t } from '../i18n';
 import { Bm25Index } from '../knowledge/bm25';
+import { installWindowGuards } from '../security/windowGuards';
 
 import {
   cleanOcr,
@@ -268,8 +269,10 @@ export class ScreenService {
         preload: path.join(__dirname, '..', 'ai-chat-preload.bundle.js'),
         contextIsolation: true,
         nodeIntegration: false,
+        sandbox: true,
       },
     });
+    installWindowGuards(win);
     this.overlay = win;
     win.setAlwaysOnTop(true, 'screen-saver');
     const done = new Promise<Attachment | null>((resolve) => (this.snipResolve = resolve));

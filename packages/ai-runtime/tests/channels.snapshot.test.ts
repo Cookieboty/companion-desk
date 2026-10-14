@@ -60,10 +60,6 @@ describe('IPC channel snapshot lock', () => {
         "ai:clipboard:readImage",
         "ai:clipboard:readText",
         "ai:clipboard:writeText",
-        "ai:keyStore:del",
-        "ai:keyStore:get",
-        "ai:keyStore:list",
-        "ai:keyStore:set",
         "ai:screen:capture",
         "ai:screen:listDisplays",
       ]

@@ -24,7 +24,7 @@ export function toggleMascotHandsfree(): Promise<void> {
 
 function openChat(): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留 preload
-  (window as any).electronAPI?.invoke?.('open-ai-chat');
+  (window as any).electronAPI?.openAiChat?.();
 }
 
 export const MascotMicTool: React.FC<{

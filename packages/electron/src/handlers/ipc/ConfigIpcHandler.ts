@@ -14,6 +14,7 @@ import { app } from 'electron';
 import { t } from '../../i18n';
 import { type IConfigService, type VoiceSettings } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
+import { writePrivateFile } from '../../utils/privateFile';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -49,34 +50,6 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.logger.error('配置更新失败', {
           error: error instanceof Error ? error.message : String(error),
           updates,
-        });
-        return this.createErrorResponse(error);
-      }
-    });
-
-    // 获取特定配置项
-    this.registerHandler('get-config-value', async (_, key: string, defaultValue?: any) => {
-      this.validateArgs([key], 1, ['string']);
-
-      const value = this.configService.get(key, defaultValue);
-      this.logger.debug('获取配置项', { key, value });
-      return value;
-    });
-
-    // 设置特定配置项
-    this.registerHandler('set-config-value', async (_, key: string, value: any) => {
-      this.validateArgs([key, value], 2, ['string']);
-
-      try {
-        this.configService.set(key, value);
-        await this.configService.save();
-        this.logger.info('配置项更新成功', { key, value });
-        return this.createSuccessResponse();
-      } catch (error) {
-        this.logger.error('配置项更新失败', {
-          error: error instanceof Error ? error.message : String(error),
-          key,
-          value,
         });
         return this.createErrorResponse(error);
       }
@@ -323,8 +296,8 @@ export class ConfigIpcHandler extends BaseIpcHandler {
           lastModified: Date.now(),
         };
 
-        // 保存到文件
-        fs.writeFileSync(ttsConfigPath, JSON.stringify(configWithTimestamp, null, 2), 'utf8');
+        // 保存到文件（可能含 TTS 服务凭据，收紧为仅当前用户可读写）
+        writePrivateFile(ttsConfigPath, JSON.stringify(configWithTimestamp, null, 2));
 
         this.logger.info('TTS配置保存成功', { config: configWithTimestamp });
         return this.createSuccessResponse();
@@ -514,10 +487,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
    */
   private async testTTSConnection(config: TTSConfig): Promise<TTSTestResult> {
     return new Promise((resolve) => {
-      const protocol =
-        config.hostname.includes('localhost') || config.hostname.includes('127.0.0.1')
-          ? http
-          : https;
+      // 仅对精确的环回主机使用 http，避免 localhost.evil.com 之类的子串绕过
+      const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+      const protocol = loopbackHosts.has(config.hostname.trim().toLowerCase()) ? http : https;
 
       // 构建测试用的请求体
       const testData = JSON.stringify({

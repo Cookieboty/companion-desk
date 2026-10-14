@@ -10,7 +10,6 @@ import { app, ipcMain, session } from 'electron';
 import { getAgentProgressService, initAgentProgressService } from '../agents/AgentProgressService';
 import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
 import { ClipboardGateway } from '../ai/ClipboardGateway';
-import { SafeKeyProvider } from '../ai/SafeKeyProvider';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
 import { getDesktopService } from '../desktop/DesktopService';
@@ -27,6 +26,7 @@ import { getModelService } from '../models/ModelService';
 import { OnboardingService } from '../onboarding/OnboardingService';
 import { getSchedulerService, initSchedulerService } from '../schedule/SchedulerService';
 import { getScreenService, initScreenService } from '../screen/ScreenService';
+import { appCspString } from '../security/csp';
 import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
 import { CacheService } from '../services/CacheService';
 import { ConfigService } from '../services/ConfigService';
@@ -127,6 +127,19 @@ export class Application implements IApplication {
       new LocaleService(path.join(app.getPath('userData'), 'locale.json')).registerIpc();
       // 应用图标变体（窗口 / 任务栏 / Dock / 托盘 / 通知）
       initAppIcon(path.join(app.getPath('userData'), 'app-icon.json'));
+
+      // 统一 CSP 响应头（覆盖主窗口 / 对话窗 / 截图遮罩；dev HMR 需要内联脚本，跳过）。
+      // 沙箱浏览器 AgentBrowser 使用独立内存分区，不受影响。
+      if (app.isPackaged || process.env.NODE_ENV !== 'development') {
+        session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+          callback({
+            responseHeaders: {
+              ...details.responseHeaders,
+              'Content-Security-Policy': [appCspString()],
+            },
+          });
+        });
+      }
       this.logger.info('Electron应用准备就绪');
 
       // 模型注册表 / 商店 / 用户导入（cdmodel:// 协议 + models:* IPC）
@@ -338,14 +351,19 @@ export class Application implements IApplication {
         openChat: () => this.windowManager.createAiChatWindow(),
       });
       voice.registerIpc();
-      // 麦克风：只允许本应用窗口申请「音频」采集（不允许摄像头 / 屏幕）
+      // 麦克风：只允许本应用窗口申请「音频」采集（不允许摄像头 / 屏幕）；
+      // 其余权限（geolocation / notifications / HID / MIDI / pointerLock 等）一律拒绝。
       session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
         if (permission === 'media') {
           const types = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
           callback(types.length > 0 && types.every((t) => t === 'audio'));
           return;
         }
-        callback(true);
+        callback(false);
+      });
+      // 权限检查（持久化授权查询等）同样默认拒绝，媒体例外
+      session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+        return permission === 'media';
       });
 
       // 创建主窗口
@@ -381,14 +399,12 @@ export class Application implements IApplication {
       return;
     }
     try {
-      const keyStore = new SafeKeyProvider();
       this.clipboardGateway = new ClipboardGateway();
       const screen = new ScreenCapture();
       const ttsEngine = new AdvancedTTSEngine();
       const electronNativeTts = new TtsElectronNativeProvider({ engine: ttsEngine });
       this.aiRuntime = await startAIRuntime(this.logger, {
         seams: {
-          keyStore,
           clipboard: this.clipboardGateway,
           screen,
         },

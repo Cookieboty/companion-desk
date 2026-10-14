@@ -10,6 +10,7 @@ import { app } from 'electron';
 
 import { t } from '../i18n';
 import { DEFAULT_MASCOT_SCALE, migrateMascotSize } from '../mascot/mascotSize';
+import { writePrivateFileAtomic } from '../utils/privateFile';
 
 import { type ILoggerService } from './LoggerService';
 
@@ -162,7 +163,7 @@ export class ConfigService implements IConfigService {
   async save(): Promise<void> {
     try {
       const configData = JSON.stringify(this.config, null, 2);
-      fs.writeFileSync(this.configPath, configData);
+      writePrivateFileAtomic(this.configPath, configData);
       this.logger?.debug('配置保存成功', { path: this.configPath });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -274,6 +275,11 @@ export class ConfigService implements IConfigService {
 
     try {
       fs.copyFileSync(this.configPath, backupPath);
+      try {
+        fs.chmodSync(backupPath, 0o600);
+      } catch {
+        /* Windows 等平台忽略 */
+      }
       this.logger?.info('配置备份成功', { backupPath });
       return backupPath;
     } catch (error) {
