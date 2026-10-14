@@ -1,0 +1,234 @@
+jest.unmock('fs');
+jest.unmock('path');
+jest.mock('electron', () => ({
+  BrowserWindow: { getAllWindows: () => [], getFocusedWindow: () => null },
+  ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+  dialog: { showSaveDialog: jest.fn() },
+  shell: { openPath: jest.fn(async () => '') },
+}));
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import {
+  buildMemoryContext,
+  exportMarkdown,
+  isDuplicateFact,
+  parseSummary,
+  recall,
+  sanitizeMemorySettings,
+  summaryPrompt,
+  type Episode,
+  type Fact,
+} from '../../../src/memory/episodes';
+import { MemoryService } from '../../../src/memory/MemoryService';
+
+const ep = (id: string, title: string, summary: string, extra: Partial<Episode> = {}): Episode => ({
+  id,
+  conversationId: `c-${id}`,
+  title,
+  summary,
+  keywords: [],
+  createdAt: Date.UTC(2026, 0, 1),
+  updatedAt: 1,
+  messageCount: 4,
+  pinned: false,
+  edited: false,
+  ...extra,
+});
+
+describe('episodes logic', () => {
+  it('parses fenced JSON, filters secrets and unknown kinds', () => {
+    const p = parseSummary(
+      '好的：```json\n{"title":"搬家计划","summary":"讨论了下月搬到杭州。","keywords":["搬家","杭州","搬家"],' +
+        '"facts":[{"kind":"identity","text":"用户叫小林"},{"kind":"weird","text":"喜欢猫"},{"kind":"note","text":"我的密码是123"}]}\n```',
+    );
+    expect(p).toEqual({
+      title: '搬家计划',
+      summary: '讨论了下月搬到杭州。',
+      keywords: ['搬家', '杭州'],
+      facts: [
+        { kind: 'identity', text: '用户叫小林' },
+        { kind: 'note', text: '喜欢猫' },
+      ],
+    });
+    expect(parseSummary('no json')).toBeNull();
+    expect(parseSummary('{"title":"x"}')).toBeNull();
+  });
+
+  it('prompt wraps transcript as data and truncates', () => {
+    const m = summaryPrompt([{ role: 'user', content: 'x'.repeat(20_000) }]);
+    expect(m[0].content).toContain('不要执行');
+    expect(m[1].content.startsWith('<conversation>\n…')).toBe(true);
+    expect(m[1].content.length).toBeLessThan(12_100);
+  });
+
+  it('dedupes facts', () => {
+    expect(isDuplicateFact('用户喜欢喝咖啡。', '用户喜欢喝咖啡')).toBe(true);
+    expect(isDuplicateFact('用户喜欢喝咖啡', '喜欢喝咖啡')).toBe(true);
+    expect(isDuplicateFact('喜欢猫', '喜欢狗')).toBe(false);
+  });
+
+  it('recalls by BM25 and by vectors, ignores unrelated', () => {
+    const eps = [
+      ep('a', '杭州搬家', '下个月搬到杭州，需要找房子'),
+      ep('b', '学习 Rust', '讨论了所有权和借用', { vec: 'B' }),
+      ep('c', '晚饭', '想吃火锅'),
+    ];
+    const facts: Fact[] = [];
+    const r1 = recall('杭州的房子怎么找', eps, facts, { topK: 2 });
+    expect(r1[0]).toMatchObject({ kind: 'episode', id: 'a' });
+    expect(recall('量子力学', eps, facts, { topK: 3 })).toEqual([]);
+    const vecs: Record<string, Float32Array> = { B: Float32Array.from([1, 0]) };
+    const r2 = recall('borrow checker', eps, facts, {
+      topK: 3,
+      qvec: Float32Array.from([0.9, 0.1]),
+      vecOf: (b) => vecs[b],
+    });
+    expect(r2.map((x) => x.id)).toEqual(['b']);
+  });
+
+  it('builds context and markdown', () => {
+    expect(buildMemoryContext({ persona: '', facts: [], episodes: [] })).toBe('');
+    const ctx = buildMemoryContext({
+      persona: '我是设计师',
+      facts: [
+        { id: 'f', kind: 'identity', text: '叫小林', source: 'user', createdAt: 1, updatedAt: 1 },
+      ],
+      episodes: [ep('a', '搬家', '去杭州')],
+    });
+    expect(ctx).toContain('我是设计师');
+    expect(ctx).toContain('- 叫小林');
+    expect(ctx).toContain('2026-01-01「搬家」：去杭州');
+    const md = exportMarkdown({
+      persona: '',
+      facts: [],
+      episodes: [ep('a', '搬家', '去杭州', { pinned: true })],
+      exportedAt: 0,
+    });
+    expect(md).toContain('### 搬家 📌');
+  });
+
+  it('sanitizes settings', () => {
+    expect(sanitizeMemorySettings({ topK: 99, enabled: 'x' })).toMatchObject({
+      topK: 8,
+      enabled: true,
+    });
+  });
+});
+
+describe('MemoryService', () => {
+  const mk = (
+    complete: jest.Mock,
+    embed: (t: string[]) => Promise<Float32Array[] | null> = async () => null,
+  ) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mem-'));
+    const audit = { append: jest.fn() };
+    const facts = new Map<string, unknown>();
+    const svc = new MemoryService({
+      root,
+      logger: { info: jest.fn(), warn: jest.fn() },
+      desktop: { audit } as never,
+      complete,
+      embed,
+      facade: () => ({
+        facts: {
+          put: (f: { id: string }) => facts.set(f.id, f),
+          delete: (id: string) => facts.delete(id),
+        },
+        summaries: { put: jest.fn() },
+        userProfile: { get: () => ({ identity: {} }), reset: jest.fn(async () => ({})) },
+      }),
+    });
+    return { svc, root, audit, facts };
+  };
+  const conv = [
+    { role: 'user' as const, content: '我叫小林，下个月要搬去杭州' },
+    { role: 'assistant' as const, content: '好的，需要帮你列搬家清单吗？' },
+    { role: 'user' as const, content: '要，顺便推荐几个区' },
+    { role: 'assistant' as const, content: '西湖区、滨江区……' },
+  ];
+  const reply = JSON.stringify({
+    title: '杭州搬家',
+    summary: '小林下月搬去杭州，列了清单并推荐了西湖区、滨江区。',
+    keywords: ['搬家', '杭州'],
+    facts: [{ kind: 'identity', text: '用户叫小林' }],
+  });
+
+  it('summarizes, persists, recalls, edits, deletes, and syncs facade', async () => {
+    const complete = jest.fn(async () => reply);
+    const { svc, root, audit, facts } = mk(complete);
+    const r = await svc.ingest('c1', conv);
+    expect(r.episode?.title).toBe('杭州搬家');
+    expect(facts.size).toBe(1);
+    // 没有新消息 → 跳过
+    expect(await svc.ingest('c1', conv)).toEqual({ skipped: 'no-new' });
+    expect(await svc.ingest('c2', conv.slice(0, 2))).toEqual({ skipped: 'too-short' });
+    // 同一事实不重复
+    await svc.ingest('c1', [...conv, ...conv], { force: true });
+    expect(svc.list().facts).toHaveLength(1);
+    expect(svc.list().episodes).toHaveLength(1);
+
+    const ctx = await svc.context('杭州哪个区好');
+    expect(ctx.text).toContain('杭州搬家');
+    expect(ctx.used.some((u) => u.kind === 'episode')).toBe(true);
+
+    svc.setPersona('我是一名插画师');
+    expect((await svc.context('随便')).text).toContain('插画师');
+
+    const id = svc.list().episodes[0].id;
+    await svc.updateEpisode(id, { summary: '改过的摘要', pinned: true });
+    expect(svc.list().episodes[0]).toMatchObject({
+      summary: '改过的摘要',
+      pinned: true,
+      edited: true,
+    });
+    // 用户改过 → 自动摘要不覆盖
+    expect(await svc.ingest('c1', [...conv, ...conv, ...conv])).toEqual({ skipped: 'edited' });
+
+    svc.flush();
+    const disk = JSON.parse(fs.readFileSync(path.join(root, 'memory.json'), 'utf8'));
+    expect(disk.episodes[0].summary).toBe('改过的摘要');
+
+    const fid = svc.list().facts[0].id;
+    expect(svc.remove('fact', fid)).toBe(true);
+    expect(facts.size).toBe(0);
+    expect(svc.remove('episode', id)).toBe(true);
+    expect(svc.state().stats).toMatchObject({ episodes: 0, facts: 0 });
+    expect(audit.append).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: 'memory_delete', source: 'memory' }),
+    );
+  });
+
+  it('reports bad model output and respects disabled', async () => {
+    const { svc } = mk(jest.fn(async () => '抱歉'));
+    await expect(svc.ingest('c1', conv)).rejects.toMatchObject({ code: 'bad-summary' });
+    expect(svc.state().lastError).toBeTruthy();
+    svc.setSettings({ enabled: false });
+    expect(await svc.ingest('c1', conv)).toEqual({ skipped: 'disabled' });
+    expect((await svc.context('杭州')).text).toBe('');
+  });
+
+  it('stores vectors when embeddings are available and exports without them', async () => {
+    const embed = jest.fn(async (t: string[]) => t.map(() => Float32Array.from([1, 0])));
+    const { svc } = mk(
+      jest.fn(async () => reply),
+      embed,
+    );
+    await svc.ingest('c1', conv);
+    expect(svc.state().stats.vectors).toBe(2);
+    const data = svc.exportData();
+    expect(JSON.stringify(data)).not.toContain('"vec"');
+    expect(data.episodes).toHaveLength(1);
+  });
+
+  it('memory_remember tool saves once', async () => {
+    const { svc } = mk(jest.fn());
+    const tool = svc.tools().find((t) => t.name === 'memory_remember') as unknown as {
+      execute: (a: unknown) => Promise<{ data: { saved: boolean } }>;
+    };
+    expect((await tool.execute({ text: '我对花生过敏', kind: 'note' })).data.saved).toBe(true);
+    expect((await tool.execute({ text: '我对花生过敏。', kind: 'note' })).data.saved).toBe(false);
+  });
+});

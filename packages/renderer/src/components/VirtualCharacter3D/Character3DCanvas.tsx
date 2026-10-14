@@ -1,16 +1,43 @@
-import React, { Suspense, useRef, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+/* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
+import { t } from '@nomi-ai/ui';
+import { createLogger } from '@nomi-ai/ui';
 import { OrbitControls, useProgress, Html } from '@react-three/drei';
-import { VRMCharacterController } from './VRMCharacterController';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import React, { Suspense, useRef, useEffect, useState } from 'react';
+import type * as THREE from 'three';
+
+import MascotInteractionLayer from '../../mascot/interaction/MascotInteractionLayer';
 import { useCharacter3DStore } from '../../stores/character3DStore';
-import { Character3DCanvasProps } from '../../types/character3d';
+import { type Character3DCanvasProps } from '../../types/character3d';
+
+import { VRMCharacterController } from './VRMCharacterController';
+
+const log = createLogger('VRM');
 
 /**
  * 3D角色渲染画布组件
  * 基于React Three Fiber实现的高性能3D渲染
  */
+/** 按模型配置调整取景（默认：全身，相机高 0.82m、距离 3.2m、fov 35°） */
+const CameraRig: React.FC<{ camera?: { height?: number; distance?: number; fov?: number } }> = ({
+  camera,
+}) => {
+  const { camera: cam } = useThree();
+  useEffect(() => {
+    const height = camera?.height ?? 0.82;
+    cam.position.set(0, height, camera?.distance ?? 3.2);
+    if ('fov' in cam) {
+      (cam as THREE.PerspectiveCamera).fov = camera?.fov ?? 35;
+      (cam as THREE.PerspectiveCamera).updateProjectionMatrix();
+    }
+    cam.lookAt(0, height - 0.02, 0);
+  }, [cam, camera?.height, camera?.distance, camera?.fov]);
+  return null;
+};
+
 export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   modelPath,
+  modelConfig,
   enableControls = false,
   transparent = true,
   className = '',
@@ -20,12 +47,14 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   ...htmlProps
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const {
-    isLoaded,
-    renderQuality,
-    isVisible,
-    setRenderQuality
-  } = useCharacter3DStore();
+  // 窗口隐藏 / 最小化时暂停渲染
+  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
+  useEffect(() => {
+    const on = () => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
+  const { isLoaded, renderQuality, isVisible, setRenderQuality } = useCharacter3DStore();
 
   // 根据性能自动调整渲染质量
   useEffect(() => {
@@ -62,35 +91,35 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
           antialias: false,
           pixelRatio: Math.min(window.devicePixelRatio, 1),
           shadowMapSize: 512,
-          toneMapping: false
+          toneMapping: false,
         };
       case 'medium':
         return {
           antialias: true,
           pixelRatio: Math.min(window.devicePixelRatio, 1.5),
           shadowMapSize: 1024,
-          toneMapping: true
+          toneMapping: true,
         };
       case 'high':
         return {
           antialias: true,
           pixelRatio: window.devicePixelRatio,
           shadowMapSize: 2048,
-          toneMapping: true
+          toneMapping: true,
         };
       case 'ultra':
         return {
           antialias: true,
           pixelRatio: window.devicePixelRatio,
           shadowMapSize: 4096,
-          toneMapping: true
+          toneMapping: true,
         };
       default:
         return {
           antialias: true,
           pixelRatio: Math.min(window.devicePixelRatio, 1.5),
           shadowMapSize: 1024,
-          toneMapping: true
+          toneMapping: true,
         };
     }
   };
@@ -106,7 +135,7 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
         <div className="loading-indicator">
           <div className="loading-spinner"></div>
           <div className="loading-text">
-            加载3D模型中... {Math.round(progress)}%
+            {t('加载3D模型中...')} {Math.round(progress)}%
           </div>
         </div>
       </Html>
@@ -129,9 +158,10 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
 
         // 如果帧率过低，自动降低质量
         if (fps < 25 && renderQuality !== 'low') {
-          console.log('检测到低帧率，自动降低渲染质量');
-          setRenderQuality(renderQuality === 'ultra' ? 'high' :
-            renderQuality === 'high' ? 'medium' : 'low');
+          log.info('检测到低帧率，自动降低渲染质量');
+          setRenderQuality(
+            renderQuality === 'ultra' ? 'high' : renderQuality === 'high' ? 'medium' : 'low',
+          );
         }
       }
     });
@@ -144,31 +174,40 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
   }
 
   return (
-    <div
-      className={`character-3d-canvas ${className}`}
-      style={style}
-      {...htmlProps}
-    >
+    <div className={`character-3d-canvas ${className}`} style={style} {...htmlProps}>
       <Canvas
         ref={canvasRef}
         gl={{
           antialias: renderConfig.antialias,
           alpha: transparent,
-          preserveDrawingBuffer: false,
-          powerPreference: 'high-performance'
+          // 逐像素点击穿透需要读回上一帧的 alpha
+          preserveDrawingBuffer: true,
+          powerPreference: 'high-performance',
+          // Let the compositor vsync; avoid tearing on transparent desktop windows
+          stencil: false,
         }}
         dpr={renderConfig.pixelRatio}
+        // rAF is display-synced; pause when the document is hidden
+        frameloop={hidden ? 'never' : 'always'}
+        // Adaptive DPR when GPU falls behind (R3F performance.max defaults to 1)
+        performance={{ min: 0.5, max: 1, debounce: 200 }}
         camera={{
-          position: [0, 1.6, 3],
-          fov: 50,
+          // 全身取景：VRoid 模型约 1.5m 高，原点在脚底
+          position: [0, 0.82, 3.2],
+          fov: 35,
           near: 0.1,
-          far: 1000
+          far: 1000,
+        }}
+        onCreated={({ camera, gl }) => {
+          camera.lookAt(0, 0.8, 0);
+          // Cap pixel ratio again after context creation (HiDPI + transparent window)
+          gl.setPixelRatio(renderConfig.pixelRatio);
         }}
         shadows={renderQuality !== 'low'}
         style={{
           background: transparent ? 'transparent' : '#f0f0f0',
           width: '100%',
-          height: '100%'
+          height: '100%',
         }}
       >
         {/* 环境光 */}
@@ -185,6 +224,11 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
         <pointLight position={[-10, 0, -20]} args={[0xffffff, 0.5]} />
         <pointLight position={[0, -10, 0]} args={[0xffffff, 0.3]} />
 
+        <CameraRig camera={modelConfig?.camera} />
+
+        {/* 桌面互动：点击穿透 / 拖拽 / 触摸反应 / 视线 */}
+        {transparent && <MascotInteractionLayer />}
+
         {/* 性能监控 */}
         <PerformanceMonitor />
 
@@ -193,6 +237,7 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
           <Suspense fallback={<LoadingIndicator />}>
             <VRMCharacterController
               modelPath={modelPath}
+              modelConfig={modelConfig}
               enablePhysics={renderQuality !== 'low'}
               enableExpressions={true}
               enableLookAt={true}

@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- LoggerService：集中日志实现 */
 /**
  * 日志服务 - 提供分级日志功能
  * 支持控制台输出和文件输出
@@ -5,13 +6,16 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { app } from 'electron';
+
+import { redact } from '../utils/redact';
 
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
   INFO = 2,
-  DEBUG = 3
+  DEBUG = 3,
 }
 
 export interface LogEntry {
@@ -98,8 +102,8 @@ export class LoggerService implements ILoggerService {
       timestamp: new Date().toISOString(),
       level,
       message,
-      meta,
-      context
+      meta: meta === undefined ? undefined : redact(meta),
+      context,
     };
 
     // 控制台输出
@@ -113,6 +117,8 @@ export class LoggerService implements ILoggerService {
    * 输出到控制台
    */
   private logToConsole(entry: LogEntry): void {
+    // 打包后控制台只输出 WARN / ERROR（INFO / DEBUG 仍写入日志文件）；NOMI_DEBUG=1 可恢复
+    if (entry.level > LogLevel.WARN && app.isPackaged && process.env.NOMI_DEBUG !== '1') return;
     const levelName = LogLevel[entry.level];
     const contextStr = entry.context ? `[${entry.context}] ` : '';
     const metaStr = entry.meta ? ` ${JSON.stringify(entry.meta)}` : '';
@@ -139,6 +145,7 @@ export class LoggerService implements ILoggerService {
    * 输出到文件
    */
   private logToFile(entry: LogEntry): void {
+    this.ensureLogDirectory();
     try {
       const logLine = JSON.stringify(entry) + '\n';
 
@@ -207,9 +214,9 @@ export class LoggerService implements ILoggerService {
   cleanOldLogs(daysToKeep: number = 7): void {
     try {
       const files = fs.readdirSync(this.logDir);
-      const cutoffTime = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
+      const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
 
-      files.forEach(file => {
+      files.forEach((file) => {
         const filePath = path.join(this.logDir, file);
         const stats = fs.statSync(filePath);
 

@@ -5,6 +5,22 @@ export interface ChatMessage {
   timestamp: number;
   modelId?: string;
   error?: string;
+  /** 知识库问答：本条回答引用的来源（[n] 对应 n） */
+  sources?: Array<{
+    n: number;
+    docId: string;
+    chunkId: string;
+    path: string;
+    title: string;
+    page?: number;
+    snippet: string;
+  }>;
+  /** 来自知识库问答 */
+  kb?: boolean;
+  /** 回答时参考了哪些长期记忆 */
+  memories?: Array<{ id: string; kind: 'episode' | 'fact'; title: string }>;
+  /** 用户消息附带的图片：只保存缩略图（原图只随本轮发送，不进历史） */
+  images?: Array<{ thumb: string; width: number; height: number; source?: string }>;
 }
 
 export interface ChatSession {
@@ -27,4 +43,6 @@ export interface ChatConfig {
   fontSize: number;
   autoSave: boolean;
   maxHistoryLength: number;
-} 
+  /** 发送给模型的 system prompt（每次请求都会带上，不参与历史裁剪） */
+  systemPrompt?: string;
+}

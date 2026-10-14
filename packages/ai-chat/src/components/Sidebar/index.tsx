@@ -1,114 +1,131 @@
-import React from 'react';
+import { t } from '@nomi-ai/ui';
+import React, { useCallback, useEffect, useState } from 'react';
+
+import { useAiChat } from '../../contexts/AiChatContext';
+import type { ChatSession } from '../../types/chat';
+
 import styles from './index.module.css';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onNewChat: () => void;
+  onSettings?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat }) => {
+type Meta = Omit<ChatSession, 'messages'>;
+
+const rel = (ts: number) => {
+  const d = Date.now() - ts;
+  if (d < 60_000) return t('刚刚');
+  if (d < 3_600_000) return t('{0} 分钟前', Math.floor(d / 60_000));
+  if (d < 86_400_000) return t('{0} 小时前', Math.floor(d / 3_600_000));
+  return t('{0} 天前', Math.floor(d / 86_400_000));
+};
+
+/** Codex 风格的极简侧栏：新对话 + 历史线程列表，⌘/Ctrl+B 收起 */
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat, onSettings }) => {
+  const { state, actions } = useAiChat();
+  const ipc = state.ipcClient;
+  const [list, setList] = useState<Meta[]>([]);
+  const [current, setCurrent] = useState<string | undefined>();
+
+  const refresh = useCallback(() => {
+    if (!ipc?.listConversations) return;
+    void ipc
+      .listConversations()
+      .then((l) => {
+        setList([...l].sort((a, b) => b.updatedAt - a.updatedAt));
+        setCurrent(ipc.currentConversationId?.());
+      })
+      .catch(() => undefined);
+  }, [ipc]);
+  // 消息数量变化（新消息 / 新对话）时刷新列表
+  useEffect(refresh, [refresh, state.messages.length]);
+
+  const open = async (id: string) => {
+    if (!ipc || id === current) return;
+    await ipc.switchConversation(id);
+    await actions.loadChatHistory();
+    refresh();
+  };
+
   return (
-    <div className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
-      {/* 侧边栏头部 */}
-      <div className={styles.sidebarHeader}>
-        <div className={`${styles.logo} ${collapsed ? styles.collapsed : ''}`}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <defs>
-              <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#8b5cf6" />
-              </linearGradient>
-            </defs>
-            <path fill="url(#brainGradient)" d="M12 2C8.5 2 5.7 4.6 5.2 8c-.3.1-.6.2-.9.4-1.4.8-2.3 2.3-2.3 3.9 0 1.2.5 2.3 1.3 3.1.2.2.4.4.7.5v.1c0 2.8 2.2 5 5 5h6c2.8 0 5-2.2 5-5v-.1c.3-.1.5-.3.7-.5.8-.8 1.3-1.9 1.3-3.1 0-1.6-.9-3.1-2.3-3.9-.3-.2-.6-.3-.9-.4C18.3 4.6 15.5 2 12 2z" />
-            <circle cx="9" cy="10" r="1.5" fill="white" opacity="0.9" />
-            <circle cx="15" cy="10" r="1.5" fill="white" opacity="0.9" />
-            <path d="M8 14c0 2.2 1.8 4 4 4s4-1.8 4-4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.8" />
-            <path d="M7 7c1-1 2.5-1 3.5 0M13.5 7c1-1 2.5-1 3.5 0" stroke="white" strokeWidth="1" fill="none" strokeLinecap="round" opacity="0.6" />
-          </svg>
-          {!collapsed && <span className={styles.logoText}>智能助手</span>}
-        </div>
-      </div>
-
-      {/* 新对话按钮 */}
-      <div className={styles.newChatSection}>
+    <aside
+      className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}
+      data-testid="chat-sidebar"
+    >
+      <div className={styles.top}>
         <button
-          className={`${styles.newChatBtn} ${collapsed ? styles.collapsed : ''}`}
-          onClick={onNewChat}
-          title="开始新对话"
+          className={styles.iconBtn}
+          onClick={onToggle}
+          title={collapsed ? t('展开侧边栏 (⌘/Ctrl+B)') : t('收起侧边栏 (⌘/Ctrl+B)')}
+          aria-label={collapsed ? t('展开侧边栏') : t('收起侧边栏')}
+          data-testid="sidebar-toggle"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {!collapsed && <span>新对话</span>}
-        </button>
-      </div>
-
-      {/* 对话历史 */}
-      <div className={styles.chatHistory}>
-        {!collapsed ? (
-          <>
-            <div className={styles.historyHeader}>
-              <h3>最近对话</h3>
-            </div>
-            <div className={styles.historyList}>
-              <div className={styles.historyItem}>
-                <div className={styles.historyTitle}>关于React的问题</div>
-                <div className={styles.historyTime}>2小时前</div>
-              </div>
-              <div className={styles.historyItem}>
-                <div className={styles.historyTitle}>JavaScript异步编程</div>
-                <div className={styles.historyTime}>昨天</div>
-              </div>
-              <div className={styles.historyItem}>
-                <div className={styles.historyTitle}>CSS布局技巧</div>
-                <div className={styles.historyTime}>3天前</div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className={styles.collapsedHistory}>
-            <button className={styles.collapsedHistoryItem} title="关于React的问题">
-              关
-            </button>
-            <button className={styles.collapsedHistoryItem} title="JavaScript异步编程">
-              J
-            </button>
-            <button className={styles.collapsedHistoryItem} title="CSS布局技巧">
-              C
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 侧边栏底部 */}
-      <div className={styles.sidebarFooter}>
-        <div className={styles.userSection}>
-          {!collapsed && (
-            <div className={styles.userInfo}>
-              <div className={styles.userAvatar}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                </svg>
-              </div>
-              <div className={styles.userName}>用户</div>
-            </div>
-          )}
-          <button
-            className={styles.toggleButton}
-            onClick={onToggle}
-            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              {collapsed ? (
-                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
-              ) : (
-                <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" />
-              )}
-            </svg>
-          </button>
-        </div>
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <path d="M9 4v16" />
+          </svg>
+        </button>
+        {!collapsed && <span className={styles.brand}>Nomi</span>}
       </div>
-    </div>
+
+      <button
+        className={styles.newChat}
+        onClick={onNewChat}
+        title={t('开始新对话')}
+        data-testid="new-chat"
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        >
+          <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+        </svg>
+        {!collapsed && <span>{t('新对话')}</span>}
+      </button>
+
+      {!collapsed && (
+        <nav className={styles.threads} aria-label={t('历史对话')}>
+          <div className={styles.sectionTitle}>{t('对话')}</div>
+          {list.length === 0 && <div className={styles.empty}>{t('还没有历史对话')}</div>}
+          {list.map((c) => (
+            <button
+              key={c.id}
+              className={`${styles.thread} ${c.id === current ? styles.threadActive : ''}`}
+              onClick={() => void open(c.id)}
+              title={t(c.name)}
+              data-testid="history-item"
+            >
+              <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
+              <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
+            </button>
+          ))}
+        </nav>
+      )}
+      {onSettings && (
+        <button
+          className={`${styles.newChat} ${styles.bottom}`}
+          onClick={onSettings}
+          title={t('设置 (⌘/Ctrl+,)')}
+          data-testid="sidebar-settings"
+        >
+          <span aria-hidden>⚙</span>
+          {!collapsed && <span>{t('设置')}</span>}
+        </button>
+      )}
+    </aside>
   );
-}; 
+};

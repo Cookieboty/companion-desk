@@ -1,0 +1,305 @@
+/*
+ * Nomi design tokens.
+ * 默认暗色 Cool Mist：冷灰蓝底 + 磨砂玻璃 + 清爽青蓝强调（无霓虹辉光）；
+ * `[data-theme='light']` 提供浅色覆盖（目前应用未启用，预留）。
+ */
+:root {
+  /* palette — Cool Mist：更深冷灰蓝底 + 清爽青蓝强调，少紫少霓虹 */
+  --cd-color-bg: #0a0f1a;
+  --cd-color-bg-gradient: linear-gradient(160deg, #0a0f1a 0%, #0f172a 55%, #111827 100%);
+  --cd-color-surface: rgba(15, 23, 42, 0.78);
+  --cd-color-surface-raised: rgba(30, 41, 59, 0.94);
+  --cd-color-surface-sunken: rgba(2, 6, 23, 0.55);
+  --cd-color-border: rgba(148, 163, 184, 0.14);
+  --cd-color-border-strong: rgba(94, 184, 214, 0.42);
+  --cd-color-text: #e8eef7;
+  --cd-color-text-muted: #94a3b8;
+  --cd-color-text-subtle: #64748b;
+  --cd-color-text-on-accent: #ffffff;
+  /* 清爽青蓝强调（白字对比 ≥4.5:1）；第三色为冷薰衣草蓝，避免高饱和紫 */
+  --cd-accent-rgb: 56, 152, 196;
+  --cd-accent-2-rgb: 126, 200, 227;
+  --cd-accent-3-rgb: 139, 163, 212;
+  --cd-color-accent: #3898c4;
+  --cd-color-accent-hover: #2f86ae;
+  --cd-color-accent-2: #7ec8e3;
+  --cd-color-accent-3: #8ba3d4;
+  --cd-color-accent-soft: rgba(var(--cd-accent-rgb), 0.14);
+  --cd-color-success: #22c55e;
+  --cd-color-success-soft: rgba(34, 197, 94, 0.16);
+  --cd-color-warning: #f59e0b;
+  --cd-color-warning-soft: rgba(245, 158, 11, 0.16);
+  --cd-color-danger: #ef4444;
+  --cd-color-danger-soft: rgba(239, 68, 68, 0.16);
+  --cd-color-overlay: rgba(2, 6, 23, 0.6);
+
+  /* 交互层 / 细节（主题可覆盖；默认值保持 Cool Mist 原样） */
+  --cd-color-hover: rgba(255, 255, 255, 0.05);
+  --cd-color-active: rgba(255, 255, 255, 0.08);
+  --cd-color-bg-subtle: rgba(255, 255, 255, 0.015);
+  --cd-color-user-msg: rgba(255, 255, 255, 0.06);
+  --cd-color-danger-text: #fecaca;
+  --cd-title-fill: linear-gradient(135deg, var(--cd-color-accent-2), var(--cd-color-accent));
+  --cd-title-color: transparent;
+  --cd-app-glow:
+    radial-gradient(
+      ellipse 60% 40% at 15% 90%,
+      rgba(var(--cd-accent-rgb), 0.06) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 50% 35% at 85% 10%,
+      rgba(var(--cd-accent-2-rgb), 0.05) 0%,
+      transparent 50%
+    );
+  /* 看板娘气泡 */
+  --cd-bubble-bg: rgba(250, 244, 235, 0.95);
+  --cd-bubble-border: rgba(196, 170, 136, 0.55);
+  --cd-bubble-text: #5f4a27;
+  --cd-bubble-link: #8a6430;
+  --cd-bubble-shadow: 0 4px 14px rgba(120, 96, 64, 0.18);
+
+  /* radius */
+  --cd-radius-xs: 4px;
+  --cd-radius-sm: 6px;
+  --cd-radius-md: 8px;
+  --cd-radius-lg: 12px;
+  --cd-radius-xl: 16px;
+  --cd-radius-full: 9999px;
+
+  /* spacing (4px grid) */
+  --cd-space-1: 4px;
+  --cd-space-2: 8px;
+  --cd-space-3: 12px;
+  --cd-space-4: 16px;
+  --cd-space-5: 20px;
+  --cd-space-6: 24px;
+  --cd-space-8: 32px;
+
+  /* typography —— 类型阶梯 12 / 13 / 14 / 16 / 18 / 22，字重 400 / 500 / 600 */
+  --cd-font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, 'Noto Sans SC',
+    'Noto Sans CJK SC', 'Source Han Sans SC', Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif;
+  --cd-font-mono:
+    'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, Consolas, 'Noto Sans Mono CJK SC',
+    monospace;
+  --cd-font-size-xs: 12px; /* caption / badge / tooltip */
+  --cd-font-size-sm: 13px; /* label / 控件 / 次要正文 */
+  --cd-font-size-md: 14px; /* body */
+  --cd-font-size-lg: 16px; /* subtitle / 区块标题 */
+  --cd-font-size-xl: 18px; /* title / 对话框标题 */
+  --cd-font-size-2xl: 22px; /* display / 页面标题 */
+  --cd-line-height-xs: 18px;
+  --cd-line-height-sm: 20px;
+  --cd-line-height-md: 22px;
+  --cd-line-height-lg: 24px;
+  --cd-line-height-xl: 26px;
+  --cd-line-height-2xl: 30px;
+  --cd-line-height: 1.6; /* 多行正文 */
+  --cd-font-weight-regular: 400;
+  --cd-font-weight-medium: 500;
+  --cd-font-weight-bold: 600;
+  --cd-tracking-tight: -0.01em; /* 标题 */
+  --cd-tracking-normal: 0;
+  --cd-tracking-wide: 0.02em; /* caption / 小号大写 */
+
+  /* 语义字体（font 简写：weight size/line-height family） */
+  --cd-text-display: var(--cd-font-weight-bold) var(--cd-font-size-2xl) / var(--cd-line-height-2xl)
+    var(--cd-font-sans);
+  --cd-text-title: var(--cd-font-weight-bold) var(--cd-font-size-xl) / var(--cd-line-height-xl)
+    var(--cd-font-sans);
+  --cd-text-subtitle: var(--cd-font-weight-bold) var(--cd-font-size-lg) / var(--cd-line-height-lg)
+    var(--cd-font-sans);
+  --cd-text-body: var(--cd-font-weight-regular) var(--cd-font-size-md) / var(--cd-line-height-md)
+    var(--cd-font-sans);
+  --cd-text-label: var(--cd-font-weight-medium) var(--cd-font-size-sm) / var(--cd-line-height-sm)
+    var(--cd-font-sans);
+  --cd-text-caption: var(--cd-font-weight-regular) var(--cd-font-size-xs) / var(--cd-line-height-xs)
+    var(--cd-font-sans);
+
+  /* 控件尺寸（4/8 栅格） */
+  --cd-control-h-sm: 28px;
+  --cd-control-h-md: 36px;
+  --cd-control-h-lg: 40px;
+
+  /* elevation */
+  --cd-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --cd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --cd-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.45);
+  --cd-shadow-glow: 0 0 0 1px rgba(148, 163, 184, 0.08), 0 4px 14px rgba(0, 0, 0, 0.18);
+  --cd-blur: blur(12px);
+
+  /* motion */
+  --cd-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --cd-focus-ring: 0 0 0 2px rgba(var(--cd-accent-2-rgb), 0.6);
+
+  /* layers */
+  --cd-z-tooltip: 100100;
+  --cd-z-modal: 100000; /* 高于看板娘工具栏（99999） */
+  --cd-z-toast: 100200;
+}
+
+[data-theme='light'] {
+  --cd-color-bg: #f8fafc;
+  --cd-color-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+  --cd-color-surface: rgba(255, 255, 255, 0.92);
+  --cd-color-surface-raised: #ffffff;
+  --cd-color-surface-sunken: #f1f5f9;
+  --cd-color-border: rgba(15, 23, 42, 0.12);
+  --cd-color-border-strong: rgba(var(--cd-accent-rgb), 0.5);
+  --cd-color-text: #0f172a;
+  --cd-color-text-muted: #475569;
+  --cd-color-text-subtle: #94a3b8;
+  --cd-color-overlay: rgba(15, 23, 42, 0.35);
+  --cd-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --cd-shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.15);
+}
+
+/* ======================================================================
+ * 可选主题（设置 → 通用 → 主题）。新用户默认 Warm Ink（data-theme='ink'）；
+ * :root 为 Cool Mist 基础令牌（不设 data-theme 时生效）；「跟随系统」解析为 graphite / paper。
+ * 原则：中性色优先、只有一个克制的强调色、细线边框、无辉光、无装饰渐变，
+ * 层级靠明度阶梯（bg < surface < raised）而不是彩色。
+ * ==================================================================== */
+
+/* A · Graphite：中性石墨暗色 + 低饱和靛蓝（参考 Linear / Codex 桌面端） */
+[data-theme='graphite'] {
+  color-scheme: dark;
+  --cd-color-bg: #0f0f11;
+  --cd-color-bg-gradient: #0f0f11;
+  --cd-color-surface: #151517;
+  --cd-color-surface-raised: #1b1b1e;
+  --cd-color-surface-sunken: #0b0b0c;
+  --cd-color-border: rgba(255, 255, 255, 0.075);
+  --cd-color-border-strong: rgba(255, 255, 255, 0.16);
+  --cd-color-text: #ededef;
+  --cd-color-text-muted: #a0a0a8;
+  --cd-color-text-subtle: #6c6c74;
+  --cd-color-text-on-accent: #ffffff;
+  --cd-accent-rgb: 104, 114, 229;
+  --cd-accent-2-rgb: 165, 171, 245;
+  --cd-accent-3-rgb: 138, 144, 200;
+  --cd-color-accent: #6872e5;
+  --cd-color-accent-hover: #5a63d1;
+  --cd-color-accent-2: #a5abf5;
+  --cd-color-accent-3: #8a90c8;
+  --cd-color-accent-soft: rgba(104, 114, 229, 0.14);
+  --cd-color-success: #3fb27f;
+  --cd-color-warning: #d9a03f;
+  --cd-color-danger: #e5484d;
+  --cd-color-danger-text: #ff9592;
+  --cd-color-overlay: rgba(0, 0, 0, 0.55);
+  --cd-color-hover: rgba(255, 255, 255, 0.045);
+  --cd-color-active: rgba(255, 255, 255, 0.075);
+  --cd-color-bg-subtle: #121214;
+  --cd-color-user-msg: #1f1f23;
+  --cd-title-fill: none;
+  --cd-title-color: var(--cd-color-text);
+  --cd-app-glow: none;
+  --cd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --cd-shadow-md: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.45);
+  --cd-shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 48px rgba(0, 0, 0, 0.55);
+  --cd-shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --cd-focus-ring: 0 0 0 2px rgba(104, 114, 229, 0.55);
+  --cd-bubble-bg: rgba(27, 27, 30, 0.96);
+  --cd-bubble-border: rgba(255, 255, 255, 0.1);
+  --cd-bubble-text: #ededef;
+  --cd-bubble-link: #a5abf5;
+  --cd-bubble-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* B · Warm Ink：暖调墨色暗色 + Nomi 品牌橙强调 #FB9466（参考 Claude / Notion 暗色的暖中性） */
+[data-theme='ink'] {
+  color-scheme: dark;
+  --cd-color-bg: #1a1917;
+  --cd-color-bg-gradient: #1a1917;
+  --cd-color-surface: #201f1c;
+  --cd-color-surface-raised: #272522;
+  --cd-color-surface-sunken: #141311;
+  --cd-color-border: rgba(240, 228, 210, 0.08);
+  --cd-color-border-strong: rgba(240, 228, 210, 0.17);
+  --cd-color-text: #ece8e1;
+  --cd-color-text-muted: #a8a196;
+  --cd-color-text-subtle: #78726a;
+  --cd-color-text-on-accent: #2a211a; /* 深墨字：在品牌橙上对比度 ≥ 7:1 */
+  --cd-accent-rgb: 251, 148, 102; /* Nomi Orange #FB9466 */
+  --cd-accent-2-rgb: 253, 186, 148;
+  --cd-accent-3-rgb: 201, 164, 138;
+  --cd-color-accent: #fb9466;
+  --cd-color-accent-hover: #f17f4e;
+  --cd-color-accent-2: #fdba94;
+  --cd-color-accent-3: #c9a48a;
+  --cd-color-accent-soft: rgba(251, 148, 102, 0.15);
+  --cd-color-success: #7fae6e;
+  --cd-color-warning: #d6a24a;
+  --cd-color-danger: #d4574a;
+  --cd-color-danger-text: #f2a497;
+  --cd-color-overlay: rgba(10, 9, 8, 0.55);
+  --cd-color-hover: rgba(240, 228, 210, 0.05);
+  --cd-color-active: rgba(240, 228, 210, 0.085);
+  --cd-color-bg-subtle: #1d1c1a;
+  --cd-color-user-msg: #2a2825;
+  --cd-title-fill: none;
+  --cd-title-color: var(--cd-color-text);
+  --cd-app-glow: none;
+  --cd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --cd-shadow-md: 0 1px 0 rgba(255, 245, 230, 0.035) inset, 0 8px 24px rgba(0, 0, 0, 0.4);
+  --cd-shadow-lg: 0 1px 0 rgba(255, 245, 230, 0.04) inset, 0 24px 48px rgba(0, 0, 0, 0.5);
+  --cd-shadow-glow: 0 0 0 1px rgba(240, 228, 210, 0.06);
+  --cd-focus-ring: 0 0 0 2px rgba(251, 148, 102, 0.55);
+  --cd-bubble-bg: rgba(246, 241, 233, 0.97);
+  --cd-bubble-border: rgba(120, 100, 80, 0.22);
+  --cd-bubble-text: #3d362d;
+  --cd-bubble-link: #c4602f;
+  --cd-bubble-shadow: 0 6px 18px rgba(40, 30, 20, 0.22);
+}
+
+/* C · Light Paper：干净浅色 + 克制的系统蓝（参考 Apple / Vercel Geist 浅色） */
+[data-theme='paper'] {
+  color-scheme: light;
+  --cd-color-bg: #fafaf9;
+  --cd-color-bg-gradient: #fafaf9;
+  --cd-color-surface: #ffffff;
+  --cd-color-surface-raised: #ffffff;
+  --cd-color-surface-sunken: #f3f3f1;
+  --cd-color-border: rgba(0, 0, 0, 0.085);
+  --cd-color-border-strong: rgba(0, 0, 0, 0.18);
+  --cd-color-text: #1c1c1e;
+  --cd-color-text-muted: #5c5c62;
+  --cd-color-text-subtle: #8c8c92;
+  --cd-color-text-on-accent: #ffffff;
+  --cd-accent-rgb: 37, 99, 214;
+  --cd-accent-2-rgb: 37, 99, 214;
+  --cd-accent-3-rgb: 90, 104, 135;
+  --cd-color-accent: #2563d6;
+  --cd-color-accent-hover: #1e52b4;
+  --cd-color-accent-2: #2563d6;
+  --cd-color-accent-3: #5a6887;
+  --cd-color-accent-soft: rgba(37, 99, 214, 0.09);
+  --cd-color-success: #1a7f4b;
+  --cd-color-success-soft: rgba(26, 127, 75, 0.1);
+  --cd-color-warning: #a15c07;
+  --cd-color-warning-soft: rgba(161, 92, 7, 0.1);
+  --cd-color-danger: #c4302b;
+  --cd-color-danger-soft: rgba(196, 48, 43, 0.08);
+  --cd-color-danger-text: #b42318;
+  --cd-color-overlay: rgba(20, 20, 22, 0.22);
+  --cd-color-hover: rgba(0, 0, 0, 0.04);
+  --cd-color-active: rgba(0, 0, 0, 0.07);
+  --cd-color-bg-subtle: #f4f4f2;
+  --cd-color-user-msg: #efefed;
+  --cd-title-fill: none;
+  --cd-title-color: var(--cd-color-text);
+  --cd-app-glow: none;
+  --cd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --cd-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 18px rgba(0, 0, 0, 0.07);
+  --cd-shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.04), 0 20px 40px rgba(0, 0, 0, 0.12);
+  --cd-shadow-glow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --cd-focus-ring: 0 0 0 2px rgba(37, 99, 214, 0.35);
+  --cd-bubble-bg: rgba(255, 255, 255, 0.97);
+  --cd-bubble-border: rgba(0, 0, 0, 0.1);
+  --cd-bubble-text: #1c1c1e;
+  --cd-bubble-link: #2563d6;
+  --cd-bubble-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}

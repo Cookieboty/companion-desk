@@ -7,7 +7,6 @@ export interface IpcApi {
   setPosition: (x: number, y: number) => void;
   saveModel: (modelName: string) => void;
   getSavedModel: () => Promise<string>;
-  readLocalFile: (filePath: string) => Promise<string | Blob>;
   getCursorPosition: () => Promise<{ x: number; y: number }>;
   onWindowMouseEnter: (callback: () => void) => void;
   onWindowMouseLeave: (callback: () => void) => void;
@@ -31,29 +30,21 @@ export interface IpcApi {
   onKeyboardListenerError: (callback: (error: string) => void) => void;
   removeKeyboardListeners: () => void;
 
-  // 通用invoke方法
-  invoke: (channel: string, ...args: any[]) => Promise<any>;
-
   // AI对话相关API
   openAiChat: () => Promise<{ success: boolean; error?: string }>;
 
   // TTS配置窗口API
   openTTSConfig: () => Promise<{ success: boolean; error?: string }>;
 
-  // 自定义图片相关API
-  selectImageFile: () => Promise<{ success: boolean; data?: { filePath: string }; error?: string }>;
-  saveCustomImage: (sourcePath: string) => Promise<{ success: boolean; data?: { savedPath: string; imageInfo: CustomImageInfo }; error?: string }>;
-  getCustomImage: () => Promise<{ success: boolean; data?: { imagePath: string; imageInfo: CustomImageInfo }; error?: string }>;
-  deleteCustomImage: () => Promise<{ success: boolean; error?: string }>;
+  /** 主进程 → 看板娘指令：{ type: 'motion' | 'expression' | 'parameter', ... } */
+  onMascotCommand?: (callback: (cmd: unknown) => void) => () => void;
 
-  // 显示模式配置相关API
-  getDisplayModeConfig: () => Promise<DisplayModeConfig>;
-  saveDisplayModeConfig: (config: DisplayModeConfig) => Promise<{ success: boolean; error?: string }>;
-  getCurrentMode: () => Promise<RenderMode>;
-  setCurrentMode: (mode: RenderMode) => Promise<{ success: boolean; error?: string }>;
-
-  // MCP集成相关API
-  mcp: MCPApi;
+  /** 模型注册表 / 商店 / 用户导入（主进程实现） */
+  models?: import('./models').ModelsApi;
+  /** 看板娘窗口互动 */
+  mascotWindow?: import('./models').MascotWindowApi;
+  /** 桌面能力（确认 / 拖文件总结） */
+  desktop?: import('./models').DesktopApi;
 }
 
 // 在渲染进程中可用的Electron API
@@ -104,162 +95,4 @@ export interface TTSTestResult {
   latency?: number;
 }
 
-// ==================== MCP相关类型定义 ====================
-
-/**
- * MCP API接口
- */
-export interface MCPApi {
-  getStatus: () => Promise<MCPServiceStatus>;
-  getDiagnostics: () => Promise<MCPDiagnostics>;
-  callTool: (toolName: string, args: any) => Promise<MCPToolResult>;
-  readResource: (uri: string) => Promise<any>;
-  getAvailableTools: () => Promise<MCPTool[]>;
-  getAvailableResources: () => Promise<MCPResource[]>;
-  restart: () => Promise<{ success: boolean; error?: string }>;
-  validateConfiguration: () => Promise<MCPConfigValidationResult>;
-}
-
-/**
- * MCP服务状态
- */
-export interface MCPServiceStatus {
-  isRunning: boolean;
-  mcpServerReady: boolean;
-  cursorIntegrationReady: boolean;
-  availableToolsCount: number;
-  availableResourcesCount: number;
-  lastCheck: number;
-  error?: string;
-}
-
-/**
- * MCP诊断信息
- */
-export interface MCPDiagnostics {
-  status: MCPServiceStatus;
-  cursorIntegration: any;
-  systemInfo: {
-    platform: string;
-    nodeVersion: string;
-    electronVersion: string;
-    chromeVersion: string;
-    pid: number;
-    workingDirectory: string;
-    timestamp: number;
-  };
-  environment: {
-    NODE_ENV?: string;
-    CHARACTER_MODEL_PATH?: string;
-    VOICE_ENGINE?: string;
-    PERFORMANCE_MODE?: string;
-  };
-  error?: string;
-}
-
-/**
- * MCP工具
- */
-export interface MCPTool {
-  name: string;
-  description: string;
-  inputSchema: any;
-}
-
-/**
- * MCP资源
- */
-export interface MCPResource {
-  uri: string;
-  name: string;
-  description: string;
-  mimeType: string;
-}
-
-/**
- * MCP工具调用结果
- */
-export interface MCPToolResult {
-  content: Array<{
-    type: string;
-    text: string;
-  }>;
-  isError?: boolean;
-}
-
-/**
- * MCP配置验证结果
- */
-export interface MCPConfigValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-/**
- * 3D角色响应接口
- */
-export interface Character3DResponse {
-  animation?: string;
-  expression?: string;
-  speech?: string;
-  gesture?: string;
-  lookAt?: {
-    x: number;
-    y: number;
-    z: number;
-  };
-}
-
-/**
- * MCP工具执行结果
- */
-export interface MCPToolExecutionResult {
-  success: boolean;
-  content: string;
-  metadata?: {
-    timestamp: number;
-    duration?: number;
-    characterResponse?: Character3DResponse;
-    [key: string]: any;
-  };
-  error?: string;
-}
-
-// ==================== 自定义图片模式相关类型定义 ====================
-
-/**
- * 渲染模式类型
- */
-export type RenderMode = 'live2d' | '3d' | 'custom-image';
-
-/**
- * 自定义图片信息
- */
-export interface CustomImageInfo {
-  imagePath: string;
-  fileName: string;
-  uploadTime: number;
-  fileSize: number;
-  dimensions?: {
-    width: number;
-    height: number;
-  };
-}
-
-/**
- * 显示模式配置
- */
-export interface DisplayModeConfig {
-  currentMode: RenderMode;
-  customImage?: CustomImageInfo;
-}
-
-/**
- * 图片上传配置
- */
-export interface ImageUploadConfig {
-  maxFileSize: number; // 最大文件大小 (bytes)
-  allowedTypes: string[]; // 允许的文件类型
-  allowedExtensions: string[]; // 允许的文件扩展名
-}
+export * from './models';

@@ -1,36 +1,13 @@
 ---
-description: 
-globs: 
+description: 渲染层（ai-chat / renderer / ui）约定
+globs: packages/{ai-chat,renderer,ui,voice}/**
 alwaysApply: false
 ---
-# Renderer包
+# 渲染层
 
-## 目录结构
-
-- [src/index.tsx](mdc:packages/renderer/src/index.tsx) - 渲染进程入口文件
-- [src/App.tsx](mdc:packages/renderer/src/App.tsx) - 主应用组件
-- [src/components/](mdc:packages/renderer/src/components) - React组件
-- [src/utils/](mdc:packages/renderer/src/utils) - 实用工具
-- [src/types/](mdc:packages/renderer/src/types) - 类型定义
-- [src/cubism2/](mdc:packages/renderer/src/cubism2) - Live2D Cubism相关代码
-- [src/assets/](mdc:packages/renderer/src/assets) - 静态资源
-- [public/](mdc:packages/renderer/public) - 公共资源目录
-
-## 配置文件
-
-- [package.json](mdc:packages/renderer/package.json) - 包配置和依赖
-- [vite.config.ts](mdc:packages/renderer/vite.config.ts) - Vite配置
-- [tsconfig.json](mdc:packages/renderer/tsconfig.json) - TypeScript配置
-
-## 开发命令
-
-- `pnpm dev` - 启动Vite开发服务器
-- `pnpm build` - 构建渲染进程代码
-- `pnpm copy-assets` - 复制Live2D资源
-
-## 主要功能
-
-- 实现透明UI界面
-- 加载和显示Live2D模型
-- 提供模型互动功能
-- 显示消息气泡
+- React 19 + Vite；样式 CSS Modules + `@nomi-ai/ui` 的 CSS 变量（4 套主题 mist / graphite / ink / paper + 跟随系统，见 `ui/src/tokens.css` 与 `electron/src/theme/ThemeService.ts`）。
+- 不要硬编码颜色 / 中文文案；文案经 `t()`，颜色用 `var(--cd-*)` token。
+- 面板按需 `React.lazy` 加载；three / VRM 只在使用自定义 VRM 时加载。
+- 交互元素必须可键盘访问：图标按钮带 `aria-label`，弹层可 Esc 关闭并做焦点管理，动画尊重 `prefers-reduced-motion`。
+- 桌宠：`renderer/src/mascot/`（layeredRig、气泡 bubblePlacement、交互 interaction/）。
+- AI 访问只经 `@nomi-ai/ai-sdk-client`（`window.aiIPC`）。

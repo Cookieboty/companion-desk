@@ -1,4 +1,6 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { t } from '@nomi-ai/ui';
+import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+
 import styles from './index.module.css';
 
 interface Props {
@@ -36,14 +38,12 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className={styles.errorBoundary}>
           <div className={styles.errorContainer}>
             <div className={styles.errorIcon}>⚠️</div>
-            <h2 className={styles.errorTitle}>出现了一些问题</h2>
-            <p className={styles.errorMessage}>
-              AI对话应用遇到了意外错误，请尝试重新加载。
-            </p>
+            <h2 className={styles.errorTitle}>{t('出现了一些问题')}</h2>
+            <p className={styles.errorMessage}>{t('AI对话应用遇到了意外错误，请尝试重新加载。')}</p>
 
             {this.state.error && (
               <details className={styles.errorDetails}>
-                <summary>错误详情</summary>
+                <summary>{t('错误详情')}</summary>
                 <pre className={styles.errorStack}>
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack}
@@ -52,17 +52,11 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
 
             <div className={styles.errorActions}>
-              <button
-                className={styles.reloadButton}
-                onClick={this.handleReload}
-              >
-                重新加载
+              <button className={styles.reloadButton} onClick={this.handleReload}>
+                {t('重新加载')}
               </button>
-              <button
-                className={styles.refreshButton}
-                onClick={() => window.location.reload()}
-              >
-                刷新页面
+              <button className={styles.refreshButton} onClick={() => window.location.reload()}>
+                {t('刷新页面')}
               </button>
             </div>
           </div>
@@ -72,4 +66,4 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
-} 
+}

@@ -1,0 +1,254 @@
+import type { DesktopConfirmRequest } from '@nomi-ai/types';
+import { t as tr } from '@nomi-ai/ui';
+import { Badge, Button, Modal } from '@nomi-ai/ui';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+import styles from './DesktopConfirm.module.css';
+
+import { placeConfirmBubble, type BubblePlacement } from '@/mascot/bubblePlacement';
+import { layoutStore } from '@/mascot/layoutStore';
+
+const DANGER: Record<
+  DesktopConfirmRequest['danger'],
+  { label: string; tone: 'neutral' | 'warning' | 'danger' }
+> = {
+  read: { label: '读取', tone: 'neutral' },
+  write: { label: '写入', tone: 'warning' },
+  destructive: { label: '破坏性', tone: 'danger' },
+};
+
+const REASON: Record<string, string> = {
+  tainted: '这一轮刚读过文件内容，为防止文件里的内容诱导操作，需要再次确认。',
+  destructive: '破坏性操作必须在这里确认（会移到回收站，可撤销）。',
+  'first-use': '本次运行第一次使用这个工具。',
+  policy: '',
+};
+
+/**
+ * 桌面工具确认：先在看板娘气泡里问一句；详情对话框显示工具名、参数 JSON 与干跑预览。
+ * 破坏性操作只能在对话框里确认，且确认按钮在打开后 1 秒内不可点（防误触）。120 秒未答复由主进程自动拒绝。
+ */
+export const DesktopConfirm: React.FC = () => {
+  const [queue, setQueue] = useState<DesktopConfirmRequest[]>([]);
+  const [detail, setDetail] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const api = window.electronAPI?.desktop;
+  const cur = queue[0];
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<BubblePlacement | null>(null);
+  const [fallbackRight, setFallbackRight] = useState<number | null>(null);
+
+  // 与回复气泡共用摆放逻辑：不压脸、不压工具栏、靠近屏幕边缘时翻到另一侧
+  const compute = useCallback(() => {
+    const el = bubbleRef.current;
+    const { head, gutter } = layoutStore.get();
+    if (!el) return;
+    if (!head) {
+      // 头部还没测出来：至少让出工具栏槽位
+      setFallbackRight(
+        gutter && gutter.left > window.innerWidth / 2 ? window.innerWidth - gutter.left + 8 : null,
+      );
+      setPlace(null);
+      return;
+    }
+    const p = placeConfirmBubble({
+      head,
+      gutter,
+      view: { width: window.innerWidth, height: window.innerHeight },
+      screen: {
+        winX: window.screenX,
+        availLeft: (window.screen as Screen & { availLeft?: number }).availLeft ?? 0,
+        availWidth: window.screen.availWidth,
+      },
+      measure: (w) => {
+        const prev = el.style.cssText;
+        el.style.width = `${w}px`;
+        el.style.height = 'auto';
+        const h = el.offsetHeight;
+        el.style.cssText = prev;
+        return h;
+      },
+    });
+    setPlace((old) =>
+      old && old.x === p.x && old.y === p.y && old.width === p.width && old.height === p.height
+        ? old
+        : p,
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    if (cur) compute();
+  }, [cur, compute]);
+
+  useEffect(() => {
+    if (!cur) return;
+    const off = layoutStore.subscribe(() => compute());
+    window.addEventListener('resize', compute);
+    const t = setInterval(compute, 1000);
+    return () => {
+      off();
+      window.removeEventListener('resize', compute);
+      clearInterval(t);
+    };
+  }, [cur, compute]);
+
+  useEffect(() => {
+    if (!api) return;
+    const off1 = api.onConfirmRequest((r) =>
+      setQueue((q) => [...q.filter((x) => x.id !== r.id), r]),
+    );
+    const off2 = api.onConfirmCancel((id) => setQueue((q) => q.filter((x) => x.id !== id)));
+    const off3 = api.onBubble((p) =>
+      window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: p.text, ms: 9000 } })),
+    );
+    return () => {
+      off1();
+      off2();
+      off3();
+    };
+  }, [api]);
+
+  useEffect(() => {
+    if (!cur) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [cur]);
+
+  useEffect(() => {
+    setRemember(false);
+    setDetail(false);
+  }, [cur?.id]);
+
+  useEffect(() => {
+    if (!detail) return;
+    setArmed(false);
+    const t = setTimeout(() => setArmed(true), 1000);
+    return () => clearTimeout(t);
+  }, [detail, cur?.id]);
+
+  if (!cur || !api) return null;
+  const answer = (allow: boolean) => {
+    api.answer(cur.id, allow, remember);
+    setQueue((q) => q.slice(1));
+  };
+  const left = Math.max(0, Math.ceil((cur.expiresAt - now) / 1000));
+  const d = DANGER[cur.danger];
+
+  return (
+    <>
+      <div
+        ref={bubbleRef}
+        className={styles.bubble}
+        style={
+          place
+            ? {
+                left: place.x,
+                top: place.y,
+                width: place.width,
+                right: 'auto',
+                minHeight: place.height,
+              }
+            : fallbackRight !== null
+              ? { right: fallbackRight }
+              : undefined
+        }
+        data-placement={place?.candidate ?? 'fixed'}
+        data-mascot-ui
+        data-testid="desktop-confirm-bubble"
+        data-danger={cur.danger}
+        data-tool={cur.tool}
+      >
+        <div className={styles.text}>{tr(cur.summary)}</div>
+        <div className={styles.meta}>
+          <Badge tone={d.tone}>{tr(d.label)}</Badge>
+          <span>
+            {left}
+            {tr('s 后自动拒绝')}
+          </span>
+        </div>
+        <div className={styles.actions}>
+          {!cur.dialog && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => answer(true)}
+              data-testid="desktop-confirm-allow"
+            >
+              {tr('允许')}
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setDetail(true)} data-testid="desktop-confirm-details">
+            {tr('查看详情')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => answer(false)}
+            data-testid="desktop-confirm-deny"
+          >
+            {tr('拒绝')}
+          </Button>
+        </div>
+      </div>
+      {detail && (
+        <Modal
+          open
+          onClose={() => setDetail(false)}
+          title={tr('确认操作')}
+          data-testid="desktop-confirm-dialog"
+        >
+          <div className={styles.dialog}>
+            <div className={styles.meta}>
+              <Badge tone={d.tone}>{tr(d.label)}</Badge>
+              <code>{cur.tool}</code>
+            </div>
+            <p className={styles.text}>{tr(cur.summary)}</p>
+            {REASON[cur.reason] && <p className={styles.hint}>{REASON[cur.reason]}</p>}
+            {cur.preview && (
+              <>
+                <div className={styles.label}>{tr('预览（尚未执行）')}</div>
+                <pre className={styles.pre} data-testid="desktop-confirm-preview">
+                  {cur.preview}
+                </pre>
+              </>
+            )}
+            <div className={styles.label}>{tr('参数')}</div>
+            <pre className={styles.pre}>{cur.argsJson}</pre>
+            {cur.rememberable && (
+              <label className={styles.remember}>
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  data-testid="desktop-remember"
+                />
+                {tr('本次运行不再询问这个工具')}
+              </label>
+            )}
+            <div className={styles.actions}>
+              <Button
+                variant="ghost"
+                onClick={() => answer(false)}
+                data-testid="desktop-dialog-deny"
+              >
+                {tr('拒绝')}
+              </Button>
+              <Button
+                variant={cur.danger === 'destructive' ? 'danger' : 'primary'}
+                disabled={!armed}
+                onClick={() => answer(true)}
+                data-testid="desktop-dialog-allow"
+              >
+                {cur.danger === 'destructive' ? tr('确认执行') : tr('允许')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
+export default DesktopConfirm;

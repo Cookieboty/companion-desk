@@ -3,16 +3,47 @@
  * 负责应用初始化、服务注册和生命周期管理
  */
 
-import { app, ipcMain } from 'electron';
-import { ServiceContainer, IServiceContainer } from './ServiceContainer';
-import { LoggerService, LogLevel } from '../services/LoggerService';
-import { ConfigService } from '../services/ConfigService';
-import { CacheService } from '../services/CacheService';
-import { WindowManager } from './WindowManager';
-import { GlobalErrorHandler } from '../utils/ErrorHandler';
+import path from 'node:path';
+
+import { app, ipcMain, session } from 'electron';
+
+import { getAgentProgressService, initAgentProgressService } from '../agents/AgentProgressService';
+import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
+import { ClipboardGateway } from '../ai/ClipboardGateway';
+import { ScreenCapture } from '../ai/ScreenCapture';
+import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
+import { getDesktopService } from '../desktop/DesktopService';
+import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
+import { t as tr } from '../i18n';
+import { LocaleService } from '../i18n';
+import { getIslandService, initIslandService } from '../island/IslandService';
+import { initKnowledgeService } from '../knowledge/KnowledgeService';
+import { getLocalHubService, initLocalHubService } from '../local/LocalHubService';
+import { getLocalModelService, initLocalModelService } from '../local/LocalModelService';
+import { getMemoryService, initMemoryService } from '../memory/MemoryService';
+import { getModelService } from '../models/ModelService';
+import { OnboardingService } from '../onboarding/OnboardingService';
+import { getSchedulerService, initSchedulerService } from '../schedule/SchedulerService';
+import { getScreenService, initScreenService } from '../screen/ScreenService';
+import { appCspString } from '../security/csp';
+import { AdvancedTTSEngine } from '../services/AdvancedTTSEngine';
+import { CacheService } from '../services/CacheService';
+import { ConfigService } from '../services/ConfigService';
+import { LoggerService, LogLevel } from '../services/LoggerService';
+import { getUpdateService } from '../services/UpdateService';
+import { ThemeService } from '../theme/ThemeService';
+import { GlobalErrorHandler } from '../utils/ErrorHandler';
+import { perfMark } from '../utils/perfMarks';
+import { getVoiceService } from '../voice/VoiceService';
+
+import { initAppIcon } from './appIcon';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
+import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
+import { applyTitleBarTheme } from './titleBar';
+import { TrayManager } from './TrayManager';
+import { WindowManager } from './WindowManager';
 
 export interface IApplication {
   initialize(): Promise<void>;
@@ -30,6 +61,9 @@ export class Application implements IApplication {
   private errorHandler!: GlobalErrorHandler;
   private ipcRegistry!: IpcRegistry;
   private bootstrapManager!: BootstrapManager;
+  private aiRuntime?: AIRuntimeBootHandle;
+  private clipboardGateway?: ClipboardGateway;
+  private trayManager?: TrayManager;
   private isInitialized = false;
 
   constructor() {
@@ -60,7 +94,7 @@ export class Application implements IApplication {
       const metrics = await this.bootstrapManager.start();
       this.logger.info('启动任务执行完成', {
         duration: metrics.totalDuration,
-        taskCount: metrics.taskMetrics.length
+        taskCount: metrics.taskMetrics.length,
       });
 
       this.isInitialized = true;
@@ -87,10 +121,263 @@ export class Application implements IApplication {
 
       // 等待Electron app ready事件
       await app.whenReady();
+      perfMark('app-ready');
+
+      // 界面语言（默认跟随系统：zh* → 中文，其余 → English）；须早于托盘 / 通知等主进程文案
+      new LocaleService(path.join(app.getPath('userData'), 'locale.json')).registerIpc();
+      // 应用图标变体（窗口 / 任务栏 / Dock / 托盘 / 通知）
+      initAppIcon(path.join(app.getPath('userData'), 'app-icon.json'));
+
+      // 统一 CSP 响应头：作用于 http(s) 加载的页面。打包后的 file:// 页面不经过响应头，
+      // 由构建期注入的 <meta> CSP 覆盖（renderer / ai-chat 的 vite 配置）；dev HMR 需要内联脚本，跳过。
+      // 沙箱浏览器 AgentBrowser 使用独立内存分区，不受影响。
+      if (app.isPackaged || process.env.NODE_ENV !== 'development') {
+        session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+          callback({
+            responseHeaders: {
+              ...details.responseHeaders,
+              'Content-Security-Policy': [appCspString()],
+            },
+          });
+        });
+      }
       this.logger.info('Electron应用准备就绪');
+
+      // 模型注册表 / 商店 / 用户导入（cdmodel:// 协议 + models:* IPC）
+      const models = getModelService(this.logger);
+      models.registerProtocol();
+      models.registerIpc();
+
+      // Auto-update (electron-updater → GitHub Releases). Packaged builds only.
+      const updates = getUpdateService(this.logger);
+      updates.registerIpc();
+      updates.start();
+
+      // 桌面能力（文件工具的权限 / 审计 / 撤销）：先于 AI runtime，插件注册工具时要用
+      const desktop = getDesktopService(this.logger);
+      desktop.registerIpc();
+      desktop.attachWindows({
+        main: () => this.windowManager.getMainWindow(),
+        openChat: () => this.windowManager.createAiChatWindow(),
+      });
+
+      // 本地知识库：先于 AI runtime 创建（kb_search 工具随桌面工具注册），LLM 调用延迟绑定
+      const kb = initKnowledgeService({
+        root: path.join(app.getPath('userData'), 'knowledge'),
+        logger: this.logger as never,
+        desktop,
+        listProviders: () => this.aiRuntime?.listProviders() ?? [],
+        credentials: (id) => this.aiRuntime?.providerCredentials(id) ?? null,
+        chatProvider: () => desktop.providerFor('chat'),
+        complete: async (messages, signal) => {
+          const rt = this.aiRuntime;
+          if (!rt) throw new Error(tr('AI 服务未就绪'));
+          const resp = await rt.client.chat.sendMessage({
+            role: 'chat',
+            messages,
+            signal,
+          } as never);
+          return typeof resp?.content === 'string' ? resp.content : '';
+        },
+      });
+      kb.registerIpc();
+
+      // 长期记忆：对话摘要 + 召回（复用知识库的 BM25 / 向量服务），工具随桌面工具注册
+      const mem = initMemoryService({
+        root: path.join(app.getPath('userData'), 'memory'),
+        logger: this.logger as never,
+        desktop,
+        complete: async (messages, signal) => {
+          const rt = this.aiRuntime;
+          if (!rt) throw new Error(tr('AI 服务未就绪'));
+          const resp = await rt.client.chat.sendMessage({
+            role: 'chat',
+            messages,
+            signal,
+          } as never);
+          return typeof resp?.content === 'string' ? resp.content : '';
+        },
+        embed: (texts) => kb.embedTexts(texts),
+        facade: () => (this.aiRuntime?.client.memory as never) ?? null,
+      });
+      mem.registerIpc();
+
+      // 主动日程：免打扰 / 系统通知策略、定时任务（每日简报）、主动聊天（默认关闭）
+      const sched = initSchedulerService({
+        root: path.join(app.getPath('userData'), 'schedule'),
+        logger: this.logger as never,
+        desktop,
+        complete: async (messages, signal) => {
+          const rt = this.aiRuntime;
+          if (!rt) throw new Error(tr('AI 服务未就绪'));
+          const resp = await rt.client.chat.sendMessage({
+            role: 'chat',
+            messages,
+            signal,
+          } as never);
+          return typeof resp?.content === 'string' ? resp.content : '';
+        },
+        // 记忆 + 今日日历（日历服务在下方创建，这里按需读取）
+        memory: async (q) => {
+          const cal = (getLocalHubService()?.today() ?? [])
+            .map((o) =>
+              tr(
+                '- {0} {1}',
+                o.allDay ? tr('全天') : new Date(o.start).toTimeString().slice(0, 5),
+                o.summary,
+              ),
+            )
+            .join('\n');
+          return [(await mem.context(q)).text, cal && tr('今日日历：\n{0}', cal)]
+            .filter(Boolean)
+            .join('\n\n');
+        },
+        openChat: () => void this.windowManager.createAiChatWindow(),
+      });
+      sched.registerIpc();
+
+      // 截图提问 + 屏幕记忆（默认关闭；OCR 复用知识库语言包）
+      const scr = initScreenService({
+        root: path.join(app.getPath('userData'), 'screen-memory'),
+        logger: this.logger as never,
+        desktop,
+        ocr: (img) => kb.ocr(img),
+        ocrReady: () => kb.ocrLangsReady().length > 0,
+        chatWindow: () => this.windowManager.getAiChatWindow(),
+        openChat: () => this.windowManager.createAiChatWindow(),
+        loadOverlay: (win) => this.windowManager.loadChatRoute(win, 'snip'),
+      });
+      scr.registerIpc();
+
+      // 扩展：GUI 管理的 MCP 服务器 + SKILL.md 技能包
+      const ext = initExtensionsService({
+        root: path.join(app.getPath('userData'), 'extensions'),
+        skillsRoot: path.join(app.getPath('userData'), 'skills'),
+        logger: this.logger as never,
+        desktop,
+      });
+      ext.registerIpc();
+
+      // 本地中心：日历 / 剪贴板历史 / 数据导出；本地模型管理（llama.cpp + Ollama）
+      const hub = initLocalHubService({
+        root: path.join(app.getPath('userData'), 'local'),
+        userData: app.getPath('userData'),
+        logger: this.logger as never,
+        desktop,
+      });
+      hub.registerIpc();
+      const localLlm = initLocalModelService({
+        root: path.join(app.getPath('userData'), 'local'),
+        logger: this.logger as never,
+        desktop,
+        providers: () => this.aiRuntime?.providers as never,
+      });
+      localLlm.registerIpc();
+
+      // 界面主题（设置 → 通用 → 主题），对话窗口与看板娘同步
+      const themes = new ThemeService(path.join(app.getPath('userData'), 'theme.json'));
+      themes.registerIpc();
+      // 对话窗口一体化标题栏跟随主题（窗口底色 + Windows / Linux 原生按钮配色）
+      this.windowManager.chromeTheme = () => themes.get().resolved;
+      themes.onChange((st) => {
+        const w = this.windowManager.getAiChatWindow();
+        if (w) applyTitleBarTheme(w, st.resolved);
+      });
+
+      // 首次启动引导（语言 / 主题 / 角色与声音 / 称呼与语气 / 供应商 / 隐私），显示在对话窗口里
+      const onboarding = new OnboardingService({
+        userData: app.getPath('userData'),
+        openChat: async () => {
+          await this.windowManager.createAiChatWindow();
+        },
+        listCharacters: async () =>
+          (
+            (await getModelService(this.logger).list()) as Array<{
+              id: string;
+              name: string;
+              origin?: string;
+            }>
+          ).map((m) => ({ id: m.id, name: m.name, source: m.origin })),
+      });
+      onboarding.registerIpc();
+      if (onboarding.shouldAutoOpen()) {
+        // 等看板娘窗口先出来，再打开引导（她会在引导中打招呼）
+        setTimeout(() => void this.windowManager.createAiChatWindow(), 1500);
+      }
+
+      // 编程助手进度：监视本机 Codex / Claude Code 等会话文件，看板娘提醒完成/失败
+      // 灵动岛式通知（macOS 刘海 / 顶部胶囊；免打扰时段内不弹）
+      const island = initIslandService({
+        file: path.join(app.getPath('userData'), 'island.json'),
+        isQuiet: () => getSchedulerService()?.isQuiet() ?? false,
+        openChat: () => void this.windowManager.createAiChatWindow(),
+        logger: this.logger as never,
+      });
+      island.registerIpc();
+
+      const agents = initAgentProgressService({
+        root: path.join(app.getPath('userData'), 'agents'),
+        logger: this.logger as never,
+        desktop,
+      });
+      agents.registerIpc();
+      if (agents.state().settings.enabled) agents.start();
+
+      // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
+      await this.startAIRuntime();
+      if (this.aiRuntime) {
+        const rt = this.aiRuntime;
+        desktop.attachRuntime({
+          resolveProvider: (role) => rt.resolveProvider(role),
+          complete: async (messages, role, signal) => {
+            const resp = await rt.client.chat.sendMessage({ role, messages, signal });
+            return typeof resp?.content === 'string' ? resp.content : '';
+          },
+        });
+      }
+      perfMark('ai-runtime-ready');
+      void ext.start();
+      hub.start();
+      void localLlm.autoStart();
+
+      // 语音输入：本地 whisper.cpp / OpenAI 兼容识别、按需下载模型、打断 TTS、唤醒词
+      const rtv = this.aiRuntime;
+      const voice = getVoiceService({
+        root: path.join(app.getPath('userData'), 'voice'),
+        logger: this.logger as never,
+        providers: () => rtv?.listProviders() ?? [],
+        credentials: (id) => rtv?.providerCredentials(id) ?? null,
+        localOnly: () => desktop.broker.view().localOnly,
+        audit: (e) => desktop.audit.append({ ...e, source: 'voice' }),
+        openChat: () => this.windowManager.createAiChatWindow(),
+      });
+      voice.registerIpc();
+      // 麦克风：只允许本应用窗口申请「音频」采集（不允许摄像头 / 屏幕）；
+      // 其余权限（geolocation / notifications / HID / MIDI / pointerLock 等）一律拒绝。
+      session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+        if (permission === 'media') {
+          const types = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
+          callback(types.length > 0 && types.every((t) => t === 'audio'));
+          return;
+        }
+        callback(false);
+      });
+      // 权限检查（持久化授权查询等）同样默认拒绝，媒体例外
+      session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+        return permission === 'media';
+      });
 
       // 创建主窗口
       await this.windowManager.createMainWindow();
+      // 提醒调度：主窗口创建后开始（错过的提醒要在看板娘气泡里播报）
+      desktop.startReminders();
+      kb.start();
+      mem.start();
+      sched.start();
+      scr.start();
+
+      // 托盘：一键切换 AI provider
+      this.startTray();
 
       this.logger.info('应用启动完成');
       eventBus.emit('app:started');
@@ -102,11 +389,112 @@ export class Application implements IApplication {
   }
 
   /**
+   * 启动 AI runtime（插件宿主 + IPC 通道 + seams）
+   *
+   * 幂等：重复调用会直接返回。失败时记录日志但不抛出——AI 功能对应用启动
+   * 不是强依赖；后续可以通过 `getAIRuntime()` 判断可用性。
+   */
+  async startAIRuntime(): Promise<void> {
+    if (this.aiRuntime) {
+      this.logger.debug('AI runtime already started');
+      return;
+    }
+    try {
+      this.clipboardGateway = new ClipboardGateway();
+      const screen = new ScreenCapture();
+      const ttsEngine = new AdvancedTTSEngine();
+      const electronNativeTts = new TtsElectronNativeProvider({ engine: ttsEngine });
+      this.aiRuntime = await startAIRuntime(this.logger, {
+        seams: {
+          clipboard: this.clipboardGateway,
+          screen,
+        },
+        ttsProviders: [electronNativeTts],
+      });
+      this.logger.info('AI runtime 启动完成', {
+        profile: this.aiRuntime.profile,
+        channelCount: this.aiRuntime.channels.business.length,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('AI runtime 启动失败', { error: errorMessage });
+    }
+  }
+
+  /** 系统托盘（provider 快速切换）；失败不影响启动。 */
+  private startTray(): void {
+    const providers = this.aiRuntime?.providers;
+    if (!providers || this.trayManager) return;
+    this.trayManager = new TrayManager({
+      providers,
+      logger: this.logger,
+      openChat: () => {
+        void this.windowManager.createAiChatWindow();
+      },
+      openProviderPanel: () => {
+        void this.windowManager.openProviderPanel();
+      },
+      openDesktopPanel: () => {
+        void this.windowManager.openProviderPanel('ai:desktop:open-panel');
+      },
+      quit: () => app.quit(),
+      models: getModelService(this.logger),
+      screenMemory: getScreenService()
+        ? {
+            active: () => getScreenService()!.active(),
+            onChange: (fn) => getScreenService()!.onChange(fn),
+            pause: (m) => getScreenService()!.pause(m),
+            open: () => void this.windowManager.openProviderPanel('ai:screen:open-panel'),
+          }
+        : undefined,
+    });
+    this.trayManager.start();
+  }
+
+  /**
+   * 停止 AI runtime；幂等。
+   */
+  async stopAIRuntime(): Promise<void> {
+    getMemoryService()?.flush();
+    getSchedulerService()?.stop();
+    getIslandService()?.destroy();
+    getScreenService()?.stop();
+    getLocalHubService()?.stop();
+    void getLocalModelService()?.stop();
+    try {
+      getUpdateService(this.logger).stop();
+    } catch {
+      /* not started */
+    }
+    getAgentProgressService()?.stop();
+    this.trayManager?.dispose();
+    this.trayManager = undefined;
+    if (!this.aiRuntime) return;
+    const handle = this.aiRuntime;
+    this.aiRuntime = undefined;
+    try {
+      await handle.dispose();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn('AI runtime 停止时出现异常', { error: errorMessage });
+    }
+    try {
+      this.clipboardGateway?.dispose();
+    } catch {
+      /* ignore */
+    }
+    this.clipboardGateway = undefined;
+  }
+
+  /**
    * 停止应用
    */
   async stop(): Promise<void> {
     try {
       this.logger.info('停止应用...');
+
+      // 停止 AI runtime（务必先于 IPC 清理，避免通道注册器空指针）
+      await this.stopAIRuntime();
 
       // 保存配置
       await this.configService.save();
@@ -176,7 +564,7 @@ export class Application implements IApplication {
         logger: this.logger,
         configService: this.configService,
         cacheService: this.cacheService,
-        windowManager: this.windowManager
+        windowManager: this.windowManager,
       });
     });
     this.ipcRegistry = this.container.get<IpcRegistry>('ipcRegistry');
@@ -198,7 +586,7 @@ export class Application implements IApplication {
       priority: 'critical',
       execute: async () => {
         await this.configService.load();
-      }
+      },
     });
 
     // 关键任务：应用事件设置
@@ -208,7 +596,7 @@ export class Application implements IApplication {
       execute: async () => {
         this.setupAppEvents();
       },
-      dependencies: ['load-config']
+      dependencies: ['load-config'],
     });
 
     // 关键任务：IPC处理器初始化
@@ -218,7 +606,7 @@ export class Application implements IApplication {
       execute: async () => {
         this.ipcRegistry.initialize();
       },
-      dependencies: ['load-config']
+      dependencies: ['load-config'],
     });
 
     // 高优先级任务：进程信号处理
@@ -227,7 +615,7 @@ export class Application implements IApplication {
       priority: 'high',
       execute: async () => {
         this.setupProcessHandlers();
-      }
+      },
     });
 
     // 中优先级任务：缓存预热
@@ -244,10 +632,10 @@ export class Application implements IApplication {
         const appInfo = {
           version: app.getVersion(),
           name: app.getName(),
-          isPackaged: app.isPackaged
+          isPackaged: app.isPackaged,
         };
         this.cacheService.set('app:info', appInfo, 60 * 60 * 1000); // 1小时缓存
-      }
+      },
     });
 
     // 低优先级任务：日志清理
@@ -262,7 +650,7 @@ export class Application implements IApplication {
           const errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.warn('清理旧日志失败', { error: errorMessage });
         }
-      }
+      },
     });
 
     // 低优先级任务：系统信息收集
@@ -276,10 +664,10 @@ export class Application implements IApplication {
           arch: process.arch,
           nodeVersion: process.version,
           electronVersion: process.versions.electron,
-          memory: process.memoryUsage()
+          memory: process.memoryUsage(),
         };
         this.logger.info('系统信息', systemInfo);
-      }
+      },
     });
   }
 
@@ -317,8 +705,6 @@ export class Application implements IApplication {
       app.quit();
     });
   }
-
-
 
   /**
    * 设置进程信号处理
@@ -384,8 +770,8 @@ export class Application implements IApplication {
       cache: this.cacheService.getStats(),
       bootstrap: {
         taskStatus: this.bootstrapManager.getTaskStatus(),
-        performanceReport: this.bootstrapManager.getPerformanceReport()
-      }
+        performanceReport: this.bootstrapManager.getPerformanceReport(),
+      },
     };
   }
 }

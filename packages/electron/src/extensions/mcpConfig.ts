@@ -1,0 +1,209 @@
+import { t } from '../i18n';
+/**
+ * MCP 服务器配置（GUI 管理）：校验、导入（通用 `mcpServers` JSON / 数组）、预设与脱敏。
+ */
+export type Transport = 'stdio' | 'http' | 'sse';
+/** ask = 每次调用都确认；read-auto = 只读工具自动，其它确认；auto = 全部自动（仍记审计） */
+export type Trust = 'ask' | 'read-auto' | 'auto';
+
+export interface McpServerEntry {
+  id: string;
+  name: string;
+  transport: Transport;
+  command?: string;
+  args?: string[];
+  url?: string;
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
+  enabled: boolean;
+  trust: Trust;
+  /** env = 来自环境变量 MCP_SERVERS（只读） */
+  origin: 'user' | 'env';
+}
+
+const ID_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+
+export function slugId(name: string, taken: Set<string>): string {
+  let base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 24) || 'mcp';
+  if (!/^[a-z0-9]/.test(base)) base = `s${base}`;
+  let id = base;
+  for (let i = 2; taken.has(id); i++) id = `${base}-${i}`;
+  return id;
+}
+
+const strMap = (v: unknown): Record<string, string> | undefined => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, x] of Object.entries(v as Record<string, unknown>))
+    if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(k) && x != null) out[k] = String(x);
+  return Object.keys(out).length ? out : undefined;
+};
+
+export class McpConfigError extends Error {}
+
+export function sanitizeServer(raw: unknown, taken = new Set<string>()): McpServerEntry {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const name = String(o.name ?? o.id ?? '')
+    .trim()
+    .slice(0, 60);
+  if (!name) throw new McpConfigError(t('请填写名称'));
+  let transport: Transport =
+    o.transport === 'http' || o.transport === 'sse' ? o.transport : 'stdio';
+  if (!o.transport && typeof o.url === 'string')
+    transport = /\/sse\/?$/.test(o.url) ? 'sse' : 'http';
+  const id = typeof o.id === 'string' && ID_RE.test(o.id) ? o.id : slugId(name, taken);
+  const e: McpServerEntry = {
+    id,
+    name,
+    transport,
+    enabled: o.enabled !== false,
+    trust: o.trust === 'auto' || o.trust === 'read-auto' ? o.trust : 'ask',
+    origin: o.origin === 'env' ? 'env' : 'user',
+  };
+  if (transport === 'stdio') {
+    const command = String(o.command ?? '').trim();
+    if (!command) throw new McpConfigError(t('本地（stdio）服务器需要填写启动命令'));
+    if (/[\n\r]/.test(command)) throw new McpConfigError(t('命令不能包含换行'));
+    e.command = command;
+    e.args = Array.isArray(o.args) ? o.args.map(String).slice(0, 64) : [];
+    e.env = strMap(o.env);
+  } else {
+    const url = String(o.url ?? '').trim();
+    let u: URL;
+    try {
+      u = new URL(url);
+    } catch {
+      throw new McpConfigError(t('请填写有效的服务器地址（http/https）'));
+    }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:')
+      throw new McpConfigError(t('服务器地址只支持 http / https'));
+    e.url = u.toString();
+    e.headers = strMap(o.headers);
+  }
+  return e;
+}
+
+/** 导入：支持 `{ "mcpServers": { name: {...} } }`、`{ name: {...} }` 或数组 */
+export function parseImport(text: string, existing: string[] = []): McpServerEntry[] {
+  let j: unknown;
+  try {
+    j = JSON.parse(text);
+  } catch {
+    throw new McpConfigError(t('不是有效的 JSON'));
+  }
+  const taken = new Set(existing);
+  const items: Array<Record<string, unknown>> = [];
+  if (Array.isArray(j)) items.push(...(j as Array<Record<string, unknown>>));
+  else if (j && typeof j === 'object') {
+    const root = (j as Record<string, unknown>).mcpServers ?? j;
+    if (root && typeof root === 'object' && !Array.isArray(root))
+      for (const [name, v] of Object.entries(root as Record<string, unknown>))
+        if (v && typeof v === 'object') items.push({ name, ...(v as Record<string, unknown>) });
+  }
+  if (!items.length) throw new McpConfigError(t('没有找到服务器配置'));
+  const out: McpServerEntry[] = [];
+  for (const it of items) {
+    const e = sanitizeServer({ ...it, origin: 'user', trust: 'ask' }, taken);
+    taken.add(e.id);
+    out.push(e);
+  }
+  return out;
+}
+
+const SECRET_KEY = /(key|token|secret|password|passwd|auth|cookie|credential)/i;
+
+/** 给界面看的版本：敏感值打码 */
+export function maskServer(e: McpServerEntry): McpServerEntry {
+  const mask = (m?: Record<string, string>) =>
+    m &&
+    Object.fromEntries(
+      Object.entries(m).map(([k, v]) => [
+        k,
+        SECRET_KEY.test(k) && v ? `${v.slice(0, 2)}••••••` : v,
+      ]),
+    );
+  return { ...e, env: mask(e.env), headers: mask(e.headers) };
+}
+
+/** 编辑时：打码值原样回传 → 保留旧值 */
+export function mergeSecrets(
+  next: Record<string, string> | undefined,
+  prev: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  if (!next) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(next))
+    out[k] = v.includes('••••••') && prev?.[k] ? prev[k] : v;
+  return out;
+}
+
+export function isSecretKey(k: string): boolean {
+  return SECRET_KEY.test(k);
+}
+
+/** 只读判断（MCP annotations） */
+export function needsConfirm(trust: Trust, readOnlyHint: boolean): boolean {
+  if (trust === 'auto') return false;
+  if (trust === 'read-auto') return !readOnlyHint;
+  return true;
+}
+
+export interface McpPreset {
+  key: string;
+  name: string;
+  description: string;
+  server: Partial<McpServerEntry>;
+  /** 需要用户填的占位（例如目录） */
+  needs?: string;
+  license: string;
+}
+
+/** 常见官方参考服务器（不随应用分发；首次连接由 npx / uvx 从包仓库获取） */
+export const MCP_PRESETS: McpPreset[] = [
+  {
+    key: 'filesystem',
+    name: '文件系统',
+    description: '读写你指定的文件夹（官方参考实现）',
+    server: {
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '{dir}'],
+    },
+    needs: 'dir',
+    license: 'MIT',
+  },
+  {
+    key: 'memory',
+    name: '知识图谱记忆',
+    description: '以实体 / 关系保存信息（官方参考实现）',
+    server: {
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-memory'],
+    },
+    license: 'MIT',
+  },
+  {
+    key: 'sequential-thinking',
+    name: '分步思考',
+    description: '帮助模型拆解复杂问题（官方参考实现）',
+    server: {
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+    },
+    license: 'MIT',
+  },
+  {
+    key: 'remote',
+    name: '远程 HTTP 服务器',
+    description: '连接一个 Streamable HTTP / SSE 的 MCP 服务',
+    server: { transport: 'http', url: 'https://' },
+    license: '—',
+  },
+];

@@ -1,0 +1,104 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 12px 0 16px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+}
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cd-color-text-muted);
+  cursor: pointer;
+}
+.btn:hover,
+.btn:focus-visible {
+  background: var(--cd-color-active);
+  color: var(--cd-color-text);
+}
+.actions :global(.cd-tooltip__bubble--bottom) {
+  left: auto;
+  right: 0;
+  transform: none;
+  white-space: nowrap;
+}
+.left {
+  flex: 1;
+  overflow: visible;
+  gap: 2px;
+}
+.pin {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.moreWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--cd-color-surface-raised, #121a2a);
+  border: 1px solid var(--cd-color-border);
+  box-shadow: var(--cd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.4));
+  display: flex;
+  flex-direction: column;
+}
+.ctx {
+  position: fixed;
+  top: auto;
+}
+.popItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cd-color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.popItem:hover:not(:disabled) {
+  background: rgba(var(--cd-accent-rgb), 0.14);
+}
+.popItem:disabled {
+  color: var(--cd-color-text-subtle);
+  cursor: not-allowed;
+}
+.popLabel {
+  flex: 1;
+}
+.popHint {
+  font-size: 11px;
+  color: var(--cd-color-text-subtle);
+}

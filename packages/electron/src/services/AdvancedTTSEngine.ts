@@ -1,6 +1,12 @@
-import { spawn, ChildProcess } from 'child_process';
-import * as path from 'path';
+import { spawn, type ChildProcess } from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
+
+import { t } from '../i18n';
+import { psQuote } from '../security/shellEscape';
+import { createMainLogger } from '../utils/log';
+
+const log = createMainLogger('TTS');
 
 /**
  * TTS音色配置接口
@@ -55,7 +61,15 @@ export class AdvancedTTSEngine {
       let configPath: string;
 
       if (isDev) {
-        configPath = path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json');
+        configPath = path.join(
+          process.cwd(),
+          'packages',
+          'renderer',
+          'public',
+          'assets',
+          'voice',
+          'config.json',
+        );
       } else {
         configPath = path.join(process.resourcesPath, 'renderer', 'assets', 'voice', 'config.json');
       }
@@ -64,7 +78,7 @@ export class AdvancedTTSEngine {
         const configData = fs.readFileSync(configPath, 'utf8');
         const fullConfig = JSON.parse(configData);
         this.config = fullConfig.tts;
-        console.log('AdvancedTTSEngine: 配置加载成功');
+        log.info('AdvancedTTSEngine: 配置加载成功');
       }
     } catch (error) {
       console.error('AdvancedTTSEngine: 配置加载失败:', error);
@@ -76,25 +90,40 @@ export class AdvancedTTSEngine {
    * 设置默认配置
    */
   private setDefaultConfig(): void {
+    // Prefer soft Chinese female system voices; slower rate by default.
+    const softByPlatform: Record<string, string> = {
+      darwin: 'Meijia', // Taiwan Mandarin soft; Ting-Ting is fallback
+      win32: 'Microsoft Huihui Desktop',
+      linux: 'zh', // espeak/espeak-ng zh
+    };
+    const systemVoice = softByPlatform[process.platform] ?? 'default';
     this.config = {
-      currentVoice: 'default',
+      currentVoice: 'soft-zh-female',
       voices: {
-        default: {
-          name: '系统默认',
-          systemVoice: process.platform === 'darwin' ? 'Ting-Ting' : 'default',
-          platform: process.platform as any,
+        'soft-zh-female': {
+          name: t('柔和中文女声'),
+          systemVoice,
+          platform: process.platform as 'darwin' | 'win32' | 'linux',
           language: 'zh-CN',
           gender: 'female',
-          style: 'standard'
-        }
+          style: 'soft',
+        },
+        default: {
+          name: t('系统默认'),
+          systemVoice: process.platform === 'darwin' ? 'Meijia' : systemVoice,
+          platform: process.platform as 'darwin' | 'win32' | 'linux',
+          language: 'zh-CN',
+          gender: 'female',
+          style: 'standard',
+        },
       },
       settings: {
-        speed: 1.0,
-        pitch: 1.0,
-        volume: 0.8,
+        speed: 0.88,
+        pitch: 1.05,
+        volume: 0.78,
         autoSelectByPlatform: true,
-        fallbackToDefault: true
-      }
+        fallbackToDefault: true,
+      },
     };
   }
 
@@ -105,8 +134,8 @@ export class AdvancedTTSEngine {
     if (!this.config) return [];
 
     const currentPlatform = process.platform;
-    return Object.values(this.config.voices).filter(voice =>
-      voice.platform === currentPlatform || !this.config!.settings.autoSelectByPlatform
+    return Object.values(this.config.voices).filter(
+      (voice) => voice.platform === currentPlatform || !this.config!.settings.autoSelectByPlatform,
     );
   }
 
@@ -116,15 +145,17 @@ export class AdvancedTTSEngine {
   public getCurrentVoice(): TTSVoiceConfig | null {
     if (!this.config) return null;
 
-    let voiceId = this.config.currentVoice;
+    const voiceId = this.config.currentVoice;
     let voice = this.config.voices[voiceId];
 
     // 如果启用了平台自动选择，尝试找到适合当前平台的音色
-    if (this.config.settings.autoSelectByPlatform && (!voice || voice.platform !== process.platform)) {
+    if (
+      this.config.settings.autoSelectByPlatform &&
+      (!voice || voice.platform !== process.platform)
+    ) {
       const platformVoices = this.getAvailableVoices();
       if (platformVoices.length > 0) {
         voice = platformVoices[0];
-        voiceId = Object.keys(this.config.voices).find(key => this.config!.voices[key] === voice) || voiceId;
       }
     }
 
@@ -142,7 +173,7 @@ export class AdvancedTTSEngine {
 
     this.config.currentVoice = voiceId;
     await this.saveConfig();
-    console.log(`AdvancedTTSEngine: 切换到音色: ${voiceId}`);
+    log.info(`AdvancedTTSEngine: 切换到音色: ${voiceId}`);
     return true;
   }
 
@@ -154,7 +185,7 @@ export class AdvancedTTSEngine {
 
     this.config.settings = { ...this.config.settings, ...settings };
     await this.saveConfig();
-    console.log('AdvancedTTSEngine: 设置已更新', settings);
+    log.info('AdvancedTTSEngine: 设置已更新', settings);
   }
 
   /**
@@ -166,7 +197,15 @@ export class AdvancedTTSEngine {
       let configPath: string;
 
       if (isDev) {
-        configPath = path.join(process.cwd(), 'packages', 'renderer', 'public', 'assets', 'voice', 'config.json');
+        configPath = path.join(
+          process.cwd(),
+          'packages',
+          'renderer',
+          'public',
+          'assets',
+          'voice',
+          'config.json',
+        );
       } else {
         configPath = path.join(process.resourcesPath, 'renderer', 'assets', 'voice', 'config.json');
       }
@@ -200,7 +239,7 @@ export class AdvancedTTSEngine {
 
         const settings = { ...this.config!.settings, ...options };
 
-        console.log(`AdvancedTTSEngine: 使用音色 ${voice.name} 播放: ${text}`);
+        log.info(`AdvancedTTSEngine: 使用音色 ${voice.name} 播放: ${text}`);
 
         // 根据平台选择播放方式
         this.currentProcess = this.createTTSProcess(text, voice, settings);
@@ -219,7 +258,6 @@ export class AdvancedTTSEngine {
         } else {
           resolve();
         }
-
       } catch (error) {
         console.error('AdvancedTTSEngine: 播放失败:', error);
         resolve();
@@ -230,7 +268,11 @@ export class AdvancedTTSEngine {
   /**
    * 创建TTS进程
    */
-  private createTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess | null {
+  private createTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess | null {
     const platform = process.platform;
 
     switch (platform) {
@@ -249,27 +291,40 @@ export class AdvancedTTSEngine {
   /**
    * 创建macOS TTS进程
    */
-  private createMacOSTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess {
-    const args = [
-      '-v', voice.systemVoice,
-      '-r', Math.round(settings.speed * 200).toString(), // 转换速度范围
-      text
-    ];
-
-    return spawn('say', args);
+  private createMacOSTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess {
+    // ~175 wpm feels softer than the old 200 default
+    const rate = Math.round(Math.max(120, Math.min(220, settings.speed * 200)));
+    const preferred = [voice.systemVoice, 'Meijia', 'Ting-Ting', 'Sinji', 'Yu-shu'].filter(
+      (v, i, a) => v && a.indexOf(v) === i,
+    );
+    // argv 经 POSIX 单引号转义后再拼进 bash，避免文本中的 $ ` " 等被 shell 解释
+    const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
+    // bash: try voices until say succeeds
+    const script = preferred
+      .map((v) => `say -v ${shQuote(v)} -r ${rate} ${shQuote(text)}`)
+      .join(' || ');
+    return spawn('bash', ['-lc', script]);
   }
 
   /**
    * 创建Windows TTS进程
    */
-  private createWindowsTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess {
+  private createWindowsTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess {
     const script = `
       Add-Type -AssemblyName System.speech;
       $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;
-      $speak.SelectVoice('${voice.systemVoice}');
+      $speak.SelectVoice(${psQuote(voice.systemVoice)});
       $speak.Rate = ${Math.round((settings.speed - 1) * 10)};
       $speak.Volume = ${Math.round(settings.volume * 100)};
-      $speak.Speak('${text.replace(/'/g, "''")}');
+      $speak.Speak(${psQuote(text)});
     `;
 
     return spawn('powershell', ['-Command', script]);
@@ -278,18 +333,27 @@ export class AdvancedTTSEngine {
   /**
    * 创建Linux TTS进程
    */
-  private createLinuxTTSProcess(text: string, voice: TTSVoiceConfig, settings: TTSSettings): ChildProcess {
+  private createLinuxTTSProcess(
+    text: string,
+    voice: TTSVoiceConfig,
+    settings: TTSSettings,
+  ): ChildProcess {
+    // Slower espeak; zh+f3 approximates a softer female when available
     const args = [
-      '-v', voice.systemVoice,
-      '-s', Math.round(settings.speed * 160).toString(),
-      text
+      '-v',
+      voice.systemVoice.includes('zh') ? voice.systemVoice : 'zh',
+      '-s',
+      Math.round(Math.max(100, settings.speed * 140)).toString(),
+      '-p',
+      Math.round(40 + settings.pitch * 20).toString(),
+      text,
     ];
 
     const process = spawn('espeak', args);
 
     // 如果espeak失败，尝试festival
     process.on('error', () => {
-      console.log('AdvancedTTSEngine: espeak失败，尝试festival');
+      log.info('AdvancedTTSEngine: espeak失败，尝试festival');
       return spawn('echo', [text, '|', 'festival', '--tts']);
     });
 
@@ -303,14 +367,17 @@ export class AdvancedTTSEngine {
     if (this.currentProcess) {
       this.currentProcess.kill();
       this.currentProcess = null;
-      console.log('AdvancedTTSEngine: 停止播放');
+      log.info('AdvancedTTSEngine: 停止播放');
     }
   }
 
   /**
    * 测试音色
    */
-  public async testVoice(voiceId: string, testText: string = '这是一个语音测试'): Promise<boolean> {
+  public async testVoice(
+    voiceId: string,
+    testText: string = t('这是一个语音测试'),
+  ): Promise<boolean> {
     if (!this.config || !this.config.voices[voiceId]) {
       return false;
     }
@@ -333,7 +400,11 @@ export class AdvancedTTSEngine {
   /**
    * 获取音色统计信息
    */
-  public getVoiceStats(): { total: number; byPlatform: Record<string, number>; byGender: Record<string, number> } {
+  public getVoiceStats(): {
+    total: number;
+    byPlatform: Record<string, number>;
+    byGender: Record<string, number>;
+  } {
     if (!this.config) {
       return { total: 0, byPlatform: {}, byGender: {} };
     }
@@ -342,10 +413,10 @@ export class AdvancedTTSEngine {
     const stats = {
       total: voices.length,
       byPlatform: {} as Record<string, number>,
-      byGender: {} as Record<string, number>
+      byGender: {} as Record<string, number>,
     };
 
-    voices.forEach(voice => {
+    voices.forEach((voice) => {
       stats.byPlatform[voice.platform] = (stats.byPlatform[voice.platform] || 0) + 1;
       stats.byGender[voice.gender] = (stats.byGender[voice.gender] || 0) + 1;
     });

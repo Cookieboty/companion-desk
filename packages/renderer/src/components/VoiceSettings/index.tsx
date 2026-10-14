@@ -1,6 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { VoiceSettings as VoiceSettingsType } from '@ig-live/types';
-import { VoiceService } from '../../services/VoiceService';
+import type { ModelVoiceConfig } from '@nomi-ai/types';
+import { type VoiceSettings as VoiceSettingsType } from '@nomi-ai/types';
+import { t as tr } from '@nomi-ai/ui';
+import { Modal, Switch } from '@nomi-ai/ui';
+import React, { useState, useEffect, useCallback } from 'react';
+
+import {
+  clearCharacterVoiceOverride,
+  getActiveCharacter,
+  loadSoftSpeechPrefs,
+  previewVoiceName,
+  resolvePrefsForCharacter,
+  saveCharacterVoice,
+  saveSoftSpeechPrefs,
+  speakForActiveCharacter,
+  type SoftSpeechPrefs,
+} from '../../mascot/characterVoice';
+import { listSoftVoiceChoices } from '../../mascot/softSpeech';
+import { type VoiceService } from '../../services/VoiceService';
+
+import styles from './style.module.css';
 
 interface VoiceSettingsProps {
   voiceService: VoiceService;
@@ -9,151 +27,51 @@ interface VoiceSettingsProps {
   onSettingsChange?: () => void;
 }
 
-const styles = {
-  overlay: {
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  panel: {
-    background: 'white',
-    borderRadius: '8px',
-    width: '400px',
-    maxHeight: '80vh',
-    overflowY: 'auto' as const,
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-    position: 'relative' as const,
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 20px',
-    borderBottom: '1px solid #eee',
-    background: '#f8f9fa',
-    borderRadius: '8px 8px 0 0',
-  },
-  title: {
-    margin: 0,
-    color: '#333',
-    fontSize: '18px',
-  },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    fontSize: '24px',
-    cursor: 'pointer',
-    color: '#666',
-    padding: 0,
-    width: '30px',
-    height: '30px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '4px',
-  },
-  content: {
-    padding: '20px',
-  },
-  settingGroup: {
-    marginBottom: '24px',
-  },
-  groupTitle: {
-    margin: '0 0 12px 0',
-    color: '#333',
-    fontSize: '16px',
-    fontWeight: 600,
-  },
-  settingItem: {
-    marginBottom: '12px',
-  },
-  label: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    cursor: 'pointer',
-    color: '#555',
-  },
-  rangeInput: {
-    flex: 1,
-    marginLeft: '12px',
-  },
-  testButtons: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: '8px',
-  },
-  testButton: {
-    padding: '8px 16px',
-    background: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  helpText: {
-    fontSize: '14px',
-    color: '#666',
-    lineHeight: 1.5,
-  },
-  helpParagraph: {
-    margin: '8px 0',
-  },
-  loadingOverlay: {
-    position: 'absolute' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(255, 255, 255, 0.8)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '8px',
-  },
-  loadingSpinner: {
-    padding: '12px 24px',
-    background: '#333',
-    color: 'white',
-    borderRadius: '4px',
-    fontSize: '14px',
-  },
-};
-
 export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
   voiceService,
   isVisible,
   onClose,
-  onSettingsChange
+  onSettingsChange,
 }) => {
   const [settings, setSettings] = useState<VoiceSettingsType | null>(null);
+  const [soft, setSoft] = useState<SoftSpeechPrefs>(() => loadSoftSpeechPrefs());
+  const [charPrefs, setCharPrefs] = useState<SoftSpeechPrefs>(() => resolvePrefsForCharacter());
+  const [charName, setCharName] = useState<string | null>(null);
+  const [voices, setVoices] = useState<ReturnType<typeof listSoftVoiceChoices>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const refreshVoices = useCallback(() => {
+    setVoices(listSoftVoiceChoices());
+  }, []);
+
+  const refreshCharacter = useCallback(() => {
+    const { name, config } = getActiveCharacter();
+    setCharName(name);
+    setCharPrefs(resolvePrefsForCharacter(name, config));
+    setSoft(loadSoftSpeechPrefs());
+  }, []);
+
   useEffect(() => {
-    if (isVisible) {
-      loadSettings();
-    }
-  }, [isVisible]);
+    if (!isVisible) return;
+    setSettings(voiceService.getSettings());
+    refreshCharacter();
+    refreshVoices();
+    const synth = window.speechSynthesis;
+    synth?.addEventListener('voiceschanged', refreshVoices);
+    const t = setTimeout(refreshVoices, 300);
+    return () => {
+      synth?.removeEventListener('voiceschanged', refreshVoices);
+      clearTimeout(t);
+    };
+  }, [isVisible, voiceService, refreshVoices, refreshCharacter]);
 
-  const loadSettings = () => {
-    const currentSettings = voiceService.getSettings();
-    setSettings(currentSettings);
-  };
-
-  const handleSettingChange = async (key: keyof VoiceSettingsType, value: any) => {
+  const handleSettingChange = async (
+    key: keyof VoiceSettingsType,
+    value: VoiceSettingsType[keyof VoiceSettingsType],
+  ) => {
     if (!settings) return;
-
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
-
     setIsLoading(true);
     try {
       await voiceService.updateSettings({ [key]: value });
@@ -165,109 +83,204 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     }
   };
 
+  const patchGlobal = (patch: Partial<SoftSpeechPrefs>) => {
+    setSoft(saveSoftSpeechPrefs(patch));
+  };
+
+  const patchCharacter = async (patch: ModelVoiceConfig) => {
+    if (!charName) return;
+    const { config } = getActiveCharacter();
+    setIsLoading(true);
+    try {
+      await saveCharacterVoice(charName, patch, config);
+      setCharPrefs(
+        resolvePrefsForCharacter(charName, { ...config, voice: { ...config?.voice, ...patch } }),
+      );
+      onSettingsChange?.();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isVisible || !settings) {
     return null;
   }
 
+  const off = isLoading || !settings.enabled;
+  const preview = previewVoiceName(charPrefs);
+
   return (
-    <div style={styles.overlay}>
-      <div style={styles.panel}>
-        <div style={styles.header}>
-          <h3 style={styles.title}>语音设置</h3>
-          <button
-            style={{
-              ...styles.closeButton,
-              opacity: isLoading ? 0.5 : 1,
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-            }}
-            onClick={onClose}
-            disabled={isLoading}
+    <Modal
+      open
+      onClose={onClose}
+      title={tr('语音设置')}
+      className={styles.panel}
+      data-testid="voice-settings"
+    >
+      <section className={styles.group}>
+        <h4 className="cd-section-title">{tr('基本设置')}</h4>
+        <Switch
+          checked={settings.enabled}
+          onChange={(v) => handleSettingChange('enabled', v)}
+          disabled={isLoading}
+          label={tr('启用语音功能')}
+        />
+        <label className={styles.range}>
+          <span>
+            {tr('音量:')} {Math.round(settings.volume * 100)}%
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={settings.volume}
+            onChange={(e) => handleSettingChange('volume', parseFloat(e.target.value))}
+            disabled={off}
+          />
+        </label>
+      </section>
+
+      <section className={styles.group}>
+        <h4 className="cd-section-title">{tr('当前角色音色')}</h4>
+        <p
+          className="cd-muted"
+          style={{ marginBottom: 8, fontSize: 12 }}
+          data-testid="char-voice-label"
+        >
+          {tr('角色：')}
+          <strong>{charName ?? tr('（未选择）')}</strong>
+          <br />
+          {tr('将使用：')}
+          {preview}
+        </p>
+        <label className={styles.range}>
+          <span>{tr('音色（本角色）')}</span>
+          <select
+            data-testid="char-speech-voice"
+            value={charPrefs.voiceURI}
+            disabled={off || !charName}
+            onChange={(e) => void patchCharacter({ voiceURI: e.target.value })}
+            style={{ width: '100%', marginTop: 4 }}
           >
-            ×
+            <option value="">{tr('自动（角色默认 / 柔和女声）')}</option>
+            {voices.map((v) => (
+              <option key={v.voiceURI} value={v.voiceURI}>
+                {v.neural ? '✦ ' : ''}
+                {tr(v.name)} ({v.lang})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.range}>
+          <span>
+            {tr('语速:')} {charPrefs.rate.toFixed(2)}×
+          </span>
+          <input
+            type="range"
+            min="0.7"
+            max="1.15"
+            step="0.01"
+            value={charPrefs.rate}
+            data-testid="char-speech-rate"
+            onChange={(e) => void patchCharacter({ rate: parseFloat(e.target.value) })}
+            disabled={off || !charName}
+          />
+        </label>
+        <label className={styles.range}>
+          <span>
+            {tr('音高:')} {charPrefs.pitch.toFixed(2)}
+          </span>
+          <input
+            type="range"
+            min="0.85"
+            max="1.25"
+            step="0.01"
+            value={charPrefs.pitch}
+            data-testid="char-speech-pitch"
+            onChange={(e) => void patchCharacter({ pitch: parseFloat(e.target.value) })}
+            disabled={off || !charName}
+          />
+        </label>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="cd-btn cd-btn--sm"
+            data-testid="char-speech-test"
+            disabled={off}
+            onClick={() =>
+              speakForActiveCharacter(tr('你好，我是 Nomi。今天也一起加油吧。'), {
+                prefs: { ...charPrefs, volume: settings.volume },
+              })
+            }
+          >
+            {tr('试听本角色')}
+          </button>
+          <button
+            type="button"
+            className="cd-btn cd-btn--sm"
+            data-testid="char-speech-reset"
+            disabled={off || !charName}
+            onClick={() => {
+              if (!charName) return;
+              clearCharacterVoiceOverride(charName);
+              refreshCharacter();
+            }}
+          >
+            {tr('恢复角色默认')}
           </button>
         </div>
+      </section>
 
-        <div style={styles.content}>
-          {/* 基本设置 */}
-          <div style={styles.settingGroup}>
-            <h4 style={styles.groupTitle}>基本设置</h4>
+      <section className={styles.group}>
+        <h4 className="cd-section-title">{tr('全局柔和偏好')}</h4>
+        <Switch
+          checked={soft.preferNeural}
+          onChange={(v) => patchGlobal({ preferNeural: v })}
+          disabled={off}
+          label={tr('优先 Edge / 在线自然语音（Neural）')}
+        />
+        <p className="cd-muted" style={{ fontSize: 12 }}>
+          {tr(
+            '全局偏好影响「自动」选声；语速/音高以当前角色绑定为准（见上）。详见 docs/VOICE.md。',
+          )}
+        </p>
+      </section>
 
-            <div style={styles.settingItem}>
-              <label style={styles.label}>
-                <input
-                  type="checkbox"
-                  checked={settings.enabled}
-                  onChange={(e) => handleSettingChange('enabled', e.target.checked)}
-                  disabled={isLoading}
-                />
-                启用语音功能
-              </label>
-            </div>
+      <section className={styles.group}>
+        <h4 className="cd-section-title">{tr('功能设置')}</h4>
+        <Switch
+          checked={settings.keyboardListening}
+          onChange={(v) => handleSettingChange('keyboardListening', v)}
+          disabled={off}
+          label={tr('键盘监听（根据输入内容播放语音）')}
+        />
+        <Switch
+          checked={settings.timeAnnouncement}
+          onChange={(v) => handleSettingChange('timeAnnouncement', v)}
+          disabled={off}
+          label={tr('定时播报（根据时间播放问候语音）')}
+        />
+      </section>
 
-            <div style={styles.settingItem}>
-              <label style={styles.label}>
-                音量: {Math.round(settings.volume * 100)}%
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={settings.volume}
-                  onChange={(e) => handleSettingChange('volume', parseFloat(e.target.value))}
-                  disabled={isLoading || !settings.enabled}
-                  style={styles.rangeInput}
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* 功能设置 */}
-          <div style={styles.settingGroup}>
-            <h4 style={styles.groupTitle}>功能设置</h4>
-
-            <div style={styles.settingItem}>
-              <label style={styles.label}>
-                <input
-                  type="checkbox"
-                  checked={settings.keyboardListening}
-                  onChange={(e) => handleSettingChange('keyboardListening', e.target.checked)}
-                  disabled={isLoading || !settings.enabled}
-                />
-                键盘监听（根据输入内容播放语音）
-              </label>
-            </div>
-
-            <div style={styles.settingItem}>
-              <label style={styles.label}>
-                <input
-                  type="checkbox"
-                  checked={settings.timeAnnouncement}
-                  onChange={(e) => handleSettingChange('timeAnnouncement', e.target.checked)}
-                  disabled={isLoading || !settings.enabled}
-                />
-                定时播报（根据时间播放问候语音）
-              </label>
-            </div>
-          </div>
-
-          {/* 说明文字 */}
-          <div style={styles.settingGroup}>
-            <h4 style={styles.groupTitle}>使用说明</h4>
-            <div style={styles.helpText}>
-              <p style={styles.helpParagraph}>• <strong>键盘监听</strong>：监听全局键盘输入，当检测到编程关键词时播放相应语音</p>
-              <p style={styles.helpParagraph}>• <strong>定时播报</strong>：根据当前时间自动播放问候语音</p>
-              <p style={styles.helpParagraph}>• <strong>支持的关键词</strong>：function、if、for、await、catch、import 等编程关键词</p>
-              <p style={styles.helpParagraph}>• <strong>时间播报</strong>：早上、中午、下午、晚上、深夜时段的问候语</p>
-            </div>
-          </div>
-        </div>
-
-        {isLoading && (
-          <div style={styles.loadingOverlay}>
-            <div style={styles.loadingSpinner}>加载中...</div>
-          </div>
-        )}
-      </div>
-    </div>
+      <section className={styles.group}>
+        <h4 className="cd-section-title">{tr('使用说明')}</h4>
+        <ul className={styles.help}>
+          <li>
+            <strong>{tr('按角色绑定')}</strong>
+            {tr('：每个模型可有独立 OS 音色 + 语速/音高；切换角色自动切换。')}
+          </li>
+          <li>
+            <strong>{tr('持久化')}</strong>
+            {tr('：覆盖写入 localStorage，并尽量写入模型 config.voice（用户导入模型）。')}
+          </li>
+          <li>
+            <strong>{tr('键盘 / 定时')}</strong>
+            {tr('：同样走当前角色的柔和朗读。')}
+          </li>
+        </ul>
+      </section>
+      {isLoading && <div className="cd-muted">{tr('保存中…')}</div>}
+    </Modal>
   );
-}; 
+};

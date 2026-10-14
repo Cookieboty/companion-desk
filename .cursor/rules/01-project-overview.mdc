@@ -1,33 +1,24 @@
 ---
-description: 
-globs: 
+description: Nomi 项目概览与包职责
+globs:
 alwaysApply: true
 ---
-# 项目概述
+# Nomi（nomi-ai）
 
-本项目是一个基于Electron和React的桌面看板娘应用，使用pnpm workspace + Turborepo进行工程化管理。
+本地运行的桌面 AI 助手：Electron 主进程 + React 渲染层，pnpm workspace + Turborepo 单仓。
+桌宠形象只保留 **Nomi**（分层 Canvas2D 精灵 rig），另支持用户导入自定义 VRM 模型（three.js，按需懒加载）。
+AI 能力由自研 `@nomi-ai/ai-runtime` + Vercel AI SDK（`ai`、`@ai-sdk/*`、`@ai-sdk/mcp`）提供，**不再依赖 dsh**。
 
-## 基本结构
+## 包职责（packages/*）
+- `electron`：主进程。窗口 / 托盘 / 灵动岛、自动更新、日程与系统日历、Agent 进度监控、本地模型、知识库、记忆、语音、桌面工具、MCP 扩展（`extensions/`）、安全（`security/`）。
+- `ai-runtime`：主进程 AI 运行时（IgPluginHost、AiSdkBooter、Provider 路由、IPC 服务端、MCP 桥 `ai-sdk/mcpBridge.ts`）。
+- `ai-sdk`：环境无关门面（AIClient + Facade + DTO + zod）。`ai-sdk-client`：渲染进程薄客户端 + React hooks + preload 白名单桥（`window.aiIPC`）。
+- `bundle-ig-base` / `bundle-ig-electron-caps` / `bundle-ig-mascot`：插件能力包（通用 AI 能力 / Electron 独占能力 / 桌宠能力）。
+- `ai-chat`：对话窗口（Codex 风格聊天、设置页、引导、各功能面板）。`renderer`：桌宠窗口（Nomi rig、气泡、工具栏）。
+- `ui`：设计 token、4 套主题、共享组件、i18n（`src/locales/en.json`，中文即 key）。`voice`：麦克风 / VAD / 唤醒词。`types`：共享类型。
 
-项目包含三个主要模块：
-
-- [packages/electron](mdc:packages/electron/package.json) - Electron主进程和预加载脚本
-- [packages/renderer](mdc:packages/renderer/package.json) - 基于React的前端UI
-- [packages/types](mdc:packages/types/package.json) - 共享类型定义
-
-## 核心配置文件
-
-- [package.json](mdc:package.json) - 项目根配置
-- [pnpm-workspace.yaml](mdc:pnpm-workspace.yaml) - 工作区配置
-- [turbo.json](mdc:turbo.json) - Turborepo配置
-
-## 功能特点
-
-- 透明无边框窗口
-- 窗口拖拽
-- 窗口置顶切换
-- 加载和显示Live2D模型
-- 模型互动和消息气泡
-- 开发模式下支持热重载
-
-## 禁止在所有的操作中生成示例
+## 不变量
+- 用户可见文案用中文写并经 `t()` / `tr()` 包裹，英文放 `locales/en.json`；`pnpm check:i18n` 必须通过。
+- 渲染进程只能经 preload 暴露的**具名白名单**访问主进程，禁止新增泛化 `invoke(channel)`。
+- 旧版用户数据迁移（`electron/src/utils/legacyUserData.ts`）与 IPC 协议名保持向后兼容。
+- 新增依赖 / 资产必须是开源许可，`pnpm check:licenses` 必须通过。

@@ -1,0 +1,302 @@
+/* 新手引导：全窗遮罩 + 居中卡片，配色全部走主题令牌 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--cd-z-modal, 1000) + 10);
+  display: grid;
+  place-items: center;
+  padding: calc(24px + var(--cd-titlebar-h, 0px)) 24px 24px;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(var(--cd-accent-rgb), 0.16), transparent 60%),
+    var(--cd-color-overlay, rgba(0, 0, 0, 0.55));
+  backdrop-filter: blur(8px);
+  animation: fade 0.24s ease-out;
+}
+.card {
+  width: min(860px, 100%);
+  max-height: min(820px, calc(100vh - 48px - var(--cd-titlebar-h, 0px)));
+  font-size: var(--cd-font-size-md);
+  display: flex;
+  flex-direction: column;
+  background: var(--cd-color-surface-raised, var(--cd-color-surface));
+  color: var(--cd-color-text);
+  border: 1px solid var(--cd-color-border);
+  border-radius: 18px;
+  box-shadow: var(--cd-shadow-lg);
+  overflow: hidden;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 0;
+}
+.dots {
+  display: flex;
+  gap: 6px;
+}
+.dot {
+  width: 22px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--cd-color-border);
+  transition:
+    background 0.2s,
+    width 0.2s;
+}
+.dotDone {
+  background: rgba(var(--cd-accent-rgb), 0.45);
+}
+.dotOn {
+  width: 34px;
+  background: var(--cd-color-accent);
+}
+.skipAll {
+  background: none;
+  border: 0;
+  color: var(--cd-color-text-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.skipAll:hover {
+  color: var(--cd-color-text);
+  background: var(--cd-color-hover);
+}
+.step {
+  padding: 18px 28px 8px;
+  overflow: auto;
+  animation: rise 0.28s ease-out;
+}
+.kicker {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--cd-color-accent);
+  margin-bottom: 6px;
+}
+.title {
+  margin: 0 0 18px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-surface);
+  color: var(--cd-color-text);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.15s;
+}
+.option:hover {
+  background: var(--cd-color-hover);
+  transform: translateY(-1px);
+}
+.optionSmall {
+  padding: 10px 12px;
+}
+.optionOn {
+  border-color: var(--cd-color-accent);
+  box-shadow: 0 0 0 1px var(--cd-color-accent) inset;
+  background: var(--cd-color-accent-soft, var(--cd-color-hover));
+}
+.optionTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.optionHint {
+  font-size: 12px;
+  color: var(--cd-color-text-muted);
+}
+.swatch {
+  width: 100%;
+  height: 46px;
+  border-radius: 8px;
+  border: 1px solid var(--cd-color-border);
+  margin-bottom: 4px;
+}
+.optionSmall .swatch {
+  height: 26px;
+}
+.subLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--cd-color-text-muted);
+  margin-top: 6px;
+}
+.chars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  max-height: 210px;
+  overflow: auto;
+  padding: 2px;
+}
+.char {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-surface);
+  color: var(--cd-color-text);
+  cursor: pointer;
+}
+.char:hover {
+  background: var(--cd-color-hover);
+}
+.charAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--cd-color-text-on-accent, #fff);
+  background: linear-gradient(
+    135deg,
+    var(--cd-color-accent),
+    var(--cd-color-accent-2, var(--cd-color-accent))
+  );
+}
+.charName {
+  font-size: 12.5px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.input {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-surface-sunken, var(--cd-color-bg));
+  color: var(--cd-color-text);
+  font-size: 14px;
+  outline: none;
+}
+.input:focus {
+  border-color: var(--cd-color-accent);
+  box-shadow: var(--cd-focus-ring);
+}
+.note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--cd-color-text-muted);
+}
+.provider {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--cd-color-border);
+  border-radius: 12px;
+  padding: 8px;
+  background: var(--cd-color-bg);
+}
+.privacy {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.privacy li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--cd-color-surface);
+  border: 1px solid var(--cd-color-border);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--cd-color-border);
+}
+.grow {
+  flex: 1;
+}
+.ghost,
+.primary {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.ghost {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--cd-color-text-muted);
+}
+.ghost:hover:not(:disabled) {
+  background: var(--cd-color-hover);
+  color: var(--cd-color-text);
+}
+.ghost:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.primary {
+  border: 0;
+  background: var(--cd-color-accent);
+  color: var(--cd-color-text-on-accent, #fff);
+  font-weight: 600;
+  padding: 0 20px;
+}
+.primary:hover {
+  background: var(--cd-color-accent-hover, var(--cd-color-accent));
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .step {
+    animation: none;
+  }
+}

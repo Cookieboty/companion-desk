@@ -1,0 +1,11 @@
+---
+description: AI 运行时与插件包约定
+globs: packages/{ai-runtime,ai-sdk,ai-sdk-client,bundle-ig-*}/**
+alwaysApply: false
+---
+# AI 运行时
+
+- LLM 调用统一经 Vercel AI SDK（`ai` + `@ai-sdk/openai` / `anthropic` / `openai-compatible`）；Provider 配置在 `ai-runtime/src/providers`，密钥走 safeStorage。
+- MCP：`@ai-sdk/mcp` 客户端（`ai-runtime/src/ai-sdk/mcpBridge.ts`），所有工具经 PermissionBroker 确认 + 审计，危险性本地保守推断。
+- `ai-sdk` 与 `ai-sdk-client` 的公开签名保持一致；IPC 通道名定义在各自 `channels.ts`，有快照测试，改动需同步。
+- 插件能力放 bundle-ig-*，按运行环境分包；不要在 bundle-ig-base 里引入 electron。

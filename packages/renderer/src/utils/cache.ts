@@ -3,8 +3,10 @@
  * @module cache
  */
 
-import logger from './logger';
-import { IpcApi } from '@ig-live/types';
+import { type IpcApi } from '@nomi-ai/types';
+import { createLogger } from '@nomi-ai/ui';
+
+const log = createLogger('Cache');
 
 // 声明全局电子API类型
 declare global {
@@ -16,7 +18,7 @@ declare global {
 /**
  * 缓存前缀
  */
-const CACHE_PREFIX = 'live2d_';
+const CACHE_PREFIX = 'mascot_';
 
 /**
  * 从缓存获取数据，优先尝试Electron API
@@ -29,7 +31,7 @@ export async function getCache<T>(key: string, defaultValue?: T): Promise<T | nu
     if (window.electronAPI && key === 'modelName') {
       const value = await window.electronAPI.getSavedModel();
       if (value) {
-        console.info(`[Cache] 从Electron获取缓存成功: ${key}=${value}`);
+        log.info(`[Cache] 从Electron获取缓存成功: ${key}=${value}`);
         return value as unknown as T;
       }
     }
@@ -64,7 +66,7 @@ export async function setCache<T>(key: string, data: T): Promise<boolean> {
         // 这些值仅保存在localStorage，不同步到Electron
       } else if (key === 'modelName') {
         await window.electronAPI.saveModel(data as unknown as string);
-        console.info(`[Cache] 保存到Electron配置成功: ${key}=${data}`);
+        log.info(`[Cache] 保存到Electron配置成功: ${key}=${data}`);
       }
     }
   } catch (err) {
@@ -75,7 +77,7 @@ export async function setCache<T>(key: string, data: T): Promise<boolean> {
   // 同时保存到localStorage
   try {
     localStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(data));
-    console.info(`[Cache] 保存到localStorage成功: ${key}`);
+    log.info(`[Cache] 保存到localStorage成功: ${key}`);
   } catch (error) {
     console.error('[Cache] 保存到localStorage失败:', error);
     success = false;
@@ -96,7 +98,7 @@ export async function removeCache(key: string): Promise<boolean> {
   try {
     if (window.electronAPI && key === 'modelName') {
       await window.electronAPI.saveModel('');
-      console.info(`[Cache] 从Electron删除缓存成功: ${key}`);
+      log.info(`[Cache] 从Electron删除缓存成功: ${key}`);
     }
   } catch (err) {
     console.warn(`[Cache] 从Electron删除缓存失败: ${key}`, err);
@@ -106,7 +108,7 @@ export async function removeCache(key: string): Promise<boolean> {
   // 从localStorage删除
   try {
     localStorage.removeItem(`${CACHE_PREFIX}${key}`);
-    console.info(`[Cache] 从localStorage删除缓存成功: ${key}`);
+    log.info(`[Cache] 从localStorage删除缓存成功: ${key}`);
   } catch (error) {
     console.error('[Cache] 从localStorage删除缓存失败:', error);
     success = false;
@@ -116,7 +118,7 @@ export async function removeCache(key: string): Promise<boolean> {
 }
 
 /**
- * 清除所有Live2D相关的缓存
+ * 清除所有看板娘相关的缓存
  * @returns 是否成功
  */
 export async function clearAllCache(): Promise<boolean> {
@@ -126,14 +128,14 @@ export async function clearAllCache(): Promise<boolean> {
   try {
     if (window.electronAPI) {
       await window.electronAPI.saveModel('');
-      console.info('[Cache] 从Electron清除模型成功');
+      log.info('[Cache] 从Electron清除模型成功');
     }
   } catch (err) {
     console.warn('[Cache] 从Electron清除模型失败:', err);
     success = false;
   }
 
-  // 清除localStorage中的所有Live2D数据
+  // 清除localStorage中的所有看板娘数据
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -141,11 +143,11 @@ export async function clearAllCache(): Promise<boolean> {
         localStorage.removeItem(key);
       }
     }
-    console.info('[Cache] 从localStorage清除所有缓存成功');
+    log.info('[Cache] 从localStorage清除所有缓存成功');
   } catch (error) {
     console.error('[Cache] 从localStorage清除所有缓存失败:', error);
     success = false;
   }
 
   return success;
-} 
+}
