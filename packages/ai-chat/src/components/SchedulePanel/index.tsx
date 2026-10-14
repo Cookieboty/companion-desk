@@ -22,10 +22,14 @@ import {
   AGENT_LABEL,
   STATUS_LABEL,
   agentsClient,
+  endpointCounts,
+  filterSessions,
   type AgentKind,
   type AgentWatchState,
+  type EndpointFilter,
 } from '../../services/agentsClient';
 import { describeRepeat, type RepeatRule } from '../../services/desktopClient';
+import { harnessClient } from '../../services/harnessClient';
 import {
   BRIEFING_PROMPT,
   schedClient,
@@ -201,6 +205,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
   const [msg, setMsg] = useState('');
   const [tab, setTab] = useState<Tab>(initialTab ?? 'reminders');
   const [agents, setAgents] = useState<AgentWatchState | null>(null);
+  const [agentFilter, setAgentFilter] = useState<EndpointFilter>('all');
   const loadAgents = useCallback(() => {
     if (!agentsClient.available()) return;
     void agentsClient
@@ -604,38 +609,93 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                           : tr('无')}
                       </span>
                     </div>
+                    {agents.sessions.length > 0 && (
+                      <div
+                        className={styles.row}
+                        style={{ flexWrap: 'wrap', gap: 6 }}
+                        role="group"
+                        aria-label={tr('按端点筛选')}
+                        data-testid="agents-endpoints"
+                      >
+                        {endpointCounts(agents.sessions).map(([k, n]) => (
+                          <Button
+                            key={k}
+                            size="sm"
+                            variant={agentFilter === k ? 'primary' : 'ghost'}
+                            aria-pressed={agentFilter === k}
+                            data-testid={`agents-filter-${k}`}
+                            onClick={() => setAgentFilter(k)}
+                          >
+                            {k === 'all'
+                              ? tr('全部')
+                              : k === 'tabs'
+                                ? tr('Nomi 标签')
+                                : tr(AGENT_LABEL[k as AgentKind])}{' '}
+                            {n}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                     {agents.sessions.length === 0 ? (
                       <EmptyState
                         title={tr('暂无活跃会话')}
-                        description={tr('启动 Codex 或 Claude Code 等工具后会出现在这里。')}
+                        description={tr(
+                          '启动 Claude Code、Codex、dsh 等工具或打开编程助手标签后会出现在这里。',
+                        )}
                       />
                     ) : (
                       <div className={styles.stack} data-testid="agents-sessions">
-                        {agents.sessions.slice(0, 12).map((s) => (
-                          <Card key={s.id} flat>
-                            <div className={styles.row}>
-                              <strong className={styles.grow} title={s.cwd || s.path}>
-                                {s.title}
-                              </strong>
-                              <Badge
-                                tone={
-                                  s.status === 'failed' || s.status === 'stalled'
-                                    ? 'warning'
-                                    : s.status === 'completed'
-                                      ? 'success'
-                                      : undefined
-                                }
-                              >
-                                {tr(STATUS_LABEL[s.status])}
-                              </Badge>
-                            </div>
-                            <p className={styles.hint} data-testid="agents-session-meta">
-                              {[s.label, s.project, tr('最后活动 {0}', relTime(s.mtime)), s.summary]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </p>
-                          </Card>
-                        ))}
+                        {filterSessions(agents.sessions, agentFilter)
+                          .slice(0, 20)
+                          .map((s) => (
+                            <Card
+                              key={s.id}
+                              flat
+                              data-testid={`agents-session-${s.source ?? 'file'}`}
+                            >
+                              <div className={styles.row}>
+                                <strong className={styles.grow} title={s.cwd || s.path}>
+                                  {s.title}
+                                </strong>
+                                <Badge
+                                  tone={
+                                    s.status === 'failed' || s.status === 'stalled'
+                                      ? 'warning'
+                                      : s.status === 'completed'
+                                        ? 'success'
+                                        : undefined
+                                  }
+                                >
+                                  {tr(STATUS_LABEL[s.status])}
+                                </Badge>
+                                {s.source === 'tab' && s.tabId && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    data-testid="agents-open-tab"
+                                    onClick={() =>
+                                      void harnessClient
+                                        .activateTab(s.tabId!)
+                                        .then(() => onClose())
+                                        .catch(() => undefined)
+                                    }
+                                  >
+                                    {s.unread ? tr('查看 {0} 条新结果', s.unread) : tr('打开标签')}
+                                  </Button>
+                                )}
+                              </div>
+                              <p className={styles.hint} data-testid="agents-session-meta">
+                                {[
+                                  s.label,
+                                  s.project,
+                                  tr('最后活动 {0}', relTime(s.mtime)),
+                                  s.summary,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </p>
+                            </Card>
+                          ))}
                       </div>
                     )}
                   </>

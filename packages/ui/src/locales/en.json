@@ -688,7 +688,6 @@
   "已检测：": "Detected: ",
   "无": "None",
   "暂无活跃会话": "No active sessions",
-  "启动 Codex 或 Claude Code 等工具后会出现在这里。": "They'll show up here after you start Codex, Claude Code or similar tools.",
   "免打扰时段": "Do-not-disturb hours",
   "从": "From",
   "到": "to",
@@ -1542,5 +1541,10 @@
   "下一个标签": "Next tab",
   "上一个标签": "Previous tab",
   "重命名标签": "Rename tab",
-  "切换到第 n 个标签（9 = 最后一个）": "Switch to tab n (9 = last tab)"
+  "切换到第 n 个标签（9 = 最后一个）": "Switch to tab n (9 = last tab)",
+  "按端点筛选": "Filter by endpoint",
+  "Nomi 标签": "Nomi tabs",
+  "启动 Claude Code、Codex、dsh 等工具或打开编程助手标签后会出现在这里。": "Sessions show up here once you start Claude Code, Codex, dsh or open a coding agent tab.",
+  "查看 {0} 条新结果": "View {0} new results",
+  "打开标签": "Open tab"
 }
