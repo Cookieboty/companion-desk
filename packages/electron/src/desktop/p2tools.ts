@@ -323,7 +323,7 @@ export function createP2Tools(
     // ---------------- 提醒 ----------------
     tool(
       'reminder_create',
-      '设置提醒：到点时看板娘挥手 + 气泡 + 系统通知（应用需在运行）。用 at（ISO 时间）或 inMinutes / inSeconds。',
+      '设置提醒：到点时 Nomi 挥手 + 气泡 + 系统通知（应用需在运行）。用 at（ISO 时间）或 inMinutes / inSeconds。',
       remCreate,
       async (i: z.infer<typeof remCreate>, signal) => {
         const due = resolveDue(i, now());
@@ -447,7 +447,7 @@ export function createP2Tools(
     ),
     tool(
       'clipboard_write',
-      '把文本放到剪贴板（覆盖原内容；看板娘会提示）。',
+      '把文本放到剪贴板（覆盖原内容；Nomi 会提示）。',
       clipWrite,
       async (i: z.infer<typeof clipWrite>, signal) => {
         const decision = await confirm(

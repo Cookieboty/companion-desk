@@ -97,7 +97,7 @@ export const NotesTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }) =>
       {items.length === 0 ? (
         <EmptyState
           title={query ? tr('没有匹配的笔记') : tr('还没有笔记')}
-          description={tr('可以让看板娘帮你记：「帮我记一下……」')}
+          description={tr('可以让 Nomi 帮你记：「帮我记一下……」')}
         />
       ) : (
         <ul className={styles.cards} data-testid="notes-list">

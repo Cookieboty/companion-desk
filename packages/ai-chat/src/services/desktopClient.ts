@@ -166,7 +166,7 @@ export const TOOL_LABELS: Record<string, string> = {
   undo_last: '撤销上一步',
   grant_scope: '授权文件夹',
   revoke_scope: '撤销授权',
-  drop_summarize: '拖到看板娘总结',
+  drop_summarize: '拖到 Nomi 总结',
   note_create: '新建笔记',
   note_list: '列出笔记',
   note_search: '搜索笔记',

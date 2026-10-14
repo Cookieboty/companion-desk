@@ -326,7 +326,7 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
         <Switch
           checked={s.bargeIn}
           onChange={(v) => set({ bargeIn: v })}
-          label={t('开口即打断看板娘说话（barge-in）')}
+          label={t('开口即打断 Nomi 说话（barge-in）')}
           data-testid="voice-bargein"
         />
         <FormField

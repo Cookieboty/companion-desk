@@ -209,7 +209,7 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             data-testid="char-speech-test"
             disabled={off}
             onClick={() =>
-              speakForActiveCharacter(tr('你好，我是看板娘。今天也一起加油吧。'), {
+              speakForActiveCharacter(tr('你好，我是 Nomi。今天也一起加油吧。'), {
                 prefs: { ...charPrefs, volume: settings.volume },
               })
             }

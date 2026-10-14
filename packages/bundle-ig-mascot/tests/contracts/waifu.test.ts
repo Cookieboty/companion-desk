@@ -135,7 +135,7 @@ describe('WaifuToolsPlugin', () => {
 describe('buildWaifuSystemPrompt', () => {
   it('picks cute tone by default when profile absent', () => {
     const prompt = buildWaifuSystemPrompt(undefined, { toolNames: [] });
-    expect(prompt).toContain('看板娘');
+    expect(prompt).toContain('Nomi');
     expect(prompt).toContain('可爱');
   });
 

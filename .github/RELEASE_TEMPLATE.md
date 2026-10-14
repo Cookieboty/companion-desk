@@ -11,11 +11,11 @@
 
 ## 平台产物
 
-| 平台              | 安装包                                 | 大小 | SHA256 |
-| ----------------- | -------------------------------------- | ---- | ------ |
-| macOS (x64/arm64) | `Companion Desk-{{VERSION}}.dmg`       |      |        |
-| Windows (x64)     | `Companion Desk Setup {{VERSION}}.exe` |      |        |
-| Linux (x64)       | `Companion Desk-{{VERSION}}.AppImage`  |      |        |
+| 平台              | 安装包                       | 大小 | SHA256 |
+| ----------------- | ---------------------------- | ---- | ------ |
+| macOS (x64/arm64) | `Nomi-{{VERSION}}.dmg`       |      |        |
+| Windows (x64)     | `Nomi Setup {{VERSION}}.exe` |      |        |
+| Linux (x64)       | `Nomi-{{VERSION}}.AppImage`  |      |        |
 
 ## 变更
 

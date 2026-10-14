@@ -30,7 +30,7 @@ export const MascotModelToolsPlugin = definePlugin<MascotModelToolsPluginConfig>
     }
     registry.register({
       name: 'mascot_list_models',
-      description: '列出可用的看板娘角色（id、名字、来源 bundled/remote/user、许可）。',
+      description: '列出可用的 Nomi 角色（id、名字、来源 bundled/remote/user、许可）。',
       input: z.object({}).strict(),
       dangerous: false,
       async execute() {
@@ -39,7 +39,7 @@ export const MascotModelToolsPlugin = definePlugin<MascotModelToolsPluginConfig>
     });
     registry.register({
       name: 'mascot_select_model',
-      description: '切换看板娘角色。id 必须来自 mascot_list_models。',
+      description: '切换 Nomi 角色。id 必须来自 mascot_list_models。',
       input: selectModelInputSchema,
       dangerous: false,
       async execute(input: { id: string }) {

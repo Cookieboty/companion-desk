@@ -37,7 +37,7 @@ export function createPlayMotionTool(
   return {
     name: 'live2d_play_motion',
     description:
-      '让看板娘做一个动作。group 为动作名：wave（挥手）、nod（点头）、shake（摇头）、think（思考）、' +
+      '让 Nomi 做一个动作。group 为动作名：wave（挥手）、nod（点头）、shake（摇头）、think（思考）、' +
       'clap（拍手）、bow（鞠躬）、cheer（欢呼）、dance（跳舞）、stretch（伸懒腰）、' +
       'look_around（张望）、interact（伸手）、flinch（受惊）、random（随机）。index 忽略。',
     input: playMotionInputSchema,
@@ -57,7 +57,7 @@ export function createSetExpressionTool(
   return {
     name: 'live2d_set_expression',
     description:
-      '切换看板娘表情：happy / angry / sad / relaxed / surprised / neutral（数秒后自动恢复）。',
+      '切换 Nomi 表情：happy / angry / sad / relaxed / surprised / neutral（数秒后自动恢复）。',
     input: setExpressionInputSchema,
     dangerous: opts.dangerous,
     async execute(input: SetExpressionInput) {

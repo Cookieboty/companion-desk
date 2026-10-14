@@ -184,7 +184,7 @@ export class TrayManager {
       { label: t('桌面能力（文件授权 / 操作记录）…'), click: () => this.opts.openDesktopPanel?.() },
       { type: 'separator' },
       {
-        label: t('看板娘动作'),
+        label: t('Nomi 动作'),
         submenu: TRAY_MOTIONS.map(([name, label]) => ({
           label: t(label),
           click: () => broadcastMascotCommand({ type: 'motion', name }),

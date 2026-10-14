@@ -552,7 +552,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       if (legacy !== undefined) {
         this.configService.set('displayMode', undefined);
         void this.configService.save();
-        this.logger.info('已迁移旧的显示模式配置到 3D 看板娘', { legacy });
+        this.logger.info('已迁移旧的显示模式配置到 3D Nomi', { legacy });
       }
     } catch (error) {
       this.logger.warn('迁移旧显示模式配置失败', {

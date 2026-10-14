@@ -484,7 +484,7 @@ export class MemoryService {
       return r;
     };
     return {
-      format: 'companion-desk-memory',
+      format: 'nomi-memory',
       version: 1,
       exportedAt: Date.now(),
       settings: this.settings,
@@ -500,7 +500,7 @@ export class MemoryService {
     const stamp = new Date().toISOString().slice(0, 10);
     const opts = {
       title: tr('导出记忆'),
-      defaultPath: `companion-memory-${stamp}.${format}`,
+      defaultPath: `nomi-memory-${stamp}.${format}`,
       filters: [
         format === 'md'
           ? { name: 'Markdown', extensions: ['md'] }

@@ -80,5 +80,5 @@ URL 顺序即镜像优先级：GitHub Releases（无大小限制）→ jsDelivr�
 - 文件对话框或拖放 `.vrm`（VRM 0.x / 1.0，≤ 300 MB），只做静态校验
 - 展示 VRM meta：作者、许可、允许使用者、商用、再分发；并提示模型由用户自行负责、不会上传或分发
 - 可配置：名字、缩放（0.1–5）、垂直偏移、镜头高度 / 距离、表情映射（`happy=Joy`）、允许的动作
-- 配置导出 / 导入为 JSON（`schema: "companion-desk/model-config@1"`；只保留白名单字段，取值会被夹取）
+- 配置导出 / 导入为 JSON（`schema: "nomi/model-config@1"`，旧的 `companion-desk/model-config@1` 仍可导入；只保留白名单字段，取值会被夹取）
 - 可替换 VRM 文件（保留配置）或删除

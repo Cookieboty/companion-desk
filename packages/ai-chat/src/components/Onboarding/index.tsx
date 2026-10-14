@@ -235,7 +235,7 @@ export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ o
               </div>
             ) : (
               <p className={styles.note}>
-                {t('角色列表加载中…也可以之后在看板娘右键菜单里切换。')}
+                {t('角色列表加载中…也可以之后在 Nomi 右键菜单里切换。')}
               </p>
             )}
             <div className={styles.subLabel}>{t('她的声音')}</div>
