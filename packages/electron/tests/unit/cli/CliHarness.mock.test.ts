@@ -196,6 +196,16 @@ describe('CliHarnessService session handling', () => {
       await expect(h.send('x')).rejects.toThrow('session not found: session-unknown');
     });
 
+    it('explains the Node >= 24 requirement when dsh prints nothing', async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-dsh-silent-'));
+      const bin = path.join(dir, 'silent-dsh.mjs');
+      fs.writeFileSync(bin, 'process.exit(0);\n');
+      process.env.NOMI_DSH_BIN = bin;
+      const h = mk();
+      h.setBackend('dsh');
+      await expect(h.send('hi')).rejects.toThrow(/Node ≥ 24/);
+    });
+
     it('drops the dsh session when switching backend', async () => {
       const h = mk();
       h.setBackend('dsh');

@@ -56,6 +56,19 @@ export const CliToolsBlock: React.FC = () => {
               {r.latest ? tr(' · 最新 {0}', r.latest) : ''}
               {r.updateAvailable ? tr(' · 有更新') : ''}
             </span>
+            {r.runtimeWarning && (
+              <span
+                data-testid={`cli-runtime-warning-${r.kind}`}
+                role="alert"
+                style={{ color: 'var(--cd-warning, #d97706)', flexBasis: '100%', fontSize: 12 }}
+              >
+                {tr(
+                  'dsh 需要 Node ≥ {0}，当前 PATH 上的 Node 为 {1}；升级 Node 后才能接管 dsh。',
+                  r.runtimeWarning.required,
+                  r.runtimeWarning.nodeVersion ?? tr('未找到'),
+                )}
+              </span>
+            )}
             {r.updateSupported && r.path && (
               <Button
                 size="sm"

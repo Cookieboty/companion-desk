@@ -8,6 +8,7 @@ export interface CliInstallInfo {
   installMethod: 'npm' | 'native' | 'unknown';
   updateAvailable: boolean;
   updateSupported: boolean;
+  runtimeWarning?: { nodeVersion: string | null; required: number } | null;
 }
 
 interface AiBridge {

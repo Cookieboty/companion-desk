@@ -11,7 +11,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { t } from '../i18n';
 
-import { resolveCliBin } from './detect';
+import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
 import { createDshParser, parseClaudeLine, parseCodexLine } from './streamParse';
 import type { HarnessBackend, HarnessEvent, HarnessSendResult, HarnessSessionState } from './types';
 
@@ -302,6 +302,19 @@ export class CliHarnessService {
             if (ev.type === 'error') lastError = ev.message;
             if (ev.type === 'done' && ev.sessionId) sessionId = ev.sessionId;
           }
+        }
+        // dsh 在 Node < 24 下不报错、无输出、退出码 0
+        if (opts.kind === 'dsh' && events.length === 0 && !code) {
+          reject(
+            new Error(
+              t(
+                'dsh 没有任何输出：需要 Node ≥ {0}（当前 PATH 上的 Node 为 {1}）',
+                DSH_MIN_NODE_MAJOR,
+                readPathNodeVersion() ?? t('未找到'),
+              ),
+            ),
+          );
+          return;
         }
         if (code && code !== 0 && !text) {
           reject(new Error(lastError ?? t('{0} 退出码 {1}', opts.kind, code)));

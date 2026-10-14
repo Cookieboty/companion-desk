@@ -20,6 +20,8 @@ export interface CliInstallInfo {
   installMethod: 'npm' | 'native' | 'unknown';
   updateAvailable: boolean;
   updateSupported: boolean;
+  /** 运行时问题（目前仅 dsh：PATH 上的 Node 低于 24） */
+  runtimeWarning?: { nodeVersion: string | null; required: number } | null;
 }
 
 export interface CliProviderProfile {

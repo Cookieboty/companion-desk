@@ -10,7 +10,14 @@ import { BrowserWindow, ipcMain } from 'electron';
 
 import { t } from '../i18n';
 
-import { NPM_PKG, fetchNpmLatest, guessInstallMethod, readVersion, resolveCliBin } from './detect';
+import {
+  NPM_PKG,
+  dshRuntimeProblem,
+  fetchNpmLatest,
+  guessInstallMethod,
+  readVersion,
+  resolveCliBin,
+} from './detect';
 import { isNewer } from './semver';
 import type { CliInstallInfo, CliKind, UpdatableCli } from './types';
 
@@ -135,8 +142,12 @@ export class CliUpdateService {
         const latest = this.cache.latest[kind] ?? null;
         const method = kind === 'dsh' && bin ? 'npm' : guessInstallMethod(bin);
         const updateSupported = isUpdatable(kind);
+        // 真实 dsh（非 .mjs Mock）才检查 Node 版本
+        const runtimeWarning =
+          kind === 'dsh' && bin && !/\.(mjs|js)$/.test(bin) ? dshRuntimeProblem() : null;
         return {
           kind,
+          runtimeWarning,
           path: bin,
           version,
           latest,

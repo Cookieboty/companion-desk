@@ -1514,5 +1514,7 @@
   "OpenAI Responses（原生）": "OpenAI Responses (native)",
   "已停用，dsh 回到自身默认供应商": "Deactivated; dsh is back on its own default provider",
   "停用失败": "Deactivation failed",
-  "Claude Code 写 ~/.claude/settings.json；Codex 写 ~/.codex/config.toml；dsh 写 ~/.dsh/cordis.patch.yml（密钥仅在启动时注入）；Nomi 自有配置在 ai-providers.json。": "Claude Code writes ~/.claude/settings.json; Codex writes ~/.codex/config.toml; dsh writes ~/.dsh/cordis.patch.yml (the key is only injected at launch); Nomi's own config lives in ai-providers.json."
+  "Claude Code 写 ~/.claude/settings.json；Codex 写 ~/.codex/config.toml；dsh 写 ~/.dsh/cordis.patch.yml（密钥仅在启动时注入）；Nomi 自有配置在 ai-providers.json。": "Claude Code writes ~/.claude/settings.json; Codex writes ~/.codex/config.toml; dsh writes ~/.dsh/cordis.patch.yml (the key is only injected at launch); Nomi's own config lives in ai-providers.json.",
+  "dsh 需要 Node ≥ {0}，当前 PATH 上的 Node 为 {1}；升级 Node 后才能接管 dsh。": "dsh needs Node ≥ {0}, but the Node on PATH is {1}. Upgrade Node to take over dsh.",
+  "未找到": "not found"
 }

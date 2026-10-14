@@ -110,3 +110,32 @@ export const NPM_PKG: Record<UpdatableCli, string> = {
   codex: '@openai/codex',
   dsh: '@deepseek-ai/dsh',
 };
+
+/** dsh 依赖 Node ≥ 24（import.meta.main）；更低版本下静默无输出 */
+export const DSH_MIN_NODE_MAJOR = 24;
+
+/** PATH 上 node 的版本（dsh 的 shebang 为 `/usr/bin/env node`） */
+export function readPathNodeVersion(): string | null {
+  try {
+    const out = execFileSync(process.platform === 'win32' ? 'node.exe' : 'node', ['--version'], {
+      encoding: 'utf8',
+      timeout: 5000,
+      windowsHide: true,
+    });
+    const m = /v?(\d+\.\d+\.\d+)/.exec(out);
+    return m ? m[1]! : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * dsh 运行时检查：返回 null 表示正常；否则返回检测到的 node 版本（或 'missing'）。
+ */
+export function dshRuntimeProblem(
+  nodeVersion: string | null = readPathNodeVersion(),
+): { nodeVersion: string | null; required: number } | null {
+  const major = nodeVersion ? Number(nodeVersion.split('.')[0]) : NaN;
+  if (Number.isFinite(major) && major >= DSH_MIN_NODE_MAJOR) return null;
+  return { nodeVersion, required: DSH_MIN_NODE_MAJOR };
+}
