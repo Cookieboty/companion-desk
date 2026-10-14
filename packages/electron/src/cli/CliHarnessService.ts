@@ -102,8 +102,9 @@ export class CliHarnessService {
     if (backend !== 'nomi' && backend !== 'claude' && backend !== 'codex') {
       throw new Error(t('未知后端'));
     }
+    // 会话 id 只属于产生它的 CLI；切换后端即丢弃，避免把 Claude 会话交给 Codex resume
+    if (backend !== this.backend) this.cliSessionId = null;
     this.backend = backend;
-    if (backend === 'nomi') this.cliSessionId = null;
     this.persist();
     this.broadcast();
     return this.state();
@@ -183,14 +184,12 @@ export class CliHarnessService {
     const bin = resolveHarnessBin('codex');
     if (!bin) return Promise.reject(new Error(t('未找到 Codex（可设 NOMI_USE_MOCK_CLI=1）')));
     const useNode = bin.endsWith('.mjs') || bin.endsWith('.js');
+    // `exec resume` 不接受 --cd；工作目录由 spawn 的 cwd 决定
     const argv = useNode
       ? [bin, 'exec', '--json', prompt]
-      : ['exec', '--json', '--skip-git-repo-check', '--cd', this.cwd, prompt];
-    // resume if we have session
-    if (this.cliSessionId && !useNode) {
-      argv.splice(1, 0, 'resume', this.cliSessionId);
-      // becomes: exec resume <id> --json ...
-    }
+      : this.cliSessionId
+        ? ['exec', 'resume', '--json', '--skip-git-repo-check', this.cliSessionId, prompt]
+        : ['exec', '--json', '--skip-git-repo-check', '--cd', this.cwd, prompt];
     return this.spawnCollect({
       cmd: useNode ? process.execPath : bin,
       argv: useNode ? argv : argv,

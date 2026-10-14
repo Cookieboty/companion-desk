@@ -89,3 +89,50 @@ describe('CliHarnessService mock CLI', () => {
     expect(h.state().toolsDisabled).toBe(false);
   });
 });
+
+describe('CliHarnessService session handling', () => {
+  it('drops the CLI session id when switching backend and resumes codex with valid argv', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-argv-'));
+    const bin = path.join(dir, 'argv-codex');
+    // 记录收到的 argv，并回一个会话 id
+    fs.writeFileSync(
+      bin,
+      [
+        '#!/usr/bin/env node',
+        "const fs = require('node:fs');",
+        `fs.appendFileSync(${JSON.stringify(path.join(dir, 'argv.log'))}, JSON.stringify(process.argv.slice(2)) + '\\n');`,
+        "const emit = (o) => process.stdout.write(JSON.stringify(o) + '\\n');",
+        "emit({ type: 'thread.started', thread_id: 'codex-thread' });",
+        "emit({ type: 'item.completed', item: { id: 'i', type: 'agent_message', text: 'ok' } });",
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+    const prev = process.env.NOMI_CODEX_BIN;
+    process.env.NOMI_CODEX_BIN = bin;
+    try {
+      const h = new CliHarnessService({
+        root: path.join(dir, 'root'),
+        logger: { info() {}, warn() {} },
+        defaultCwd: dir,
+      });
+      h.setBackend('claude');
+      await h.send('hi');
+      expect(h.state().cliSessionId).toBeTruthy();
+      h.setBackend('codex');
+      expect(h.state().cliSessionId).toBeNull();
+      await h.send('one');
+      await h.send('two');
+      const calls = fs
+        .readFileSync(path.join(dir, 'argv.log'), 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l) as string[]);
+      expect(calls[0]).not.toContain('resume');
+      expect(calls[1].slice(0, 2)).toEqual(['exec', 'resume']);
+      expect(calls[1]).toContain('codex-thread');
+      expect(calls[1]).not.toContain('--cd');
+    } finally {
+      process.env.NOMI_CODEX_BIN = prev;
+    }
+  });
+});
