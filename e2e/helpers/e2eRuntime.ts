@@ -59,8 +59,8 @@ export function createE2eRuntime(opts: E2eRuntimeOptions = {}): E2eRuntimeHandle
 
   const profileService = opts.userProfileService ?? createFakeProfileService();
   ctx.provide(UserProfileKey, profileService);
-  // 让 profile.set 之后触发 dsh 事件，与 UserPreferenceMemoryPlugin 语义一致；
-  // 用 triggerEvent 而不是 emit，才能让 AIClient.bindDshBridges 里的 ctx.on 回调命中，
+  // 让 profile.set 之后触发 插件事件，与 UserPreferenceMemoryPlugin 语义一致；
+  // 用 triggerEvent 而不是 emit，才能让 AIClient.bindRuntimeBridges 里的 ctx.on 回调命中，
   // 从而把它映射为 `userProfile:changed` 业务事件供 EventBroadcaster 广播。
   profileService.subscribe('changed', (profile) => {
     void ctx.triggerEvent('userProfile/changed', { profile });

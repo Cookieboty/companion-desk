@@ -2,7 +2,7 @@
   "name": "@nomi-ai/ai-sdk",
   "version": "0.0.1",
   "private": true,
-  "description": "AI SDK 门面（环境无关）：AIClient + 7 Facade + DTO + zod 校验，屏蔽 dsh 表面变动",
+  "description": "AI SDK 门面（环境无关）：AIClient + 7 Facade + DTO + zod 校验",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -38,15 +38,11 @@
     "clean": "node ../../scripts/run-bin.mjs rimraf dist coverage .turbo"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@nomi-ai/bundle-ig-base": "workspace:*",
     "@nomi-ai/bundle-ig-mascot": "workspace:*",
     "@nomi-ai/bundle-ig-electron-caps": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": {
-      "optional": true
-    },
     "@nomi-ai/bundle-ig-mascot": {
       "optional": true
     },

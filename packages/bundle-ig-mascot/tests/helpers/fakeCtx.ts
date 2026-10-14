@@ -1,5 +1,5 @@
 import type {
-  DshEvent,
+  PluginEvent,
   HookContext,
   HookHandler,
   PluginContext,
@@ -15,9 +15,9 @@ import type {
  * - dispose：清理所有 handler，避免测试串扰
  */
 export interface FakePluginContext extends PluginContext {
-  events: Array<{ evt: DshEvent; payload: unknown }>;
+  events: Array<{ evt: PluginEvent; payload: unknown }>;
   logs: Array<{ level: 'info' | 'warn' | 'error' | 'debug'; msg: string; meta?: unknown }>;
-  triggerEvent<TPayload>(evt: DshEvent, payload: TPayload): Promise<void>;
+  triggerEvent<TPayload>(evt: PluginEvent, payload: TPayload): Promise<void>;
   disposeAll(): void;
 }
 
@@ -27,7 +27,7 @@ interface HandlerEntry {
 
 export function createFakeCtx<TConfig = unknown>(cfg?: TConfig): FakePluginContext {
   const services = new Map<symbol, unknown>();
-  const handlers = new Map<DshEvent, Set<HandlerEntry>>();
+  const handlers = new Map<PluginEvent, Set<HandlerEntry>>();
   const events: FakePluginContext['events'] = [];
   const logs: FakePluginContext['logs'] = [];
 
@@ -47,7 +47,7 @@ export function createFakeCtx<TConfig = unknown>(cfg?: TConfig): FakePluginConte
       return services.get(key.key) as T | undefined;
     },
     on<TPayload = unknown, TResult = void>(
-      event: DshEvent,
+      event: PluginEvent,
       handler: HookHandler<TPayload, TResult>,
     ) {
       if (!handlers.has(event)) handlers.set(event, new Set());
@@ -57,13 +57,13 @@ export function createFakeCtx<TConfig = unknown>(cfg?: TConfig): FakePluginConte
         handlers.get(event)?.delete(entry);
       };
     },
-    emit<TPayload = unknown>(event: DshEvent, payload: TPayload) {
+    emit<TPayload = unknown>(event: PluginEvent, payload: TPayload) {
       events.push({ evt: event, payload });
     },
     config<T = unknown>(): T {
       return cfg as T;
     },
-    async triggerEvent<TPayload>(event: DshEvent, payload: TPayload) {
+    async triggerEvent<TPayload>(event: PluginEvent, payload: TPayload) {
       const set = handlers.get(event);
       if (!set) return;
       for (const { handler } of set) {

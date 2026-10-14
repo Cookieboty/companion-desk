@@ -45,7 +45,6 @@ test.describe('UI surfaces', () => {
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-      IG_DSH_CORE: 'off',
     };
     delete env.NODE_ENV;
     app = await electron.launch({

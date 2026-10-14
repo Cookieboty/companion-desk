@@ -1,7 +1,7 @@
 /**
  * ObservabilityBridge · 集成测试（P9-2/P9-3 · Polish C）
  *
- * 通过 EventBroadcaster 触发真实 dsh → AIClient 事件桥接，断言 metrics/tracing 埋点。
+ * 通过 EventBroadcaster 触发真实 插件宿主 → AIClient 事件桥接，断言 metrics/tracing 埋点。
  */
 
 import { AIClient } from '@nomi-ai/ai-sdk';

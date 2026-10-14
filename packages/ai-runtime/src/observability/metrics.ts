@@ -1,7 +1,7 @@
 /**
  * ai-runtime · metrics registry（P9-2 · Polish C）
  *
- * 目标：给 [AIClient](file:///../../../ai-sdk/src/AIClient.ts) 与 dsh Waterfall hook
+ * 目标：给 [AIClient](file:///../../../ai-sdk/src/AIClient.ts) 与 插件宿主 Waterfall hook
  * 提供一个**零依赖**的进程内 metrics 采集器，覆盖 P9 计划 §P9-2 列出的 8 个内置指标：
  * - `ai.chat.tokens.prompt` (Counter · provider/model/sessionId)
  * - `ai.chat.tokens.completion` (Counter · provider/model)

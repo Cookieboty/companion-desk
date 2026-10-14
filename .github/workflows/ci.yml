@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
-  # dsh 需要 Node >= 22；Electron 44 内置 Node 24，CI 对齐到 24。
+  # Electron 44 内置 Node 24，CI 对齐到 24。
   NODE_VERSION: '24'
   TURBO_TELEMETRY_DISABLED: '1'
 
@@ -64,13 +64,8 @@ jobs:
       - name: Typecheck / Lint / Test / Build
         run: pnpm turbo run typecheck lint test build --cache-dir=.turbo/cache
 
-      - name: dsh smoke (root vitest + doctor)
-        shell: bash
-        run: |
-          pnpm run test:root
-          pnpm run doctor:dsh waifu
-          pnpm run doctor:dsh chat-only
-          pnpm run doctor:dsh mcp-headless
+      - name: Root script tests
+        run: pnpm run test:root
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'

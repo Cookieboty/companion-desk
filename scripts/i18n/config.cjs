@@ -31,8 +31,7 @@ module.exports = {
     /voice\/src\/wake\.ts$/,
     /renderer\/src\/mascot\/licenseTerms\.ts$/,
     /electron\/src\/desktop\/(p2tools|p3tools|tools)\.ts$/,
-    /electron\/src\/standalone-mcp-server\.ts$/,
-    /electron\/src\/mcp\//,
+    /electron\/src\/tts\/legacy\//, // 旧版远程 TTS 测试（仅主进程日志）
     /electron\/src\/knowledge\/(tokenize|answer)\.ts$/,
     /electron\/src\/schedule\/recurrence\.ts$/,
     /electron\/src\/agents\/parsers\.ts$/,

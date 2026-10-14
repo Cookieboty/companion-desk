@@ -118,7 +118,7 @@ export class AiChatCompat {
 
     adapter.handle('ai-chat:model:getAvailable', async (event) => {
       mark('ai-chat:model:getAvailable', event);
-      // 保留旧结构：{ models: [...] }。因为 P5 阶段 provider 列表在 dsh 内部，返回空数组占位。
+      // 保留旧结构：{ models: [...] }。因为 P5 阶段 provider 列表在 插件宿主 内部，返回空数组占位。
       return { models: [] as unknown[] };
     });
 

@@ -1,10 +1,8 @@
 /**
- * AiSdkBooter —— production Booter: IgPluginHost only (no dsh kernel).
+ * AiSdkBooter —— production Booter built on IgPluginHost.
  *
  * Registers Vercel AI SDK-backed LLM providers for DeepSeek / OpenAI / Claude / Gemini /
  * Ollama, wires `@ai-sdk/mcp` via AiSdkMcpPlugin + McpBridge, keeps ToolsBuiltin + the rest.
- * Optional dsh remains available via `createDshBooter({ core: 'required' })`
- * for doctor / experimental harness work.
  */
 import { UserProfileKey, type PluginContext } from '@nomi-ai/bundle-ig-base';
 

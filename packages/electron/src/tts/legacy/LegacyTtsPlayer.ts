@@ -1,7 +1,6 @@
 /**
- * 语音服务模块 - Standalone版本
+ * 语音服务模块
  * 负责TTS语音克隆和固定语音播放
- * 移除了electron依赖，适用于独立node.js环境
  */
 
 import { spawn, type ChildProcess } from 'child_process';
@@ -12,13 +11,14 @@ import * as path from 'path';
 
 import { assertPublicHttpUrl } from '../../security/netGuard';
 import { psQuote } from '../../security/shellEscape';
-import { StandaloneMCPConfigManager } from '../config/StandaloneMCPConfig.js';
 
-export class StandaloneVoiceService {
-  private configManager: StandaloneMCPConfigManager;
+import { MCPConfigManager } from './LegacyVoiceConfig';
+
+export class VoiceService {
+  private configManager: MCPConfigManager;
 
   constructor() {
-    this.configManager = StandaloneMCPConfigManager.getInstance();
+    this.configManager = MCPConfigManager.getInstance();
   }
 
   /**
@@ -363,8 +363,8 @@ export class StandaloneVoiceService {
     const scriptDir = __dirname;
     const currentDir = process.cwd();
 
-    if (isDev || !process.env.ELECTRON_RUN_AS_NODE) {
-      // 开发环境或standalone环境路径查找策略
+    if (isDev || !process.resourcesPath) {
+      // 开发环境路径查找策略
       const possiblePaths = [
         path.join(scriptDir, '..', '..', 'assets', selectedFile),
         path.join(scriptDir, 'assets', selectedFile),

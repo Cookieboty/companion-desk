@@ -1,11 +1,10 @@
 /**
  * IgPluginHost —— 在主进程里承载 `@nomi-ai/bundle-ig-*` 插件的最小宿主。
  *
- * 背景：ig bundles 使用 `bundle-ig-base/types/dsh.ts` 定义的轻量插件契约
- * （`definePlugin({ name, apply(ctx, cfg) })` + `ctx.provide/inject/on/emit`），
- * 并不是 cordis/dsh 原生 bundle，无法直接作为 dsh profile layer 装载。
- * DshBooter 先通过 `@deepseek-ai/dsh-app-boot` 启动 dsh 内核，再用本宿主按顺序
- * apply ig 插件，得到 AIClient 需要的 `PluginContext`（LLM registry / tools / userProfile …）。
+ * 背景：ig bundles 使用 `bundle-ig-base/types/plugin.ts` 定义的轻量插件契约
+ * （`definePlugin({ name, apply(ctx, cfg) })` + `ctx.provide/inject/on/emit`）。
+ * AiSdkBooter 用本宿主按顺序 apply ig 插件，得到 AIClient 需要的 `PluginContext`
+ *（LLM registry / tools / userProfile …）。
  *
  * 语义：
  * - `provide/inject`：按 `ServiceKey.key`（symbol）索引；
@@ -15,7 +14,7 @@
  */
 
 import type {
-  DshEvent,
+  PluginEvent,
   HookContext,
   HookHandler,
   PluginContext,
@@ -45,7 +44,7 @@ export interface IgPluginHost {
 
 export interface IgPluginHostOptions {
   logger: RuntimeLogger;
-  /** 附加到 ctx 上的扩展字段（例如 dsh 内核 context），只读暴露 */
+  /** 附加到 ctx 上的扩展字段（例如 插件宿主 内核 context），只读暴露 */
   extras?: Record<string, unknown>;
 }
 
@@ -62,7 +61,7 @@ class HookRejectedError extends Error {
 export function createIgPluginHost(opts: IgPluginHostOptions): IgPluginHost {
   const { logger } = opts;
   const services = new Map<symbol, unknown>();
-  const hooks = new Map<DshEvent, Set<HookHandler<unknown, unknown>>>();
+  const hooks = new Map<PluginEvent, Set<HookHandler<unknown, unknown>>>();
   const applied: { name: string; def: PluginDefinition<unknown>; ctx: PluginContext }[] = [];
   const pending = new Set<Promise<void>>();
 
@@ -73,7 +72,7 @@ export function createIgPluginHost(opts: IgPluginHostOptions): IgPluginHost {
     debug: (msg, meta) => logger.debug?.(`${prefix}${msg}`, ...(meta === undefined ? [] : [meta])),
   });
 
-  const dispatch = async (evt: DshEvent, payload: unknown, log: PluginContext['logger']) => {
+  const dispatch = async (evt: PluginEvent, payload: unknown, log: PluginContext['logger']) => {
     const set = hooks.get(evt);
     if (!set) return;
     for (const fn of Array.from(set)) {
@@ -100,7 +99,7 @@ export function createIgPluginHost(opts: IgPluginHostOptions): IgPluginHost {
     const log = makeLogger(name ? `[${name}] ` : '');
     const ctx: PluginContext = {
       on<TPayload = unknown, TResult = void>(
-        event: DshEvent,
+        event: PluginEvent,
         handler: HookHandler<TPayload, TResult>,
       ): () => void {
         let set = hooks.get(event);
@@ -111,7 +110,7 @@ export function createIgPluginHost(opts: IgPluginHostOptions): IgPluginHost {
           set!.delete(h);
         };
       },
-      emit<TPayload = unknown>(event: DshEvent, payload: TPayload): void {
+      emit<TPayload = unknown>(event: PluginEvent, payload: TPayload): void {
         const p = dispatch(event, payload, log).finally(() => pending.delete(p));
         pending.add(p);
       },

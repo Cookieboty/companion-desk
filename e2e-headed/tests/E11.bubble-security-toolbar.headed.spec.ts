@@ -98,7 +98,6 @@ test.describe('E11 · bubble security + toolbar', () => {
       DEEPSEEK_API_KEY: 'sk-mock',
       DEEPSEEK_BASE_URL: `http://127.0.0.1:${port}/v1`,
       DEEPSEEK_MODEL: 'mock-model',
-      IG_DSH_CORE: 'off',
     };
     delete env.NODE_ENV;
     app = await electron.launch({
@@ -274,7 +273,7 @@ test.describe('E11 · bubble security + toolbar', () => {
     await main.click('[data-testid="tool-more"]');
     const menu = main.locator('[data-testid="toolbar-menu"]');
     await expect(menu).toBeVisible();
-    for (const id of ['info', 'tts-config', 'voice-mode-toggle', 'cursor-mcp', 'quit']) {
+    for (const id of ['info', 'tts-config', 'voice-mode-toggle', 'quit']) {
       await expect(menu.locator(`[data-testid="tool-${id}"]`)).toBeVisible();
     }
     await main.screenshot(shot('04-toolbar-more-menu.png'));

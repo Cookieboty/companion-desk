@@ -46,7 +46,7 @@ export const ShortcutPlugin = definePlugin<ShortcutConfig>({
     for (const b of bindings) {
       const ok = globalShortcut.register(b.accelerator, () => {
         ctx.logger.info(`shortcut fired: ${b.accelerator} -> ${b.command}`);
-        // 用 dsh 的通用事件通道派发；具体消费者可自行订阅
+        // 用 插件宿主 的通用事件通道派发；具体消费者可自行订阅
         ctx.emit('agent/pre-request', {
           shortcut: b.accelerator,
           command: b.command,

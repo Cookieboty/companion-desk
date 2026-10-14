@@ -2,7 +2,7 @@
   "name": "@nomi-ai/ai-runtime",
   "version": "0.0.1",
   "private": true,
-  "description": "Electron 主进程运行时：IgPluginHost + Vercel AI SDK Booter + AIClient + IPC + 可选 dsh",
+  "description": "Electron 主进程运行时：IgPluginHost + Vercel AI SDK Booter + AIClient + IPC",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -27,16 +27,12 @@
     "clean": "node ../../scripts/run-bin.mjs rimraf dist coverage .turbo"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@nomi-ai/ai-sdk": "workspace:*",
     "@nomi-ai/bundle-ig-base": "workspace:*",
     "@nomi-ai/bundle-ig-electron-caps": "workspace:*",
     "electron": ">=28"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": {
-      "optional": true
-    },
     "electron": {
       "optional": true
     }

@@ -6,14 +6,14 @@
  * - `on` / `emit`：内部维护 handler set，`triggerEvent(evt, payload)` 同步串行触发
  */
 
-import type { DshEvent, HookContext, HookHandler, ServiceKey } from '@nomi-ai/bundle-ig-base';
+import type { PluginEvent, HookContext, HookHandler, ServiceKey } from '@nomi-ai/bundle-ig-base';
 
 import type { SdkContext } from '../../src/di/SdkContext';
 
 export interface FakeSdkContext extends SdkContext {
   provide<T>(key: ServiceKey<T>, impl: T): void;
-  emitted: Array<{ evt: DshEvent; payload: unknown }>;
-  triggerEvent<TPayload>(evt: DshEvent, payload: TPayload): Promise<void>;
+  emitted: Array<{ evt: PluginEvent; payload: unknown }>;
+  triggerEvent<TPayload>(evt: PluginEvent, payload: TPayload): Promise<void>;
   disposeAll(): void;
 }
 
@@ -23,7 +23,7 @@ interface HandlerEntry {
 
 export function createFakeSdkCtx(): FakeSdkContext {
   const services = new Map<symbol, unknown>();
-  const handlers = new Map<DshEvent, Set<HandlerEntry>>();
+  const handlers = new Map<PluginEvent, Set<HandlerEntry>>();
   const emitted: FakeSdkContext['emitted'] = [];
 
   const ctx: FakeSdkContext = {
@@ -35,7 +35,7 @@ export function createFakeSdkCtx(): FakeSdkContext {
       return services.get(key.key) as T | undefined;
     },
     on<TPayload = unknown, TResult = void>(
-      event: DshEvent,
+      event: PluginEvent,
       handler: HookHandler<TPayload, TResult>,
     ) {
       if (!handlers.has(event)) handlers.set(event, new Set());
@@ -45,10 +45,10 @@ export function createFakeSdkCtx(): FakeSdkContext {
         handlers.get(event)?.delete(entry);
       };
     },
-    emit<TPayload = unknown>(event: DshEvent, payload: TPayload) {
+    emit<TPayload = unknown>(event: PluginEvent, payload: TPayload) {
       emitted.push({ evt: event, payload });
     },
-    async triggerEvent<TPayload>(event: DshEvent, payload: TPayload) {
+    async triggerEvent<TPayload>(event: PluginEvent, payload: TPayload) {
       const set = handlers.get(event);
       if (!set) return;
       for (const { handler } of set) {

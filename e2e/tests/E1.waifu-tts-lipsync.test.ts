@@ -5,11 +5,11 @@
  * - 主进程侧真实构造 `AIClient` + `IPCTransportServer` + `EventBroadcaster`（无 Electron，
  *   IPC 走 FakeIpcAdapter；LLM/Tool/UserProfile seams 由 e2e/helpers/fakeSeams 提供）；
  * - 一个"waifu 主渲染窗口"通过 `ClientAIClient` 订阅 AI 事件；
- * - 触发 dsh `tts/chunk` → 渲染窗口收到 `tts:chunk`，其 `rms>0` 可驱动 `live2d.driveLipSync`；
- * - 触发 dsh `agent/turn-end`（等价于 P8-3 里的"turn 完成/消息完成"信号）→ 广播到全部窗口。
+ * - 触发 插件事件 `tts/chunk` → 渲染窗口收到 `tts:chunk`，其 `rms>0` 可驱动 `live2d.driveLipSync`；
+ * - 触发 插件事件 `agent/turn-end`（等价于 P8-3 里的"turn 完成/消息完成"信号）→ 广播到全部窗口。
  *
  * 由于当前无法在 Electron 环境跑 Playwright，且 P8-8 计划里的 `message:complete` 事件
- * 未在 AIClient.bindDshBridges 中显式桥接（P9 会补上），此处用 `agent:turn-end` 作为
+ * 未在 AIClient.bindRuntimeBridges 中显式桥接（P9 会补上），此处用 `agent:turn-end` 作为
  * 语义等价的完成信号；详见 [P8-consumer-migration.md#P8-8](../../docs/archive/plans/P8-consumer-migration.md#p8-8-e2e-冒烟三端-三-profile)。
  */
 

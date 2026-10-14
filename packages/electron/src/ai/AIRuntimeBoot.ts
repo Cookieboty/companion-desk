@@ -138,28 +138,6 @@ function tryRegisterTtsProviders(
 }
 
 /**
- * 定位 dsh profile 根目录（其下有 `profiles/<name>/package.json`）。
- *
- * - 开发 / 未打包生产（`electron packages/electron`）：`app.getAppPath()` 是
- *   `packages/electron`，profiles 在仓库根目录，逐级向上查找；
- * - 打包产物：`process.resourcesPath`（若随包带了 profiles）；
- * - 都找不到时回退 `app.getAppPath()`（仅 optional dsh / doctor 需要 profiles）。
- */
-export function resolveProfileHome(profile: string): string {
-  const candidates: string[] = [];
-  if (app.isPackaged && process.resourcesPath) candidates.push(process.resourcesPath);
-  let dir = app.getAppPath();
-  for (let i = 0; i < 4; i++) {
-    candidates.push(dir);
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  const hit = candidates.find((c) => existsSync(path.join(c, 'profiles', profile, 'package.json')));
-  return hit ?? app.getAppPath();
-}
-
-/**
  * 启动 AI runtime；调用方一般在 Application.start() → app.whenReady() 后调用。
  */
 export async function startAIRuntime(
@@ -167,13 +145,8 @@ export async function startAIRuntime(
   opts: AIRuntimeBootOptions = {},
 ): Promise<AIRuntimeBootHandle> {
   const profile = opts.profile ?? process.env.IG_AI_PROFILE ?? 'waifu';
-  const home = opts.home ?? resolveProfileHome(profile);
+  const home = opts.home ?? app.getAppPath();
   const runtimeLogger = toRuntimeLogger(logger);
-
-  // Optional dsh state dir (only used when IG_DSH_CORE=auto|required and dsh is installed)
-  if (!process.env.DSH_HOME?.trim()) {
-    process.env.DSH_HOME = path.join(app.getPath('userData'), 'dsh');
-  }
 
   // 多 provider 配置：仅本地 userData，key 用 safeStorage 加密（不可用时明文回退 + 警告）
   const cipher = createSafeStorageCipher(safeStorage);

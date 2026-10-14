@@ -12,7 +12,7 @@ export interface TouchInjectPluginConfig {
 }
 
 /**
- * dsh 事件：把渲染进程感官（触摸）注入到当前 agent 会话。
+ * 插件事件：把渲染进程感官（触摸）注入到当前 agent 会话。
  *
  * P5/P6 agent runtime 订阅本事件，转成 `session.inject({ type: 'sensory', ... })`。
  * 保留本层解耦：本 bundle 不假设 agent runtime 的具体形状。

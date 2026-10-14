@@ -100,7 +100,6 @@ test.describe('E12 · reply bubble + face-safe placement', () => {
       DEEPSEEK_API_KEY: 'sk-mock',
       DEEPSEEK_BASE_URL: `http://127.0.0.1:${port}/v1`,
       DEEPSEEK_MODEL: 'mock-model',
-      IG_DSH_CORE: 'off',
     };
     delete env.NODE_ENV;
     app = await electron.launch({

@@ -3,7 +3,7 @@
  *
  * 4 关键场景：
  * 1. 同步方法：`ai:sessions:create` 立即返回 Session；
- * 2. 异步方法：`ai:userProfile:set` await 生效并广播 dsh 事件（间接触发 `userProfile:changed`）；
+ * 2. 异步方法：`ai:userProfile:set` await 生效并广播 插件事件（间接触发 `userProfile:changed`）；
  * 3. 流式方法：`ai:chat:stream` 返回 `{ ok, reqId }`，且 chunk 通过 sender.send 分发；
  * 4. 权限：`isSenderAllowed=false` 时抛错；`ai:tools:confirm` 通道存在。
  */

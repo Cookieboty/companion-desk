@@ -1,6 +1,6 @@
 import { ToolRegistryKey } from '../seams/tools';
 import { ProfileStorageKey, UserProfileKey, type IProfileStorage } from '../seams/userProfile';
-import { definePlugin, type PluginContext } from '../types/dsh';
+import { definePlugin, type PluginContext } from '../types/plugin';
 
 import {
   HabitStatCollector,

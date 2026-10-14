@@ -1,5 +1,5 @@
 /**
- * 会话 DTO —— 与 dsh session 契约对齐但**只保留 IPC-safe 字段**。
+ * 会话 DTO —— 与 插件宿主 session 契约对齐但**只保留 IPC-safe 字段**。
  */
 
 export interface Session {

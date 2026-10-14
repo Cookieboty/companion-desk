@@ -8,8 +8,7 @@
 任务管理 · 智能执行 · 情感陪伴。品牌规范见 [docs/BRAND.md](docs/BRAND.md)（[中文](docs/BRAND.zh-CN.md)）。
 
 Nomi 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
-[`@nomi-ai/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供（可选的
-[DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 仅保留给 doctor / 实验），
+[`@nomi-ai/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供，
 可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
 桌面伙伴是形象层：默认是 2D 的品牌角色「Nomi·诺米」，也可切换开源 VRM 3D 角色、表情、语音与口型同步，但不是产品核心。
 
@@ -36,8 +35,6 @@ Nomi 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 
 | `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY`                      | Anthropic Messages 协议；另可选 `ANTHROPIC_BASE_URL`/`CLAUDE_BASE_URL`、`ANTHROPIC_MODEL`/`CLAUDE_MODEL`（默认 `claude-sonnet-4-5`）                                                                             |
 | `GOOGLE_GENERATIVE_AI_API_KEY` / `GEMINI_API_KEY`           | Gemini（走其 OpenAI 兼容端点 `…/v1beta/openai`，OpenAI Chat Completions 协议）；另可选 `GOOGLE_GENERATIVE_AI_BASE_URL`/`GEMINI_BASE_URL`、`GOOGLE_GENERATIVE_AI_MODEL`/`GEMINI_MODEL`（默认 `gemini-2.5-flash`） |
 | `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                                                                                                                                         |
-| `IG_DSH_CORE`                                               | `off`（默认，生产不用 dsh）/ `auto` / `required`（需安装 optional `@deepseek-ai/dsh*`）                                                                                                                          |
-| `DSH_HOME`                                                  | 可选 dsh 状态目录，默认 `<userData>/dsh`（仅 `IG_DSH_CORE≠off` 时有意义）                                                                                                                                        |
 
 例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`；Claude：`ANTHROPIC_API_KEY=sk-ant-... pnpm dev`；Gemini：`GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev`。
 
@@ -170,7 +167,6 @@ ollama pull qwen2.5:3b-instruct && pnpm dev     # 完全本地，无需 key
 
 ```bash
 pnpm run doctor    # 完整预检（注意要写 run：`pnpm doctor` 是 pnpm 内置命令）（含 provider key 提示）
-pnpm doctor:dsh    # 仅当使用可选 dsh 内核（IG_DSH_CORE=auto|required）时
 ```
 
 常见问题：
@@ -389,7 +385,7 @@ pnpm --filter @nomi-ai/<your-pkg> build test lint typecheck
 
 ## 🤖 AI SDK 最小示例
 
-自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@nomi-ai/ai-sdk-client`](packages/ai-sdk-client)（渲染进程）与 [`@nomi-ai/ai-sdk`](packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/consumer-integration.md](docs/consumer-integration.md)。
+自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@nomi-ai/ai-sdk-client`](packages/ai-sdk-client)（渲染进程）与 [`@nomi-ai/ai-sdk`](packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/archive/consumer-integration.md](docs/archive/consumer-integration.md)。
 
 **渲染进程（React）**：
 
@@ -485,18 +481,6 @@ for await (const chunk of runtime.client.chat.stream({
 
 > 历史：早期版本使用 Live2D Cubism 2 专有运行时与来源不明的 Live2D 模型，已因许可原因全部移除
 > （见 [docs/archive/plans/mascot-open-source.md](docs/archive/plans/mascot-open-source.md)）。
-
----
-
-## 🧠 可选 dsh 基座（doctor / 实验）
-
-生产路径已迁到 **IgPluginHost + Vercel AI SDK**（`createAiSdkBooter`）。`@deepseek-ai/dsh*` 改为根 `optionalDependencies`，仅 doctor / `IG_DSH_CORE=required|auto` 时使用。若仍需锁定 dsh：
-
-- **锁死主版本**：根 [package.json](package.json)`.optionalDependencies` 中所有 `@deepseek-ai/dsh*` 均写 **exact** 版本，当前锁定 `0.2.0-rc.2`。
-- **三处同步**：升级 dsh 需同步更新 3 个地方 —— 根 [package.json](package.json)、`profiles/*/package.json`（`@deepseek-ai/dsh-base`）、`packages/bundle-ig-base/package.json.peerDependencies['@deepseek-ai/dsh']`。
-- **profiles/ 承载配置**：三份 profile（`waifu` / `chat-only` / `mcp-headless`）以目录形式存放在 [profiles/](profiles)，每份 = `package.json` + `cordis.patch.yml`，详细结构与 override 顺序见 [profiles/README.md](profiles/README.md)。
-- **升级 SOP**：完整 9 步升级流程记录在 [profiles/README.md](profiles/README.md#dsh-升级-sop)。
-- **本地自检**：`pnpm run doctor:dsh <profile>` 装配诊断；`pnpm run test:root` 冒烟三份 profile 的 `loadProfile + composeEntries` 契约。
 
 ---
 

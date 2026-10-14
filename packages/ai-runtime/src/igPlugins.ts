@@ -161,7 +161,7 @@ export function defaultIgPlugins(_profile: string, opts: IgPluginsOptions = {}):
       config: { enable: ['time_now', 'random', 'echo'] },
     },
     // 注：GuardrailsPlugin 不在此装配——其 tools/pre-execute 等 hook 在 ig 宿主路径无人
-    // emit（仅 e2e fakeSeams 模拟 dsh 内核时触发），装上是不生效的假防线。速率限制 /
+    // emit（仅 e2e fakeSeams 模拟 插件宿主 内核时触发），装上是不生效的假防线。速率限制 /
     // 危险工具确认由 ai-runtime 工具包装链与 electron PermissionBroker 实际承担。
     { plugin: MemoryPolicyPlugin, config: {} },
     {

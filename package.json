@@ -32,7 +32,6 @@
     "clean": "turbo run clean",
     "doctor": "node scripts/doctor.mjs",
     "dev:smoke": "node scripts/dev-smoke.mjs",
-    "doctor:dsh": "tsx scripts/dsh-doctor.ts",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",
     "changeset:version": "changeset version",
@@ -95,11 +94,6 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
-  },
-  "optionalDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-app-boot": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2"
   },
   "repository": {
     "type": "git",

@@ -1,4 +1,4 @@
-import { defineService } from '../types/dsh';
+import { defineService } from '../types/plugin';
 import type { UserProfile } from '../types/UserProfile';
 
 /** 深度可选 —— 供 set / patch 使用 */

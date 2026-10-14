@@ -23,8 +23,13 @@ still in git history (`git log --diff-filter=D --stat -- <path>`).
 
 ## dsh harness → Vercel AI SDK
 
-- The AI runtime moved from the dsh kernel to the Vercel AI SDK. dsh is now an **optional**
-  dependency (`optionalDependencies`, `pnpm run doctor:dsh`); profiles under `profiles/` remain for it.
+- The AI runtime moved from the dsh kernel to the Vercel AI SDK. dsh was later removed entirely
+  (Nomi polish v1): `@deepseek-ai/dsh*`, `DshBooter`, `scripts/dsh-doctor.ts`, `profiles/`, the
+  bundles' `patch.yml`, and the E3 mcp-headless profile test. The plugin contract now lives in
+  `bundle-ig-base/src/types/plugin.ts` (`PluginEvent`, formerly `DshEvent`).
+- The legacy standalone MCP server (`standalone-mcp-server.ts`, `src/mcp/**`, Cursor MCP injection,
+  `mcp:*` IPC, `cursor-mcp-config.json`) was removed; MCP now runs only through `@ai-sdk/mcp`
+  (Settings → Extensions). The old remote TTS tester moved to `electron/src/tts/legacy/`.
 - `scripts/migrate-config.ts`, `migrate-history.ts`, `migrate-user-profile.ts` (+ `scripts/lib/migrate`)
   — one-shot converters from the old app's config/history to dsh formats. Obsolete: the app migrates
   legacy userData itself on first launch, and providers are managed in the provider panel.

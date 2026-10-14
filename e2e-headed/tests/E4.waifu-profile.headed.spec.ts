@@ -5,7 +5,7 @@ import { test, expect } from '../fixtures/electronApp';
  *
  * 语义对齐 e2e/tests/E4.waifu-profile-write-read.test.ts：
  * - renderer 调 window.aiIPC.invoke('ai:userProfile:set', patch) 更新 nickname；
- * - 主进程 UserProfileService 落盘 + 触发 userProfile/changed dsh 事件；
+ * - 主进程 UserProfileService 落盘 + 触发 userProfile/changed 插件事件；
  * - EventBroadcaster 广播 `ai:event { evt:'userProfile:changed' }` 给全部窗口；
  * - renderer 通过 window.aiIPC.invoke('ai:userProfile:get') 拉到最新值。
  */

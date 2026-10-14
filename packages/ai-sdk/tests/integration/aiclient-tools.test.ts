@@ -1,5 +1,5 @@
 /**
- * P5-7 集成测试 · 场景 4：tools.confirm(reqId, false) 会 emit 到 dsh 事件流，
+ * P5-7 集成测试 · 场景 4：tools.confirm(reqId, false) 会 emit 到 插件事件流，
  * 且 setEnabled/register/list 走 ToolRegistry。
  */
 

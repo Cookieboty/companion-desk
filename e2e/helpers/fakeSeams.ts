@@ -10,14 +10,14 @@
  * - `createFakeLive2dService`：满足 Live2dFacade.driveLipSync/on 契约，
  *   记录 rms 序列供 E1 断言；
  * - `createEchoTool`：一个可控的工具，触发后 emit `tools/post-execute`
- *   dsh 事件，供 E2 断言 `tool:executed` 广播。
+ *   插件事件，供 E2 断言 `tool:executed` 广播。
  */
 
 import type {
   ChatChunk,
   ChatRequest,
   ChatResponse,
-  DshEvent,
+  PluginEvent,
   LLMProvider,
   LLMRegistry,
   ProfilePatch,
@@ -300,7 +300,7 @@ export function createFakeLive2dService(): FakeLive2dService {
 }
 
 /* ------------------------------------------------- *
- * Echo tool —— 触发后回调 tools/post-execute dsh 事件 *
+ * Echo tool —— 触发后回调 tools/post-execute 插件事件 *
  * ------------------------------------------------- */
 
 export function createEchoTool(): ToolDefinition<{ text: string }, { echoed: string }> {
@@ -315,8 +315,8 @@ export function createEchoTool(): ToolDefinition<{ text: string }, { echoed: str
   };
 }
 
-/** dsh `tools/post-execute` 事件的 payload —— 与 AIClient 桥接契约保持一致 */
-export const TOOL_POST_EXECUTE_EVENT: DshEvent = 'tools/post-execute';
+/** 插件事件 `tools/post-execute` 事件的 payload —— 与 AIClient 桥接契约保持一致 */
+export const TOOL_POST_EXECUTE_EVENT: PluginEvent = 'tools/post-execute';
 
 /* -------------------------------------------------------------- *
  * write_file —— 危险工具冒烟：默认拒绝执行，须由 GuardrailsPlugin *
@@ -358,17 +358,17 @@ export function createWriteFileTool(): WriteFileTool {
  * 通过 `triggerEvent('tool/confirm-required', ...)` 派发（fanout 到 AIClient 桥接
  * 与 emit 记录），并 reject。用于 E5 拒绝路径断言。
  *
- * 注意：真实 dsh 中 `ctx.emit` 即会触发 handler；本 e2e FakeSdkCtx 里 emit 只做
- * record，因此 helper 用 `triggerEvent` 才能让 [AIClient.bindDshBridges](../../packages/ai-sdk/src/AIClient.ts) 命中。
+ * 注意：真实 插件宿主 中 `ctx.emit` 即会触发 handler；本 e2e FakeSdkCtx 里 emit 只做
+ * record，因此 helper 用 `triggerEvent` 才能让 [AIClient.bindRuntimeBridges](../../packages/ai-sdk/src/AIClient.ts) 命中。
  */
 export function installDangerToolGuardrail(
   ctx: {
     on: <TP = unknown, TR = void>(
-      evt: DshEvent,
+      evt: PluginEvent,
       fn: (h: { payload: TP; reject: (r: string, code?: string) => never }) => TR | Promise<TR>,
     ) => () => void;
-    emit: <TP = unknown>(evt: DshEvent, payload: TP) => void;
-    triggerEvent: <TP = unknown>(evt: DshEvent, payload: TP) => Promise<void>;
+    emit: <TP = unknown>(evt: PluginEvent, payload: TP) => void;
+    triggerEvent: <TP = unknown>(evt: PluginEvent, payload: TP) => Promise<void>;
   },
   dangerTools: string[],
 ): () => void {

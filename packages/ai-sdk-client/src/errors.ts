@@ -17,7 +17,7 @@ const IPC_PREFIX_RE = /^\[([A-Z_][A-Z0-9_]*)(\|[^\]]*)?\]\s?(.*)$/s;
 
 /**
  * 与 [`ErrorCodes`](file:///../../ai-sdk/src/errors.ts) 保持同名的常量表；
- * 客户端侧独立维护以避免拉入 dsh / peer 依赖。
+ * 客户端侧独立维护以避免拉入 插件宿主 / peer 依赖。
  */
 export const SDKErrorCodes = {
   // 既有（P5 引入）

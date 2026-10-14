@@ -49,7 +49,7 @@
 
 - **从旧版本升级**：
   - 首次启动会自动执行 [migrate-config](../scripts/migrate-config.ts) / [migrate-history](../scripts/migrate-history.ts) / [migrate-user-profile](../scripts/migrate-user-profile.ts)；
-  - 原文件保留为 `<原名>.legacy.json`，回滚只需删除 `userData/keys/` 与相关 dsh session log；
+  - 原文件保留为 `<原名>.legacy.json`，回滚只需删除 `userData/keys/` 与相关 session log；
 - **SDK 消费方**：如引用 `@ig-live/ai-sdk` / `@ig-live/ai-runtime` / `@ig-live/ai-sdk-client`，遵循 fixed-group（同版本号）；参考 [.changeset/README.md](../.changeset/README.md)。
 
 ## 已知问题
@@ -59,7 +59,7 @@
 ## 验收清单（发版前 checklist）
 
 - [ ] `pnpm typecheck && pnpm lint && pnpm test && pnpm test:e2e` 全绿
-- [ ] `pnpm run doctor:dsh waifu && pnpm run doctor:dsh chat-only && pnpm run doctor:dsh mcp-headless` 全绿
+- [ ] `xvfb-run -a pnpm test:e2e:headed` 全绿
 - [ ] `pnpm changeset status` 无未消费 changeset
 - [ ] 三平台 CI matrix build 全绿（[ci.yml · build-electron](workflows/ci.yml)）
 - [ ] 手工验收 [P9-11 E5 同意路径](../docs/archive/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)（危险工具确认弹窗 → 同意 → fs 写入成功）

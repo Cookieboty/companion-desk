@@ -22,7 +22,6 @@ function once() {
     const env = {
       ...process.env,
       IG_PERF_LOG: '1',
-      IG_DSH_CORE: 'off',
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
     };
     delete env.NODE_ENV;

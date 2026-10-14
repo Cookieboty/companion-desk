@@ -6,7 +6,7 @@ import {
   type McpServerInfo,
   type McpService,
 } from '../seams/mcp';
-import { definePlugin, type PluginContext } from '../types/dsh';
+import { definePlugin, type PluginContext } from '../types/plugin';
 
 export interface McpBridgeConfig {
   servers?: McpServerConfig[];

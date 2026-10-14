@@ -1,6 +1,6 @@
 /**
  * TtsElectronNativeProvider —— 把遗留的 [AdvancedTTSEngine](file:///./../services/AdvancedTTSEngine.ts)
- * 适配成 dsh `TtsProvider`（`ctx.tts.register(...)` 的注册对象）。
+ * 适配成 插件事件 `TtsProvider`（`ctx.tts.register(...)` 的注册对象）。
  *
  * 说明：
  *   - electron 包目前 tsconfig 为 `moduleResolution: node`（旧解析），无法解析
@@ -20,10 +20,10 @@
  *   - `stream(text, opts?)`：一次性 yield 一个 `isFinal=true` 的 chunk，rms 为
  *     `undefined`（本地播放没有 PCM 数据）；
  *   - `stop(reqId)`：直接调用 engine.stop()（本地实现无法按 reqId 精确取消）；
- *   - `listVoices()`：把 engine.getAvailableVoices() 转为 dsh 的 `TtsVoice` 结构；
+ *   - `listVoices()`：把 engine.getAvailableVoices() 转为 插件宿主 的 `TtsVoice` 结构；
  *     仅返回当前 platform 的项。
  *
- * 该 provider 不感知 dsh 生命周期，也不做重试；所有依赖通过构造函数注入以便测试。
+ * 该 provider 不感知 插件宿主 生命周期，也不做重试；所有依赖通过构造函数注入以便测试。
  */
 
 import type { AdvancedTTSEngine, TTSSettings, TTSVoiceConfig } from '../services/AdvancedTTSEngine';

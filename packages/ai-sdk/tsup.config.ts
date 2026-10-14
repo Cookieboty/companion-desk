@@ -4,7 +4,6 @@ export default createTsup({
   preset: 'node-lib',
   entry: ['src/index.ts', 'src/types/index.ts', 'src/config/index.ts'],
   external: [
-    '@deepseek-ai/dsh',
     '@nomi-ai/bundle-ig-base',
     '@nomi-ai/bundle-ig-mascot',
     '@nomi-ai/bundle-ig-electron-caps',

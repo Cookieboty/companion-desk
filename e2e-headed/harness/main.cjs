@@ -3,12 +3,12 @@
 /**
  * e2e-headed 测试专用主进程（P9-11 Polish C）
  *
- * 不复用 packages/electron/src/core/Application.ts —— 那条链路会拉真实 dsh boot、
+ * 不复用 packages/electron/src/core/Application.ts —— 那条链路会拉真实 AI runtime boot、
  * SafeKey、ScreenCapture 等重量级依赖，headed E2E 里不需要。
  *
  * 本文件只保留 headed 复跑所必需的最小片段：
  * 1. 通过 `AIRuntimeService.configure({ booter: FakeBooter, ... })` 启动一个
- *    完全内存化的 dsh 环境（LLM/Tool/UserProfile seams 全部用 fake）；
+ *    完全内存化的 插件环境（LLM/Tool/UserProfile seams 全部用 fake）；
  * 2. 挂 `IPCTransportServer + EventBroadcaster + CapabilityIpcServer`；
  * 3. 打开 1 个 BrowserWindow 载入 renderer.html，用 mkAiPreload 暴露 `window.aiIPC`；
  * 4. `--profile=xxx` CLI 参数切换 waifu / chat-only / mcp-headless；
@@ -100,7 +100,7 @@ function parseArgs() {
 }
 
 // ---------------------------------------------------------------------------
-// FakeBooter · 复刻 e2e/helpers 的 seams，装配一个内存 dsh PluginContext
+// FakeBooter · 复刻 e2e/helpers 的 seams，装配一个内存 插件 PluginContext
 // ---------------------------------------------------------------------------
 function createFakeCtx(profile) {
   const providers = new Map();
@@ -144,7 +144,7 @@ function createFakeCtx(profile) {
   const ctx = {
     profile,
     provide(key, value) {
-      // dsh ServiceKey 的稳定 id 是 `.key`（symbol）
+      // 插件 ServiceKey 的稳定 id 是 `.key`（symbol）
       const id = key && key.key ? key.key : key;
       providers.set(id, value);
     },
@@ -274,7 +274,7 @@ function seedFakeSeams(ctx, profile) {
       userProfile = deepMerge(userProfile, patch.patch);
       userProfile.updatedAt = Date.now();
       profileSubs.forEach((fn) => fn(userProfile));
-      // AIClient.bindDshBridges 用 ctx.on 挂 hook，要走 runHooks
+      // AIClient.bindRuntimeBridges 用 ctx.on 挂 hook，要走 runHooks
       await ctx.runHooks('userProfile/changed', { profile: userProfile });
       return JSON.parse(JSON.stringify(userProfile));
     },
@@ -369,7 +369,7 @@ async function main() {
   // 3) 暴露 ctx / seams 到全局，供 E1 从主进程 side triggerEvent
   //    Playwright 通过 `electronApp.evaluate(({ app }) => globalThis.__aiE2eProbe.emitTts(...))` 触发
   //
-  //    注意：AIClient.bindDshBridges() 走的是 `ctx.on(dshEvent, hookCtx => hookCtx.payload)` 语义
+  //    注意：AIClient.bindRuntimeBridges() 走的是 `ctx.on(event, hookCtx => hookCtx.payload)` 语义
   //    （hook），因此这里必须调 `runHooks` 而不是 `triggerEvent`（后者是 event bus）。
   globalThis.__aiE2eProbe = {
     async emitTts(payload) {

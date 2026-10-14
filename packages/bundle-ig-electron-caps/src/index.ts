@@ -1,7 +1,7 @@
 /**
  * @nomi-ai/bundle-ig-electron-caps
  *
- * dsh Bundle：Electron 主进程独占能力
+ * 插件包：Electron 主进程独占能力
  *   - SafeKeyStorePlugin：safeStorage 加密密钥库
  *   - FileSessionStorePlugin：JSONL 会话 + UserProfile 文件后端
  *   - ScreenPlugin：desktopCapturer 截屏

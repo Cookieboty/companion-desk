@@ -98,7 +98,6 @@ test.describe('E6 · real app · AI chat history', () => {
       DEEPSEEK_API_KEY: 'sk-mock',
       DEEPSEEK_BASE_URL: `http://127.0.0.1:${port}/v1`,
       DEEPSEEK_MODEL: 'mock-model',
-      IG_DSH_CORE: 'off', // 只测 ig 宿主 + provider 链路，加快启动
     };
     delete env.NODE_ENV;
 
