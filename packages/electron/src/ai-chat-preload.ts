@@ -6,6 +6,8 @@ mkAiPreload({ contextBridge, ipcRenderer });
 
 // 为AI对话窗口提供的API
 const aiChatAPI = {
+  /** 平台：渲染层据此画一体化标题栏（macOS 红绿灯 / Windows·Linux 原生按钮 overlay） */
+  platform: process.platform,
   // 消息相关
   invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
 

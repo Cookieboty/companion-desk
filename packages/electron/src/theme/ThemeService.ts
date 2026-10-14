@@ -29,6 +29,13 @@ interface NativeThemeLike {
 
 export class ThemeService {
   private pref: ThemePref = DEFAULT_THEME;
+  private listeners = new Set<(s: ThemeState) => void>();
+
+  /** 主题变化（含「跟随系统」时系统切换）回调；返回取消订阅 */
+  onChange(fn: (s: ThemeState) => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
   constructor(
     private readonly file: string,
     private readonly native: NativeThemeLike = nativeTheme,
@@ -59,6 +66,7 @@ export class ThemeService {
 
   private broadcast(): void {
     const s = this.get();
+    for (const fn of this.listeners) fn(s);
     for (const w of BrowserWindow.getAllWindows()) {
       if (!w.isDestroyed()) w.webContents.send('ai:theme:changed', s);
     }

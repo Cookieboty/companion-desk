@@ -12,6 +12,13 @@ import { SnipOverlay } from './components/SnipOverlay';
 initTheme();
 initLocale();
 
+// 一体化标题栏：主进程用 hiddenInset（mac）/ titleBarOverlay（Win·Linux）创建窗口，
+// 页面顶部留出可拖动的标题栏区域（见 App.css .app-titlebar）
+{
+  const platform = (window as { electronAPI?: { platform?: string } }).electronAPI?.platform;
+  if (platform) document.documentElement.dataset.platform = platform;
+}
+
 const hasAiIpc = typeof window !== 'undefined' && Boolean((window as { aiIPC?: unknown }).aiIPC);
 
 if (!hasAiIpc) {

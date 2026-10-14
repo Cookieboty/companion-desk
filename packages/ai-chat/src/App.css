@@ -249,3 +249,76 @@ body {
   width: auto;
   margin-top: 0;
 }
+
+/* ---------- 一体化标题栏（hiddenInset / titleBarOverlay） ---------- */
+:root {
+  --cd-titlebar-h: 0px;
+}
+html[data-platform] {
+  --cd-titlebar-h: 36px;
+}
+html[data-platform='darwin'] {
+  --cd-titlebar-h: 38px;
+}
+.app-titlebar {
+  display: none;
+}
+html[data-platform] .app-titlebar {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--cd-titlebar-h);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  background: var(--cd-color-bg);
+  border-bottom: 1px solid var(--cd-color-border);
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
+  /* Windows / Linux：右侧是原生按钮（宽度由 WCO 提供，回退 140px） */
+  padding-right: calc(100vw - env(titlebar-area-width, calc(100vw - 140px)));
+}
+html[data-platform='darwin'] .app-titlebar {
+  padding-left: 78px; /* 红绿灯 */
+  padding-right: 78px;
+}
+.app-titlebar-title {
+  font: var(--cd-text-label);
+  color: var(--cd-color-text-muted);
+  letter-spacing: 0.02em;
+}
+html[data-platform] .ai-chat-app {
+  height: 100vh;
+  padding-top: var(--cd-titlebar-h);
+}
+html[data-platform] .main-content {
+  height: calc(100vh - var(--cd-titlebar-h));
+}
+/* 模态 / 遮罩不盖住标题栏（可以一直拖动窗口） */
+html[data-platform] [role='dialog'] button,
+html[data-platform] .app-titlebar button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* ---------- Windows：中文字体 + 字号 ----------
+ * Windows 下 Segoe UI / 微软雅黑 UI 在同样 px 下比 macOS 的 PingFang 显小、笔画细，
+ * 整体字号上调一档（正文 15px），并优先用 YaHei UI（为界面字号做过 hinting）。 */
+html[data-platform='win32'] {
+  --cd-font-sans:
+    'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC',
+    system-ui, sans-serif;
+  --cd-font-size-xs: 13px;
+  --cd-font-size-sm: 14px;
+  --cd-font-size-md: 15px;
+  --cd-font-size-lg: 17px;
+  --cd-font-size-xl: 19px;
+  --cd-font-size-2xl: 24px;
+}
+html[data-platform='linux'] {
+  --cd-font-size-sm: 14px;
+  --cd-font-size-md: 14.5px;
+}

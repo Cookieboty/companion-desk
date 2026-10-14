@@ -5,7 +5,7 @@
 import * as path from 'path';
 import * as url from 'url';
 
-import { BrowserWindow, screen, app } from 'electron';
+import { BrowserWindow, screen, app, type BrowserWindowConstructorOptions } from 'electron';
 
 import { t } from '../i18n';
 import { mascotWindowSize } from '../mascot/mascotSize';
@@ -17,6 +17,7 @@ import { installPreloadGuard } from '../utils/preloadGuard';
 
 import { devChatUrl, devRendererUrl } from './devPorts';
 import { eventBus } from './EventBus';
+import { type ChromeTheme, titleBarOptions } from './titleBar';
 
 export interface WindowOptions {
   width?: number;
@@ -30,6 +31,8 @@ export interface WindowOptions {
   show?: boolean;
   title?: string;
   preloadScript?: string;
+  /** 额外的 BrowserWindow 选项（标题栏样式等） */
+  chrome?: Partial<BrowserWindowConstructorOptions>;
 }
 
 export interface IWindowManager {
@@ -44,6 +47,8 @@ export interface IWindowManager {
 }
 
 export class WindowManager implements IWindowManager {
+  /** 当前主题（Application 注入，决定对话窗口标题栏配色） */
+  chromeTheme: () => ChromeTheme = () => 'ink';
   private mainWindow: BrowserWindow | null = null;
   private aiChatWindow: BrowserWindow | null = null;
   private ttsConfigWindow: BrowserWindow | null = null;
@@ -125,8 +130,9 @@ export class WindowManager implements IWindowManager {
       const primaryDisplay = screen.getPrimaryDisplay();
       const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-      const windowWidth = 1000;
-      const windowHeight = 800;
+      // 设置是全窗布局，给足空间；小屏按工作区收缩
+      const windowWidth = Math.min(1120, screenWidth - 40);
+      const windowHeight = Math.min(820, screenHeight - 40);
       const x = Math.round((screenWidth - windowWidth) / 2);
       const y = Math.round((screenHeight - windowHeight) / 2);
 
@@ -142,6 +148,11 @@ export class WindowManager implements IWindowManager {
         show: false,
         title: 'Nomi',
         preloadScript: 'ai-chat-preload.bundle.js',
+        chrome: {
+          ...titleBarOptions(process.platform, this.chromeTheme()),
+          minWidth: 760,
+          minHeight: 560,
+        },
       };
 
       this.aiChatWindow = await this.createWindow(windowOptions, 'aiChat');
@@ -310,6 +321,7 @@ export class WindowManager implements IWindowManager {
       skipTaskbar: type === 'main',
       hasShadow: false,
       backgroundColor: type === 'main' ? '#00000000' : undefined,
+      ...(options.chrome ?? {}),
       webPreferences: {
         preload: path.join(__dirname, '..', options.preloadScript || 'preload.bundle.js'),
         contextIsolation: true,
