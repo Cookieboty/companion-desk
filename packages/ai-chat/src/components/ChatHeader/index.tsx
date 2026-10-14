@@ -9,8 +9,9 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { extClient } from '../../services/extClient';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
-import { MAX_PINS, pinDef, runPinCommand, togglePin, usePins } from '../../services/pins';
+import { MAX_PINS, pinDef, pinHint, runPinCommand, togglePin, usePins } from '../../services/pins';
 import { schedClient } from '../../services/schedClient';
+import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
 
 import styles from './index.module.css';
 
@@ -56,11 +57,12 @@ interface Props {
 }
 
 export const ChatHeader: React.FC<Props> = (p) => {
+  const bindings = useShortcutBindings();
   const items = [
     {
       k: 'memory',
       tip: t('记忆'),
-      key: '⌘/Ctrl+Shift+M',
+      key: formatCombo(bindings.memory),
       id: 'open-mem-panel',
       pin: 'memory',
       on: p.onMemory,
@@ -69,7 +71,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     {
       k: 'kb',
       tip: t('知识库'),
-      key: '⌘/Ctrl+Shift+L',
+      key: formatCombo(bindings.kb),
       id: 'open-kb-panel',
       pin: 'kbm',
       on: p.onKnowledge,
@@ -78,7 +80,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     {
       k: 'sched',
       tip: t('日程 · 编程助手进度'),
-      key: '⌘/Ctrl+Shift+D',
+      key: formatCombo(bindings.schedule),
       id: 'open-sched-panel',
       pin: 'schedule',
       on: p.onSchedule,
@@ -87,7 +89,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     {
       k: 'ext',
       tip: t('扩展 / MCP'),
-      key: '⌘/Ctrl+Shift+E',
+      key: formatCombo(bindings.ext),
       id: 'open-ext-panel',
       pin: 'ext',
       on: p.onExt,
@@ -96,7 +98,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     {
       k: 'local',
       tip: t('本机管理（日历 · 剪贴板 · 小模型）'),
-      key: '⌘/Ctrl+Shift+J',
+      key: formatCombo(bindings.local),
       id: 'open-local-panel',
       pin: 'local',
       on: p.onLocal,
@@ -105,7 +107,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     {
       k: 'settings',
       tip: t('设置'),
-      key: '⌘/Ctrl+,',
+      key: formatCombo(bindings.settings),
       id: 'open-settings',
       pin: 'settings',
       on: p.onSettings,
@@ -171,7 +173,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
             <Tooltip
               key={id}
               placement="bottom"
-              content={d.shortcut ? `${t(d.label)}  ${t(d.shortcut)}` : t(d.label)}
+              content={pinHint(d) ? `${t(d.label)}  ${pinHint(d)}` : t(d.label)}
             >
               <button
                 type="button"
@@ -215,7 +217,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
                     >
                       <span aria-hidden>{d.icon}</span>
                       <span className={styles.popLabel}>{t(d.label)}</span>
-                      {d.shortcut && <span className={styles.popHint}>{t(d.shortcut)}</span>}
+                      {pinHint(d) && <span className={styles.popHint}>{pinHint(d)}</span>}
                     </button>
                   );
                 })}

@@ -16,6 +16,8 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { getBindings, matchShortcut } from '../../services/shortcuts';
+
 export function useChatVoice(opts: {
   disabled?: boolean;
   onText(text: string, autoSend: boolean): void;
@@ -48,7 +50,7 @@ export function useChatVoice(opts: {
       } else if (e.key === 'Escape' && f2Down.current) {
         f2Down.current = false;
         void v.pttStop(true);
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'h') {
+      } else if (matchShortcut(e, getBindings().handsFree)) {
         e.preventDefault();
         toggleHandsFree();
       }

@@ -8,14 +8,17 @@ import {
   PIN_POOL,
   movePin,
   pinDef,
+  pinHint,
   togglePin,
   usePins,
 } from '../../services/pins';
+import { useShortcutBindings } from '../../services/shortcuts';
 
 import styles from './index.module.css';
 
 export const PinsSettings: React.FC = () => {
   const { pins, update } = usePins();
+  useShortcutBindings(); // 改绑后刷新提示
   const [drag, setDrag] = useState<number | null>(null);
   const [live, setLive] = useState('');
   const full = pins.length >= MAX_PINS;
@@ -132,7 +135,7 @@ export const PinsSettings: React.FC = () => {
                     />
                     <span aria-hidden>{d.icon}</span>
                     <span className={styles.orderLabel}>{t(d.label)}</span>
-                    {d.shortcut && <span className={styles.hint}>{t(d.shortcut)}</span>}
+                    {pinHint(d) && <span className={styles.hint}>{pinHint(d)}</span>}
                   </label>
                 </li>
               );

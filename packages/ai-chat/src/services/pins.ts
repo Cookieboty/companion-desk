@@ -2,30 +2,36 @@
  * 左上角「常驻入口」：用户可自选、可排序，保存在本机 localStorage。
  * 执行时通过 window 事件 `cd:cmd` 交给输入框（它持有各功能的实际动作）；「新对话」由 App 处理。
  */
+import { t } from '@nomi-ai/ui';
 import { useCallback, useEffect, useState } from 'react';
+
+import { formatCombo, getBindings, type ShortcutId } from './shortcuts';
 
 export interface PinDef {
   id: string;
   icon: string;
   label: string;
+  /** 固定提示（如「F2 说话」） */
   shortcut?: string;
+  /** 可改绑的快捷键：提示按当前绑定显示 */
+  sc?: ShortcutId;
 }
 
 export const PIN_POOL: PinDef[] = [
-  { id: 'newchat', icon: '✏️', label: '新对话' },
-  { id: 'snip', icon: '✂️', label: '截图提问', shortcut: '⌘/Ctrl+Shift+S' },
-  { id: 'kb', icon: '📚', label: '知识库问答开关', shortcut: '⌘/Ctrl+Shift+K' },
-  { id: 'handsfree', icon: '🎧', label: '免按键语音', shortcut: '⌘/Ctrl+Shift+H' },
+  { id: 'newchat', icon: '✏️', label: '新对话', sc: 'newChat' },
+  { id: 'snip', icon: '✂️', label: '截图提问', sc: 'snip' },
+  { id: 'kb', icon: '📚', label: '知识库问答开关', sc: 'kbAsk' },
+  { id: 'handsfree', icon: '🎧', label: '免按键语音', sc: 'handsFree' },
   { id: 'voice', icon: '🎙', label: '语音设置', shortcut: 'F2 说话' },
   { id: 'model', icon: '🔑', label: '供应商与模型' },
-  { id: 'kbm', icon: '🗂', label: '知识库管理', shortcut: '⌘/Ctrl+Shift+L' },
-  { id: 'memory', icon: '🧠', label: '长期记忆', shortcut: '⌘/Ctrl+Shift+M' },
-  { id: 'schedule', icon: '🗓', label: '日程 · 编程助手', shortcut: '⌘/Ctrl+Shift+D' },
-  { id: 'screen', icon: '🖥', label: '屏幕记忆', shortcut: '⌘/Ctrl+Shift+O' },
-  { id: 'ext', icon: '🧩', label: '扩展 / MCP', shortcut: '⌘/Ctrl+Shift+E' },
+  { id: 'kbm', icon: '🗂', label: '知识库管理', sc: 'kb' },
+  { id: 'memory', icon: '🧠', label: '长期记忆', sc: 'memory' },
+  { id: 'schedule', icon: '🗓', label: '日程 · 编程助手', sc: 'schedule' },
+  { id: 'screen', icon: '🖥', label: '屏幕记忆', sc: 'screen' },
+  { id: 'ext', icon: '🧩', label: '扩展 / MCP', sc: 'ext' },
   { id: 'desktop', icon: '📁', label: '桌面权限' },
-  { id: 'local', icon: '🏠', label: '本机管理', shortcut: '⌘/Ctrl+Shift+J' },
-  { id: 'settings', icon: '⚙️', label: '设置', shortcut: '⌘/Ctrl+,' },
+  { id: 'local', icon: '🏠', label: '本机管理', sc: 'local' },
+  { id: 'settings', icon: '⚙️', label: '设置', sc: 'settings' },
 ];
 
 /**
@@ -97,3 +103,9 @@ export function usePins() {
 /** 执行一个入口（输入框监听并执行） */
 export const runPinCommand = (id: string) =>
   window.dispatchEvent(new CustomEvent<string>('cd:cmd', { detail: id }));
+
+/** pin 的快捷键提示（按当前绑定 / 平台格式化） */
+export function pinHint(d: PinDef): string {
+  if (d.sc) return formatCombo(getBindings()[d.sc]);
+  return d.shortcut ? t(d.shortcut) : '';
+}
