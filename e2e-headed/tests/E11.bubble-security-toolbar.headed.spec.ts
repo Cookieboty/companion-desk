@@ -162,6 +162,29 @@ test.describe('E11 · bubble security + toolbar', () => {
     );
     const chat = await chatWindow;
     await chat.waitForSelector('textarea', { timeout: 20_000 });
+    // 对话窗经 file:// 加载（与打包一致）：响应头 CSP 不作用于 file://，必须有构建期 meta CSP
+    const chatCsp = await chat.evaluate(async () => {
+      let violations = 0;
+      document.addEventListener('securitypolicyviolation', () => (violations += 1));
+      const s = document.createElement('script');
+      s.textContent = 'window.__cspInline = 1';
+      document.head.appendChild(s);
+      await new Promise((r) => setTimeout(r, 200));
+      return {
+        protocol: location.protocol,
+        csp:
+          document
+            .querySelector('meta[http-equiv="Content-Security-Policy"]')
+            ?.getAttribute('content') ?? '',
+        ran: (window as unknown as { __cspInline?: number }).__cspInline,
+        violations,
+      };
+    });
+    expect(chatCsp.protocol).toBe('file:');
+    expect(chatCsp.csp).toMatch(/script-src 'self'(;|$)/);
+    expect(chatCsp.csp).toContain("object-src 'none'");
+    expect(chatCsp.ran).toBeUndefined();
+    expect(chatCsp.violations).toBeGreaterThan(0);
     await main.evaluate(() =>
       window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: '·', ms: 50 } })),
     );
