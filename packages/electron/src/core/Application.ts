@@ -12,6 +12,9 @@ import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
 import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
+import { initCliHarnessService } from '../cli/CliHarnessService';
+import { initCliProviderBridge } from '../cli/CliProviderBridge';
+import { initCliUpdateService } from '../cli/CliUpdateService';
 import { getDesktopService } from '../desktop/DesktopService';
 import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
@@ -322,6 +325,24 @@ export class Application implements IApplication {
       });
       agents.registerIpc();
       if (agents.state().settings.enabled) agents.start();
+
+      // 编程助手 CLI 接入 P0：版本更新 / 供应商桥 / 对话后端接管
+      const cliUpdate = initCliUpdateService({
+        root: path.join(app.getPath('userData'), 'cli-update'),
+        logger: this.logger as never,
+      });
+      cliUpdate.registerIpc();
+      const cliProviders = initCliProviderBridge({
+        root: path.join(app.getPath('userData'), 'cli-providers'),
+        logger: this.logger as never,
+      });
+      cliProviders.registerIpc();
+      const harness = initCliHarnessService({
+        root: path.join(app.getPath('userData'), 'harness'),
+        logger: this.logger as never,
+        defaultCwd: app.getPath('documents'),
+      });
+      harness.registerIpc();
 
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
