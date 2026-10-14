@@ -3,7 +3,17 @@
  * 云端识别同意、免按键灵敏度、打断、唤醒词。全部只存本机。
  */
 import { t } from '@nomi-ai/ui';
-import { Badge, Button, FormField, Input, Notice, Select, Switch } from '@nomi-ai/ui';
+import {
+  Badge,
+  Button,
+  ErrorState,
+  FormField,
+  Input,
+  LoadingState,
+  Notice,
+  Select,
+  Switch,
+} from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
 import type { VoiceApi, VoiceAssetView, VoiceSettingsView, VoiceStateView } from '../bridge';
@@ -77,7 +87,17 @@ const AssetRow: React.FC<{
             </span>
           </div>
         )}
-        {error && <div className="cd-voice-asset__error">{error}</div>}
+        {error && !a.downloading && (
+          <ErrorState
+            compact
+            data-testid={`voice-error-${a.id}`}
+            title={t('下载失败')}
+            detail={error}
+            // 许可已在首次下载时确认过，重试直接下载
+            onRetry={() => void api.download(a.id)}
+            retryTestId={`voice-retry-${a.id}`}
+          />
+        )}
         {confirming && (
           <Notice className="cd-voice-asset__confirm">
             {t('将从')} {new URL(a.sourceUrl).host} {t('下载')} {fmtBytes(a.bytes)}（{a.license}{' '}
@@ -153,14 +173,14 @@ export const VoiceSettingsPanel: React.FC<VoiceSettingsPanelProps> = ({
   useEffect(
     () =>
       api.onProgress((e) => {
-        if (e.phase === 'error')
-          setErrors((x) => ({ ...x, [e.id]: t('下载失败：{0}', e.error ?? '') }));
+        if (e.phase === 'error') setErrors((x) => ({ ...x, [e.id]: e.error || t('未知错误') }));
         if (e.phase === 'start' || e.phase === 'done') setErrors((x) => ({ ...x, [e.id]: '' }));
         onRefresh();
       }),
     [api, onRefresh],
   );
-  if (!config) return <div className="cd-voice-loading">{t('加载语音设置…')}</div>;
+  if (!config)
+    return <LoadingState rows={4} label={t('加载语音设置…')} data-testid="voice-loading" />;
   const s = config.settings;
   const set = (p: Partial<VoiceSettingsView>) => void api.setSettings(p).then(onRefresh);
   const engines = config.assets.filter((a) => a.kind === 'whisper-bin');

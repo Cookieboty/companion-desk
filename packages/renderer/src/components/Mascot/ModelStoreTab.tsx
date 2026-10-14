@@ -1,6 +1,6 @@
 import type { ModelDownloadProgress, StoreEntryView, StoreStateView } from '@nomi-ai/types';
 import { t } from '@nomi-ai/ui';
-import { Badge, Button, EmptyState, Notice } from '@nomi-ai/ui';
+import { Badge, Button, EmptyState, ErrorState, LoadingState, Notice } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import styles from './style.module.css';
@@ -77,11 +77,16 @@ export const ModelStoreTab: React.FC = () => {
           {loading ? t('刷新中…') : t('刷新')}
         </Button>
       </div>
+      {!state && loading && <LoadingState rows={3} data-testid="store-loading" />}
       {state?.error && !state.entries.length && (
-        <Notice tone="warning" data-testid="store-error">
-          {t('无法获取模型目录：')}
-          {state.error}
-        </Notice>
+        <ErrorState
+          data-testid="store-error"
+          title={t('无法获取模型目录')}
+          detail={state.error}
+          onRetry={() => void load(true)}
+          retrying={loading}
+          retryTestId="store-error-retry"
+        />
       )}
       {!!state?.rejectedCount && (
         <Notice tone="warning">
@@ -132,10 +137,14 @@ export const ModelStoreTab: React.FC = () => {
                   </div>
                 )}
                 {p?.state === 'error' && (
-                  <div className={styles.errorText}>
-                    {t('下载失败：')}
-                    {p.error}
-                  </div>
+                  <ErrorState
+                    compact
+                    data-testid={`store-download-error-${e.id}`}
+                    title={t('下载失败')}
+                    detail={p.error}
+                    onRetry={() => void install(e)}
+                    retryTestId={`store-retry-${e.id}`}
+                  />
                 )}
               </div>
               <div className={styles.storeActions}>

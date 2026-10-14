@@ -2,7 +2,7 @@
  * ScreenPanel —— 截图提问说明 + 本地屏幕记忆（默认关闭）：开关、间隔、保留期、
  * 排除的应用 / 窗口、时间线搜索、暂停与清空。数据只在本机 userData/screen-memory。
  */
-import { t as tr } from '@nomi-ai/ui';
+import { ErrorState, LoadingState, t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -157,8 +157,8 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
           aria-label={tr('截图与屏幕记忆')}
         />
         {header}
-        {err && <Notice tone="danger">{err}</Notice>}
-        {!st && !err && <SkeletonList rows={3} />}
+        {err && <ErrorState detail={err} onRetry={() => void load()} data-testid="panel-error" />}
+        {!st && !err && <LoadingState rows={3} />}
 
         {st && tab === 'ask' && (
           <div className={styles.stack}>

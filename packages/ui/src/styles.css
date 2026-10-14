@@ -496,6 +496,55 @@
 }
 
 /* ---------- EmptyState ---------- */
+/* ---- 统一状态：错误 / 加载 ---- */
+.cd-error-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--cd-radius-md, 10px);
+  border: 1px solid color-mix(in srgb, var(--cd-color-danger, #e5484d) 40%, transparent);
+  background: color-mix(in srgb, var(--cd-color-danger, #e5484d) 9%, transparent);
+}
+.cd-error-state__icon {
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--cd-color-danger, #e5484d);
+}
+.cd-error-state__text {
+  flex: 1 1 10em;
+  min-width: 0;
+}
+.cd-error-state__title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.cd-error-state__detail {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--cd-color-text-muted);
+  overflow-wrap: anywhere;
+}
+.cd-error-state--compact {
+  padding: 6px 10px;
+  margin-top: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.cd-error-state--compact .cd-error-state__text {
+  min-width: 8em;
+}
+.cd-error-state--compact .cd-error-state__title {
+  font-size: 12.5px;
+}
+.cd-loading-state__label {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--cd-color-text-muted);
+}
+
 .cd-empty {
   display: flex;
   flex-direction: column;

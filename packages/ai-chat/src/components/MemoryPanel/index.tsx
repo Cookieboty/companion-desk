@@ -2,7 +2,7 @@
  * MemoryPanel —— 长期记忆：对话记忆（摘要，可编辑 / 置顶 / 删除）、关于我（事实）、
  * 用户档案（persona.md）、设置与导出。数据全部在本机 userData/memory。
  */
-import { t as tr } from '@nomi-ai/ui';
+import { ErrorState, LoadingState, t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -369,8 +369,10 @@ const PanelBody: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             '🔒 记忆只保存在本机。整理摘要使用当前对话模型；开启知识库的向量检索后，回忆会更准确。',
           )}
         </Notice>
-        {err && <Notice tone="danger">{err}</Notice>}
-        {!st && !err && <Skeleton height={120} />}
+        {err && (
+          <ErrorState detail={err} onRetry={() => void refresh()} data-testid="panel-error" />
+        )}
+        {!st && !err && <LoadingState rows={3} />}
         {st && data && (
           <>
             {!st.settings.enabled && (

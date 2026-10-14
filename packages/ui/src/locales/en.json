@@ -994,12 +994,10 @@
   "离线：显示缓存的目录": "Offline: showing cached catalog",
   "目录：{0}": "Catalog: {0}",
   "刷新中…": "Refreshing…",
-  "无法获取模型目录：": "Couldn't fetch the model catalog: ",
   "已忽略": "Ignored",
   "个不符合许可 / 安全要求的条目。": "entries that don't meet license / safety requirements.",
   "目录为空": "Catalog is empty",
   "有更新": "Update available",
-  "下载失败：": "Download failed: ",
   "更新": "Updates",
   "使用": "Use",
   "已内置": "Built-in",
@@ -1226,7 +1224,6 @@
   "· 许可": "· license",
   "将从": "Will download from",
   "许可），下载后校验 SHA-256，仅保存在本机。": "license); verified with SHA-256 after download and stored only on this device.",
-  "下载失败：{0}": "Download failed: {0}",
   "加载语音设置…": "Loading voice settings…",
   "🔒 录音只在内存中处理，识别完立即丢弃，不保存音频。本地引擎完全离线；使用云端识别前会先征得你的同意。": "🔒 Recordings are processed in memory and discarded right after recognition; no audio is saved. The local engine is fully offline; cloud recognition asks for your consent first.",
   "✅ 语音输入可用（{0}）": "✅ Voice input available ({0})",
@@ -1446,5 +1443,10 @@
   "退出应用": "Quit app",
   "关闭窗口": "Close window",
   "查找": "Find",
-  "开发者工具": "Developer tools"
+  "开发者工具": "Developer tools",
+  "下载失败": "Download failed",
+  "无法获取模型目录": "Couldn't load the model catalog",
+  "出错了": "Something went wrong",
+  "重试中…": "Retrying…",
+  "重试": "Retry"
 }

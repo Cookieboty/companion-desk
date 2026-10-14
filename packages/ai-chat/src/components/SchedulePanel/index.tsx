@@ -1,7 +1,7 @@
 /**
  * SchedulePanel —— 主动日程：提醒（含重复）、定时任务（每日简报等）、主动聊天、免打扰与通知。
  */
-import { t as tr } from '@nomi-ai/ui';
+import { ErrorState, LoadingState, t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -291,8 +291,10 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
       data-testid="sched-panel"
     >
       <div className={styles.stack}>
-        {err && <Notice tone="danger">{err}</Notice>}
-        {!st && !err && <Skeleton height={120} />}
+        {err && (
+          <ErrorState detail={err} onRetry={() => void refresh()} data-testid="panel-error" />
+        )}
+        {!st && !err && <LoadingState rows={3} />}
         {st && (
           <>
             <div className={styles.statusRow}>

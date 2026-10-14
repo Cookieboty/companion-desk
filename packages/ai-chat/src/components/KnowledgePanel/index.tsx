@@ -2,7 +2,7 @@
  * KnowledgePanel —— 本地知识库管理：来源（文件夹 / 笔记）、索引进度、文档列表、检索测试、
  * 向量 / 重排模型（可选，OpenAI 兼容）、OCR 语言数据（按需下载，显示许可、进度、可取消）。
  */
-import { t as tr } from '@nomi-ai/ui';
+import { ErrorState, LoadingState, t as tr } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -468,8 +468,10 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
             '🔒 索引只保存在本机。只会读取你在这里加入的文件夹（同时授予只读权限）和本地笔记；云端模型参与前会先征求同意。',
           )}
         </Notice>
-        {err && <Notice tone="danger">{err}</Notice>}
-        {!st && !err && <Skeleton height={120} />}
+        {err && (
+          <ErrorState detail={err} onRetry={() => void refresh()} data-testid="panel-error" />
+        )}
+        {!st && !err && <LoadingState rows={3} />}
         {st && (
           <>
             <div className={styles.stats}>

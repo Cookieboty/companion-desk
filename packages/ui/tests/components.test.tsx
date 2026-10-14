@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ErrorState,
+  LoadingState,
   Badge,
   Button,
   Card,
@@ -138,6 +140,25 @@ describe('@nomi-ai/ui', () => {
     unmount();
     expect(document.activeElement).toBe(opener);
     opener.remove();
+  });
+
+  it('ErrorState: alert role, detail, retry; LoadingState: busy skeleton', () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(
+      <ErrorState title="下载失败" detail="HTTP 503" onRetry={onRetry} retryTestId="retry" />,
+    );
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('下载失败');
+    expect(alert.textContent).toContain('HTTP 503');
+    fireEvent.click(screen.getByTestId('retry'));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    rerender(<ErrorState detail="x" onRetry={onRetry} retrying retryTestId="retry" />);
+    expect((screen.getByTestId('retry') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('alert').textContent).toContain('出错了');
+    cleanup();
+    render(<LoadingState rows={2} label="加载中" data-testid="ld" />);
+    expect(screen.getByTestId('ld').getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByRole('status')).toBeTruthy();
   });
 
   it('Tabs: click and arrow keys change selection', () => {
