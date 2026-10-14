@@ -174,7 +174,7 @@ export const useCharacter3DStore = create<Character3DStore>()(
           // 保持最近5分钟的性能历史
           const fiveMinutesAgo = now - 5 * 60 * 1000;
           state.performanceHistory = state.performanceHistory.filter(
-            (record) => record.timestamp > fiveMinutesAgo,
+            (record) => (record.timestamp ?? 0) > fiveMinutesAgo,
           );
 
           state.lastPerformanceCheck = now;
