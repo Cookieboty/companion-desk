@@ -13,6 +13,7 @@ import path from 'node:path';
 import { BrowserWindow, Notification, ipcMain, powerMonitor } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { iconImage } from '../core/appIcon';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t as tr } from '../i18n';
 import { notifyIsland } from '../island/IslandService';
@@ -411,7 +412,7 @@ export class SchedulerService {
   private notify(title: string, body: string) {
     try {
       if (!Notification.isSupported()) return;
-      const n = new Notification({ title, body });
+      const n = new Notification({ title, body, icon: iconImage() });
       n.on('click', () => this.d.openChat());
       n.show();
     } catch (e) {

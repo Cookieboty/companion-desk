@@ -14,6 +14,8 @@ import { APP_DISPLAY_NAME } from '../brand';
 import { onLocaleChange, t } from '../i18n';
 import type { ILoggerService } from '../services/LoggerService';
 
+import { assetsDir, iconImage, onTrayIcon } from './appIcon';
+
 export interface ProviderMenuEntry {
   id: string | null;
   label: string;
@@ -113,12 +115,13 @@ export class TrayManager {
     if (process.env.IG_DISABLE_TRAY === '1' || this.tray) return;
     try {
       // macOS 用单色 Template 图（随菜单栏明暗自动反色），其余平台用彩色 Nomi 标
-      const assets = path.join(__dirname, '..', '..', 'assets');
-      const icon = nativeImage.createFromPath(
-        path.join(assets, process.platform === 'darwin' ? 'trayTemplate.png' : 'tray.png'),
-      );
-      if (process.platform === 'darwin') icon.setTemplateImage(true);
+      const mac = process.platform === 'darwin';
+      const icon = mac
+        ? nativeImage.createFromPath(path.join(assetsDir(), 'trayTemplate.png'))
+        : iconImage('tray');
+      if (mac) icon.setTemplateImage(true);
       this.tray = new Tray(icon);
+      this.unsubscribeIcon = onTrayIcon((img) => this.tray?.setImage(img));
       this.tray.setToolTip(APP_DISPLAY_NAME);
       this.rebuild();
       this.unsubscribe = this.opts.providers.onChange(() => this.rebuild());
@@ -136,6 +139,7 @@ export class TrayManager {
   }
 
   private unsubscribeLocale?: () => void;
+  private unsubscribeIcon?: () => void;
   private models: RegistryModelLite[] = [];
   private unsubscribeModels?: () => void;
 
@@ -213,6 +217,7 @@ export class TrayManager {
 
   dispose(): void {
     this.unsubscribeLocale?.();
+    this.unsubscribeIcon?.();
     this.unsubscribe?.();
     this.unsubscribeScreen?.();
     this.unsubscribeModels?.();

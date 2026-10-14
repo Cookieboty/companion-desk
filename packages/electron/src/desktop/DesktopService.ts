@@ -13,6 +13,7 @@ import {
 } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { iconImage } from '../core/appIcon';
 import { t as tr } from '../i18n';
 import { AgentBrowser } from '../sandbox/AgentBrowser';
 import { CodeSandbox } from '../sandbox/CodeSandbox';
@@ -194,7 +195,12 @@ export class DesktopService {
     broadcastMascotCommand({ type: 'expression', name: 'happy' });
     try {
       if (osNotify && Notification.isSupported()) {
-        const n = new Notification({ title: tr('⏰ 提醒'), body: r.text, silent: false });
+        const n = new Notification({
+          title: tr('⏰ 提醒'),
+          body: r.text,
+          silent: false,
+          icon: iconImage(),
+        });
         n.on('click', () => {
           const mw = this.main();
           if (mw && !mw.isVisible()) mw.showInactive();

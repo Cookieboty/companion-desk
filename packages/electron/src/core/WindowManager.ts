@@ -15,6 +15,7 @@ import { type ILoggerService } from '../services/LoggerService';
 import { perfEnabled, perfMark } from '../utils/perfMarks';
 import { installPreloadGuard } from '../utils/preloadGuard';
 
+import { windowIconPath } from './appIcon';
 import { devChatUrl, devRendererUrl } from './devPorts';
 import { eventBus } from './EventBus';
 import { type ChromeTheme, titleBarOptions } from './titleBar';
@@ -318,6 +319,7 @@ export class WindowManager implements IWindowManager {
       alwaysOnTop: options.alwaysOnTop,
       show: options.show,
       title: options.title,
+      icon: windowIconPath(),
       skipTaskbar: type === 'main',
       hasShadow: false,
       backgroundColor: type === 'main' ? '#00000000' : undefined,
