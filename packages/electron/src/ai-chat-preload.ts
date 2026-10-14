@@ -9,6 +9,18 @@ const aiChatAPI = {
   /** 平台：渲染层据此画一体化标题栏（macOS 红绿灯 / Windows·Linux 原生按钮 overlay） */
   platform: process.platform,
 
+  /** 设置 → 应用图标（core/appIcon.ts） */
+  appIcon: {
+    get: () => ipcRenderer.invoke('app-icon:get'),
+    set: (variant: string) => ipcRenderer.invoke('app-icon:set', variant),
+  },
+  /** 设置 → 灵动岛（island/IslandService.ts） */
+  island: {
+    get: () => ipcRenderer.invoke('island:get'),
+    set: (patch: unknown) => ipcRenderer.invoke('island:set', patch),
+    test: () => ipcRenderer.invoke('island:test'),
+  },
+
   updates: {
     get: () => ipcRenderer.invoke('updates:get'),
     check: () => ipcRenderer.invoke('updates:check'),
