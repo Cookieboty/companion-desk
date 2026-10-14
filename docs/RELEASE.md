@@ -30,6 +30,9 @@ Auto-check can be toggled off in Settings. Periodic re-check is every 6 hours wh
    - `package.json` (workspace root)
    - `packages/electron/package.json` ← electron-builder / electron-updater read this
    - Prefer `pnpm changeset` + `pnpm changeset:version` when a changeset exists; otherwise edit both by hand.
+   - Root [`CHANGELOG.md`](../CHANGELOG.md) is generated from `.changeset/*.md`: `pnpm changelog`
+     refreshes the _Unreleased_ section (CI runs `pnpm changelog:check`); `pnpm changeset:version`
+     first turns _Unreleased_ into `## x.y.z — date`, then consumes the changesets.
 2. **Commit** on `main` (or a release PR), wait for CI green on all three platforms.
 3. **Tag and push** (example for 1.0.0 — only when you are ready):
 
