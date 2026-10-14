@@ -222,6 +222,9 @@ export class CliHarnessService {
         windowsHide: true,
       });
 
+      // 真实 CLI 在 stdin 为管道时会等待 EOF 读取附加输入（codex exec 会一直挂起）
+      child.stdin.end();
+
       const onChunk = (chunk: Buffer) => {
         buf += chunk.toString('utf8');
         const parts = buf.split(/\r?\n/);
