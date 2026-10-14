@@ -14,7 +14,6 @@ import { Character3DCanvas } from './Character3DCanvas';
 export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   modelPath = DEFAULT_VRM_MODEL_PATH,
   modelConfig,
-  enableMCPIntegration = true,
   enableVoiceSync = true,
   enableControls = false,
   transparent = true,
@@ -27,8 +26,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { isLoaded, isVisible, mcpConnected, setCurrentModel, setMCPConnected } =
-    useCharacter3DStore();
+  const { isLoaded, isVisible, setCurrentModel } = useCharacter3DStore();
 
   // 初始化3D角色系统
   useEffect(() => {
@@ -38,11 +36,6 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
 
         // 设置当前模型
         setCurrentModel(modelPath);
-
-        // 初始化MCP集成
-        if (enableMCPIntegration) {
-          await initializeMCPIntegration();
-        }
 
         setIsInitialized(true);
         console.log('VirtualCharacter3D: 初始化完成');
@@ -58,27 +51,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
     };
 
     initialize();
-  }, [modelPath, enableMCPIntegration]); // 移除store函数和callback依赖
-
-  // 初始化MCP集成
-  const initializeMCPIntegration = async (): Promise<void> => {
-    try {
-      console.log('VirtualCharacter3D: 初始化MCP集成...');
-
-      // 检查MCP API是否可用
-      if (typeof window !== 'undefined' && window.electronAPI?.mcp) {
-        // 检查MCP服务状态
-        const status = await window.electronAPI.mcp.getStatus();
-        setMCPConnected(status.isRunning && status.mcpServerReady);
-
-        console.log('VirtualCharacter3D: MCP状态:', status);
-      } else {
-        console.warn('VirtualCharacter3D: MCP API不可用');
-      }
-    } catch (err) {
-      console.error('VirtualCharacter3D: MCP集成初始化失败:', err);
-    }
-  };
+  }, [modelPath]); // 移除store函数和callback依赖
 
   // 处理模型加载成功
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
@@ -147,9 +120,6 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
       >
         <div style={{ textAlign: 'center', color: '#666' }}>
           <div style={{ marginBottom: '8px' }}>{t('正在初始化3D系统...')}</div>
-          <div style={{ fontSize: '12px', opacity: 0.7 }}>
-            {mcpConnected ? t('MCP已连接') : t('等待MCP连接')}
-          </div>
         </div>
       </div>
     );
@@ -199,7 +169,6 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
           <div>
             {t('模型:')} {isLoaded ? t('已加载') : t('加载中')}
           </div>
-          <div>MCP: {mcpConnected ? t('已连接') : t('断开')}</div>
         </div>
       )}
     </div>

@@ -2,7 +2,7 @@
   "name": "@nomi-ai/bundle-ig-electron-caps",
   "version": "0.0.1",
   "private": true,
-  "description": "dsh Bundle：Electron 主进程独占能力（safeStorage 密钥 / 文件会话 & UserProfile 存储 / Screen / Clipboard / ASR / TTS / WakeWord / Shortcut）",
+  "description": "插件包：Electron 主进程独占能力（safeStorage 密钥 / 文件会话 & UserProfile 存储 / Screen / Clipboard / ASR / TTS / WakeWord / Shortcut）",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -13,7 +13,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./patch": "./dist/patch.yml",
     "./seams": {
       "types": "./dist/seams/index.d.ts",
       "import": "./dist/seams/index.js",
@@ -24,11 +23,8 @@
     "dist",
     "README.md"
   ],
-  "dsh": {
-    "bundle": "./dist/patch.yml"
-  },
   "scripts": {
-    "build": "node ../../scripts/run-bin.mjs tsup && node scripts/copy-patch.mjs",
+    "build": "node ../../scripts/run-bin.mjs tsup",
     "dev": "node ../../scripts/run-bin.mjs tsup --watch",
     "typecheck": "node ../../scripts/run-bin.mjs tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
@@ -36,14 +32,10 @@
     "clean": "node ../../scripts/run-bin.mjs rimraf dist coverage .turbo"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@nomi-ai/bundle-ig-base": "workspace:*",
     "electron": ">=28"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": {
-      "optional": true
-    },
     "electron": {
       "optional": true
     }

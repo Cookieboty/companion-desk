@@ -3,7 +3,7 @@
  *
  * 语义对齐：
  * - 一个 waifu 主渲染窗口调用 `client.memory.userProfile.set({ patch })` 更新偏好；
- * - FakeProfileService 在 set 内部触发 `changed`，`createE2eRuntime` 桥接为 dsh 事件
+ * - FakeProfileService 在 set 内部触发 `changed`，`createE2eRuntime` 桥接为 插件事件
  *   `userProfile/changed`，AIClient 的 UserProfileFacade 会把它映射为 `userProfile:changed`
  *   业务事件并通过 EventBroadcaster 广播；
  * - 断言：

@@ -2,7 +2,7 @@
  * MemoryFacade —— facts / summaries / userProfile 三大子域。
  *
  * P5 阶段：
- * - `facts` / `summaries` 使用**内存版占位存储**（真实存储在 P6/P8 挂到 dsh 存储层）；
+ * - `facts` / `summaries` 使用**内存版占位存储**（真实存储在 P6/P8 挂到 插件宿主 存储层）；
  * - `userProfile` 直接代理 [`UserProfileService`](file:///../../bundle-ig-base/src/seams/userProfile.ts)，
  *   保持类型与 bundle-ig-base 完全一致（P5 计划 §P5-2 要求 re-export）。
  */

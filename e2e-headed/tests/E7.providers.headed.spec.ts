@@ -125,7 +125,6 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-      IG_DSH_CORE: 'off',
     };
     delete env.NODE_ENV;
     for (const k of Object.keys(env)) {

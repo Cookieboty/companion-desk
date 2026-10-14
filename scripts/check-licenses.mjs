@@ -44,10 +44,6 @@ const DEP_EXCEPTIONS = [
     pattern: /^@img\/sharp-(libvips-|win32-)/,
     why: 'LGPL-3.0-or-later — prebuilt libvips shared library (via sharp), dynamically linked, unmodified',
   },
-  {
-    pattern: /^@deepseek-ai\/libreoffice-kit(-|$)/,
-    why: 'MPL-2.0 — file-level copyleft, used unmodified (optional dsh dependency)',
-  },
 ];
 const isException = (name) => DEP_EXCEPTIONS.some((e) => e.pattern.test(name));
 

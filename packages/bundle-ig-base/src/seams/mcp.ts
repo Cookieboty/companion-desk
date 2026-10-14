@@ -1,4 +1,4 @@
-import { defineService } from '../types/dsh';
+import { defineService } from '../types/plugin';
 
 export interface McpServerInfo {
   id: string;

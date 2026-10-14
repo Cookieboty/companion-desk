@@ -1,6 +1,6 @@
 import { ToolRegistryKey, type ToolRegistry } from '../seams/tools';
 import type { ToolDefinition } from '../types/common';
-import { definePlugin, type PluginContext } from '../types/dsh';
+import { definePlugin, type PluginContext } from '../types/plugin';
 
 import { createHttpGetReadonlyTool, echoTool, randomTool, timeNowTool } from './tools/builtin';
 
@@ -33,7 +33,7 @@ class InMemoryToolRegistry implements ToolRegistry {
 export const ToolsBuiltinPlugin = definePlugin<ToolsBuiltinConfig>({
   name: 'ToolsBuiltinPlugin',
   apply(ctx: PluginContext, cfg: ToolsBuiltinConfig) {
-    // 允许上游已经 provide 过 registry（P1 dsh 官方版本），否则本地兜底
+    // 允许上游已经 provide 过 registry（P1 插件宿主 官方版本），否则本地兜底
     const existing = ctx.inject(ToolRegistryKey);
     const registry: ToolRegistry = existing ?? new InMemoryToolRegistry();
     if (!existing) ctx.provide(ToolRegistryKey, registry);

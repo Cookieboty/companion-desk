@@ -2,7 +2,7 @@
   "name": "@nomi-ai/bundle-ig-base",
   "version": "0.0.1",
   "private": true,
-  "description": "dsh Bundle：跨环境通用 AI 能力（LLM Providers / 内置工具 / 护栏 / MCP 桥接 / 4 层记忆含用户偏好薄层）",
+  "description": "插件包：跨环境通用 AI 能力（LLM Providers / 内置工具 / 护栏 / MCP 桥接 / 4 层记忆含用户偏好薄层）",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -13,7 +13,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./patch": "./dist/patch.yml",
     "./types": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/types/index.js"
@@ -23,24 +22,13 @@
     "dist",
     "README.md"
   ],
-  "dsh": {
-    "bundle": "./dist/patch.yml"
-  },
   "scripts": {
-    "build": "node ../../scripts/run-bin.mjs tsup && node scripts/copy-patch.mjs",
+    "build": "node ../../scripts/run-bin.mjs tsup",
     "dev": "node ../../scripts/run-bin.mjs tsup --watch",
     "typecheck": "node ../../scripts/run-bin.mjs tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "node ../../scripts/run-bin.mjs vitest run",
     "clean": "node ../../scripts/run-bin.mjs rimraf dist coverage .turbo"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": {
-      "optional": true
-    }
   },
   "dependencies": {
     "zod": "^4.6.5"

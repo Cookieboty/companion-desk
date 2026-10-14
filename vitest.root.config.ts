@@ -5,7 +5,8 @@ export default createVitest({
   include: ['scripts/__tests__/**/*.{test,spec}.{ts,mts}'],
   overrides: {
     test: {
-      name: 'dsh-smoke',
+      name: 'scripts',
+      passWithNoTests: true,
       coverage: {
         enabled: false,
       },

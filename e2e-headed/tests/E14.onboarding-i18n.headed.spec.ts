@@ -44,7 +44,6 @@ test.describe('E14 · onboarding + i18n', () => {
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-      IG_DSH_CORE: 'off',
       CD_LOCALE: 'en-US',
       CD_ONBOARDING: 'on',
     };

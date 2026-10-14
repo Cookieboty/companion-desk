@@ -1,5 +1,5 @@
 import type { ToolDefinition } from '../types/common';
-import { defineService } from '../types/dsh';
+import { defineService } from '../types/plugin';
 
 export interface ToolRegistry {
   register<TInput = unknown, TOutput = unknown>(tool: ToolDefinition<TInput, TOutput>): void;

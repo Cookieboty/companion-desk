@@ -4,7 +4,7 @@
  * 设计不变量（对齐 P5 计划 §P5-3）：
  * - `new AIClient(ctx, { logger?, config? })` 构造即完成 7 Facade 装配；
  * - Facade 内部只做**薄封装 + DTO 映射**，绝不实现业务逻辑；
- * - 对外唯一事件入口是 `AIClient.on(evt, fn)`；桥接由本类完成，dsh 事件对外不可见；
+ * - 对外唯一事件入口是 `AIClient.on(evt, fn)`；桥接由本类完成，插件事件对外不可见；
  * - `Live2dFacade` 通过 `isAvailable()` 探测；若消费方是非渲染 profile，任何具体调用
  *   都会抛 `LIVE2D_NOT_AVAILABLE`。
  */
@@ -56,7 +56,7 @@ export class AIClient {
     this.tts = createTtsFacade(ctx);
     this.live2d = createLive2dFacade(ctx);
 
-    this.bindDshBridges();
+    this.bindRuntimeBridges();
     this.logger.info('AIClient ready', { config: opts.config });
   }
 
@@ -75,8 +75,8 @@ export class AIClient {
     };
   }
 
-  /** 内部：把 dsh 事件桥接为 AIClientEvent，仅在构造期挂钩 */
-  private bindDshBridges(): void {
+  /** 内部：把 插件事件桥接为 AIClientEvent，仅在构造期挂钩 */
+  private bindRuntimeBridges(): void {
     const push = <E extends AIClientEvent>(evt: E, payload: AIClientEventMap[E]) => {
       const bucket = this.listeners.get(evt);
       if (!bucket) return;
@@ -90,20 +90,20 @@ export class AIClient {
     };
 
     const bridges: Array<{
-      dshEvent: Parameters<SdkContext['on']>[0];
+      event: Parameters<SdkContext['on']>[0];
       map: (
         payload: unknown,
       ) => { evt: AIClientEvent; data: AIClientEventMap[AIClientEvent] } | undefined;
     }> = [
       {
-        dshEvent: 'session/assistant-message',
+        event: 'session/assistant-message',
         map: (p) => {
           const payload = p as AIClientEventMap['message:complete'];
           return payload?.message ? { evt: 'message:complete', data: payload } : undefined;
         },
       },
       {
-        dshEvent: 'agent/turn-end',
+        event: 'agent/turn-end',
         map: (p) => {
           const payload = p as {
             sessionId: string;
@@ -118,42 +118,42 @@ export class AIClient {
         },
       },
       {
-        dshEvent: 'agent/stopped-by-user',
+        event: 'agent/stopped-by-user',
         map: (p) => {
           const payload = p as { sessionId: string; reqId: string };
           return { evt: 'agent:stopped-by-user', data: payload };
         },
       },
       {
-        dshEvent: 'tool/confirm-required',
+        event: 'tool/confirm-required',
         map: (p) => {
           const payload = p as AIClientEventMap['tool:confirm-required'];
           return { evt: 'tool:confirm-required', data: payload };
         },
       },
       {
-        dshEvent: 'tools/post-execute',
+        event: 'tools/post-execute',
         map: (p) => {
           const payload = p as AIClientEventMap['tool:executed'];
           return { evt: 'tool:executed', data: payload };
         },
       },
       {
-        dshEvent: 'tts/chunk',
+        event: 'tts/chunk',
         map: (p) => {
           const payload = p as AIClientEventMap['tts:chunk'];
           return { evt: 'tts:chunk', data: payload };
         },
       },
       {
-        dshEvent: 'tts/end',
+        event: 'tts/end',
         map: (p) => {
           const payload = p as AIClientEventMap['tts:end'];
           return { evt: 'tts:end', data: payload };
         },
       },
       {
-        dshEvent: 'userProfile/changed',
+        event: 'userProfile/changed',
         map: (p) => {
           const payload = p as AIClientEventMap['userProfile:changed'];
           return { evt: 'userProfile:changed', data: payload };
@@ -161,8 +161,8 @@ export class AIClient {
       },
     ];
 
-    for (const { dshEvent, map } of bridges) {
-      const off = this.ctx.on(dshEvent, (hookCtx: { payload: unknown }) => {
+    for (const { event, map } of bridges) {
+      const off = this.ctx.on(event, (hookCtx: { payload: unknown }) => {
         const mapped = map(hookCtx.payload);
         if (mapped) push(mapped.evt, mapped.data);
       });

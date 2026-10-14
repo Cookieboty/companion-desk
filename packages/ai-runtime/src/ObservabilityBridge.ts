@@ -11,7 +11,7 @@
  * - **turn 生命周期跟踪**：`agent:step` 累加、`agent:turn-end` 触发
  *   `ai.agent.steps.per_turn` histogram + span 结束；
  * - **tool 耗时**：`tool:confirm-required` / `tools/pre-execute` 事件不在此路径 fire，
- *   我们退化到只统计 `tool:executed { ok, durationMs, error }`，`durationMs` 由 dsh
+ *   我们退化到只统计 `tool:executed { ok, durationMs, error }`，`durationMs` 由 插件宿主
  *   Waterfall hook 已经写入 payload；
  * - **tts first-chunk**：`tts:chunk` 第一次 seq=0 落一次 first-chunk histogram；
  * - **可测试**：本模块**不使用**全局 tracer 单例，业务方注入或走

@@ -11,7 +11,6 @@ import { type ILoggerService } from '../../services/LoggerService';
 
 import { type BaseIpcHandler } from './BaseIpcHandler';
 import { ConfigIpcHandler } from './ConfigIpcHandler';
-import { McpIpcHandler } from './McpIpcHandler';
 import { VoiceIpcHandler } from './VoiceIpcHandler';
 import { WindowIpcHandler } from './WindowIpcHandler';
 
@@ -20,7 +19,6 @@ export interface IpcRegistryOptions {
   configService: IConfigService;
   cacheService?: ICacheService;
   windowManager: IWindowManager;
-  mcpService?: any;
 }
 
 export interface IIpcRegistry {
@@ -64,10 +62,6 @@ export class IpcRegistry implements IIpcRegistry {
       // 注册语音处理器
       const voiceHandler = new VoiceIpcHandler(this.options.logger, this.options.configService);
       this.registerHandler('voice', voiceHandler);
-
-      // 注册MCP处理器
-      const mcpHandler = new McpIpcHandler(this.options.logger, this.options.mcpService);
-      this.registerHandler('mcp', mcpHandler);
 
       // 初始化所有处理器
       for (const [name, handler] of this.handlers) {
@@ -283,18 +277,5 @@ export class IpcRegistry implements IIpcRegistry {
       total += handler.getRegisteredChannels().length;
     }
     return total;
-  }
-
-  /**
-   * 设置MCP服务（动态更新）
-   */
-  setMcpService(mcpService: any): void {
-    const mcpHandler = this.getHandler<McpIpcHandler>('mcp');
-    if (mcpHandler) {
-      mcpHandler.setMcpService(mcpService);
-      this.options.logger.info('MCP服务已更新到MCP处理器');
-    } else {
-      this.options.logger.warn('MCP处理器不存在，无法设置MCP服务');
-    }
   }
 }

@@ -1,4 +1,4 @@
-import { definePlugin, type HookContext, type PluginContext } from '../types/dsh';
+import { definePlugin, type HookContext, type PluginContext } from '../types/plugin';
 
 import { TokenBucket } from './guardrails/TokenBucket';
 

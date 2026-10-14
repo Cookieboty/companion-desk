@@ -1,4 +1,4 @@
 export * from './common';
-export * from './dsh';
+export * from './plugin';
 export * from './UserProfile';
 export * from './UserProfileSchema';

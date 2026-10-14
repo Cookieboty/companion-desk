@@ -3,7 +3,7 @@
  *
  * 责任：
  * 1. 通过注入的 `Booter` 完成 `boot(profile, { home })`，拿到 `PluginContext`
- *    （生产默认 `createAiSdkBooter` / IgPluginHost；可选 `createDshBooter`）。
+ *    （生产默认 `createAiSdkBooter` / IgPluginHost）。
  * 2. 用 `toSdkContext` 收窄成 `SdkContext` 后构造 [`AIClient`](file:///../../ai-sdk/src/AIClient.ts)。
  * 3. 挂接 `AppLifecycle.onBeforeQuit`，在应用退出前调用 `stop()`。
  * 4. 打印一次 `AI runtime booted (<profile>)`，用于运维定位。
@@ -22,7 +22,7 @@ import type { RuntimeLogger } from './logger';
 import { ConsoleRuntimeLogger } from './logger';
 
 export interface StartOptions {
-  /** 项目根目录，用于 dsh loadProfile */
+  /** 运行时根目录（应用路径） */
   home: string;
   /** 传给 AIClient 的可选选项（logger/config） */
   clientOptions?: AIClientOptions;
@@ -31,10 +31,10 @@ export interface StartOptions {
 export interface Booter {
   /**
    * 完成宿主装配并返回 PluginContext。生产默认 `createAiSdkBooter`（IgPluginHost +
-   * Vercel AI SDK providers）；可选 `createDshBooter`；测试注入 fake。
+   * Vercel AI SDK providers）；测试注入 fake。
    */
   boot(profile: string, opts: StartOptions): Promise<PluginContext>;
-  /** 可选：dispose dsh runtime。 */
+  /** 可选：释放运行时资源。 */
   dispose?(): Promise<void> | void;
 }
 

@@ -93,7 +93,7 @@ describe('AIClient · chat', () => {
 });
 
 describe('AIClient · events bridge', () => {
-  it('agent:turn-end bridged from dsh agent/turn-end', async () => {
+  it('agent:turn-end bridged from 插件宿主 agent/turn-end', async () => {
     const { ctx } = wire();
     const client = new AIClient(ctx);
     const seen: unknown[] = [];
@@ -108,7 +108,7 @@ describe('AIClient · events bridge', () => {
     await client.dispose();
   });
 
-  it('tool:confirm-required bridged from dsh tool/confirm-required', async () => {
+  it('tool:confirm-required bridged from 插件宿主 tool/confirm-required', async () => {
     const { ctx } = wire();
     const client = new AIClient(ctx);
     const seen: unknown[] = [];

@@ -7,7 +7,7 @@ import { createAiSdkBooter, defaultAiSdkPlugins } from '../src/AiSdkBooter';
 import { NoopRuntimeLogger } from '../src/logger';
 
 describe('createAiSdkBooter', () => {
-  it('boots IgPluginHost with AI SDK providers (no dsh)', async () => {
+  it('boots IgPluginHost with AI SDK providers (no 插件宿主)', async () => {
     const booter = createAiSdkBooter({
       logger: NoopRuntimeLogger,
       env: { DEEPSEEK_API_KEY: 'sk-test', DEEPSEEK_BASE_URL: 'http://127.0.0.1:9/v1' },

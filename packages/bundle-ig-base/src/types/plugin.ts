@@ -1,12 +1,8 @@
-// dsh 的最小内部抽象层 —— 骨架期专用
-//
-// 目的：让本 bundle 的所有插件在 P1 尚未接入真实 @deepseek-ai/dsh 时也能独立编译/单测。
-// P1 完成后，把本文件的 export 替换为：
-//   export type { PluginContext, Waterfall, DefinePluginFn } from '@deepseek-ai/dsh';
-// 或改用 TS "type-only re-export" 保持插件源码不变。
+// Nomi 插件契约：definePlugin / defineService / PluginContext / 事件名。
+// 由 ai-runtime 的 IgPluginHost 承载（见 packages/ai-runtime/src/IgPluginHost.ts）。
 
-/** dsh 事件字符串枚举（占位，覆盖本 bundle 用到的） */
-export type DshEvent =
+/** 插件事件名 */
+export type PluginEvent =
   | 'session/user-message'
   | 'session/assistant-message'
   | 'session/closed'
@@ -26,7 +22,7 @@ export type DshEvent =
   | 'server:up'
   | 'server:down';
 
-/** Waterfall / hook 上下文（占位；真实由 dsh 提供） */
+/** Waterfall / hook 上下文（占位；真实由 插件宿主 提供） */
 export interface HookContext<TPayload = unknown> {
   payload: TPayload;
   /** 允许中间件返回 reject 以阻断链路 */
@@ -53,12 +49,12 @@ export function defineService<T>(name: string): ServiceKey<T> {
 export interface PluginContext {
   /** 订阅 waterfall / hook */
   on<TPayload = unknown, TResult = void>(
-    event: DshEvent,
+    event: PluginEvent,
     handler: HookHandler<TPayload, TResult>,
   ): () => void;
 
   /** 触发事件（内部广播） */
-  emit<TPayload = unknown>(event: DshEvent, payload: TPayload): void;
+  emit<TPayload = unknown>(event: PluginEvent, payload: TPayload): void;
 
   /** 依赖注入：注册服务 */
   provide<T>(key: ServiceKey<T>, impl: T): void;

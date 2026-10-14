@@ -1,8 +1,8 @@
 /**
  * SessionFacade —— 会话 CRUD 与派生。
  *
- * P5 阶段没有 dsh session store 可注入（P6 才落地），本 Facade 采用**内存版占位实现**，
- * 与 dsh runtime 接入时替换为 `ctx.inject(SessionStoreKey)`。
+ * P5 阶段没有 插件宿主 session store 可注入（P6 才落地），本 Facade 采用**内存版占位实现**，
+ * 与 插件宿主 runtime 接入时替换为 `ctx.inject(SessionStoreKey)`。
  */
 
 import type { Session } from '../types/Session';

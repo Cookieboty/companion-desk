@@ -1,11 +1,11 @@
 /**
  * AIClient 事件枚举 + payload map。
  *
- * 与 [`DshEvent`](file:///../../bundle-ig-base/src/types/dsh.ts) 不同：
+ * 与 [`PluginEvent`](file:///../../bundle-ig-base/src/types/plugin.ts) 不同：
  * - 事件名以 **业务视角** 命名（`message:delta` / `tool:confirm-required` ...）；
  * - payload 全部 **structuredClone-safe**。
  *
- * AIClient 内部把 dsh 事件桥接为本表；对外仅暴露 `AIClient.on(evt, fn)`。
+ * AIClient 内部把 插件事件桥接为本表；对外仅暴露 `AIClient.on(evt, fn)`。
  */
 
 import type { Message, MessagePart } from './Message';

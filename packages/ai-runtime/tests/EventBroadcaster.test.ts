@@ -1,7 +1,7 @@
 /**
  * EventBroadcaster 集成测试。
  *
- * - 触发 dsh 事件 → 所有存活 wc 收到 `ai:event`；
+ * - 触发 插件事件 → 所有存活 wc 收到 `ai:event`；
  * - `isDestroyed()=true` 的 wc 被跳过；
  * - subscribe 过滤：`include` / `exclude` 生效；
  * - `stop()` 后不再广播。
@@ -40,7 +40,7 @@ function bootstrap() {
 }
 
 describe('EventBroadcaster', () => {
-  it('broadcasts dsh event to all live web contents', async () => {
+  it('broadcasts 插件宿主 event to all live web contents', async () => {
     const { ctx, adapter } = bootstrap();
     const wc1 = adapter.addWebContents(1);
     const wc2 = adapter.addWebContents(2);

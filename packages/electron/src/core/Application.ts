@@ -388,7 +388,7 @@ export class Application implements IApplication {
   }
 
   /**
-   * 启动 AI runtime（dsh + IPC 通道 + seams）
+   * 启动 AI runtime（插件宿主 + IPC 通道 + seams）
    *
    * 幂等：重复调用会直接返回。失败时记录日志但不抛出——AI 功能对应用启动
    * 不是强依赖；后续可以通过 `getAIRuntime()` 判断可用性。

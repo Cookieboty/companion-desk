@@ -19,7 +19,6 @@ export * from './observability';
 export * from './ObservabilityBridge';
 export * from './AIRuntimeService';
 export * from './AiSdkBooter';
-export * from './DshBooter';
 export * from './ai-sdk/AiSdkLlmProvider';
 export * from './ai-sdk/mapTools';
 export * from './ai-sdk/AiSdkLLMProvidersPlugin';

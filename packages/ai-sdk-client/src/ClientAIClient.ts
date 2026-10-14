@@ -6,7 +6,7 @@
  *   路由到 `bridge.invoke('ai:<facade>:<method>', ...)`；
  * - **流式方法**：通过 `IPC_METHOD_INDEX` 命中 `kind === 'stream'`，返回一个
  *   `AsyncIterable`，内部订阅 `ai:<facade>:<method>:chunk` 事件并按 `reqId` 关联；
- * - **事件订阅**：所有 dsh 事件走单一 `ai:event` 通道，由 `ClientAIClient` 本地做
+ * - **事件订阅**：所有 插件事件走单一 `ai:event` 通道，由 `ClientAIClient` 本地做
  *   pub/sub 二次分发；`on(evt, fn)` 语义与 P5 `AIClient.on` 一致；
  * - **错误还原**：`bridge.invoke` 抛错时用 [`SDKError.fromIpc`](file:///./errors.ts) 复原 code/message；
  * - **Live2d**：因为 `isAvailable()` 是同步方法，本客户端把 IPC 结果**懒缓存**在本地一次，
@@ -207,11 +207,7 @@ export class ClientAIClient {
     };
   }
 
-  private makeStream(
-    spec: IpcMethodSpec,
-    ch: string,
-    args: unknown[],
-  ): AsyncIterable<unknown> {
+  private makeStream(spec: IpcMethodSpec, ch: string, args: unknown[]): AsyncIterable<unknown> {
     const chunkCh = chunkChannelName(spec);
     const buffer: unknown[] = [];
     let ended = false;

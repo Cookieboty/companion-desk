@@ -4,7 +4,7 @@
  * 语义对齐：
  * - 一个 ai-chat 渲染窗口通过 `ClientAIClient.chat.sendMessage(...)` 发消息；
  * - 主进程 IPCTransportServer 反射到 `chat.sendMessage` facade，调用 FakeLLM 拿到响应；
- * - 触发 dsh `tools/post-execute` → 广播为 `tool:executed` 到该窗口；
+ * - 触发 插件事件 `tools/post-execute` → 广播为 `tool:executed` 到该窗口；
  * - `client.tools.list()` 能列出预注册的 `echo` 工具。
  */
 
@@ -70,7 +70,7 @@ describe('E2 · chat-only · sendMessage + tool:executed', () => {
     await client.dispose();
   });
 
-  it('触发 dsh tools/post-execute → 渲染窗口 client.on("tool:executed") 收到广播', async () => {
+  it('触发 插件宿主 tools/post-execute → 渲染窗口 client.on("tool:executed") 收到广播', async () => {
     const chatWin = handle.createRendererClient({ id: 612 });
     const client = new ClientAIClient({ bridge: chatWin.bridge });
 

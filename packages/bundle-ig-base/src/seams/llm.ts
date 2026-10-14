@@ -1,5 +1,5 @@
 import type { LLMProvider } from '../types/common';
-import { defineService } from '../types/dsh';
+import { defineService } from '../types/plugin';
 
 export interface LLMRegistry {
   register(provider: LLMProvider): void;

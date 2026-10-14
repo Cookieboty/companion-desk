@@ -23,7 +23,7 @@ test('ANIM capture every clip', async () => {
   mkdirSync(dir!, { recursive: true });
   execFileSync(process.execPath, [resolve(electronPkgDir, 'scripts', 'copy-renderer.js')]);
   const userData = mkdtempSync(join(tmpdir(), 'anim-'));
-  const env = { ...(process.env as Record<string, string>), IG_DSH_CORE: 'off' };
+  const env = { ...(process.env as Record<string, string>) };
   delete env.NODE_ENV;
   const app = await electron.launch({
     executablePath: resolveElectronExecutable(),

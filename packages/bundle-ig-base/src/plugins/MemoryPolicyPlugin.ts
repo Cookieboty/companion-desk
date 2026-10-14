@@ -1,5 +1,5 @@
 import type { ChatMessage } from '../types/common';
-import { definePlugin, type HookContext, type PluginContext } from '../types/dsh';
+import { definePlugin, type HookContext, type PluginContext } from '../types/plugin';
 
 export interface MemoryPolicyConfig {
   /** system prompt 里保留最近多少条对话摘要 */

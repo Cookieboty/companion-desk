@@ -4,7 +4,7 @@
  * 关键点：
  * - `list()` 会把内部的 zod schema 转换为**可序列化的粗略 JSON Schema**（保守：只标 name + description）
  *   避免在 P5 就绑死 zod-to-json-schema 依赖；P8 迁移时如需完整 schema 再引入即可。
- * - `confirm(reqId, ok)` 通过 dsh 事件 `tool/confirm-required` 的**逆向**通道发送——本
+ * - `confirm(reqId, ok)` 通过 插件事件 `tool/confirm-required` 的**逆向**通道发送——本
  *   Facade 只负责把决策 emit 出去，真正等待方在 guardrails 中间件（P2 GuardrailsPlugin）。
  */
 

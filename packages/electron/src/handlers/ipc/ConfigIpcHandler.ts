@@ -367,11 +367,11 @@ export class ConfigIpcHandler extends BaseIpcHandler {
           }
 
           // 创建VoiceService实例进行测试
-          const { VoiceService } = await import('../../mcp/services/VoiceService');
+          const { VoiceService } = await import('../../tts/legacy/LegacyTtsPlayer');
           const voiceService = new VoiceService();
 
           // 临时配置TTS设置用于测试
-          const { MCPConfigManager } = await import('../../mcp/config/MCPConfig');
+          const { MCPConfigManager } = await import('../../tts/legacy/LegacyVoiceConfig');
           const configManager = MCPConfigManager.getInstance();
 
           // 备份当前配置

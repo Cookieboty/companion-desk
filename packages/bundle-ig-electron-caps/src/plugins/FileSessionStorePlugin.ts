@@ -146,7 +146,7 @@ export const FileSessionStorePlugin = definePlugin<FileSessionStoreConfig>({
     const rotate = cfg.rotateBytes ?? 100 * 1024 * 1024;
     const sessionDir = join(base, 'sessions');
     const sessionStore = new FileSessionStore(sessionDir, rotate, ctx.logger);
-    void sessionStore; // TODO(P3.9): 与 dsh 的 ctx.sessions 挂接（依赖 P1 kernel API）
+    void sessionStore; // TODO: 接入 ctx.sessions 后挂接会话存储
 
     const profileFile = join(base, 'memory', 'user_profile.json');
     ctx.provide(ProfileStorageKey, new FileProfileStorage(profileFile, ctx.logger));

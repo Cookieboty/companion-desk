@@ -1,6 +1,6 @@
 import { LLMRegistryKey, type LLMRegistry } from '../seams/llm';
 import type { LLMProvider } from '../types/common';
-import { definePlugin, type PluginContext } from '../types/dsh';
+import { definePlugin, type PluginContext } from '../types/plugin';
 
 import { BaseOpenAICompat, ENV_ENDPOINT_DEFAULTS, type OpenAICompatOptions } from './llm';
 
@@ -20,7 +20,7 @@ export interface LLMProvidersConfig {
   providers: LLMProviderEntry[];
 }
 
-/** 骨架期的内存实现；后续可迁到 dsh 官方 registry */
+/** 骨架期的内存实现；后续可迁到 插件宿主 官方 registry */
 class InMemoryLLMRegistry implements LLMRegistry {
   private readonly map = new Map<string, LLMProvider>();
   register(provider: LLMProvider): void {
