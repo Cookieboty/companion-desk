@@ -38,6 +38,15 @@ import { RemindersTab } from '../DesktopPanel/RemindersTab';
 
 import styles from './index.module.css';
 
+/** 相对时间：刚刚 / N 分钟前 / N 小时前 / 日期 */
+function relTime(ms: number): string {
+  const d = Date.now() - ms;
+  if (d < 60_000) return tr('刚刚');
+  if (d < 3_600_000) return tr('{0} 分钟前', Math.floor(d / 60_000));
+  if (d < 86_400_000) return tr('{0} 小时前', Math.floor(d / 3_600_000));
+  return new Date(ms).toLocaleString();
+}
+
 type Tab = 'reminders' | 'tasks' | 'proactive' | 'agents' | 'quiet';
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const fmt = (t?: number) =>
@@ -601,7 +610,9 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                         {agents.sessions.slice(0, 12).map((s) => (
                           <Card key={s.id} flat>
                             <div className={styles.row}>
-                              <strong>{tr(s.label)}</strong>
+                              <strong className={styles.grow} title={s.cwd || s.path}>
+                                {s.title}
+                              </strong>
                               <Badge
                                 tone={
                                   s.status === 'failed' || s.status === 'stalled'
@@ -611,10 +622,14 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                                       : undefined
                                 }
                               >
-                                {STATUS_LABEL[s.status]}
+                                {tr(STATUS_LABEL[s.status])}
                               </Badge>
                             </div>
-                            <p className={styles.hint}>{s.summary || s.path}</p>
+                            <p className={styles.hint} data-testid="agents-session-meta">
+                              {[s.label, s.project, tr('最后活动 {0}', relTime(s.mtime)), s.summary]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
                           </Card>
                         ))}
                       </div>
