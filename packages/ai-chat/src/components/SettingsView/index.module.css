@@ -83,21 +83,42 @@
   gap: 8px;
   margin-top: 12px;
 }
-.keys {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 6px 18px;
+.shortcutTable {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 13px;
-  margin: 0;
+  margin-bottom: 12px;
 }
-.keys dt {
+.shortcutTable th,
+.shortcutTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--cd-color-border, rgba(127, 127, 127, 0.18));
+  text-align: left;
+  vertical-align: middle;
+}
+.shortcutTable th {
+  font-weight: 500;
   color: var(--cd-color-text);
+}
+.kbd {
   font-family: var(--cd-font-mono, monospace);
   font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--cd-color-surface-2, rgba(127, 127, 127, 0.12));
+  color: var(--cd-color-text);
 }
-.keys dd {
-  margin: 0;
-  color: var(--cd-color-text-muted);
+.kbd[data-shortcut-recording='true'] {
+  outline: 2px solid var(--cd-color-accent, #fb9466);
+}
+.warn {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--cd-color-danger, #e5484d);
+}
+.shortcutActions {
+  white-space: nowrap;
+  text-align: right !important;
 }
 .pinsGrid {
   display: grid;

@@ -28,60 +28,12 @@ import styles from './index.module.css';
 import { IslandSettings } from './IslandSettings';
 import { LanguageSettings } from './LanguageSettings';
 import { PinsSettings } from './PinsSettings';
+import { SETTINGS_SECTIONS, type SettingsSection } from './sections';
+import { ShortcutSettings } from './ShortcutSettings';
 import { ThemeSettings } from './ThemeSettings';
 import { UpdateSettings } from './UpdateSettings';
 
-export type SettingsSection =
-  | 'general'
-  | 'providers'
-  | 'voice'
-  | 'kb'
-  | 'memory'
-  | 'schedule'
-  | 'calendar'
-  | 'notify'
-  | 'agents'
-  | 'screen'
-  | 'ext'
-  | 'desktop'
-  | 'local'
-  | 'privacy'
-  | 'updates';
-
-export const SETTINGS_SECTIONS: Array<{ id: SettingsSection; icon: string; label: string }> = [
-  { id: 'general', icon: '⚙️', label: '通用' },
-  { id: 'providers', icon: '🔑', label: '供应商与模型' },
-  { id: 'voice', icon: '🎙', label: '语音' },
-  { id: 'kb', icon: '📚', label: '知识库' },
-  { id: 'memory', icon: '🧠', label: '记忆' },
-  { id: 'schedule', icon: '🗓', label: '日程与提醒' },
-  { id: 'calendar', icon: '📅', label: '日历' },
-  { id: 'notify', icon: '🔔', label: '通知 / 灵动岛' },
-  { id: 'agents', icon: '🤖', label: '编程助手' },
-  { id: 'screen', icon: '🖥', label: '屏幕' },
-  { id: 'ext', icon: '🧩', label: '扩展 / MCP' },
-  { id: 'desktop', icon: '📁', label: '桌面权限' },
-  { id: 'local', icon: '🏠', label: '本机小模型（辅助）' },
-  { id: 'privacy', icon: '🔒', label: '隐私与数据' },
-  { id: 'updates', icon: '⬆️', label: '更新' },
-];
-
-const SHORTCUTS: Array<[string, string]> = [
-  ['⌘/Ctrl + ,', '打开设置'],
-  ['⌘/Ctrl + B', '收起 / 展开侧栏'],
-  ['/', '在输入框里打开命令'],
-  ['Enter / Shift+Enter', '发送 / 换行'],
-  ['↑（输入框为空时）', '找回上一条提问'],
-  ['F2（按住）', '说话'],
-  ['⌘/Ctrl + Shift + K', '知识库问答开关'],
-  ['⌘/Ctrl + Shift + S', '截图提问'],
-  ['⌘/Ctrl + Shift + M', '记忆'],
-  ['⌘/Ctrl + Shift + L', '知识库'],
-  ['⌘/Ctrl + Shift + D', '日程 · 编程助手'],
-  ['⌘/Ctrl + Shift + E', '扩展 / MCP'],
-  ['⌘/Ctrl + Shift + J', '本机管理'],
-  ['⌘/Ctrl + Shift + O', '屏幕记忆'],
-];
+export { SETTINGS_SECTIONS, type SettingsSection };
 
 const VoiceSection: React.FC = () => {
   const v = useVoice('chat');
@@ -142,19 +94,10 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             <ThemeSettings />
             <PinsSettings />
             <ConfigPanel isVisible onClose={noop} />
-            <section className={styles.block}>
-              <h2 className={styles.h2}>{t('快捷键')}</h2>
-              <dl className={styles.keys}>
-                {SHORTCUTS.map(([k, d]) => (
-                  <React.Fragment key={k}>
-                    <dt>{t(k)}</dt>
-                    <dd>{t(d)}</dd>
-                  </React.Fragment>
-                ))}
-              </dl>
-            </section>
           </>
         );
+      case 'shortcuts':
+        return <ShortcutSettings />;
       case 'providers':
         return providerClientAvailable() ? (
           <ProviderPanel isVisible onClose={noop} />

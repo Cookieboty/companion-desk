@@ -17,6 +17,7 @@ import {
   type RawAttachment,
   type ImageAttachment,
 } from '../../services/screenClient';
+import { getBindings, matchShortcut } from '../../services/shortcuts';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
@@ -86,7 +87,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   useEffect(() => {
     if (!kbAvailable) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+      if (matchShortcut(e, getBindings().kbAsk)) {
         e.preventDefault();
         toggleKb();
       }
@@ -171,7 +172,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   useEffect(() => {
     if (!screenOk) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+      if (matchShortcut(e, getBindings().snip)) {
         e.preventDefault();
         void snip();
       }
@@ -599,6 +600,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           }
           disabled={isDisabled}
           className={styles.messageTextarea}
+          aria-label={tr('消息输入框')}
+          data-testid="chat-input"
           rows={1}
         />
 

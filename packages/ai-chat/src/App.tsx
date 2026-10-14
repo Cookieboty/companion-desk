@@ -5,6 +5,7 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
+import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
   ConfigPanel,
@@ -23,7 +24,7 @@ import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
-import type { SettingsSection } from './components/SettingsView';
+import { SETTINGS_SECTIONS, type SettingsSection } from './components/SettingsView/sections';
 import { Sidebar } from './components/Sidebar';
 import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
@@ -31,6 +32,13 @@ import { useAiChat } from './contexts/AiChatContext';
 import { desktopClient } from './services/desktopClient';
 import { providerClient } from './services/providerClient';
 import { screenClient, type ScreenState } from './services/screenClient';
+import {
+  SHORTCUT_DEFS,
+  formatCombo,
+  matchShortcut,
+  useShortcutBindings,
+  type ShortcutId,
+} from './services/shortcuts';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
@@ -62,34 +70,8 @@ const AiChatContent: React.FC = () => {
   // 托盘「桌面能力…」→ 打开桌面能力面板
   useEffect(() => desktopClient.onOpenPanel(() => setShowDesktop(true)), []);
   const [showKb, setShowKb] = useState(false);
-  // Ctrl/Cmd+Shift+L 打开知识库管理
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        setShowKb((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
   const [showMem, setShowMem] = useState(false);
   const [showSched, setShowSched] = useState(false);
-  // Ctrl/Cmd+Shift+M 打开长期记忆
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        setShowMem((v) => !v);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
-        e.preventDefault();
-        setShowSched((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
   const [showScreen, setShowScreen] = useState(false);
   const [showExt, setShowExt] = useState(false);
   const [showLocal, setShowLocal] = useState(false);
@@ -102,25 +84,9 @@ const AiChatContent: React.FC = () => {
       .catch(() => undefined);
     const off1 = screenClient.onChanged(setScreenSt);
     const off2 = screenClient.onOpenPanel(() => setShowScreen(true));
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
-        e.preventDefault();
-        setShowExt((v) => !v);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
-        e.preventDefault();
-        setShowLocal((v) => !v);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        setShowScreen((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', onKey);
     return () => {
       off1();
       off2();
-      window.removeEventListener('keydown', onKey);
     };
   }, []);
   const screenActive = !!screenSt?.settings.enabled && screenSt.settings.pausedUntil <= Date.now();
@@ -130,17 +96,6 @@ const AiChatContent: React.FC = () => {
     const onResize = () => window.innerWidth < 720 && setSidebarCollapsed(true);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []);
-  // ⌘/Ctrl+B 收起/展开侧栏（与 Codex 一致）
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        setSidebarCollapsed((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const [settings, setSettings] = useState<SettingsSection | null>(null);
@@ -156,17 +111,56 @@ const AiChatContent: React.FC = () => {
     setShowProviders(false);
     setSettings(sec);
   }, []);
-  // ⌘/Ctrl+, 打开设置（与 Codex app 一致）
+  // ---- 快捷键（可在设置 → 快捷键 改绑）+ ⌘/Ctrl+K 命令面板 ----
+  const bindings = useShortcutBindings();
+  const [palette, setPalette] = useState(false);
+  const focusInput = useCallback(() => {
+    setSettings(null);
+    setTimeout(
+      () => document.querySelector<HTMLTextAreaElement>('[data-testid="chat-input"]')?.focus(),
+      0,
+    );
+  }, []);
+  const newChat = useCallback(() => {
+    setSettings(null);
+    actions.newConversation();
+    focusInput();
+  }, [actions, focusInput]);
+  const shortcutActions = useMemo<Partial<Record<ShortcutId, () => void>>>(
+    () => ({
+      palette: () => setPalette((v) => !v),
+      newChat,
+      focusInput,
+      settings: () => setSettings((s) => (s ? null : 'general')),
+      sidebar: () => setSidebarCollapsed((v) => !v),
+      kb: () => setShowKb((v) => !v),
+      memory: () => setShowMem((v) => !v),
+      schedule: () => setShowSched((v) => !v),
+      ext: () => setShowExt((v) => !v),
+      local: () => setShowLocal((v) => !v),
+      screen: () => setShowScreen((v) => !v),
+    }),
+    [newChat, focusInput],
+  );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      if (e.defaultPrevented || e.isComposing) return;
+      // 正在设置页里录制新快捷键时不触发
+      if ((e.target as HTMLElement | null)?.closest?.('[data-shortcut-recording="true"]')) return;
+      for (const [id, run] of Object.entries(shortcutActions) as Array<[ShortcutId, () => void]>) {
+        if (!matchShortcut(e, bindings[id])) continue;
+        // 弹窗打开时只响应命令面板 / 面板开关，不在弹窗背后新建对话或抢焦点
+        const modal = document.querySelector('[role="dialog"][aria-modal="true"]');
+        if (modal && (id === 'newChat' || id === 'focusInput')) return;
+        if (modal && id === 'palette' && !modal.closest('[data-testid="command-palette"]')) return;
         e.preventDefault();
-        setSettings((s) => (s ? null : 'general'));
+        run();
+        return;
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [bindings, shortcutActions]);
   // 快速视图：右侧抽屉 + 「在设置中打开」
   const drawerHost = useMemo(() => {
     const mk = (sec: SettingsSection): ModalHost => ({
@@ -188,6 +182,28 @@ const AiChatContent: React.FC = () => {
     actions.newConversation();
   };
 
+  const paletteCommands = useMemo<PaletteCommand[]>(
+    () => [
+      ...SHORTCUT_DEFS.filter((d) => d.id !== 'palette' && shortcutActions[d.id]).map((d) => ({
+        id: d.id,
+        label: d.label,
+        group: '操作',
+        hint: formatCombo(bindings[d.id]),
+        run: shortcutActions[d.id]!,
+      })),
+      ...SETTINGS_SECTIONS.map((sec) => ({
+        id: `settings-${sec.id}`,
+        label: sec.label,
+        group: '设置',
+        run: () => openSettings(sec.id),
+      })),
+    ],
+    [bindings, shortcutActions, openSettings],
+  );
+  const paletteEl = (
+    <CommandPalette open={palette} onClose={() => setPalette(false)} commands={paletteCommands} />
+  );
+
   if (settings) {
     return (
       <div className="ai-chat-app">
@@ -197,6 +213,7 @@ const AiChatContent: React.FC = () => {
           onSection={setSettings}
           onClose={() => setSettings(null)}
         />
+        {paletteEl}
       </div>
     );
   }
@@ -286,6 +303,7 @@ const AiChatContent: React.FC = () => {
       </div>
 
       {/* 模型配置保持为弹窗；日常功能为右侧抽屉（快速视图） */}
+      {paletteEl}
       <ConfigPanel isVisible={showConfig} onClose={() => setShowConfig(false)} />
       <ProviderPanel isVisible={showProviders} onClose={() => setShowProviders(false)} />
       <ModalHostContext.Provider value={drawerHost.desktop}>

@@ -139,8 +139,9 @@ export const ExtensionsPanel: React.FC<{ isVisible: boolean; onClose: () => void
         else setSkill({ meta: { name: '', description: '' }, body: '', files: [] });
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // document 先于 window 收到事件：面板内的 ⌘/Ctrl+N（新建扩展）优先于全局「新对话」
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [isVisible, tab, draft, skill]);
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
