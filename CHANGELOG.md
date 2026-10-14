@@ -17,6 +17,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 
 ### Fixes
 
+- **electron:** fixes found by running the real Claude Code and Codex: the harness closes CLI stdin, so Codex no longer hangs waiting for input; switching backend drops the previous CLI session and Codex resume uses valid arguments; the Codex config patch keeps a single provider table; and the local route reports input token usage at the end of the stream.
 - **electron:** non-streaming replies through the local CLI route now keep tool calls, stop reasons and usage for every format pair, and Codex free-text tools come back as `custom_tool_call` items (streaming and non-streaming).
 - **electron:** the local CLI route now forwards tools, tool choice, prior tool calls and results, images, system prompts and max tokens to non-native upstreams; Gemini upstreams authenticate with `x-goog-api-key` and take the model from the URL; a plain JSON reply to a streaming request is converted into the client's SSE events.
 - **security:** CSP is injected as a `<meta>` tag into the chat and TTS-config pages so it also applies to `file://` loads in packaged builds.
