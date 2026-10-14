@@ -67,6 +67,12 @@
 - **Claude Code**：原生 Anthropic Messages；OpenAI Chat Completions / Responses / Gemini 需本地路由转换。
 - **Codex**：原生 OpenAI Responses；Chat Completions / Anthropic Messages 需本地路由转换。
 
+**经本地路由接本机 Ollama（实测 2026-10）：**
+
+- Ollama 默认上下文约 2k token，而 Claude Code 每轮系统提示 + 工具定义约 16k token，超出部分会被**静默截断**，表现为空回复或答非所问。
+- 启动 Ollama 时设置 `OLLAMA_CONTEXT_LENGTH=20480`（或更大）：`OLLAMA_CONTEXT_LENGTH=20480 ollama serve`；Codex 的提示约 6k token，同样建议 ≥ 8192。
+- 档案的 API 地址填 `http://127.0.0.1:11434/v1`，格式选 OpenAI Chat Completions，开启路由并接管对应 CLI。
+
 ## 4. 用户体验
 
 ### 4.1 对话窗口：后端切换器
