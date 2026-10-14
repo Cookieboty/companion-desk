@@ -15,8 +15,21 @@ interface IslandState {
 }
 
 type Invoke = (ch: string, ...a: unknown[]) => Promise<unknown>;
-const invoke = (): Invoke | null =>
-  (window as unknown as { electronAPI?: { invoke?: Invoke } }).electronAPI?.invoke ?? null;
+type NamedApi = Record<string, (...a: unknown[]) => Promise<unknown>>;
+/** preload 只暴露命名白名单（electronAPI.island.*），这里把通道名映射到具名方法 */
+const CHANNELS: Record<string, string> = {
+  'island:get': 'get',
+  'island:set': 'set',
+  'island:test': 'test',
+};
+const invoke = (): Invoke | null => {
+  const api = (window as unknown as { electronAPI?: { island?: NamedApi } }).electronAPI?.island;
+  if (!api) return null;
+  return (ch, ...a) => {
+    const fn = api[CHANNELS[ch] ?? ''];
+    return fn ? fn(...a) : Promise.reject(new Error(`unknown channel ${ch}`));
+  };
+};
 
 export const IslandSettings: React.FC = () => {
   const [s, setS] = useState<IslandState | null>(null);
