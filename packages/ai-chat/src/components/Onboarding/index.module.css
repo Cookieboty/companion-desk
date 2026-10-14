@@ -5,7 +5,7 @@
   z-index: calc(var(--cd-z-modal, 1000) + 10);
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: calc(24px + var(--cd-titlebar-h, 0px)) 24px 24px;
   background:
     radial-gradient(1200px 600px at 20% -10%, rgba(var(--cd-accent-rgb), 0.16), transparent 60%),
     var(--cd-color-overlay, rgba(0, 0, 0, 0.55));
@@ -13,8 +13,9 @@
   animation: fade 0.24s ease-out;
 }
 .card {
-  width: min(680px, 100%);
-  max-height: min(720px, calc(100vh - 48px));
+  width: min(860px, 100%);
+  max-height: min(820px, calc(100vh - 48px - var(--cd-titlebar-h, 0px)));
+  font-size: var(--cd-font-size-md);
   display: flex;
   flex-direction: column;
   background: var(--cd-color-surface-raised, var(--cd-color-surface));
