@@ -155,13 +155,6 @@
       "source": "https://github.com/lobehub/lobe-icons/blob/master/LICENSE"
     },
     {
-      "pattern": "e2e-headed/fixtures/models/test-avatar-cc0.vrm",
-      "license": "CC0-1.0",
-      "author": "pixiv Inc. (VRoid Project) — AvatarSample_D",
-      "source": "https://opengameart.org/content/vroid-studio-cc0-models",
-      "note": "test fixture only; never bundled in the app"
-    },
-    {
       "pattern": "e2e-headed/fixtures/models/README.md",
       "license": "MIT",
       "author": "Nomi contributors",
