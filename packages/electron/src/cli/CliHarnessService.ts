@@ -1,5 +1,5 @@
 /**
- * 对话后端：Nomi | Claude Code | Codex。
+ * 对话后端：Nomi | Claude Code | Codex | dsh。
  * CLI 模式下禁用 Nomi 工具（由渲染层 + 此服务共同保证：send 不走 AIClient）。
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -12,7 +12,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { t } from '../i18n';
 
 import { resolveCliBin } from './detect';
-import { parseClaudeLine, parseCodexLine } from './streamParse';
+import { parseClaudeLine, parseCodexLine, parseDshLine } from './streamParse';
 import type { HarnessBackend, HarnessEvent, HarnessSendResult, HarnessSessionState } from './types';
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
@@ -31,10 +31,17 @@ function mockDir(): string {
   return candidates[0]!;
 }
 
-export function resolveHarnessBin(backend: 'claude' | 'codex'): string | null {
+type CliBackend = Exclude<HarnessBackend, 'nomi'>;
+
+const BACKENDS: readonly HarnessBackend[] = ['nomi', 'claude', 'codex', 'dsh'];
+
+function isBackend(v: unknown): v is HarnessBackend {
+  return typeof v === 'string' && (BACKENDS as readonly string[]).includes(v);
+}
+
+export function resolveHarnessBin(backend: CliBackend): string | null {
   if (process.env.NOMI_USE_MOCK_CLI === '1') {
-    const d = mockDir();
-    return path.join(d, backend === 'claude' ? 'mock-claude.mjs' : 'mock-codex.mjs');
+    return path.join(mockDir(), `mock-${backend}.mjs`);
   }
   return resolveCliBin(backend);
 }
@@ -48,7 +55,14 @@ export class CliHarnessService {
   private readonly statePath: string;
 
   constructor(
-    private readonly d: { root: string; logger: Logger; home?: string; defaultCwd?: string },
+    private readonly d: {
+      root: string;
+      logger: Logger;
+      home?: string;
+      defaultCwd?: string;
+      /** 启动 dsh 时注入的额外环境变量（例如启用档案的 NOMI_DSH_API_KEY） */
+      dshEnv?: () => Record<string, string>;
+    },
   ) {
     this.home = d.home ?? os.homedir();
     this.cwd = d.defaultCwd ?? process.cwd();
@@ -62,9 +76,7 @@ export class CliHarnessService {
       const raw = JSON.parse(
         fs.readFileSync(this.statePath, 'utf8'),
       ) as Partial<HarnessSessionState>;
-      if (raw.backend === 'claude' || raw.backend === 'codex' || raw.backend === 'nomi') {
-        this.backend = raw.backend;
-      }
+      if (isBackend(raw.backend)) this.backend = raw.backend;
       if (typeof raw.cwd === 'string' && raw.cwd) this.cwd = raw.cwd;
       if (typeof raw.cliSessionId === 'string') this.cliSessionId = raw.cliSessionId;
     } catch {
@@ -92,6 +104,7 @@ export class CliHarnessService {
       bins: {
         claude: resolveHarnessBin('claude'),
         codex: resolveHarnessBin('codex'),
+        dsh: resolveHarnessBin('dsh'),
       },
     };
   }
@@ -99,7 +112,7 @@ export class CliHarnessService {
   setBackend(
     backend: HarnessBackend,
   ): HarnessSessionState & { toolsDisabled: boolean; bins: Record<string, string | null> } {
-    if (backend !== 'nomi' && backend !== 'claude' && backend !== 'codex') {
+    if (!isBackend(backend)) {
       throw new Error(t('未知后端'));
     }
     // 会话 id 只属于产生它的 CLI；切换后端即丢弃，避免把 Claude 会话交给 Codex resume
@@ -143,7 +156,11 @@ export class CliHarnessService {
     this.broadcast();
     try {
       const result =
-        this.backend === 'claude' ? await this.runClaude(text) : await this.runCodex(text);
+        this.backend === 'claude'
+          ? await this.runClaude(text)
+          : this.backend === 'dsh'
+            ? await this.runDsh(text)
+            : await this.runCodex(text);
       if (result.sessionId) this.cliSessionId = result.sessionId;
       this.persist();
       return result;
@@ -199,23 +216,54 @@ export class CliHarnessService {
     });
   }
 
+  /**
+   * dsh 无头模式：`dsh --profile headless --json [--session-id id] <prompt>`。
+   * 续接要求同一 cwd；Mock（.mjs）也收到完整参数，便于测试会话转发。
+   */
+  private runDsh(prompt: string): Promise<HarnessSendResult> {
+    const bin = resolveHarnessBin('dsh');
+    if (!bin) return Promise.reject(new Error(t('未找到 dsh（可设 NOMI_USE_MOCK_CLI=1）')));
+    const useNode = bin.endsWith('.mjs') || bin.endsWith('.js');
+    const argv = ['--profile', 'headless', '--json'];
+    if (this.cliSessionId) argv.push('--session-id', this.cliSessionId);
+    // 以 - 开头的提示会被当成参数，前置空格规避
+    argv.push(prompt.startsWith('-') ? ` ${prompt}` : prompt);
+    let extraEnv: Record<string, string> = {};
+    try {
+      extraEnv = this.d.dshEnv?.() ?? {};
+    } catch (e) {
+      this.d.logger.warn('harness dsh env failed', e);
+    }
+    return this.spawnCollect({
+      cmd: useNode ? process.execPath : bin,
+      argv: useNode ? [bin, ...argv] : argv,
+      cwd: this.cwd,
+      parseLine: parseDshLine,
+      kind: 'dsh',
+      env: extraEnv,
+    });
+  }
+
   private spawnCollect(opts: {
     cmd: string;
     argv: string[];
     cwd: string;
     parseLine: (line: string) => HarnessEvent[];
-    kind: 'claude' | 'codex';
+    kind: CliBackend;
+    env?: Record<string, string>;
   }): Promise<HarnessSendResult> {
     return new Promise((resolve, reject) => {
       const events: HarnessEvent[] = [];
       let text = '';
       let sessionId: string | null = this.cliSessionId;
       let buf = '';
+      let lastError: string | null = null;
       const child: ChildProcessWithoutNullStreams = spawn(opts.cmd, opts.argv, {
         cwd: opts.cwd,
         env: {
           ...process.env,
           NO_COLOR: '1',
+          ...opts.env,
           // 不向 CLI 泄漏无关的 NOMI_* token；保留 PATH / HOME / 用户已有 ANTHROPIC_/OPENAI_
         },
         windowsHide: true,
@@ -233,6 +281,7 @@ export class CliHarnessService {
             events.push(ev);
             this.emitEvent(ev);
             if (ev.type === 'text-delta' || ev.type === 'text') text += ev.text;
+            if (ev.type === 'error') lastError = ev.message;
             if (ev.type === 'done') {
               if (ev.text) text = ev.text || text;
               if (ev.sessionId) sessionId = ev.sessionId;
@@ -250,11 +299,12 @@ export class CliHarnessService {
           for (const ev of opts.parseLine(buf)) {
             events.push(ev);
             if (ev.type === 'text-delta' || ev.type === 'text') text += ev.text;
+            if (ev.type === 'error') lastError = ev.message;
             if (ev.type === 'done' && ev.sessionId) sessionId = ev.sessionId;
           }
         }
         if (code && code !== 0 && !text) {
-          reject(new Error(t('{0} 退出码 {1}', opts.kind, code)));
+          reject(new Error(lastError ?? t('{0} 退出码 {1}', opts.kind, code)));
           return;
         }
         resolve({ text: text || t('（无文本输出）'), sessionId, events });
@@ -303,12 +353,9 @@ export class CliHarnessService {
 }
 
 let inst: CliHarnessService | null = null;
-export function initCliHarnessService(d: {
-  root: string;
-  logger: Logger;
-  home?: string;
-  defaultCwd?: string;
-}): CliHarnessService {
+export function initCliHarnessService(
+  d: ConstructorParameters<typeof CliHarnessService>[0],
+): CliHarnessService {
   inst = new CliHarnessService(d);
   return inst;
 }

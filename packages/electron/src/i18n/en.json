@@ -445,5 +445,7 @@
   "Gemini Native generateContent（需开启路由）": "Gemini Native generateContent (routing required)",
   "Responses（原生）": "Responses (native)",
   "Chat Completions（需开启路由）": "Chat Completions (routing required)",
-  "Anthropic Messages（需开启路由）": "Anthropic Messages (routing required)"
+  "Anthropic Messages（需开启路由）": "Anthropic Messages (routing required)",
+  "未找到 dsh（可设 NOMI_USE_MOCK_CLI=1）": "dsh not found (set NOMI_USE_MOCK_CLI=1 to use the mock)",
+  "dsh 错误": "dsh error"
 }

@@ -141,4 +141,67 @@ describe('CliHarnessService session handling', () => {
       }
     },
   );
+
+  describe('dsh backend', () => {
+    const mockDsh = path.resolve(__dirname, '../../../scripts/mock-cli/mock-dsh.mjs');
+    const mk = (dshEnv?: () => Record<string, string>) =>
+      new CliHarnessService({
+        root: fs.mkdtempSync(path.join(os.tmpdir(), 'harness-dsh-')),
+        logger: { info() {}, warn() {} },
+        defaultCwd: process.cwd(),
+        dshEnv,
+      });
+    let prev: string | undefined;
+    beforeEach(() => {
+      prev = process.env.NOMI_DSH_BIN;
+      process.env.NOMI_DSH_BIN = mockDsh;
+      delete process.env.NOMI_DSH_API_KEY;
+    });
+    afterEach(() => {
+      process.env.NOMI_DSH_BIN = prev;
+    });
+
+    it('runs headless JSON, records the session and resumes it', async () => {
+      const h = mk();
+      h.setBackend('dsh');
+      expect(h.state().bins.dsh).toBe(mockDsh);
+      const r1 = await h.send('hello');
+      expect(r1.text).toBe('【Mock dsh】new nokey: hello');
+      expect(r1.sessionId).toBe('session-mock-dsh-1');
+      expect(r1.events).toEqual(
+        expect.arrayContaining([
+          { type: 'tool', name: 'read_file', status: 'start', detail: 'call_1' },
+          { type: 'tool', name: 'tool', status: 'done', detail: 'call_1' },
+        ]),
+      );
+      expect(h.state().cliSessionId).toBe('session-mock-dsh-1');
+      const r2 = await h.send('again');
+      expect(r2.text).toBe('【Mock dsh】resumed nokey: again');
+    });
+
+    it('injects provider env (API key) only into the dsh child', async () => {
+      const h = mk(() => ({ NOMI_DSH_API_KEY: 'sk-test' }));
+      h.setBackend('dsh');
+      const r = await h.send('hi');
+      expect(r.text).toContain('new key');
+      expect(process.env.NOMI_DSH_API_KEY).toBeUndefined();
+    });
+
+    it('surfaces the dsh error message when resume fails', async () => {
+      const h = mk();
+      h.setBackend('dsh');
+      await h.send('first');
+      // 伪造一个失效的会话 id
+      (h as unknown as { cliSessionId: string }).cliSessionId = 'session-unknown';
+      await expect(h.send('x')).rejects.toThrow('session not found: session-unknown');
+    });
+
+    it('drops the dsh session when switching backend', async () => {
+      const h = mk();
+      h.setBackend('dsh');
+      await h.send('hi');
+      h.setBackend('claude');
+      expect(h.state().cliSessionId).toBeNull();
+    });
+  });
 });

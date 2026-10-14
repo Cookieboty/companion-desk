@@ -97,3 +97,53 @@ export function parseCodexLine(line: string): HarnessEvent[] {
   }
   return out;
 }
+
+/**
+ * dsh `--profile headless --json` 的 NDJSON 事件：
+ * session / status / text / thinking / tool_call / tool_result / final / error。
+ * 文本按已提交的步骤整段到达；final 为整轮最终回复。
+ */
+export function parseDshLine(line: string): HarnessEvent[] {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('{')) return [];
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const type = String(j.type ?? '');
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  switch (type) {
+    case 'session':
+      return str(j.sessionId) ? [{ type: 'done', text: '', sessionId: str(j.sessionId) }] : [];
+    case 'text':
+      return str(j.text) ? [{ type: 'text', text: str(j.text) }] : [];
+    case 'final':
+      return [{ type: 'done', text: str(j.text) }];
+    case 'tool_call':
+      return [
+        { type: 'tool', name: str(j.tool) || 'tool', status: 'start', detail: str(j.callId) },
+      ];
+    case 'tool_result':
+      return [
+        {
+          type: 'tool',
+          name: str(j.tool) || 'tool',
+          status: j.status === 'error' ? 'error' : 'done',
+          detail: str(j.callId),
+        },
+      ];
+    case 'error':
+      return [{ type: 'error', message: str(j.message) || t('dsh 错误') }];
+    case 'status': {
+      const reason = j.reason as { kind?: string; error?: { message?: string } } | undefined;
+      if (j.phase === 'turn_end' && reason?.kind === 'error') {
+        return [{ type: 'error', message: reason.error?.message || t('dsh 错误') }];
+      }
+      return [];
+    }
+    default:
+      return [];
+  }
+}
