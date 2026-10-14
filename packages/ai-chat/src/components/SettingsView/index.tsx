@@ -9,16 +9,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
 import { providerClientAvailable } from '../../services/providerClient';
-import { ConfigPanel } from '../ConfigPanel';
-import { DesktopPanel } from '../DesktopPanel';
-import { ExtensionsPanel } from '../ExtensionsPanel';
-import { KnowledgePanel } from '../KnowledgePanel';
-import { LocalPanel } from '../LocalPanel';
-import { MemoryPanel } from '../MemoryPanel';
+import {
+  ConfigPanel,
+  DesktopPanel,
+  ExtensionsPanel,
+  KnowledgePanel,
+  LocalPanel,
+  MemoryPanel,
+  ProviderPanel,
+  SchedulePanel,
+  ScreenPanel,
+} from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
-import { ProviderPanel } from '../ProviderPanel';
-import { SchedulePanel } from '../SchedulePanel';
-import { ScreenPanel } from '../ScreenPanel';
 
 import { AppIconSettings } from './AppIconSettings';
 import { CalendarSettings } from './CalendarSettings';
