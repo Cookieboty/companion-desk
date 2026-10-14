@@ -28,6 +28,7 @@ import {
   createSafeStorageCipher,
   llmProvidersFromEnv,
   createElectronIpcAdapter,
+  createGuardedIpcAdapter,
   createElectronLifecycle,
   runtime,
   type Booter,
@@ -39,13 +40,14 @@ import { FileSessionStorePlugin } from '@nomi-ai/bundle-ig-electron-caps';
 import { app, safeStorage } from 'electron';
 
 import { desktopIgPlugins } from '../desktop/plugin';
+import { getExtensionsService } from '../extensions/ExtensionsService';
+import { isTrustedAiSender } from '../security/ipcSenderGuard';
 import type { ILoggerService } from '../services/LoggerService';
 
 import { mascotIgPlugins } from './mascotBridge';
 import type { TtsProvider } from './TtsElectronNativeProvider';
 
 export interface AIRuntimeBootSeams {
-  keyStore?: unknown;
   clipboard?: unknown;
   screen?: unknown;
 }
@@ -200,6 +202,8 @@ export async function startAIRuntime(
       before: [{ plugin: FileSessionStorePlugin }],
       // 看板娘动作 / 表情工具（live2d_play_motion / live2d_set_expression）→ IPC → 渲染进程
       after: [...mascotIgPlugins, ...desktopIgPlugins],
+      // env(MCP_SERVERS) 来的工具同样强制走用户确认 + 审计（ExtensionsService.guardEnvTool）
+      mcpToolGuard: (server, def) => getExtensionsService()?.guardEnvTool(server, def) ?? def,
       providers: {
         store: providerStore,
         onRegistry: (r) => {
@@ -215,7 +219,10 @@ export async function startAIRuntime(
     tryRegisterTtsProviders(client, opts.ttsProviders, logger);
   }
 
-  const adapter = createElectronIpcAdapter();
+  // 所有 ai:* 通道统一套 sender origin 白名单（file:// 生产页面 / 127.0.0.1 dev server）
+  const adapter = createGuardedIpcAdapter(createElectronIpcAdapter(), (event) =>
+    isTrustedAiSender(event),
+  );
 
   const transport = new IPCTransportServer({
     client,
@@ -239,7 +246,6 @@ export async function startAIRuntime(
       injector: {
         getScreen: () => seams.screen,
         getClipboard: () => seams.clipboard,
-        getKeyStore: () => seams.keyStore,
       },
     });
     capability.start();

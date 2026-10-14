@@ -9,7 +9,8 @@
 import { UserProfileKey, type PluginContext } from '@nomi-ai/bundle-ig-base';
 
 import { AiSdkLLMProvidersPlugin } from './ai-sdk/AiSdkLLMProvidersPlugin';
-import { AiSdkMcpPlugin } from './ai-sdk/AiSdkMcpPlugin';
+import { AiSdkMcpPlugin, type AiSdkMcpPluginConfig } from './ai-sdk/AiSdkMcpPlugin';
+import type { McpToolGuard } from './ai-sdk/mcpBridge';
 import type { Booter, StartOptions } from './AIRuntimeService';
 import { createIgPluginHost, type IgPluginEntry, type IgPluginHost } from './IgPluginHost';
 import {
@@ -33,6 +34,8 @@ export interface AiSdkBooterOptions {
   after?: IgPluginEntry[];
   /** 多 provider 配置（面板）；省略则只用环境变量 providers */
   providers?: AiSdkProvidersOptions;
+  /** MCP 工具注册前的包装钩子（如强制用户确认）；对 env 与 GUI 两类服务器都生效 */
+  mcpToolGuard?: McpToolGuard;
 }
 
 export interface AiSdkProvidersOptions {
@@ -45,6 +48,7 @@ export function defaultAiSdkPlugins(
   profile: string,
   opts: IgPluginsOptions = {},
   providers: AiSdkProvidersOptions = {},
+  mcp: { guardTool?: McpToolGuard } = {},
 ): IgPluginEntry[] {
   const env = opts.env ?? process.env;
   const servers = mcpServersFromEnv(env);
@@ -65,9 +69,15 @@ export function defaultAiSdkPlugins(
     }
     if (entry.plugin.name === 'McpBridgePlugin') {
       // Provide @ai-sdk/mcp service first; McpBridge reuses it and may auto-connect.
+      const mcpConfig: AiSdkMcpPluginConfig = {
+        servers,
+        autoConnect: false,
+        prefixToolNames: true,
+        ...(mcp.guardTool ? { guardTool: mcp.guardTool } : {}),
+      };
       mapped.push({
         plugin: AiSdkMcpPlugin,
-        config: { servers, autoConnect: false, prefixToolNames: true },
+        config: mcpConfig,
       });
       mapped.push({
         plugin: entry.plugin,
@@ -93,6 +103,7 @@ export function createAiSdkBooter(opts: AiSdkBooterOptions = {}): Booter {
           after: opts.after,
         },
         opts.providers,
+        { guardTool: opts.mcpToolGuard },
       ));
 
   let host: IgPluginHost | undefined;

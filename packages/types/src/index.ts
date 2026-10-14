@@ -8,7 +8,6 @@ export interface IpcApi {
   setPosition: (x: number, y: number) => void;
   saveModel: (modelName: string) => void;
   getSavedModel: () => Promise<string>;
-  readLocalFile: (filePath: string) => Promise<string | Blob>;
   getCursorPosition: () => Promise<{ x: number; y: number }>;
   onWindowMouseEnter: (callback: () => void) => void;
   onWindowMouseLeave: (callback: () => void) => void;
@@ -31,9 +30,6 @@ export interface IpcApi {
   onKeyboardListenerStarted: (callback: () => void) => void;
   onKeyboardListenerError: (callback: (error: string) => void) => void;
   removeKeyboardListeners: () => void;
-
-  // 通用invoke方法
-  invoke: (channel: string, ...args: any[]) => Promise<any>;
 
   // AI对话相关API
   openAiChat: () => Promise<{ success: boolean; error?: string }>;
@@ -111,8 +107,6 @@ export interface TTSTestResult {
 export interface MCPApi {
   getStatus: () => Promise<MCPServiceStatus>;
   getDiagnostics: () => Promise<MCPDiagnostics>;
-  callTool: (toolName: string, args: any) => Promise<MCPToolResult>;
-  readResource: (uri: string) => Promise<any>;
   getAvailableTools: () => Promise<MCPTool[]>;
   getAvailableResources: () => Promise<MCPResource[]>;
   restart: () => Promise<{ success: boolean; error?: string }>;

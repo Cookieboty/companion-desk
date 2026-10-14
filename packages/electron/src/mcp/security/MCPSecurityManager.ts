@@ -62,30 +62,55 @@ export class MCPSecurityManager {
       // 2. 速率限制检查
       if (!this.checkRateLimit(clientId || 'default', toolName)) {
         console.warn(`速率限制超出: ${toolName} from ${clientId}`);
-        this.addAuditLog(clientId || 'unknown', 'RATE_LIMIT', `Rate limit exceeded for ${toolName}`, false);
+        this.addAuditLog(
+          clientId || 'unknown',
+          'RATE_LIMIT',
+          `Rate limit exceeded for ${toolName}`,
+          false,
+        );
         return false;
       }
 
       // 3. 参数安全验证
       if (!this.validateArguments(toolName, args)) {
         console.warn(`参数验证失败: ${toolName}`);
-        this.addAuditLog(clientId || 'unknown', 'ARG_VALIDATION', `Invalid arguments for ${toolName}`, false);
+        this.addAuditLog(
+          clientId || 'unknown',
+          'ARG_VALIDATION',
+          `Invalid arguments for ${toolName}`,
+          false,
+        );
         return false;
       }
 
       // 4. 权限检查
       if (!this.checkPermissions(toolName, clientId)) {
         console.warn(`权限不足: ${toolName} for ${clientId}`);
-        this.addAuditLog(clientId || 'unknown', 'PERMISSION', `Insufficient permissions for ${toolName}`, false);
+        this.addAuditLog(
+          clientId || 'unknown',
+          'PERMISSION',
+          `Insufficient permissions for ${toolName}`,
+          false,
+        );
         return false;
       }
 
       // 验证通过
-      this.addAuditLog(clientId || 'unknown', 'TOOL_CALL', `Tool call validated: ${toolName}`, true);
+      this.addAuditLog(
+        clientId || 'unknown',
+        'TOOL_CALL',
+        `Tool call validated: ${toolName}`,
+        true,
+      );
       return true;
     } catch (error) {
       console.error('MCPSecurityManager: 验证失败:', error);
-      this.addAuditLog(clientId || 'unknown', 'VALIDATION_ERROR', `Validation error: ${error}`, false);
+      this.addAuditLog(
+        clientId || 'unknown',
+        'VALIDATION_ERROR',
+        `Validation error: ${error}`,
+        false,
+      );
       return false;
     }
   }
@@ -94,14 +119,9 @@ export class MCPSecurityManager {
    * 初始化信任命令列表
    */
   private initializeTrustedCommands(): void {
-    const trustedTools = [
-      'explain_code',
-      'show_animation',
-      'voice_feedback',
-      'gesture_guide'
-    ];
+    const trustedTools = ['explain_code', 'show_animation', 'voice_feedback', 'gesture_guide'];
 
-    trustedTools.forEach(tool => this.trustedCommands.add(tool));
+    trustedTools.forEach((tool) => this.trustedCommands.add(tool));
     console.log(`MCPSecurityManager: 已加载 ${this.trustedCommands.size} 个信任工具`);
   }
 
@@ -117,7 +137,7 @@ export class MCPSecurityManager {
       rateLimitInfo = {
         count: 0,
         windowStart: now,
-        lastRequest: now
+        lastRequest: now,
       };
       this.rateLimitMap.set(key, rateLimitInfo);
     }
@@ -156,10 +176,10 @@ export class MCPSecurityManager {
 
     // 特殊工具的限制配置
     const toolLimits: Record<string, ToolRateLimit> = {
-      'explain_code': { maxRequests: 20, minInterval: 1000 },
-      'show_animation': { maxRequests: 30, minInterval: 500 },
-      'voice_feedback': { maxRequests: 15, minInterval: 2000 },
-      'gesture_guide': { maxRequests: 25, minInterval: 800 }
+      explain_code: { maxRequests: 20, minInterval: 1000 },
+      show_animation: { maxRequests: 30, minInterval: 500 },
+      voice_feedback: { maxRequests: 15, minInterval: 2000 },
+      gesture_guide: { maxRequests: 25, minInterval: 800 },
     };
 
     return toolLimits[toolName] || defaultLimit;
@@ -175,41 +195,12 @@ export class MCPSecurityManager {
         return false;
       }
 
-      // 检查危险模式
-      if (this.containsDangerousPatterns(args)) {
-        return false;
-      }
-
       // 工具特定验证
       return this.validateToolSpecificArgs(toolName, args);
     } catch (error) {
       console.error('参数验证异常:', error);
       return false;
     }
-  }
-
-  /**
-   * 检查危险模式
-   */
-  private containsDangerousPatterns(args: any): boolean {
-    const argString = JSON.stringify(args).toLowerCase();
-
-    const dangerousPatterns = [
-      'eval(',
-      'function(',
-      'script>',
-      'javascript:',
-      '__proto__',
-      'constructor',
-      'prototype',
-      'require(',
-      'import(',
-      'process.',
-      'fs.',
-      'child_process'
-    ];
-
-    return dangerousPatterns.some(pattern => argString.includes(pattern));
   }
 
   /**
@@ -238,7 +229,16 @@ export class MCPSecurityManager {
     if (args.code.length > 10000) return false; // 限制代码长度
     if (!args.language || typeof args.language !== 'string') return false;
 
-    const allowedLanguages = ['javascript', 'typescript', 'python', 'java', 'cpp', 'csharp', 'go', 'rust'];
+    const allowedLanguages = [
+      'javascript',
+      'typescript',
+      'python',
+      'java',
+      'cpp',
+      'csharp',
+      'go',
+      'rust',
+    ];
     return allowedLanguages.includes(args.language.toLowerCase());
   }
 
@@ -248,10 +248,23 @@ export class MCPSecurityManager {
   private validateAnimationArgs(args: any): boolean {
     if (!args.animationType || typeof args.animationType !== 'string') return false;
 
-    const allowedTypes = ['explaining', 'greeting', 'pointing', 'thinking', 'celebrating', 'confused', 'demonstrating', 'idle', 'custom'];
+    const allowedTypes = [
+      'explaining',
+      'greeting',
+      'pointing',
+      'thinking',
+      'celebrating',
+      'confused',
+      'demonstrating',
+      'idle',
+      'custom',
+    ];
     if (!allowedTypes.includes(args.animationType)) return false;
 
-    if (args.duration && (typeof args.duration !== 'number' || args.duration < 500 || args.duration > 30000)) {
+    if (
+      args.duration &&
+      (typeof args.duration !== 'number' || args.duration < 500 || args.duration > 30000)
+    ) {
       return false;
     }
 
@@ -279,7 +292,20 @@ export class MCPSecurityManager {
   private validateGestureArgs(args: any): boolean {
     if (!args.gestureType || typeof args.gestureType !== 'string') return false;
 
-    const allowedTypes = ['point', 'highlight', 'flow', 'contain', 'connect', 'separate', 'expand', 'compress', 'cycle', 'branch', 'warning', 'confirmation'];
+    const allowedTypes = [
+      'point',
+      'highlight',
+      'flow',
+      'contain',
+      'connect',
+      'separate',
+      'expand',
+      'compress',
+      'cycle',
+      'branch',
+      'warning',
+      'confirmation',
+    ];
     return allowedTypes.includes(args.gestureType);
   }
 
@@ -303,7 +329,7 @@ export class MCPSecurityManager {
       details,
       success,
       ip: 'localhost', // Electron环境
-      userAgent: 'electron'
+      userAgent: 'electron',
     };
 
     this.auditLog.push(entry);
@@ -328,19 +354,14 @@ export class MCPSecurityManager {
         windowMs: 60000, // 1分钟窗口
         default: {
           maxRequests: 60,
-          minInterval: 1000
-        }
+          minInterval: 1000,
+        },
       },
       auditLog: {
         maxEntries: 1000,
         logLevel: 'info',
-        retentionDays: 7
+        retentionDays: 7,
       },
-      validation: {
-        maxArgSize: 1024 * 1024, // 1MB
-        maxTextLength: 10000,
-        enablePatternCheck: true
-      }
     };
   }
 
@@ -362,14 +383,20 @@ export class MCPSecurityManager {
    */
   private startCleanupTasks(): void {
     // 定期清理过期的速率限制数据
-    setInterval(() => {
-      this.cleanupRateLimitData();
-    }, 5 * 60 * 1000); // 每5分钟清理一次
+    setInterval(
+      () => {
+        this.cleanupRateLimitData();
+      },
+      5 * 60 * 1000,
+    ); // 每5分钟清理一次
 
     // 定期清理审计日志
-    setInterval(() => {
-      this.cleanupAuditLog();
-    }, 24 * 60 * 60 * 1000); // 每天清理一次
+    setInterval(
+      () => {
+        this.cleanupAuditLog();
+      },
+      24 * 60 * 60 * 1000,
+    ); // 每天清理一次
   }
 
   /**
@@ -393,7 +420,7 @@ export class MCPSecurityManager {
     const retentionMs = this.securityConfig.auditLog.retentionDays * 24 * 60 * 60 * 1000;
     const cutoffTime = Date.now() - retentionMs;
 
-    this.auditLog = this.auditLog.filter(entry => entry.timestamp > cutoffTime);
+    this.auditLog = this.auditLog.filter((entry) => entry.timestamp > cutoffTime);
   }
 
   /**
@@ -405,7 +432,8 @@ export class MCPSecurityManager {
       trustedCommandsCount: this.trustedCommands.size,
       rateLimitClientsCount: this.rateLimitMap.size,
       auditLogEntriesCount: this.auditLog.length,
-      lastActivity: this.auditLog.length > 0 ? this.auditLog[this.auditLog.length - 1].timestamp : null
+      lastActivity:
+        this.auditLog.length > 0 ? this.auditLog[this.auditLog.length - 1].timestamp : null,
     };
   }
 
@@ -424,7 +452,7 @@ export class MCPSecurityManager {
     const stats: RateLimitStats = {
       totalClients: this.rateLimitMap.size,
       activeClients: 0,
-      topTools: {}
+      topTools: {},
     };
 
     const now = Date.now();
@@ -493,11 +521,6 @@ interface SecurityConfig {
     maxEntries: number;
     logLevel: 'debug' | 'info' | 'warn' | 'error';
     retentionDays: number;
-  };
-  validation: {
-    maxArgSize: number;
-    maxTextLength: number;
-    enablePatternCheck: boolean;
   };
 }
 

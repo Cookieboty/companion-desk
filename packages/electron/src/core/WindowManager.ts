@@ -10,6 +10,7 @@ import { BrowserWindow, screen, app, type BrowserWindowConstructorOptions } from
 import { t } from '../i18n';
 import { mascotWindowSize } from '../mascot/mascotSize';
 import { MascotWindowController } from '../mascot/MascotWindowController';
+import { installWindowGuards } from '../security/windowGuards';
 import { type IConfigService } from '../services/ConfigService';
 import { type ILoggerService } from '../services/LoggerService';
 import { perfEnabled, perfMark } from '../utils/perfMarks';
@@ -19,6 +20,9 @@ import { windowIconPath } from './appIcon';
 import { devChatUrl, devRendererUrl } from './devPorts';
 import { eventBus } from './EventBus';
 import { type ChromeTheme, titleBarOptions } from './titleBar';
+
+/** 开发模式：未打包且显式声明 NODE_ENV，防止打包应用被注入环境变量后加载本机 dev server */
+const isDevMode = (): boolean => !app.isPackaged && process.env.NODE_ENV === 'development';
 
 export interface WindowOptions {
   width?: number;
@@ -328,9 +332,14 @@ export class WindowManager implements IWindowManager {
         preload: path.join(__dirname, '..', options.preloadScript || 'preload.bundle.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        webSecurity: false, // 开发环境需要
+        sandbox: true,
+        // 同源策略是 XSS 后窃取本地文件/跨域读内网的核心防线，仅未打包的开发环境关闭
+        webSecurity: !app.isPackaged && process.env.NODE_ENV === 'development' ? false : true,
       },
     });
+
+    // 禁止整页导航到外部站点、拒绝应用内开窗（http(s) 外链转系统浏览器）
+    installWindowGuards(window);
 
     // preload 抛错或渲染进程退出时 renderer 会缺少 window.electronAPI 而表现为空白窗口；
     // 记到主进程日志里，便于定位（例如 E6 在全新 userData 首启时偶发的空白窗口）
@@ -365,7 +374,7 @@ export class WindowManager implements IWindowManager {
       window.show();
 
       // 开发环境打开开发者工具
-      if (process.env.NODE_ENV === 'development') {
+      if (isDevMode()) {
         window.webContents.openDevTools({ mode: 'detach' });
       }
 
@@ -494,7 +503,7 @@ export class WindowManager implements IWindowManager {
    * 加载主窗口内容
    */
   private async loadMainWindowContent(window: BrowserWindow): Promise<void> {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = isDevMode();
     let startUrl: string;
 
     if (isDev) {
@@ -511,7 +520,7 @@ export class WindowManager implements IWindowManager {
 
   /** 用对话页的某个 hash 路由加载任意窗口（例如截图遮罩 #snip） */
   async loadChatRoute(window: BrowserWindow, hash: string): Promise<void> {
-    if (process.env.NODE_ENV === 'development') await window.loadURL(`${devChatUrl()}#${hash}`);
+    if (isDevMode()) await window.loadURL(`${devChatUrl()}#${hash}`);
     else await window.loadFile(this.getAiChatPath(), { hash });
   }
 
@@ -519,7 +528,7 @@ export class WindowManager implements IWindowManager {
    * 加载AI对话窗口内容
    */
   private async loadAiChatWindowContent(window: BrowserWindow): Promise<void> {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = isDevMode();
 
     if (isDev) {
       const devUrl = devChatUrl();
@@ -535,7 +544,7 @@ export class WindowManager implements IWindowManager {
    * 加载TTS配置窗口内容
    */
   private async loadTTSConfigWindowContent(window: BrowserWindow): Promise<void> {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = isDevMode();
 
     try {
       if (isDev) {
@@ -576,7 +585,7 @@ export class WindowManager implements IWindowManager {
    * 获取渲染器路径
    */
   private getRendererPath(): string {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = isDevMode();
     const isDebugBuild = process.env.DEBUG === 'true';
 
     if (isDev) {
