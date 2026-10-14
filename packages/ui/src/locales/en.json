@@ -1391,5 +1391,8 @@
   "更新服务不可用（仅在桌面应用中提供）。": "Updates are only available in the desktop app.",
   "将退出 Nomi 并安装 {0}。未保存的对话会保留在本地，但当前窗口会关闭。": "Nomi will quit and install {0}. Conversations stay on this device, but this window will close.",
   "启动时与定期自动检查更新": "Check for updates on launch and periodically",
-  "更新来自 GitHub Releases（Cookieboty/nomi-ai），下载完成后需你确认才会安装。": "Updates come from GitHub Releases (Cookieboty/nomi-ai). Download is automatic; install waits for your confirmation."
+  "更新来自 GitHub Releases（Cookieboty/nomi-ai），下载完成后需你确认才会安装。": "Updates come from GitHub Releases (Cookieboty/nomi-ai). Download is automatic; install waits for your confirmation.",
+  "最后活动 {0}": "Last activity {0}",
+  "等你回复": "Waiting for you",
+  "已结束": "Ended"
 }

@@ -1,7 +1,7 @@
 import { t } from '@nomi-ai/ui';
 /** 编程助手进度客户端：`ai:agents:*` IPC（经 preload 的 window.aiIPC） */
-export type AgentKind = 'codex' | 'claude' | 'aider' | 'cline' | 'continue' | 'cursor';
-export type AgentStatus = 'running' | 'completed' | 'failed' | 'stalled' | 'idle';
+export type AgentKind = 'codex' | 'claude' | 'aider' | 'cline' | 'continue' | 'cursor' | 'gemini';
+export type AgentStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'stalled' | 'idle';
 
 export interface AgentWatchSettings {
   enabled: boolean;
@@ -15,8 +15,12 @@ export interface AgentSessionView {
   id: string;
   kind: AgentKind;
   label: string;
+  project?: string;
+  cwd?: string;
+  title: string;
   status: AgentStatus;
   summary?: string;
+  alive?: boolean;
   path: string;
   mtime: number;
   updatedAt: number;
@@ -36,6 +40,7 @@ export const AGENT_LABEL: Record<AgentKind, string> = {
   cline: 'Cline',
   continue: 'Continue',
   cursor: 'Cursor',
+  gemini: 'Gemini CLI',
 };
 
 export const STATUS_LABEL: Record<AgentStatus, string> = {
@@ -43,7 +48,8 @@ export const STATUS_LABEL: Record<AgentStatus, string> = {
   completed: '已完成',
   failed: '失败',
   stalled: '可能卡住',
-  idle: '空闲',
+  waiting: '等你回复',
+  idle: '已结束',
 };
 
 interface AiBridge {
