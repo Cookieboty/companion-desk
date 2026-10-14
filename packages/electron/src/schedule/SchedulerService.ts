@@ -15,6 +15,7 @@ import { BrowserWindow, Notification, ipcMain, powerMonitor } from 'electron';
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t as tr } from '../i18n';
+import { notifyIsland } from '../island/IslandService';
 
 import {
   describeRepeat,
@@ -402,6 +403,7 @@ export class SchedulerService {
     if (this.isQuiet()) return;
     const short = r.text.length > 90 ? `${r.text.slice(0, 88)}…` : r.text;
     this.d.desktop.say(tr('{0}{1}：{2}', r.catchUp ? tr('（补上）') : '', r.name, short));
+    notifyIsland({ kind: 'reminder', title: r.name, body: short });
     broadcastMascotCommand({ type: 'motion', name: 'wave' });
     if (this.data.settings.osNotify) this.notify(`📋 ${r.name}`, short);
   }
@@ -516,6 +518,7 @@ export class SchedulerService {
       };
       this.save();
       this.d.desktop.say(text);
+      notifyIsland({ kind: 'message', title: tr('Nomi'), body: text });
       broadcastMascotCommand({ type: 'expression', name: 'happy' });
       broadcastMascotCommand({ type: 'motion', name: 'wave' });
       this.broadcast('ai:sched:proactive', { text, at: now });

@@ -66,7 +66,7 @@ export interface OllamaModel {
 export interface CalSource {
   id: string;
   name: string;
-  kind: 'local' | 'file' | 'ics-url' | 'caldav';
+  kind: 'local' | 'file' | 'ics-url' | 'caldav' | 'system';
   color: string;
   url?: string;
   username?: string;
@@ -159,6 +159,13 @@ export const hubClient = {
   calToggle: (id: string, v: boolean) => H('cal-toggle', id, v),
   calRemoveSource: (id: string) => H('cal-remove-source', id),
   calExport: () => H('cal-export'),
+  calSystemInfo: () =>
+    H<{ provider: 'macos-calendar' | 'outlook-com' | 'evolution' | null; canCreate: boolean }>(
+      'cal-system-info',
+    ),
+  calSystemConnect: () => H<CalSource | undefined>('cal-system-connect'),
+  calSystemCreate: (p: { summary: string; start: number; end: number }) =>
+    H<{ ok: boolean; reason?: string; calendar?: string }>('cal-system-create', p),
   clipState: () => H<ClipState>('clip-state'),
   clipSettings: (p: Partial<ClipState['settings']>) => H('clip-settings', p),
   clipCopy: (id: string) => H('clip-copy', id),

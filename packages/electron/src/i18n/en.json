@@ -400,5 +400,20 @@
   "下载失败：HTTP {0}": "Download failed: HTTP {0}",
   "你好小桌": "Hey Desk",
   "whisper.cpp 运行失败：{0}": "whisper.cpp failed: {0}",
-  "{0} 这一轮做完了，在等你回复": "{0} finished this turn and is waiting for you"
+  "{0} 这一轮做完了，在等你回复": "{0} finished this turn and is waiting for you",
+  "这是灵动岛通知的样子～": "This is what an island notification looks like~",
+  "没有「日历」的自动化权限：请到 系统设置 → 隐私与安全性 → 自动化 中允许 Nomi 控制「日历」": "No automation permission for Calendar: allow Nomi to control Calendar in System Settings → Privacy & Security → Automation",
+  "无法启动「日历」App": "Could not start the Calendar app",
+  "没有找到经典版 Outlook（新版 Outlook 不支持本地接口）。请改用 ICS 订阅或 CalDAV。": "Classic Outlook was not found (the new Outlook has no local API). Use an ICS subscription or CalDAV instead.",
+  "没有找到 Evolution / GNOME 本地日历文件。在线账户请用 CalDAV 订阅。": "No local Evolution / GNOME calendar file found. Use CalDAV for online accounts.",
+  "当前系统不支持读取系统日历": "Reading the system calendar is not supported on this system",
+  "macOS 日历": "macOS Calendar",
+  "Outlook（经典版）": "Outlook (classic)",
+  "Evolution / GNOME 日历": "Evolution / GNOME Calendar",
+  "当前系统日历不支持由 Nomi 创建事件": "Nomi cannot create events in this system calendar",
+  "事件信息不完整": "Event details are incomplete",
+  "创建": "Create",
+  "取消": "Cancel",
+  "在系统日历中创建事件？": "Create this event in your system calendar?",
+  "Nomi": "Nomi"
 }

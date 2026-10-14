@@ -337,3 +337,9 @@
     padding: 20px 20px 40px;
   }
 }
+.stackSm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
