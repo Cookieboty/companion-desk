@@ -1,0 +1,59 @@
+# AGENTS.md
+
+给编程助手的仓库指南。用户文档在 [docs/README.md](docs/README.md)，架构在 [docs/development/architecture.md](docs/development/architecture.md)。
+
+## 仓库结构
+
+pnpm 9 + Turborepo monorepo，Electron 桌面应用（React 19 + Vite）。Node ≥ 22.12（CI 用 24）。
+
+| 路径                                | 内容                                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `packages/electron`                 | 主进程：`src/main.ts` → `core/Application.ts`，窗口、托盘、IPC、各功能服务                     |
+| `packages/renderer`                 | 看板娘窗口（角色渲染在 `src/mascot`）                                                          |
+| `packages/ai-chat`                  | 对话窗口：对话、设置、引导、功能面板                                                           |
+| `packages/ai-runtime`               | AI 运行时：插件宿主、供应商路由（`src/providers`）、MCP 桥                                     |
+| `packages/ai-sdk` / `ai-sdk-client` | 主进程 AI 门面 / 渲染进程客户端与 preload 桥（`window.aiIPC`）                                 |
+| `packages/bundle-ig-*`              | 插件包：`base`（不得 import electron）、`electron-caps`、`mascot`                              |
+| `packages/ui`                       | 设计令牌、主题、组件、i18n（`src/locales/en.json`）                                            |
+| `packages/voice`、`packages/types`  | 语音、共享类型                                                                                 |
+| `e2e/`、`e2e-headed/`               | 无界面 E2E（Vitest）/ 真实应用 E2E（Playwright），见 [testing.md](docs/development/testing.md) |
+| `scripts/`                          | doctor、dev-smoke、许可与 i18n 检查、release 脚本                                              |
+
+## 命令
+
+```bash
+pnpm install
+pnpm dev                 # 开发（renderer 6127、chat 6128，见 dev-ports.json）
+pnpm build
+pnpm typecheck && pnpm lint
+pnpm test                # 单元测试：electron 用 Jest（tests/unit），其余包用 Vitest
+pnpm test:e2e            # 无界面 E2E
+xvfb-run -a pnpm test:e2e:headed   # 真实应用 E2E，必须在仓库根目录运行
+pnpm check:i18n          # 所有中文文案都有英文翻译
+pnpm check:licenses      # 依赖与素材只允许开源许可
+pnpm changeset           # 用户可见的改动加 changeset；pnpm changelog:check
+```
+
+Linux 无显示器时 Electron 相关命令前加 `xvfb-run -a`。
+
+## 约定
+
+- **界面文案**：中文原文写在代码里作为 key，用 `t()` / `tr()`（主进程用 `packages/electron/src/i18n`），英文翻译同步加到 `packages/ui/src/locales/en.json`；改中文 key 时同时改 en.json。
+- **许可**：只引入开源许可（MIT / Apache-2.0 / BSD / ISC / CC0 / CC-BY 等）的依赖与素材，新素材登记到 `assets-licenses.json` / `CREDITS.md`。
+- **日志**：不用 `console.log`；主进程用 `LoggerService` / `createMainLogger`，渲染进程用 `@nomi-ai/ui` 的 `createLogger`。
+- **安全**：preload 只暴露具名白名单接口；IPC 通道命名 `'<领域>:<动作>'`，`ai:*` 经 `security/ipcSenderGuard.ts`；外部请求走 `netGuard`，命令参数用 `shellEscape`，私有文件用 `utils/privateFile`；API Key 存 `safeStorage`。IPC 名称与 `legacyUserData.ts` 保持向后兼容。
+- **界面**：CSS Modules + `var(--cd-*)` 令牌；面板懒加载；three.js / VRM 仅在使用 3D 角色时加载；无障碍（aria-label、`Esc` 关闭、焦点管理、减少动态效果）。
+- **提交**：Conventional Commits（commitlint，标题与正文每行 ≤ 100 字符）；pre-commit 跑 lint-staged。
+- **Git**：不 force-push、不改写已推送的历史；不打 release tag，不自行合并 PR。
+- **发布**：见 [docs/RELEASE.md](docs/RELEASE.md)。
+
+<!-- BEGIN:turborepo-agent-rules -->
+
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+<!-- END:turborepo-agent-rules -->
