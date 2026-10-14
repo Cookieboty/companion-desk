@@ -47,7 +47,9 @@ function consumeDeepLink(url: string | undefined): void {
   focusExistingWindow();
 }
 
-if (!app.requestSingleInstanceLock()) {
+const isPrimaryInstance = app.requestSingleInstanceLock();
+if (!isPrimaryInstance) {
+  // 第二实例：立即退出，且不得继续执行 userData 迁移 / 应用启动（见下方守卫）
   app.quit();
 } else {
   app.on('second-instance', (_event, argv) => {
@@ -61,8 +63,8 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 // 品牌更名后沿用旧 userData（需在 ready 之前）。仅当 userData 是默认目录时迁移
-// （测试 / --user-data-dir 指定的目录不动）。
-{
+// （测试 / --user-data-dir 指定的目录不动）。第二实例跳过，避免与正在运行的实例争用目录。
+if (isPrimaryInstance) {
   const appData = app.getPath('appData');
   const userData = app.getPath('userData');
   try {
@@ -117,8 +119,9 @@ async function gracefulShutdown(): Promise<void> {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-// 启动应用
-main().catch((error) => {
-  console.error('主程序异常:', error);
-  process.exit(1);
-});
+// 启动应用（仅主实例）
+if (isPrimaryInstance)
+  main().catch((error) => {
+    console.error('主程序异常:', error);
+    process.exit(1);
+  });
