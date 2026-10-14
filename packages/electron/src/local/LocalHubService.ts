@@ -24,6 +24,7 @@ import type { DesktopService } from '../desktop/DesktopService';
 import { t as tr } from '../i18n';
 
 import { caldavQuery, expand, extractCalendarData, parseIcs, toIcs, type CalEvent } from './ics';
+import { createSystemEvent, readSystemCalendar, systemCalendarInfo } from './systemCalendar';
 
 interface Logger {
   info(m: string, x?: unknown): void;
@@ -38,7 +39,7 @@ export interface HubDeps {
   fetchImpl?: typeof fetch;
 }
 
-export type CalKind = 'local' | 'file' | 'ics-url' | 'caldav';
+export type CalKind = 'local' | 'file' | 'ics-url' | 'caldav' | 'system';
 export interface CalSource {
   id: string;
   name: string;
@@ -84,6 +85,20 @@ export function looksSecret(s: string): boolean {
   if (/^\S{8,64}$/.test(t) && /[a-z]/.test(t) && /[A-Z]/.test(t) && /\d/.test(t) && /[^\w]/.test(t))
     return true;
   return false;
+}
+
+/** 把系统日历的常见错误翻成人话 */
+export function systemCalendarError(msg: string): string {
+  if (/-1743|not authori[sz]ed|Not allowed to send Apple events/i.test(msg))
+    return tr(
+      '没有「日历」的自动化权限：请到 系统设置 → 隐私与安全性 → 自动化 中允许 Nomi 控制「日历」',
+    );
+  if (/-600|isn.t running|Application can.t be found/i.test(msg)) return tr('无法启动「日历」App');
+  if (/80040154|ComObject|Outlook\.Application|class not registered/i.test(msg))
+    return tr('没有找到经典版 Outlook（新版 Outlook 不支持本地接口）。请改用 ICS 订阅或 CalDAV。');
+  if (/evolution: no local calendar/.test(msg))
+    return tr('没有找到 Evolution / GNOME 本地日历文件。在线账户请用 CalDAV 订阅。');
+  return msg.slice(0, 200);
 }
 
 export class LocalHubService {
@@ -297,8 +312,63 @@ export class LocalHubService {
       return '';
     }
   }
+  /** 连接系统日历（macOS 日历 / 经典 Outlook / Evolution）；首次同步会触发系统授权 */
+  async addSystemSource() {
+    const info = systemCalendarInfo();
+    if (!info.provider) throw new Error(tr('当前系统不支持读取系统日历'));
+    let s = this.sources.find((x) => x.kind === 'system');
+    if (!s) {
+      s = {
+        id: 'system',
+        name:
+          info.provider === 'macos-calendar'
+            ? tr('macOS 日历')
+            : info.provider === 'outlook-com'
+              ? tr('Outlook（经典版）')
+              : tr('Evolution / GNOME 日历'),
+        kind: 'system',
+        color: COLORS[this.sources.length % COLORS.length],
+        enabled: true,
+      };
+      this.sources.push(s);
+      this.saveCal();
+    }
+    try {
+      await this.sync(s.id);
+    } catch {
+      /* 错误记在 source 上 */
+    }
+    this.audit('calendar_system_connect', { provider: info.provider });
+    return this.calState().sources.find((x) => x.id === 'system');
+  }
+
+  /** 经同意后在系统日历里创建事件（macOS 日历 / 经典 Outlook） */
+  async createSystemEvent(p: { summary?: unknown; start?: unknown; end?: unknown }) {
+    const info = systemCalendarInfo();
+    if (!info.canCreate) throw new Error(tr('当前系统日历不支持由 Nomi 创建事件'));
+    const summary = String(p.summary ?? '').trim();
+    const start = Number(p.start);
+    const end = Number(p.end ?? start + 3_600_000);
+    if (!summary || !Number.isFinite(start) || !Number.isFinite(end))
+      throw new Error(tr('事件信息不完整'));
+    const r = await dialog.showMessageBox({
+      type: 'question',
+      buttons: [tr('创建'), tr('取消')],
+      defaultId: 0,
+      cancelId: 1,
+      message: tr('在系统日历中创建事件？'),
+      detail: `${summary}\n${new Date(start).toLocaleString()} – ${new Date(end).toLocaleTimeString()}`,
+    });
+    if (r.response !== 0) return { ok: false, reason: 'user_denied' };
+    const res = await createSystemEvent({ summary, start, end });
+    this.audit('calendar_system_create', { ok: res.ok });
+    await this.sync('system').catch(() => undefined);
+    return res;
+  }
+
   async sync(id: string) {
     const s = this.sources.find((x) => x.id === id);
+    if (s?.kind === 'system') return this.syncSystem(s);
     if (!s || !s.url) return 0;
     const f = this.d.fetchImpl ?? fetch;
     const headers: Record<string, string> = {};
@@ -332,8 +402,27 @@ export class LocalHubService {
       throw new Error(s.lastError, { cause: e });
     }
   }
+  private async syncSystem(s: CalSource) {
+    const now = Date.now();
+    try {
+      const list = await readSystemCalendar({
+        from: now - 86_400_000,
+        to: now + 30 * 86_400_000,
+        cal: s.id,
+      });
+      this.replaceEvents(s.id, list);
+      return list.length;
+    } catch (e) {
+      s.lastError = systemCalendarError(String((e as Error).message));
+      s.lastSync = Date.now();
+      this.saveCal();
+      this.broadcast('ai:hub:changed');
+      throw new Error(s.lastError, { cause: e });
+    }
+  }
+
   async syncAll() {
-    for (const s of this.sources.filter((x) => x.enabled && x.url))
+    for (const s of this.sources.filter((x) => x.enabled && (x.url || x.kind === 'system')))
       await this.sync(s.id).catch(() => undefined);
   }
   toggleSource(id: string, on: boolean) {
@@ -703,6 +792,9 @@ export class LocalHubService {
     h('cal-toggle', (id: string, v: boolean) => this.toggleSource(String(id), !!v));
     h('cal-remove-source', (id: string) => this.removeSource(String(id)));
     h('cal-export', () => this.exportIcs());
+    h('cal-system-info', () => systemCalendarInfo());
+    h('cal-system-connect', () => this.addSystemSource());
+    h('cal-system-create', (p: never) => this.createSystemEvent(p));
     h('clip-state', () => this.clipState());
     h('clip-settings', (p: never) => this.setClipSettings(p));
     h('clip-copy', (id: string) => this.copyClip(String(id)));

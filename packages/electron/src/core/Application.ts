@@ -18,6 +18,7 @@ import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { t as tr } from '../i18n';
 import { LocaleService } from '../i18n';
+import { getIslandService, initIslandService } from '../island/IslandService';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getLocalHubService, initLocalHubService } from '../local/LocalHubService';
 import { getLocalModelService, initLocalModelService } from '../local/LocalModelService';
@@ -288,6 +289,15 @@ export class Application implements IApplication {
       }
 
       // 编程助手进度：监视本机 Codex / Claude Code 等会话文件，看板娘提醒完成/失败
+      // 灵动岛式通知（macOS 刘海 / 顶部胶囊；免打扰时段内不弹）
+      const island = initIslandService({
+        file: path.join(app.getPath('userData'), 'island.json'),
+        isQuiet: () => getSchedulerService()?.isQuiet() ?? false,
+        openChat: () => void this.windowManager.createAiChatWindow(),
+        logger: this.logger as never,
+      });
+      island.registerIpc();
+
       const agents = initAgentProgressService({
         root: path.join(app.getPath('userData'), 'agents'),
         logger: this.logger as never,
@@ -427,6 +437,7 @@ export class Application implements IApplication {
   async stopAIRuntime(): Promise<void> {
     getMemoryService()?.flush();
     getSchedulerService()?.stop();
+    getIslandService()?.destroy();
     getScreenService()?.stop();
     getLocalHubService()?.stop();
     void getLocalModelService()?.stop();

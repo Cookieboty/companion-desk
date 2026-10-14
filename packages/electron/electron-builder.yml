@@ -81,6 +81,13 @@ mac:
   icon: assets/icon.icns
   hardenedRuntime: true
   gatekeeperAssess: false
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.plist
+  extendInfo:
+    NSAppleEventsUsageDescription: Nomi 读取并（经你同意后）创建「日历」中的日程，用于提醒与每日简报。
+    NSCalendarsUsageDescription: Nomi 读取你的日历日程，用于提醒与每日简报。
+    NSCalendarsFullAccessUsageDescription: Nomi 读取你的日历日程，用于提醒与每日简报。
+    NSMicrophoneUsageDescription: Nomi 用麦克风进行语音输入与唤醒词识别。
 
 # ---------------------------------------------------------------
 # Windows · NSIS；code sign 通过 CSC_LINK / CSC_KEY_PASSWORD 环境变量启用

@@ -20,7 +20,9 @@ import { ProviderPanel } from '../ProviderPanel';
 import { SchedulePanel } from '../SchedulePanel';
 import { ScreenPanel } from '../ScreenPanel';
 
+import { CalendarSettings } from './CalendarSettings';
 import styles from './index.module.css';
+import { IslandSettings } from './IslandSettings';
 import { LanguageSettings } from './LanguageSettings';
 import { PinsSettings } from './PinsSettings';
 import { ThemeSettings } from './ThemeSettings';
@@ -33,6 +35,8 @@ export type SettingsSection =
   | 'kb'
   | 'memory'
   | 'schedule'
+  | 'calendar'
+  | 'notify'
   | 'agents'
   | 'screen'
   | 'ext'
@@ -48,6 +52,8 @@ export const SETTINGS_SECTIONS: Array<{ id: SettingsSection; icon: string; label
   { id: 'kb', icon: '📚', label: '知识库' },
   { id: 'memory', icon: '🧠', label: '记忆' },
   { id: 'schedule', icon: '🗓', label: '日程与提醒' },
+  { id: 'calendar', icon: '📅', label: '日历' },
+  { id: 'notify', icon: '🔔', label: '通知 / 灵动岛' },
   { id: 'agents', icon: '🤖', label: '编程助手' },
   { id: 'screen', icon: '🖥', label: '屏幕' },
   { id: 'ext', icon: '🧩', label: '扩展 / MCP' },
@@ -159,6 +165,10 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return <MemoryPanel isVisible onClose={noop} />;
       case 'schedule':
         return <SchedulePanel key="s" isVisible onClose={noop} />;
+      case 'notify':
+        return <IslandSettings />;
+      case 'calendar':
+        return <CalendarSettings />;
       case 'agents':
         return <SchedulePanel key="a" isVisible onClose={noop} initialTab="agents" />;
       case 'screen':
