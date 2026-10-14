@@ -70,3 +70,6 @@ task
 
 # local agent notes (kept untracked)
 AGENTS.md
+
+# e2e downloaded fixtures (see e2e-headed/fixtures/models/README.md)
+e2e-headed/.cache/
