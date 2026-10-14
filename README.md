@@ -1,506 +1,189 @@
 <p align="center"><img src="docs/brand/nomi-wordmark.svg" alt="Nomi" width="320"></p>
 
-# Nomi·诺米
+<h1 align="center">Nomi·诺米</h1>
 
-> **你的桌面 AI 伙伴** —— 住在桌面，懂你所想，帮你做到。
-> Your desktop AI companion: lives on your desktop, gets what you mean, and gets it done.
+<p align="center">
+  <b>你的桌面 AI 伙伴</b> —— 住在桌面，懂你所想，帮你做到。<br>
+  Your desktop AI companion: lives on your desktop, gets what you mean, and gets it done.
+</p>
 
-任务管理 · 智能执行 · 情感陪伴。品牌规范见 [docs/BRAND.md](docs/BRAND.md)（[中文](docs/BRAND.zh-CN.md)）。
+<p align="center">Windows · macOS · Linux　|　中文 / English　|　MIT</p>
 
-Nomi 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 能力由
-[`@nomi-ai/ai-runtime`](packages/ai-runtime) 的 **IgPluginHost + Vercel AI SDK** 提供，
-可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
-桌面伙伴是形象层：默认是 2D 的品牌角色「Nomi·诺米」，也可切换开源 VRM 3D 角色、表情、语音与口型同步，但不是产品核心。
+Nomi 是一个运行在你电脑上的 AI 助手：一位会动、会说话的桌面伙伴，加上一个干净好用的对话窗口。
+它能连接你喜欢的云端大模型，也能完全离线使用本地模型；它记得你、会主动提醒你，还能帮你读文件、看屏幕、管日程。
 
-## 📸 截图 · Screenshots
+## 📸 截图
 
 <table>
   <tr>
-    <td align="center" width="32%"><img src="docs/screenshots/mascot.png" alt="桌面上的 Nomi 与对话气泡 · Nomi on the desktop with a reply bubble"><br><sub>桌面伙伴 · Desktop companion</sub></td>
-    <td align="center"><img src="docs/screenshots/chat.png" alt="对话窗口 · Chat window"><br><sub>对话窗口 · Chat</sub></td>
+    <td align="center" width="32%"><img src="docs/screenshots/mascot.png" alt="桌面上的 Nomi 与对话气泡"><br><sub>桌面伙伴</sub></td>
+    <td align="center"><img src="docs/screenshots/chat.png" alt="对话窗口"><br><sub>对话窗口</sub></td>
   </tr>
   <tr>
-    <td align="center" colspan="2"><img src="docs/screenshots/command-palette.png" alt="Ctrl/Cmd+K 命令面板 · Command palette" width="49%"> <img src="docs/screenshots/settings-providers.png" alt="供应商设置 · Provider settings" width="49%"><br><sub>命令面板（Ctrl/⌘+K）与供应商设置 · Command palette and provider settings</sub></td>
+    <td align="center" colspan="2"><img src="docs/screenshots/command-palette.png" alt="命令面板" width="49%"> <img src="docs/screenshots/settings-providers.png" alt="供应商设置" width="49%"><br><sub>命令面板（Ctrl/⌘+K）· 供应商与模型</sub></td>
   </tr>
   <tr>
-    <td align="center" colspan="2"><img src="docs/screenshots/settings-en.png" alt="English settings" width="66%"><br><sub>English UI（设置 → 通用 → 语言）</sub></td>
+    <td align="center" colspan="2"><img src="docs/screenshots/settings-en.png" alt="English UI" width="66%"><br><sub>English UI</sub></td>
   </tr>
 </table>
 
-截图均来自真实应用（headed Playwright 截取，见 `e2e-headed/tests/UI.surfaces`、`KEYS.*`、`A11Y.*`、`I18N.*`、`E15.*` 的 `*_SHOTS*` 环境变量）。
-Screenshots are captured from the running app by the headed e2e suite.
+## ✨ 功能
 
-## 🚀 项目特点
+### 🧸 桌面伙伴 Nomi
 
-- 🤖 **本地 AI 助手** - 独立的 AI 对话窗口，流式输出，支持多 provider（DeepSeek / OpenAI / Ollama / llama.cpp / Qwen / 豆包）
-- 🔒 **本地优先** - 可只连本机 Ollama，对话与用户画像保存在本机 userData
-- 🧠 **用户画像记忆** - 偏好抽取与持久化（`ai:userProfile:*`），工具调用（时间、随机数等内置工具）与护栏
-- 🧩 **可扩展宿主** - IgPluginHost profile（`waifu` / `chat-only` / `mcp-headless`）+ ig 插件包 + Vercel AI SDK providers，MCP 桥接
-- 🎭 **可选 3D 桌面伙伴** - 内置角色只有 2D 的 Nomi；3D 渲染用于模型商店的 VRM 或导入自己的 .vrm、表情、眨眼/视线、TTS 口型同步
-- 🔊 **语音反馈** - 编程关键词语音反馈、智能时间播报（可关闭）
-- 🪟 **桌面体验** - 透明无边框窗口、置顶、拖拽、全局快捷键
-- 📦 **工程化管理** - pnpm workspace + Turborepo，Vitest / Jest / Playwright 全链路测试
+- **会呼吸的角色**：分层立绘驱动的伪 3D 骨架——眨眼、视线跟随鼠标、呼吸、头发摆动、说话时口型同步
+- **丰富表情**：开心、生气、难过、放松等表情随对话与任务状态自动切换；AI 也能让她做动作、换表情
+- **好玩的互动**：摸头、单击、双击各有反应；拖着她甩一甩会手脚乱蹬，松手落到任务栏上弹一弹；可选沿屏幕底边散步，支持多显示器
+- **透明不挡事**：只有角色本身可点击，其余区域鼠标直接穿透
+- **对话气泡**：回复以气泡显示在她身边，自动避开脸部
+- **换个形象**：可从模型商店下载开源 3D（VRM）角色，或导入你自己的 `.vrm` 模型，自定义名字、缩放、取景和表情映射
+- **陪你写代码**：可选的编程关键词台词与整点问候
+- **拖文件给她**：把文件拖到 Nomi 身上，直接帮你总结
 
-## ⚙️ 配置 AI 模型
+### 💬 AI 对话
 
-主进程启动时从环境变量读取 LLM provider（未配置 key 的云端 provider 仍会注册，调用时给出明确报错）：
+- **简洁的对话窗口**：类 Codex 的平静布局，流式输出，会话列表、侧栏可收起
+- **图片与截图提问**：`Ctrl/⌘+Alt+A` 框选屏幕任意区域，直接带图提问
+- **快捷命令**：输入框里按 `/` 打开命令，`↑` 找回上一条提问
+- **首次引导**：几步完成语言、主题、角色与声音、称呼与语气、模型和隐私设置
 
-| 变量                                                        | 说明                                                                                                                                                                                                             |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` | DeepSeek（默认 `https://api.deepseek.com/v1`，模型 `deepseek-chat`）                                                                                                                                             |
-| `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`       | OpenAI 或任意 OpenAI 兼容服务（默认模型 `gpt-4o-mini`）                                                                                                                                                          |
-| `OLLAMA_BASE_URL` / `OLLAMA_MODEL`                          | 本地 Ollama（默认 `http://127.0.0.1:11434/v1`，模型 `qwen2.5:3b-instruct`，无需 key）                                                                                                                            |
-| `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY`                      | Anthropic Messages 协议；另可选 `ANTHROPIC_BASE_URL`/`CLAUDE_BASE_URL`、`ANTHROPIC_MODEL`/`CLAUDE_MODEL`（默认 `claude-sonnet-4-5`）                                                                             |
-| `GOOGLE_GENERATIVE_AI_API_KEY` / `GEMINI_API_KEY`           | Gemini（走其 OpenAI 兼容端点 `…/v1beta/openai`，OpenAI Chat Completions 协议）；另可选 `GOOGLE_GENERATIVE_AI_BASE_URL`/`GEMINI_BASE_URL`、`GOOGLE_GENERATIVE_AI_MODEL`/`GEMINI_MODEL`（默认 `gemini-2.5-flash`） |
-| `IG_AI_PROFILE`                                             | AI profile，默认 `waifu`                                                                                                                                                                                         |
+### 🔑 供应商与 Token 管理
 
-例如完全本地运行：`ollama pull qwen2.5:3b-instruct && pnpm dev`；DeepSeek：`DEEPSEEK_API_KEY=sk-... pnpm dev`；Claude：`ANTHROPIC_API_KEY=sk-ant-... pnpm dev`；Gemini：`GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev`。
+- **一键切换**：在对话窗口工具栏或系统托盘里直接切换供应商和模型，立即生效
+- **内置预设**：OpenAI、Anthropic、Gemini、DeepSeek、Kimi、智谱 GLM、通义千问、豆包、MiniMax、xAI Grok、OpenRouter、硅基流动、Ollama、LM Studio 等，也可完全自定义
+- **获取模型列表**：一键拉取供应商的可用模型，勾选启用、设为默认
+- **测速**：发一个极小请求，显示真实延迟
+- **多 Key 自动切换**：每个供应商可配置主 Key 与备用 Key，遇到失效或额度用尽时自动切到下一个
+- **加密保存**：API Key 用系统钥匙串加密，只保存在本机，界面只显示掩码
+- **按任务分配模型**：对话、工具调用、摘要可以分别指定不同的供应商与模型
 
-### 供应商与 Token 管理（面板，cc-switch 语义）
+### 📚 知识库
 
-AI 对话窗口底部工具栏有 **供应商下拉框 + 模型下拉框**（一键切换，下一次请求立即生效），🔑 / ⚙ 打开「AI 供应商」面板；系统托盘菜单同样可切换。
+- 选几个文件夹或写几条笔记，Nomi 就能基于它们回答，并标出**可点击的引用来源**
+- 支持 txt、Markdown、PDF、Word，以及图片里的文字（本地 OCR）
+- 增量更新索引；可选接入本地或云端向量模型提升检索效果
 
-- **供应商 = 通用配置**：名称、备注、官网链接、API Key、API 请求地址（「完整 URL」开关：打开则原样请求，不再拼路径）、**上游协议**（只有三种：OpenAI Chat Completions → `POST {base}/chat/completions`；OpenAI Responses → `POST {base}/responses`；Anthropic Messages → `POST {base}/v1/messages`）、默认模型、已启用模型、模型映射、自定义 Headers / User-Agent、思考开关。三种协议分别由 `@ai-sdk/openai-compatible`、`@ai-sdk/openai`（`.responses()`）、`@ai-sdk/anthropic` 通用实现，**没有按厂商的代码路径**。
-- **添加供应商**：搜索框 + 分类（自定义配置 / 模型厂商 / 第三方平台）。预设只是表单预填模板（名称、官网、请求地址、协议、推荐默认模型），保存后全部可改。
-- **获取模型**：OpenAI 风格 `GET {base}/models`（Bearer），Anthropic `GET {base}/v1/models`（`x-api-key` + `anthropic-version`）；勾选要启用的模型、点「设为默认」。**管理与测速**：发一个极小请求，显示延迟与实际端点。
-- **编辑正在使用的供应商**会提示「保存后立即生效」；高级选项（上游格式 / 模型映射 / 思考 / UA / Headers / Token 管理）默认折叠。
-- **Token 服务**：每个供应商可有多个 key（主 + 备用）；主 key 遇到 401/403/429/额度类错误时自动切换；界面只显示掩码。key 用 Electron `safeStorage` 加密保存在本地。
-- **任务路由**（可选）：`chat` / `agent-tools` / `summary` 可分别绑定供应商 + 模型（从该供应商已启用 / 已获取的模型里选）；默认都跟随「当前供应商」。工具栏 / 托盘一键切换会清掉 `chat` 路由，保证切换立刻作用到对话。
-- **迁移**：旧版（v1，`backend` 字段）`ai-providers.json` 首次启动自动迁移到 v2（备份为 `ai-providers.json.v1.bak`）；Gemini 原生端点改为其 OpenAI 兼容端点，旧的 chat 路由并入「当前供应商 + 模型」。
+### 🧠 长期记忆
 
-**选择优先级**（请求未显式指定 provider 时）：
+- 对话结束后自动整理成记忆，下次聊到相关话题时自然想起
+- 你的个人档案（称呼、偏好）随时可看、可改、可删、可导出
 
-1. `COMPANION_PROVIDER=<provider id>` 环境变量（强制覆盖，面板切换不生效）
-2. 该任务的路由绑定（chat / agent-tools / summary）
-3. 「当前供应商」及其默认模型（工具栏 / 托盘 / 面板切换的就是它）
-4. 环境变量供应商（已配 key 的云端 → Ollama）
+### ⏰ 主动日程与系统日历
 
-环境变量供应商映射到同一套通用配置（Claude → Anthropic Messages，其余 → OpenAI Chat Completions），在面板里只读展示（不显示 key）。
+- **提醒**：支持重复规则；错过的提醒在下次启动时补上
+- **定时任务**：如「每日简报」，到点生成内容，用气泡 + 系统通知告诉你
+- **主动聊天**（默认关闭）：按你设定的频率、活跃时段与免打扰时间偶尔搭话
+- **日历**：连接 macOS / Windows / Linux 系统日历，或导入 .ics、订阅日历链接、连接 CalDAV
 
-### 隐私说明
+### 🖥️ 屏幕问答
 
-> **此 Token 仅保存在本地设备，不会上传或同步。**
+- 框选屏幕直接提问
+- 可选的**屏幕记忆**（默认关闭）：定时截屏并在本机识别文字，之后可以问「我刚才看的那个页面说了什么」；支持排除应用与自动清理
 
-- 面板配置保存在 `<userData>/ai-providers.json`（文件权限 0600）。API key 使用 Electron `safeStorage`（macOS 钥匙串 / Windows DPAPI / Linux libsecret·kwallet）加密后存储；若系统安全存储不可用（例如 Linux 无 keyring 或 `basic_text` 后端），会回退为仅编码保存，面板会显示明确警告。
-- key 只在保存 / 测试时由界面单向发送到主进程；主进程之后只向界面返回掩码，不回传明文，不写日志，不同步到任何服务；对话请求只会发往你配置的 Base URL。
+### 🧩 MCP 与技能
 
-### MCP 工具（`@ai-sdk/mcp`）
+- 图形界面添加、连接、管理 MCP 服务器，查看工具列表；敏感工具调用前会请你确认
+- 支持 `SKILL.md` 技能包：启用、编辑、新建，或从文件夹导入
 
-生产路径通过 **AiSdkMcpPlugin + McpBridgePlugin** 接入 MCP：连接后把远端工具登记进与
-`ToolsBuiltin` 相同的 `ToolRegistry`，再由 `ChatFacade.agent` / `agentStream` →
-`AiSdkLlmProvider.withTools` → AI SDK `generateText` / `streamText`（`stopWhen: stepCountIs`）使用。
+### 🏠 本地模型
 
-| 变量               | 说明                                                                                                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MCP_SERVERS`      | JSON 数组。元素：`{ id, name, transport, url?, command?, args?, env?, headers? }`。`transport` 为 `http`（推荐）/ `sse` / `stdio` / `websocket`（仅当 `url` 为 http(s) 时按 http 处理） |
-| `MCP_AUTO_CONNECT` | `1` / `true` / `yes` 时启动即 `connect`（默认不自动连）                                                                                                                                 |
+- 一键下载开源小模型并在本机运行，自动注册为可用的供应商
+- 管理本机 Ollama 模型：列出、拉取、删除
+- 完全离线也能聊天、做知识库问答
 
-工具名默认加前缀 `` `${serverId}__${toolName}` ``，避免与内置工具或其它 MCP server 冲突。
+### 🤖 自动化
 
-示例（HTTP）：
+- **桌面文件**：授权文件夹后，AI 可以列出、搜索、阅读、总结文件；写入需确认，删除只进回收站并可撤销
+- **笔记、提醒与剪贴板历史**（剪贴板默认关闭）
+- **受控浏览器**：AI 可在独立、无痕的窗口中浏览公开网页，你能随时看到它在做什么
+- **代码沙箱**：在隔离的临时目录里运行 JavaScript / Python 片段
+- 所有操作都有本地审计日志
+
+### 🎙️ 语音
+
+- **语音输入**：本地离线识别，或使用你配置的在线识别服务；支持免按键对话
+- **语音播报**：可用系统语音，也可**接入你自己的 TTS 服务**（支持参考音频克隆音色）
+- 说话时自动打断播报，Nomi 的口型随声音同步
+
+### 👀 编程助手监视
+
+- 自动发现本机的 Claude Code、Codex、Cursor、Aider、Cline、Continue，任务完成或需要你操作时用气泡提醒你
+- 只读取本机已有的日志与会话文件
+
+### 🏝️ 灵动岛通知（macOS）
+
+- 消息、编程助手进度和提醒以刘海处的「灵动岛」样式出现；其他平台以顶部胶囊显示
+
+### 🎨 个性化
+
+- **主题**：暖墨（默认）、石墨、纸白、冷雾，可跟随系统深浅色
+- **应用图标**：多款图标可选，窗口、任务栏与托盘即时更新
+- **快捷键**：`Ctrl/⌘+K` 命令面板、`Ctrl/⌘+N` 新对话、`Ctrl/⌘+L` 聚焦输入框、`Ctrl/⌘+,` 设置……全部可在设置中查看与改键，并提示冲突
+- **中文 / English** 界面，可跟随系统
+- **无障碍**：完整键盘操作、焦点管理，并尊重系统「减少动态效果」设置
+
+### 🔄 自动更新
+
+- 安装版会在后台检查并下载新版本，**经你确认后**才重启安装
+
+### 🔒 隐私
+
+- 对话、记忆、知识库、日程都保存在本机；可一键导出全部本地数据
+- 可开启「仅本地模型」，敏感内容不发往云端
+
+## 📦 下载安装
+
+从 [GitHub Releases](https://github.com/Cookieboty/nomi-ai/releases) 下载对应平台的安装包：
+
+| 平台                           | 安装包                                    |
+| ------------------------------ | ----------------------------------------- |
+| Windows 10+                    | `Nomi Setup x.y.z.exe`                    |
+| macOS（Apple Silicon / Intel） | `Nomi-x.y.z-arm64.dmg` / `Nomi-x.y.z.dmg` |
+| Linux（x64）                   | `Nomi-x.y.z.AppImage`                     |
+
+## 🚀 快速开始
+
+1. 安装并打开 Nomi，跟着首次引导选择语言、主题和角色。
+2. 在「供应商与模型」里添加一个供应商（填入 API Key），或在「本机管理」里下载一个本地模型。
+3. 点击 Nomi 或按 `Ctrl/⌘+N` 开始对话；按 `Ctrl/⌘+K` 浏览全部功能。
+
+## 🛠️ 从源码构建
+
+需要 Node.js ≥ 22.12 和 pnpm 9（`corepack enable`）。
 
 ```bash
-MCP_SERVERS='[{"id":"demo","name":"Demo","transport":"http","url":"https://example.com/mcp","headers":{"Authorization":"Bearer …"}}]' \
-MCP_AUTO_CONNECT=true pnpm dev
-```
-
-示例（本地 stdio，仅桌面/Node）：
-
-```bash
-MCP_SERVERS='[{"id":"fs","name":"Filesystem","transport":"stdio","command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","/tmp"]}]' \
-MCP_AUTO_CONNECT=true pnpm dev
-```
-
-## 📁 项目结构
-
-```
-nomi/
-├── packages/
-│   ├── electron/           # Electron主进程和预加载脚本
-│   │   ├── src/
-│   │   │   ├── main.ts    # 主进程入口，全局键盘监听
-│   │   │   └── preload.ts # 预加载脚本，IPC通信桥梁
-│   │   └── package.json
-│   ├── renderer/          # React前端渲染器
-│   │   ├── src/
-│   │   │   ├── App.tsx    # 应用主组件
-│   │   │   ├── components/ # React组件
-│   │   │   │   ├── ToolBar/ # 工具栏组件
-│   │   │   │   └── VoiceSettings/ # 语音设置组件
-│   │   │   ├── services/  # 业务服务
-│   │   │   │   └── VoiceService.ts # 语音服务核心
-│   │   │   ├── hooks/     # React Hooks
-│   │   │   └── mascot/    # 看板娘后端抽象（MascotBackend）+ VRM 实现
-│   │   └── package.json
-│   └── types/             # 共享类型定义
-│       └── index.ts       # IPC API类型定义
-├── scripts/               # 构建和工具脚本
-├── tasks/                 # 开发任务记录
-├── design/                # 设计资源
-├── pnpm-workspace.yaml    # 工作区配置
-├── turbo.json            # Turborepo配置
-└── package.json          # 根配置文件
-```
-
-## 🛠️ 开发环境设置
-
-### 系统要求
-
-- **Node.js >= 22.12**（推荐 22 LTS 或 24；仓库带 `.nvmrc`，`nvm install && nvm use` 即可）。版本过低时 `pnpm install` 会直接报错并提示如何升级。
-- **pnpm 9**（`corepack enable` 后自动使用 `packageManager` 指定的版本）
-- macOS（Apple Silicon / Intel）、Windows 10+、Linux（X11；无显示器时用 `xvfb-run`）
-
-### 从零开始（一条命令启动）
-
-```bash
-git clone <repo> nomi && cd nomi
-corepack enable          # 使用仓库锁定的 pnpm 版本
+git clone https://github.com/Cookieboty/nomi-ai.git && cd nomi-ai
+corepack enable
 pnpm install
-pnpm dev                 # 预检 → 构建 workspace 库 → 启动 Vite ×2 + Electron
+pnpm dev                    # 开发模式运行
+
+pnpm test                   # 测试
+pnpm package:prod           # 为当前平台打包，产物在 dist/
 ```
 
-`pnpm dev` 做了这些事：
-
-1. `scripts/doctor.mjs --quick` 预检：Node/pnpm 版本、依赖是否安装、**Electron 二进制**（Electron 44 不再在
-   postinstall 下载，首次运行时这里会下载）、端口 6127/6128 是否空闲（见 `dev-ports.json` / `docs/PORTS.md`）。
-2. turbo 先 `build` 所有 workspace 依赖（`@nomi-ai/ui`、`types`、`ai-sdk*`、`ai-runtime`、`bundle-ig-*`；有缓存时秒过）。
-3. 并行启动：看板娘渲染进程 Vite（`:6127`）、对话窗口 Vite（`:6128`）、`packages/electron/scripts/dev.mjs`
-   （先编译一次主进程与 preload，再 `tsc -w` + preload 监听，等两个端口就绪后以 `NODE_ENV=development` 启动 Electron）。
-
-改渲染进程 / 对话窗口代码会热更新；改主进程代码后在终端 `Ctrl+C` 再 `pnpm dev` 重启。
-改 workspace 库（如 `packages/ai-runtime`）时可另开终端跑 `pnpm dev:libs`（tsup --watch）。
-
-带 provider 启动（也可以启动后在「AI 服务商」面板里配置）：
-
-```bash
-DEEPSEEK_API_KEY=sk-... pnpm dev
-ANTHROPIC_API_KEY=sk-ant-... pnpm dev
-GOOGLE_GENERATIVE_AI_API_KEY=... pnpm dev
-ollama pull qwen2.5:3b-instruct && pnpm dev     # 完全本地，无需 key
-```
-
-环境变量见上文「配置 AI 模型」表格；全部可选。
-
-### 环境自检
-
-```bash
-pnpm run doctor    # 完整预检（注意要写 run：`pnpm doctor` 是 pnpm 内置命令）（含 provider key 提示）
-```
-
-常见问题：
-
-- `Node.util.isObject is not a function`：旧版本中按键监听的 key server 没有可执行位，回退到了与 Node 24 不兼容的
-  sudo-prompt。已修复（启动前自动 `chmod +x`）；如仍遇到，`rm -rf node_modules && pnpm install`。
-- macOS 上全局按键监听需要在「系统设置 → 隐私与安全性 → 辅助功能」里允许 Electron / Nomi；不授权只影响按键台词。
-- 端口被占用：`lsof -i :6127` / `lsof -i :6128`（Windows：`netstat -ano | findstr :6127`）结束对应进程，或用 `CD_RENDERER_PORT` / `CD_CHAT_PORT` 改端口。
-- Electron 下载慢：设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后 `pnpm run doctor`。
-
-### 构建
-
-```bash
-pnpm build             # 构建所有包（turbo，带缓存）
-pnpm build:renderer    # 只构建看板娘渲染进程
-pnpm build:electron    # 只构建主进程
-```
-
-### 打包
-
-```bash
-pnpm package:prod:mac      # macOS（dmg/zip，需在 macOS 上运行）
-pnpm package:prod:win      # Windows（nsis，需在 Windows 上运行）
-pnpm package:prod:linux    # Linux（AppImage x64）
-pnpm package:prod          # 当前平台
-pnpm package:debug         # 调试包（asar 关闭、DEBUG=true）
-```
-
-产物在仓库根目录 `dist/`。打包前会自动 `build`。签名/公证所需的 CI secret
-（`MAC_CSC_LINK`、`APPLE_ID`、`WIN_CSC_LINK` 等）的确切名称与门控规则见 [docs/RELEASE.md](docs/RELEASE.md)，未设置时生成未签名包。
-
-### 测试
-
-```bash
-pnpm test              # 单元测试（所有包）
-pnpm typecheck && pnpm lint
-pnpm test:e2e:headed   # Playwright + Electron 端到端（先 pnpm build；Linux 下用 xvfb-run -a）
-```
-
-## ⌨️ 快捷键
-
-- `Alt+P`: 切换窗口置顶状态
-- `Alt+Q`: 退出应用
-
-## 🎮 核心功能
-
-### 智能语音助手
-
-- **编程关键词识别** - 实时监听全局键盘输入，识别编程关键词
-- **语音反馈** - 当检测到关键词时播放相应的语音提示
-- **支持的关键词** - function、if、for、while、await、catch、import、export等
-- **智能缓冲** - 1秒内的连续输入会被合并分析，避免重复播放
-
-### 时间播报功能
-
-- **智能时间段识别** - 自动识别早上、中午、下午、晚上、深夜时段
-- **定时问候** - 在合适的时间播放问候语音
-- **防重复播报** - 30分钟内不会重复播报相同内容
-- **整点播报** - 每小时整点时播放特殊提示音
-
-### 看板娘（VRM 3D）
-
-- **开源渲染栈** - three.js + @pixiv/three-vrm（MIT），通过 `MascotBackend` 抽象接入，可扩展其他开源后端
-- **内置角色** - 安装包只带默认角色（千駄ヶ谷 渋，CC0）；工具栏「切换角色」左键切到下一个，右键打开角色列表
-- **模型商店** - 角色列表的「模型商店」页读取远程目录
-  [Cookieboty/companion-desk-models](https://github.com/Cookieboty/companion-desk-models)（目前 10 个角色：7 个 CC0 VRoid 样例、lowteq 的 CC0 原创角色 Shapell（从 .blend 转换为 VRM 1.0）、AvatarSample_A/B（pixiv 条款：可商用、可再分发）），
-  显示缩略图与许可徽章，下载带进度、断点续传、多镜像重试（GitHub Releases → jsDelivr → raw），**sha256 必须匹配**才会安装；
-  可更新（版本号变化时提示）/ 删除；目录用 ETag 缓存，离线时显示缓存目录，已下载 / 内置模型照常可用。
-  只接受开源许可（CC0 / CC-BY / CC-BY-SA / MIT / Apache-2.0 / OFL）或经审核、允许商用且允许再分发的条款（VRoid AvatarSample 条款、VRM Public License 1.0；条件显示在徽章与致谢页），与 `assets-licenses.json` 一致、仅 https、单文件 ≤ 200 MB，
-  模型文件只做静态解析（GLB + VRM meta），不执行任何内容。文件保存在 `userData/models/remote/`，经 `cdmodel://` 协议只读提供给渲染进程。
-  目录地址可用 `COMPANION_MODEL_CATALOG_URL`（逗号分隔多个）覆盖。添加模型见 [docs/MODELS.md](docs/MODELS.md)；发布与自动更新见 [docs/RELEASE.md](docs/RELEASE.md)
-- **桌面互动** - 透明区域点击穿透（逐像素；Linux 用窗口形状）、按身体区域的悬停 / 摸头 / 单击 / 双击反应（表情 + 动作 + 台词）、
-  视线与头部跟随全局鼠标（颈部限位、阻尼平滑）；按住拖动窗口时手脚乱蹬、头发裙子随惯性摆动，松手下落到任务栏 / Dock 上方、反弹撞墙、落地压扁回弹；
-  可选沿屏幕底边散步，支持多显示器。托盘 →「互动设置」可开关各项。细节与各平台限制见 [docs/MASCOT_INTERACTION.md](docs/MASCOT_INTERACTION.md)
-- **桌面能力（文件）** - 在聊天窗口 📁 / 托盘「桌面能力」里通过系统选择框授权文件夹后，AI 可以列出 / 搜索 / 读取 / 总结 txt、md、pdf、docx
-  （解析在限时限内存的子进程里进行）；把文件拖到看板娘身上即可总结（气泡 + 对话窗口）。写入需确认，删除只进应用回收站且必须在对话框确认，120 秒未答复自动拒绝；
-  可撤销，所有操作写入本地审计日志；敏感目录（.ssh、钥匙串、浏览器配置等）始终拒绝；可开启「仅本地模型可读文件」。详见 [docs/DESKTOP_TOOLS.md](docs/DESKTOP_TOOLS.md)
-- **导入自己的 VRM** - 「导入 VRM」页：文件对话框或拖放 `.vrm`（0.x / 1.0，≤ 300 MB）。会读取并展示 VRM meta
-  （作者、许可、允许使用者、商用、再分发），并提示：**自行导入的模型由用户自己负责，只保存在本机 `userData/models/user/`，不会上传、同步或随应用分发**。
-  导入后可设置名字、缩放、偏移、镜头取景、表情映射（如 `happy=Joy`）、允许的动作；配置可导出 / 导入为 JSON；可替换 VRM 文件或删除
-- **统一模型注册表** - 内置 + 商店 + 导入的模型由主进程 `ModelRegistry` 统一提供，角色列表、托盘「切换角色」、
-  AI 工具 `mascot_list_models` / `mascot_select_model` 都用同一份列表
-- **口型同步** - TTS 音量包络驱动 VRM `aa`/`oh` 表情
-- **表情** - 聊天 / Agent / 工具事件驱动 happy / angry / sad / relaxed，并有随机眨眼、视线跟随鼠标
-- **身体动作** - 动画管理器（交叉淡入淡出、idle 循环 + 随机待机小动作、说话时切换说话姿态）。
-  动作库 `public/assets/motions/motions.json` 由 `packages/renderer/scripts/build-motions.mjs` 生成：
-  6 个片段重定向自 Quaternius _Universal Animation Library_（CC0：idle / talk / dance / jump / interact / flinch），
-  9 个原创程序化手势（MIT：挥手 / 点头 / 摇头 / 思考 / 拍手 / 鞠躬 / 欢呼 / 伸懒腰 / 张望）。
-  触发方式：聊天事件自动触发（6s 冷却）、工具栏「动作」（左键随机、右键列表）、托盘「看板娘动作」、
-  AI 工具 `live2d_play_motion` / `live2d_set_expression`（名字沿用旧协议，经 IPC `mascot:command` 转发到渲染进程）
-- **致谢 / Credits** - 工具栏「信息」或角色列表底部打开，列出每个角色 / 动作 / 图标的作者与许可（CC-BY 素材必须在此署名）
-- **添加模型** - 新角色优先加到远程目录（见 [docs/MODELS.md](docs/MODELS.md)）；内置模型需放进 `packages/renderer/public/assets/models/vrm/` 并在 `model-list.json` 登记许可
-
-### 窗口管理
-
-- **透明无边框窗口** - 现代化的桌面应用界面
-- **窗口拖拽** - 支持鼠标拖拽移动窗口位置
-- **窗口置顶切换** - 可通过快捷键或界面切换置顶状态
-- **位置记忆** - 自动保存和恢复窗口位置
-
-### 开发功能
-
-- **热重载** - 开发模式下代码修改实时生效
-- **TypeScript支持** - 完整的类型安全
-- **模块化架构** - 清晰的包结构和依赖管理
-- **构建优化** - 使用Turborepo进行高效构建
-
-## 🎨 语音配置
-
-### 键盘关键词台词
-
-「固定语音」模式下，输入代码关键词（`function` / `if` / `for` / `await` …）或到达特定时段时，
-看板娘会在气泡里说一句台词，并用系统自带语音（Web Speech API）朗读。台词是项目原创文本，
-定义在 [packages/renderer/src/mascot/tips.ts](packages/renderer/src/mascot/tips.ts)（`KEYWORD_LINES` / `TIME_GREETINGS`）。
-旧版的第三方 mp3 语音包因许可不明已移除；「TTS」模式仍可接入你自己的 TTS 服务。
-
-### 语音设置
-
-应用提供了完整的语音设置界面：
-
-- **总开关** - 启用/禁用语音功能
-- **音量控制** - 调节语音播放音量
-- **键盘监听** - 开启/关闭编程关键词监听
-- **时间播报** - 开启/关闭智能时间播报
-- **实时预览** - 设置界面提供功能说明和使用指南
-
-## 🎯 使用场景
-
-### 编程学习
-
-- 帮助初学者熟悉编程关键词
-- 通过语音反馈加深对语法的理解
-- 提供编程时的陪伴感
-
-### 日常编程
-
-- 长时间编程时的语音陪伴
-- 智能时间提醒，避免过度疲劳
-- 可爱的桌面伴侣，缓解编程压力
-
-### 直播编程
-
-- 为观众提供有趣的互动元素
-- 语音反馈让直播更加生动
-- 3D 角色增加视觉吸引力
-
-## 🔧 配置说明
-
-### 环境变量
-
-- `NODE_ENV` - 运行环境（`pnpm dev` 自动设为 `development`）
-- `DEBUG` - 调试模式开关
-- AI provider 相关变量见「配置 AI 模型」
-
-### 构建配置
-
-项目使用以下工具进行构建和打包：
-
-- **Vite** - 前端构建工具，支持快速热重载
-- **TypeScript** - 类型安全的JavaScript超集
-- **Electron Builder** - Electron应用打包工具
-- **Turborepo** - 高性能的monorepo构建系统
-- **node-global-key-listener** - 全局键盘监听库
-
-## 📝 开发指南
-
-### 添加新功能
-
-1. 在对应的包中添加代码
-2. 更新类型定义 (`packages/types`)
-3. 更新文档
-
-### 添加新的语音关键词
-
-1. 在 `packages/renderer/src/mascot/tips.ts` 的 `KEYWORD_LINES` 中添加关键词与台词
-2. 重新构建 renderer
-
-### 调试技巧
-
-- 使用 `pnpm package:debug` 构建调试版本
-- 开发模式下可以使用浏览器开发者工具
-- 查看 `tasks/` 目录中的开发记录
-- 语音服务会在控制台输出错误信息
-
-### 代码规范
-
-- 使用TypeScript进行类型安全开发
-- 遵循React最佳实践
-- 保持代码模块化和可维护性
-- 重要的错误信息使用console.error输出
-
-### 新建一个 workspace 包（模板法）
-
-本仓库已内置一个"3 行 extends 即可起手"的包模板：[templates/pkg-template](templates/pkg-template)。
-
-```bash
-# 1. 复制模板到 packages/
-cp -r templates/pkg-template packages/<your-pkg>
-
-# 2. 改包名（macOS 用 sed -i ''，Linux 用 sed -i）
-sed -i '' 's|@nomi-ai/pkg-template|@nomi-ai/<your-pkg>|g' \
-  packages/<your-pkg>/package.json packages/<your-pkg>/src/*.ts
-
-# 3. 安装并冒烟：build / test / lint / typecheck 应全绿
-pnpm install
-pnpm --filter @nomi-ai/<your-pkg> build test lint typecheck
-```
-
-模板复用的根级配置：
-
-- 类型：[tsconfig.base.json](tsconfig.base.json) + [tsconfig.node.json](tsconfig.node.json) / [tsconfig.dom.json](tsconfig.dom.json)
-- 打包：[tsup.base.ts](tsup.base.ts)（预设 `node-lib` / `react-lib` / `node-cli`）
-- 测试：[vitest.base.ts](vitest.base.ts)
-- Lint：[eslint.config.mjs](eslint.config.mjs)（ESLint 9 flat config，渲染进程禁引 `electron`）
-- Turbo pipeline：[turbo.json](turbo.json)（`build` / `test` / `lint` / `typecheck` / `test:e2e`）
-
-## 🤖 AI SDK 最小示例
-
-自 P7/P8 起，所有 AI 能力（聊天 / 会话 / 工具 / TTS / ASR / 用户 Profile）统一走 [`@nomi-ai/ai-sdk-client`](packages/ai-sdk-client)（渲染进程）与 [`@nomi-ai/ai-sdk`](packages/ai-sdk)（主进程 / Node CLI）门面。三端接入 checklist：[docs/archive/consumer-integration.md](docs/archive/consumer-integration.md)。
-
-**渲染进程（React）**：
-
-```tsx
-import { AIProvider, useChat, useTTSLipSync } from '@nomi-ai/ai-sdk-client';
-
-function ChatBox() {
-  const { messages, send, streaming } = useChat();
-  const rms = useTTSLipSync(); // 0..1，可直接喂给看板娘口型（VRM `aa` 表情）
-  return (
-    <div>
-      {messages.map((m) => (
-        <p key={m.id}>
-          {m.role}: {m.content}
-        </p>
-      ))}
-      <button disabled={streaming} onClick={() => send('你好')}>
-        send
-      </button>
-      <meter min={0} max={1} value={rms} />
-    </div>
-  );
-}
-
-export function App() {
-  // Provider 会从 window.aiIPC 读取 bridge；`profile` 由主进程 `startAIRuntime({ profile })` 决定
-  return (
-    <AIProvider>
-      <ChatBox />
-    </AIProvider>
-  );
-}
-```
-
-**主进程（Electron）**：由 [Application.startAIRuntime](packages/electron/src/core/Application.ts#L121-L148) 自动装配；如需自定义可直接调用 [startAIRuntime](packages/electron/src/ai/AIRuntimeBoot.ts#L120-L217)：
-
-```ts
-import { startAIRuntime, TtsElectronNativeProvider } from '@nomi-ai/electron/ai';
-import { AdvancedTTSEngine } from '@nomi-ai/electron/services/AdvancedTTSEngine';
-
-const runtime = await startAIRuntime(logger, {
-  profile: 'waifu',
-  ttsProviders: [new TtsElectronNativeProvider({ engine: new AdvancedTTSEngine() })],
-});
-
-for await (const chunk of runtime.client.chat.stream({
-  messages: [{ role: 'user', content: '你好' }],
-})) {
-  process.stdout.write(chunk.deltaText ?? '');
-}
-```
-
-**preload**：使用 [`mkAiPreload`](packages/ai-sdk-client/src/preload/mkAiPreload.ts) 注入白名单 IPC 通道（`ai:*` 前缀）；详见 [docs/preload-usage.md](docs/preload-usage.md)。
-
-**升级说明与旧 API 弃用时间线**：[docs/archive/plans/CHANGELOG.md](docs/archive/plans/CHANGELOG.md)、[docs/HISTORY.md](docs/HISTORY.md)。
-
-## 🙏 致谢
-
-本项目基于多个开源项目和技术构建，特别感谢：
-
-### 核心技术与框架
-
-- [three.js](https://threejs.org/) 与 [@pixiv/three-vrm](https://github.com/pixiv/three-vrm) - 3D 渲染与 VRM 支持（MIT）
-- [VRoid Project](https://vroid.com/) - 模型商店中的 CC0 样例角色模型（应用不内置）
-- [Quaternius](https://quaternius.com/) - Universal Animation Library（CC0），重定向为看板娘身体动作
-- [Electron](https://www.electronjs.org/) - 跨平台桌面应用开发框架
-- [React](https://reactjs.org/) - 用户界面库
-- [TypeScript](https://www.typescriptlang.org/) - 类型安全的JavaScript超集
-- [Turborepo](https://turbo.build/) - 高性能构建系统
-- [Vite](https://vitejs.dev/) - 现代化的前端构建工具
-
-### 开发工具与依赖
-
-- [node-global-key-listener](https://github.com/LaunchMenu/node-global-key-listener) - 全局键盘监听功能
-- [electron-reload](https://github.com/yan-foto/electron-reload) - 提供Electron应用的热重载功能
-- [concurrently](https://github.com/open-cli-tools/concurrently) - 同时运行多个命令的工具
-- [pnpm](https://pnpm.io/) - 快速、节省磁盘空间的包管理器
-- [cross-env](https://github.com/kentcdodds/cross-env) - 跨平台设置环境变量
-- [wait-on](https://github.com/jeffbski/wait-on) - 等待资源可用的工具
-- [electron-builder](https://www.electron.build/) - 打包和分发Electron应用
-
-感谢所有开源社区的贡献者，他们的工作使本项目成为可能。本项目站在巨人的肩膀上，没有这些优秀的开源项目和社区支持，将无法实现。
+可用 `pnpm run doctor` 检查开发环境。打包与发布说明见 [docs/RELEASE.md](docs/RELEASE.md)。
 
 ## 📄 许可证
 
-本仓库代码基于 MIT 协议开源。随应用分发的所有第三方组件与资源（依赖、VRM 模型、图标、音效）
-都使用开源许可，清单见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；资源许可登记在
-[assets-licenses.json](assets-licenses.json)，CI 通过 `pnpm check:licenses` 强制校验。
+[MIT](LICENSE)。随应用分发的第三方组件与素材均为开源许可，清单见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-> 历史：早期版本使用 Live2D Cubism 2 专有运行时与来源不明的 Live2D 模型，已因许可原因全部移除
-> （见 [docs/archive/plans/mascot-open-source.md](docs/archive/plans/mascot-open-source.md)）。
+## 🙏 致谢
 
----
+Nomi 构建在这些优秀的开源项目之上：
 
-## 🔗 相关链接
+- [Electron](https://www.electronjs.org/)、[React](https://react.dev/)、[Vite](https://vitejs.dev/)、[Turborepo](https://turbo.build/)、[pnpm](https://pnpm.io/)
+- [Vercel AI SDK](https://ai-sdk.dev/) 与 [Model Context Protocol](https://modelcontextprotocol.io/)
+- [three.js](https://threejs.org/)、[@pixiv/three-vrm](https://github.com/pixiv/three-vrm)、[react-three-fiber](https://github.com/pmndrs/react-three-fiber) / [drei](https://github.com/pmndrs/drei)
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp)、[llama.cpp](https://github.com/ggml-org/llama.cpp)、[Silero VAD](https://github.com/snakers4/silero-vad)、[ONNX Runtime Web](https://onnxruntime.ai/)
+- [Tesseract.js](https://tesseract.projectnaptha.com/) 与 [tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast)、[unpdf](https://github.com/unjs/unpdf)、[fflate](https://github.com/101arrowz/fflate)
+- [Zustand](https://github.com/pmndrs/zustand)、[Immer](https://immerjs.github.io/immer/)、[Zod](https://zod.dev/)、[Lucide](https://lucide.dev/)、[react-window](https://github.com/bvaughn/react-window)
+- [electron-builder](https://www.electron.build/) 与 electron-updater、[node-global-key-listener](https://github.com/LaunchMenu/node-global-key-listener)
+- [Quaternius](https://quaternius.com/) Universal Animation Library（CC0）、[VRoid Project](https://vroid.com/) 样例角色（模型商店）、[Qwen](https://github.com/QwenLM) 开源模型（本地模型目录）
 
-- [项目仓库](https://github.com/Cookieboty/nomi-ai)
+角色、动作与图标的作者和许可也可以在应用内「致谢」页查看。
+
+## 🔗 链接
+
 - [问题反馈](https://github.com/Cookieboty/nomi-ai/issues)
-- [开发文档](./docs/)
-- [更新日志](./CHANGELOG.md)
+- [更新日志](CHANGELOG.md)
+- [文档](docs/)
