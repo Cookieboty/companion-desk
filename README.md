@@ -485,10 +485,6 @@ for await (const chunk of runtime.client.chat.stream({
 - [wait-on](https://github.com/jeffbski/wait-on) - 等待资源可用的工具
 - [electron-builder](https://www.electron.build/) - 打包和分发Electron应用
 
-### 特别致谢
-
-- [一言](https://hitokoto.cn) - 提供了句子API服务
-
 感谢所有开源社区的贡献者，他们的工作使本项目成为可能。本项目站在巨人的肩膀上，没有这些优秀的开源项目和社区支持，将无法实现。
 
 ## 📄 许可证
