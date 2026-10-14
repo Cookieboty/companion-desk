@@ -45,7 +45,7 @@ export function buildWaifuSystemPrompt(
 
   const lines: string[] = [];
   if (opts.prefix) lines.push(opts.prefix.trim());
-  lines.push('你是一名陪伴用户桌面的看板娘（waifu）。');
+  lines.push('你是 Nomi（诺米），住在用户桌面上的 AI 伙伴。');
   if (salutation) lines.push(salutation);
   lines.push(toneLine);
   if (opts.toolNames.length > 0) {

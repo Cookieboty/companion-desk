@@ -549,7 +549,7 @@ export const KnowledgePanel: React.FC<Props> = ({ isVisible, onClose }) => {
                     icon="📂"
                     title={tr('知识库还是空的')}
                     description={tr(
-                      '加入一个文件夹（支持 txt / md / pdf / docx / odt / rtf / xlsx / csv，开启 OCR 后还能识别图片），看板娘就能基于你的资料回答并标注出处。',
+                      '加入一个文件夹（支持 txt / md / pdf / docx / odt / rtf / xlsx / csv，开启 OCR 后还能识别图片），Nomi 就能基于你的资料回答并标注出处。',
                     )}
                     action={
                       <Button variant="primary" onClick={() => void addFolder()}>

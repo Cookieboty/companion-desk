@@ -83,7 +83,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
       <div className={styles.stack}>
         <Notice>
           {tr(
-            '🔒 授权、权限、操作记录都只保存在本机。看板娘只能访问你在这里授权的文件夹；删除一律进回收站，可撤销。',
+            '🔒 授权、权限、操作记录都只保存在本机。Nomi 只能访问你在这里授权的文件夹；删除一律进回收站，可撤销。',
           )}
         </Notice>
         <Tabs
@@ -125,7 +125,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
             {state && state.scopes.length === 0 ? (
               <EmptyState
                 title={tr('还没有授权任何文件夹')}
-                description={tr('默认看板娘看不到你的任何文件。')}
+                description={tr('默认 Nomi 看不到你的任何文件。')}
               />
             ) : (
               state?.scopes.map((s) => (

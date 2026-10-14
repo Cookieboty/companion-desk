@@ -679,7 +679,7 @@ export const ToolBar: React.FC = () => {
           ref={barRef}
           className={styles.bar}
           role="toolbar"
-          aria-label={tr('看板娘工具栏')}
+          aria-label={tr('Nomi 工具栏')}
           aria-orientation="vertical"
         >
           {primary.map(iconButton)}

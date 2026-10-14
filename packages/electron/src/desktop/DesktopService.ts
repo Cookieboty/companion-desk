@@ -622,7 +622,7 @@ export class DesktopService {
     // 确认答复：只接受看板娘窗口（确认气泡 / 对话框所在处）；不走 ai:* 通道，模型与对话窗口都无法伪造
     ipcMain.on('desktop:confirm-answer', (e, id, allow, remember) => {
       if (e.sender !== this.main()?.webContents) {
-        this.logger.warn('忽略来自非看板娘窗口的确认答复');
+        this.logger.warn('忽略来自非 Nomi 窗口的确认答复');
         return;
       }
       if (typeof id === 'string') this.broker.answer(id, allow === true, remember === true);

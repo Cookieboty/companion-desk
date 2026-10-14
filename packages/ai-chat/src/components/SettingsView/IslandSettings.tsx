@@ -55,7 +55,7 @@ export const IslandSettings: React.FC = () => {
           ? s.mode === 'notch'
             ? t('检测到刘海屏：通知会从刘海里展开，点一下打开对话。')
             : t('当前屏幕没有刘海：通知显示为屏幕顶部居中的胶囊。')
-          : t('Windows / Linux 上为可选的顶部胶囊；关闭时沿用看板娘气泡与系统通知。')}
+          : t('Windows / Linux 上为可选的顶部胶囊；关闭时沿用 Nomi 气泡与系统通知。')}
       </p>
       <div className={styles.stackSm}>
         <Switch

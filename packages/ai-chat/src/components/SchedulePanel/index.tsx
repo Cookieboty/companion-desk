@@ -165,7 +165,7 @@ const TaskEditor: React.FC<{
       <div className={styles.row}>
         <span className={`${styles.hint} ${styles.grow}`}>
           {tr(
-            '到点后用当前对话模型生成，结果出现在看板娘气泡、系统通知和对话窗口。Ctrl/⌘ + Enter 保存',
+            '到点后用当前对话模型生成，结果出现在 Nomi 气泡、系统通知和对话窗口。Ctrl/⌘ + Enter 保存',
           )}
         </span>
         <Button size="sm" variant="ghost" onClick={() => onDone()}>
@@ -371,7 +371,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                   <EmptyState
                     icon="📋"
                     title={tr('还没有定时任务')}
-                    description={tr('让看板娘每天早上给你一份简报，或者每周五提醒你写周报。')}
+                    description={tr('让 Nomi 每天早上给你一份简报，或者每周五提醒你写周报。')}
                   />
                 ) : (
                   st.tasks.map((t) => (
@@ -457,7 +457,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
               <div className={styles.stack} data-testid="sched-proactive">
                 <Notice>
                   {tr(
-                    '开启后，看板娘会在你空闲时偶尔主动搭话（结合长期记忆里的话题）。默认关闭；免打扰时段、你刚聊过天或不在电脑前时不会打扰。',
+                    '开启后，Nomi 会在你空闲时偶尔主动搭话（结合长期记忆里的话题）。默认关闭；免打扰时段、你刚聊过天或不在电脑前时不会打扰。',
                   )}
                 </Notice>
                 <Switch
@@ -518,7 +518,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                       setBusy(true);
                       void schedClient
                         .proactiveNow()
-                        .then((t) => setMsg(tr('看板娘说：「{0}」', t)))
+                        .then((t) => setMsg(tr('Nomi 说：「{0}」', t)))
                         .catch((e) => setMsg(errText(e)))
                         .finally(() => setBusy(false));
                     }}
@@ -681,7 +681,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 />
                 {!st.notifySupported && (
                   <span className={styles.hint}>
-                    {tr('当前系统不支持通知，只会在看板娘气泡里提醒。')}
+                    {tr('当前系统不支持通知，只会在 Nomi 气泡里提醒。')}
                   </span>
                 )}
                 <p className={styles.hint}>
