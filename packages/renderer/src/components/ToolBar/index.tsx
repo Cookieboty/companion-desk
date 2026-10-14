@@ -372,9 +372,9 @@ export const ToolBar: React.FC = () => {
         return () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
           const electronAPI = (window as any).electronAPI;
-          if (electronAPI && electronAPI.invoke) {
+          if (electronAPI?.openTTSConfig) {
             electronAPI
-              .invoke('open-tts-config')
+              .openTTSConfig()
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .then((result: any) => {
                 if (result?.success) {
@@ -397,9 +397,9 @@ export const ToolBar: React.FC = () => {
         return () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
           const electronAPI = (window as any).electronAPI;
-          if (electronAPI && electronAPI.invoke) {
+          if (electronAPI?.openAiChat) {
             electronAPI
-              .invoke('open-ai-chat')
+              .openAiChat()
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .then((result: any) => {
                 if (result?.success) {

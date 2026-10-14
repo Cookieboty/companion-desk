@@ -360,7 +360,6 @@ async function main() {
     injector: {
       getScreen: () => undefined,
       getClipboard: () => undefined,
-      getKeyStore: () => undefined,
     },
   });
   capability.start();

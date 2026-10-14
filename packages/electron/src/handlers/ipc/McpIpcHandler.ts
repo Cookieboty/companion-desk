@@ -12,8 +12,6 @@ import { BaseIpcHandler } from './BaseIpcHandler';
 interface MCPService {
   getStatus(): any;
   getDiagnostics(): Promise<any>;
-  handleToolCall(toolName: string, args: any): Promise<any>;
-  handleResourceRead(uri: string): Promise<any>;
   getAvailableTools(): any[];
   getAvailableResources(): any[];
   restart(): Promise<void>;
@@ -65,48 +63,6 @@ export class McpIpcHandler extends BaseIpcHandler {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('获取MCP诊断信息失败', { error: errorMessage });
         return { error: errorMessage };
-      }
-    });
-
-    // 调用MCP工具
-    this.registerHandler('mcp:callTool', async (_, toolName: string, args: any) => {
-      this.validateArgs([toolName, args], 2, ['string']);
-
-      try {
-        if (!this.mcpService) {
-          throw new Error(tr('MCP服务未初始化'));
-        }
-
-        this.logger.info(`调用MCP工具: ${toolName}`, { args });
-        const result = await this.mcpService.handleToolCall(toolName, args);
-        this.logger.info(`MCP工具调用完成: ${toolName}`);
-
-        return result;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(`MCP工具调用失败: ${toolName}`, { error: errorMessage, args });
-        throw error;
-      }
-    });
-
-    // 读取MCP资源
-    this.registerHandler('mcp:readResource', async (_, uri: string) => {
-      this.validateArgs([uri], 1, ['string']);
-
-      try {
-        if (!this.mcpService) {
-          throw new Error(tr('MCP服务未初始化'));
-        }
-
-        this.logger.info(`读取MCP资源: ${uri}`);
-        const result = await this.mcpService.handleResourceRead(uri);
-        this.logger.info(`MCP资源读取完成: ${uri}`);
-
-        return result;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(`MCP资源读取失败: ${uri}`, { error: errorMessage });
-        throw error;
       }
     });
 

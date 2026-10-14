@@ -8,6 +8,8 @@ import * as path from 'path';
 
 import { app } from 'electron';
 
+import { redact } from '../utils/redact';
+
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
@@ -99,7 +101,7 @@ export class LoggerService implements ILoggerService {
       timestamp: new Date().toISOString(),
       level,
       message,
-      meta,
+      meta: meta === undefined ? undefined : redact(meta),
       context,
     };
 

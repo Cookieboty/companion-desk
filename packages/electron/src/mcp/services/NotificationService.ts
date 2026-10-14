@@ -5,6 +5,8 @@
 
 import { spawn } from 'child_process';
 
+import { appleScriptQuote, psQuote } from '../../security/shellEscape';
+
 export type NotificationType = 'voice' | 'sound' | 'notification' | 'all';
 export type UrgencyLevel = 'low' | 'normal' | 'high';
 
@@ -19,11 +21,12 @@ export class NotificationService {
 
         // macOS
         if (process.platform === 'darwin') {
-          spawn('osascript', ['-e', `display notification "${message}" with title "${title}"`]);
+          const script = `display notification ${appleScriptQuote(message)} with title ${appleScriptQuote(title)}`;
+          spawn('osascript', ['-e', script]);
         }
         // Windows
         else if (process.platform === 'win32') {
-          const script = `New-BurntToastNotification -Text '${title}', '${message}'`;
+          const script = `New-BurntToastNotification -Text ${psQuote(title)}, ${psQuote(message)}`;
           spawn('powershell', ['-Command', script]);
         }
         // Linux
@@ -67,7 +70,10 @@ export class NotificationService {
         // Windows 系统通知声音
         else if (process.platform === 'win32') {
           const soundFile = this.getWindowsSoundByUrgency(urgency);
-          spawn('powershell', ['-c', `(New-Object Media.SoundPlayer "${soundFile}").PlaySync()`]);
+          spawn('powershell', [
+            '-c',
+            `(New-Object Media.SoundPlayer ${psQuote(soundFile)}).PlaySync()`,
+          ]);
         }
         // Linux 使用 aplay 或 paplay
         else {
@@ -119,7 +125,7 @@ export class NotificationService {
     message: string,
     type: NotificationType,
     urgency: UrgencyLevel,
-    voiceCallback?: (message: string, urgency: UrgencyLevel) => Promise<boolean>
+    voiceCallback?: (message: string, urgency: UrgencyLevel) => Promise<boolean>,
   ): Promise<void> {
     try {
       console.log(`MCP: 发送${type}类型通知 - ${message} (${urgency})`);
@@ -145,7 +151,6 @@ export class NotificationService {
       if (type === 'notification' || type === 'all') {
         await this.showSystemNotification(message, urgency);
       }
-
     } catch (error) {
       console.error('MCP: 发送通知失败:', error);
 

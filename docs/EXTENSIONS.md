@@ -10,9 +10,12 @@
 - 配置存 `userData/extensions/mcp.json`；名称含 key/token/secret/password/auth 的环境变量与请求头用
   Electron `safeStorage` 加密，界面里打码显示。
 - 连接后列出工具（标注只读 / 破坏性），并按每个服务器的信任级别包装：
-  - 每次确认（默认）· 只读自动其它确认 · 全部自动；破坏性工具（destructiveHint）永远要在详情对话框确认。
+  - 每次确认（默认）· 只读自动其它确认 · 全部自动；破坏性工具永远要在详情对话框确认。
+  - 破坏性标记不完全相信远端自报的 `destructiveHint`：本地额外保守推断——stdio 服务器的非只读工具
+    一律视为破坏性，远程工具按危险命名（exec/delete/write/shell 等）判定；`readOnlyHint` 明确为真才豁免。
   - 确认走看板娘的 PermissionBroker 气泡 / 对话框；每次调用写入审计日志（source = `mcp`）。
-- 环境变量 `MCP_SERVERS` 里的服务器照常工作，界面中只读展示。
+- 环境变量 `MCP_SERVERS` 里的服务器在界面中只读展示（不可编辑），但其工具与图形界面添加的服务器走
+  **同一条确认 + 审计链**：含写入 / 执行类工具时每次调用都会请你确认。
 
 ## 技能包（SKILL.md）
 

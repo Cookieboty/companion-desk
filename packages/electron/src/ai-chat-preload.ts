@@ -4,11 +4,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 // 为 AI 对话窗口注入 window.aiIPC（走 ai-sdk-client 的白名单桥）
 mkAiPreload({ contextBridge, ipcRenderer });
 
-// 为AI对话窗口提供的API
+// 为AI对话窗口提供的API（仅暴露命名白名单通道，业务走 window.aiIPC）
 const aiChatAPI = {
-  // 消息相关
-  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
-
   updates: {
     get: () => ipcRenderer.invoke('updates:get'),
     check: () => ipcRenderer.invoke('updates:check'),
@@ -22,22 +19,6 @@ const aiChatAPI = {
         ipcRenderer.removeListener('updates:changed', l);
       };
     },
-  },
-
-  // 监听事件
-  on: (channel: string, callback: Function) => {
-    const subscription = (_event: any, ...args: any[]) => callback(...args);
-    ipcRenderer.on(channel, subscription);
-
-    // 返回清理函数
-    return () => {
-      ipcRenderer.removeListener(channel, subscription);
-    };
-  },
-
-  // 移除所有监听器
-  removeAllListeners: (channel: string) => {
-    ipcRenderer.removeAllListeners(channel);
   },
 };
 

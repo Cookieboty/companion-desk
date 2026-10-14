@@ -175,9 +175,15 @@ export class ProviderStore {
       const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
       const { data, migrated } = migrateStoreData(raw);
       if (migrated) {
-        // 保留迁移前的副本，方便回滚
+        // 保留迁移前的副本，方便回滚（副本含加密 token，同样收紧权限）
         try {
-          fs.copyFileSync(file, `${file}.v${String(raw.version ?? 1)}.bak`);
+          const bak = `${file}.v${String(raw.version ?? 1)}.bak`;
+          fs.copyFileSync(file, bak);
+          try {
+            fs.chmodSync(bak, 0o600);
+          } catch {
+            /* Windows 等平台忽略 */
+          }
         } catch {
           /* ignore */
         }
@@ -203,6 +209,12 @@ export class ProviderStore {
     const tmp = `${file}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2), { mode: 0o600 });
     fs.renameSync(tmp, file);
+    // rename 保留的是目标旧文件权限位（历史遗留文件可能宽松），显式收紧
+    try {
+      fs.chmodSync(file, 0o600);
+    } catch {
+      /* Windows 等平台忽略 */
+    }
   }
 
   private commit(): void {
