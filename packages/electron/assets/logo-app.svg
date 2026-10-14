@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Nomi app icon (ink)</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#43362B"/>
+      <stop offset="1" stop-color="#1F1813"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.3" cy="0.12" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.18"/>
+      <stop offset="0.6" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="225.28" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="225.28" fill="url(#sheen)"/>
+  
+  <path d="M268.7 733.2 C268.7 526.7 320.3 364.5 423.5 364.5 C534.1 364.5 526.7 718.4 637.3 718.4 C718.4 718.4 747.9 630.0 747.9 548.9" fill="none" stroke="#FFF6EC" stroke-width="121.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M733.184,228.14719999999997 Q747.9295999999999,305.56159999999994 825.3439999999999,320.30719999999997 Q747.9295999999999,335.0528 733.184,412.46719999999993 Q718.4384,335.0528 641.024,320.30719999999997 Q718.4384,305.56159999999994 733.184,228.14719999999997 Z" fill="#FB9466"/>
+</svg>
