@@ -2,6 +2,7 @@
  * 中间事件 → 下游 CLI 期望的 SSE。
  * Messages（Claude Code 原生）、Responses（Codex 原生）、Chat Completions（Codex chat 入口）。
  */
+import { customToolInput } from './aggregate';
 import type { NormEvent, StopReason, StreamEncoder, StreamUsage } from './events';
 import { formatSse } from './sse';
 
@@ -151,7 +152,9 @@ function stripUndef(u?: StreamUsage): StreamUsage {
 
 type RespItem =
   | { type: 'message'; id: string; text: string }
-  | { type: 'function_call'; id: string; call_id: string; name: string; arguments: string };
+  | { type: 'function_call'; id: string; call_id: string; name: string; arguments: string }
+  /** 自由文本工具：参数增量按 {"input": ...} 累积，结束时还原为原始字符串 */
+  | { type: 'custom_tool_call'; id: string; call_id: string; name: string; arguments: string };
 
 export class ResponsesEncoder implements StreamEncoder {
   private seq = 0;
@@ -165,7 +168,10 @@ export class ResponsesEncoder implements StreamEncoder {
   private toolItem = new Map<string, number>();
   private usage: StreamUsage = {};
 
-  constructor(fallbackModel = '') {
+  constructor(
+    fallbackModel = '',
+    private readonly customTools: ReadonlySet<string> = new Set(),
+  ) {
     this.model = fallbackModel;
   }
 
@@ -195,6 +201,16 @@ export class ResponsesEncoder implements StreamEncoder {
         role: 'assistant',
         content:
           status === 'in_progress' ? [] : [{ type: 'output_text', text: it.text, annotations: [] }],
+      };
+    }
+    if (it.type === 'custom_tool_call') {
+      return {
+        type: 'custom_tool_call',
+        id: it.id,
+        call_id: it.call_id,
+        name: it.name,
+        input: status === 'in_progress' ? '' : customToolInput(it.arguments),
+        status,
       };
     }
     return {
@@ -237,6 +253,20 @@ export class ResponsesEncoder implements StreamEncoder {
         output_index: idx,
         content_index: 0,
         part: { type: 'output_text', text: it.text, annotations: [] },
+      });
+    } else if (it.type === 'custom_tool_call') {
+      const input = customToolInput(it.arguments);
+      if (input) {
+        s += this.emit('response.custom_tool_call_input.delta', {
+          item_id: it.id,
+          output_index: idx,
+          delta: input,
+        });
+      }
+      s += this.emit('response.custom_tool_call_input.done', {
+        item_id: it.id,
+        output_index: idx,
+        input,
       });
     } else {
       s += this.emit('response.function_call_arguments.done', {
@@ -290,9 +320,10 @@ export class ResponsesEncoder implements StreamEncoder {
       }
       case 'tool_start': {
         let s = this.ensureStart() + this.closeOpen();
+        const custom = this.customTools.has(ev.name);
         const it: RespItem = {
-          type: 'function_call',
-          id: rid('fc'),
+          type: custom ? 'custom_tool_call' : 'function_call',
+          id: rid(custom ? 'ctc' : 'fc'),
           call_id: ev.id,
           name: ev.name,
           arguments: '',
@@ -309,8 +340,10 @@ export class ResponsesEncoder implements StreamEncoder {
       case 'tool_args': {
         const idx = this.toolItem.get(ev.key);
         if (idx === undefined) return '';
-        const it = this.items[idx] as Extract<RespItem, { type: 'function_call' }>;
+        const it = this.items[idx] as Exclude<RespItem, { type: 'message' }>;
         it.arguments += ev.delta;
+        // 自由文本工具的 JSON 片段无法逐段还原，收尾时一次性发出
+        if (it.type === 'custom_tool_call') return '';
         return this.emit('response.function_call_arguments.delta', {
           item_id: it.id,
           output_index: idx,

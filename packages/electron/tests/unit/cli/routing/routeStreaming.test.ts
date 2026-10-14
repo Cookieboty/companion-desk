@@ -364,3 +364,42 @@ describe('CliRouteService non-streaming conversion', () => {
     expect(body.content).toEqual([{ type: 'tool_use', id: 'call_1', name: 'ls', input: {} }]);
   });
 });
+
+describe('CliRouteService custom tools', () => {
+  const cleanup: Array<() => void> = [];
+  afterEach(() => {
+    while (cleanup.length) cleanup.pop()!();
+  });
+
+  it('codex request with a custom tool gets custom_tool_call back (non-streaming)', async () => {
+    const up = await startUpstream((_r, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          id: 'msg',
+          content: [
+            { type: 'tool_use', id: 'toolu_1', name: 'apply_patch', input: { input: 'PATCH' } },
+          ],
+          stop_reason: 'tool_use',
+        }),
+      );
+    });
+    const { svc, url } = await startRoute('codex', up.base, 'anthropic_messages');
+    cleanup.push(up.close, () => svc.stop());
+    const res = await fetch(`${url}/v1/responses`, {
+      method: 'POST',
+      body: JSON.stringify({
+        input: 'hi',
+        tools: [{ type: 'custom', name: 'apply_patch', description: 'd' }],
+      }),
+    });
+    const body = await res.json();
+    expect(body.output[0]).toMatchObject({
+      type: 'custom_tool_call',
+      call_id: 'toolu_1',
+      input: 'PATCH',
+    });
+    // 上游收到的是单字符串参数的普通工具
+    expect(up.seen[0].body.tools[0].input_schema.properties.input.type).toBe('string');
+  });
+});

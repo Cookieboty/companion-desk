@@ -37,12 +37,16 @@ function makeDecoder(f: UpstreamStreamFormat): StreamDecoder {
   }
 }
 
-function makeEncoder(f: DownstreamStreamFormat, model: string): StreamEncoder {
+function makeEncoder(
+  f: DownstreamStreamFormat,
+  model: string,
+  customTools?: ReadonlySet<string>,
+): StreamEncoder {
   switch (f) {
     case 'messages':
       return new MessagesEncoder(model);
     case 'responses':
-      return new ResponsesEncoder(model);
+      return new ResponsesEncoder(model, customTools);
     case 'chat':
       return new ChatCompletionsEncoder(model);
   }
@@ -51,11 +55,11 @@ function makeEncoder(f: DownstreamStreamFormat, model: string): StreamEncoder {
 export function createStreamConverter(
   from: UpstreamStreamFormat,
   to: DownstreamStreamFormat,
-  opts: { model?: string } = {},
+  opts: { model?: string; customTools?: ReadonlySet<string> } = {},
 ): StreamConverter {
   const parser = new SseParser();
   const dec = makeDecoder(from);
-  const enc = makeEncoder(to, opts.model ?? '');
+  const enc = makeEncoder(to, opts.model ?? '', opts.customTools);
   return {
     push(chunk) {
       let s = '';
@@ -79,9 +83,9 @@ export function jsonToSse(
   from: UpstreamStreamFormat,
   to: DownstreamStreamFormat,
   body: unknown,
-  opts: { model?: string } = {},
+  opts: { model?: string; customTools?: ReadonlySet<string> } = {},
 ): string {
-  const enc = makeEncoder(to, opts.model ?? '');
+  const enc = makeEncoder(to, opts.model ?? '', opts.customTools);
   let s = '';
   for (const n of jsonToEvents(from, body)) s += enc.encode(n);
   return s + enc.end();

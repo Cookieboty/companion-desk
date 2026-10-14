@@ -96,6 +96,17 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
   res.end(data);
 }
 
+/** Responses 请求里 type=custom 的工具名 */
+export function customToolNames(body: unknown): Set<string> {
+  const tools = (body as { tools?: unknown } | null)?.tools;
+  const out = new Set<string>();
+  if (!Array.isArray(tools)) return out;
+  for (const t of tools as Array<{ type?: unknown; name?: unknown }>) {
+    if (t && t.type === 'custom' && typeof t.name === 'string') out.add(t.name);
+  }
+  return out;
+}
+
 /** 同协议时 JSON→SSE 回退所用的方向 */
 function nativeStreamPlan(
   kind: 'claude' | 'codex',
@@ -262,6 +273,12 @@ export class CliRouteService {
         body,
         wantsStream,
       );
+      // Codex 的自由文本工具：模型回调时需还原为 custom_tool_call
+      const convOpts = {
+        model: up.model,
+        customTools:
+          kind === 'codex' && !url.includes('chat/completions') ? customToolNames(body) : undefined,
+      };
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         Accept: wantsStream ? 'text/event-stream' : 'application/json',
@@ -292,7 +309,7 @@ export class CliRouteService {
       });
       const isSse = (upstreamRes.headers.get('content-type') ?? '').includes('text/event-stream');
       if (wantsStream && upstreamRes.ok && isSse && upstreamRes.body) {
-        await this.pipeStream(upstreamRes.body, res, stream, up.model);
+        await this.pipeStream(upstreamRes.body, res, stream, convOpts);
         return;
       }
       const text = await upstreamRes.text();
@@ -314,12 +331,12 @@ export class CliRouteService {
           'Content-Type': 'text/event-stream; charset=utf-8',
           'Cache-Control': 'no-cache',
         });
-        res.end(jsonToSse(plan.from, plan.to, parsed, { model: up.model }));
+        res.end(jsonToSse(plan.from, plan.to, parsed, convOpts));
         return;
       }
       if (stream) {
         // 跨协议非流式：经中间事件重建目标 JSON，保留工具调用、停止原因与用量
-        const r = jsonToJson(stream.from, stream.to, parsed, { model: up.model });
+        const r = jsonToJson(stream.from, stream.to, parsed, convOpts);
         sendJson(res, r.status, r.body);
         return;
       }
@@ -339,14 +356,14 @@ export class CliRouteService {
     body: ReadableStream<Uint8Array>,
     res: http.ServerResponse,
     stream: StreamPlan,
-    model: string,
+    convOpts: { model?: string; customTools?: ReadonlySet<string> },
   ): Promise<void> {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
     });
-    const conv = stream ? createStreamConverter(stream.from, stream.to, { model }) : null;
+    const conv = stream ? createStreamConverter(stream.from, stream.to, convOpts) : null;
     const decoder = new TextDecoder();
     const reader = body.getReader();
     try {
