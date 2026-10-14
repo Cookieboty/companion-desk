@@ -534,7 +534,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
               <div className={styles.stack} data-testid="sched-agents">
                 <p className={styles.hint}>
                   {tr(
-                    '监视本机已安装的编程助手会话文件（Codex / Claude Code / Aider / Cline / Continue / Cursor），进度变化时看板娘气泡提醒。只读本地日志，不登录、不刮取任何账号。',
+                    '监视本机编程助手会话（Claude Code / Codex / Gemini CLI / Cursor / Aider / Cline / Continue）：只算「文件刚有写入且进程还在」的会话，按会话去重。只读本地日志与进程列表，不登录、不刮取任何账号。',
                   )}
                 </p>
                 {!agentsClient.available() && (

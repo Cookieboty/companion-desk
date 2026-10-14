@@ -78,9 +78,9 @@
 
   /* typography —— 类型阶梯 12 / 13 / 14 / 16 / 18 / 22，字重 400 / 500 / 600 */
   --cd-font-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', 'Noto Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', Roboto, Ubuntu,
-    'Helvetica Neue', Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, 'Noto Sans SC',
+    'Noto Sans CJK SC', 'Source Han Sans SC', Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif;
   --cd-font-mono:
     'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, Consolas, 'Noto Sans Mono CJK SC',
     monospace;

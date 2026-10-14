@@ -680,7 +680,6 @@
   "看板娘说：「{0}」": "The mascot says: “{0}”",
   "想一想…": "Thinking…",
   "现在试一下": "Try it now",
-  "监视本机已安装的编程助手会话文件（Codex / Claude Code / Aider / Cline / Continue / Cursor），进度变化时看板娘气泡提醒。只读本地日志，不登录、不刮取任何账号。": "Watches session files of coding agents installed on this device (Codex / Claude Code / Aider / Cline / Continue / Cursor) and notifies you in the mascot bubble when progress changes. Reads local logs only; never signs in or scrapes any account.",
   "当前环境无法访问主进程监视器。": "The main-process watcher isn't reachable in this environment.",
   "监视编程助手进度": "Watch coding agent progress",
   "同时发送系统通知": "Also send system notifications",
@@ -1394,5 +1393,6 @@
   "更新来自 GitHub Releases（Cookieboty/nomi-ai），下载完成后需你确认才会安装。": "Updates come from GitHub Releases (Cookieboty/nomi-ai). Download is automatic; install waits for your confirmation.",
   "最后活动 {0}": "Last activity {0}",
   "等你回复": "Waiting for you",
-  "已结束": "Ended"
+  "已结束": "Ended",
+  "监视本机编程助手会话（Claude Code / Codex / Gemini CLI / Cursor / Aider / Cline / Continue）：只算「文件刚有写入且进程还在」的会话，按会话去重。只读本地日志与进程列表，不登录、不刮取任何账号。": "Watches local coding-agent sessions (Claude Code / Codex / Gemini CLI / Cursor / Aider / Cline / Continue). Only sessions with recent writes and a live process count, deduplicated per session. Reads local logs and the process list only; never signs in or scrapes any account."
 }
