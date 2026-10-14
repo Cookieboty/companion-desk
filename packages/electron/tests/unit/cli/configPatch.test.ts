@@ -114,3 +114,19 @@ describe('update whitelist', () => {
     expect(isAllowedUpdateArgv(r[0]!.argv)).toBe(true);
   });
 });
+
+describe('dsh update recipe', () => {
+  it('only uses npm global install (no self-update)', () => {
+    const r = updateRecipes('dsh', '/usr/local/bin/dsh', 'unknown');
+    expect(r).toHaveLength(1);
+    expect(r[0]!.via).toBe('npm');
+    expect(r[0]!.argv.slice(1)).toEqual(['install', '-g', '@deepseek-ai/dsh@latest']);
+    expect(isAllowedUpdateArgv(r[0]!.argv)).toBe(true);
+  });
+  it('rejects dsh update and extra npm args', () => {
+    expect(isAllowedUpdateArgv(['dsh', 'update'])).toBe(false);
+    expect(
+      isAllowedUpdateArgv(['npm', 'install', '-g', '@deepseek-ai/dsh@latest', '--prefix=/x']),
+    ).toBe(false);
+  });
+});

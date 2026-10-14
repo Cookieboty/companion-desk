@@ -8,6 +8,7 @@ import { CliProviderPanel } from '../CliProviderPanel';
 const KIND_LABEL = {
   claude: 'Claude Code',
   codex: 'Codex',
+  dsh: 'dsh',
   cursor: 'Cursor',
 } as const;
 
@@ -63,7 +64,9 @@ export const CliToolsBlock: React.FC = () => {
                 onClick={() => {
                   setBusy(true);
                   void (async () => {
-                    const preview = await cliUpdateClient.preview(r.kind as 'claude' | 'codex');
+                    const preview = await cliUpdateClient.preview(
+                      r.kind as 'claude' | 'codex' | 'dsh',
+                    );
                     if ('error' in preview) {
                       setLog(preview.error);
                       setBusy(false);
@@ -73,7 +76,7 @@ export const CliToolsBlock: React.FC = () => {
                       setBusy(false);
                       return;
                     }
-                    const res = await cliUpdateClient.run(r.kind as 'claude' | 'codex');
+                    const res = await cliUpdateClient.run(r.kind as 'claude' | 'codex' | 'dsh');
                     setLog(res.log.slice(0, 2000));
                     refresh();
                     setBusy(false);

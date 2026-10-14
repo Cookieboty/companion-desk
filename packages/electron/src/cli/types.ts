@@ -2,9 +2,12 @@
 
 import type { ClaudeApiFormat, CodexApiFormat, CliApiFormat } from './formats';
 
-export type HarnessBackend = 'nomi' | 'claude' | 'codex';
+export type HarnessBackend = 'nomi' | 'claude' | 'codex' | 'dsh';
 
-export type CliKind = 'claude' | 'codex' | 'cursor';
+export type CliKind = 'claude' | 'codex' | 'dsh' | 'cursor';
+
+/** 支持版本更新的 CLI */
+export type UpdatableCli = 'claude' | 'codex' | 'dsh';
 
 export interface CliInstallInfo {
   kind: CliKind;

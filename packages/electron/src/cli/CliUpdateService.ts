@@ -1,5 +1,6 @@
 /**
- * CLI 版本检测与白名单更新（P0：Claude Code + Codex 可更新；Cursor 仅检测）。
+ * CLI 版本检测与白名单更新（Claude Code / Codex / dsh 可更新；Cursor 仅检测）。
+ * dsh 没有自更新命令，只走 npm 全局安装。
  */
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ import { t } from '../i18n';
 
 import { NPM_PKG, fetchNpmLatest, guessInstallMethod, readVersion, resolveCliBin } from './detect';
 import { isNewer } from './semver';
-import type { CliInstallInfo, CliKind } from './types';
+import type { CliInstallInfo, CliKind, UpdatableCli } from './types';
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
 
@@ -23,16 +24,16 @@ export interface CliUpdateCache {
 /** 允许执行的更新命令模板（argv 固定，禁止任意 shell） */
 export type UpdateRecipe =
   | { kind: 'claude' | 'codex'; via: 'self'; argv: string[] }
-  | { kind: 'claude' | 'codex'; via: 'npm'; argv: string[] };
+  | { kind: UpdatableCli; via: 'npm'; argv: string[] };
 
 export function updateRecipes(
-  kind: 'claude' | 'codex',
+  kind: UpdatableCli,
   bin: string,
   method: 'npm' | 'native' | 'unknown',
 ): UpdateRecipe[] {
   const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const recipes: UpdateRecipe[] = [];
-  if (method === 'native' || method === 'unknown') {
+  if (kind !== 'dsh' && (method === 'native' || method === 'unknown')) {
     recipes.push({ kind, via: 'self', argv: [bin, 'update'] });
   }
   recipes.push({
@@ -61,9 +62,22 @@ export function isAllowedUpdateArgv(argv: string[]): boolean {
   // npm install -g @scope/pkg@latest
   if (base === 'npm' && rest[0] === 'install' && rest[1] === '-g') {
     const pkg = rest[2] ?? '';
-    return pkg === '@anthropic-ai/claude-code@latest' || pkg === '@openai/codex@latest';
+    return (
+      rest.length === 3 &&
+      (pkg === '@anthropic-ai/claude-code@latest' ||
+        pkg === '@openai/codex@latest' ||
+        pkg === '@deepseek-ai/dsh@latest')
+    );
   }
   return false;
+}
+
+export function isUpdatable(kind: CliKind): kind is UpdatableCli {
+  return kind === 'claude' || kind === 'codex' || kind === 'dsh';
+}
+
+function toUpdatable(kind: unknown): UpdatableCli {
+  return kind === 'codex' || kind === 'dsh' ? kind : 'claude';
 }
 
 export class CliUpdateService {
@@ -90,16 +104,17 @@ export class CliUpdateService {
   }
 
   async inspect(refreshLatest = false): Promise<CliInstallInfo[]> {
-    const kinds: CliKind[] = ['claude', 'codex', 'cursor'];
+    const kinds: CliKind[] = ['claude', 'codex', 'dsh', 'cursor'];
     try {
       if (refreshLatest || Date.now() - this.cache.checkedAt > 6 * 60 * 60_000) {
-        const [cl, cx] = await Promise.all([
+        const [cl, cx, ds] = await Promise.all([
           fetchNpmLatest(NPM_PKG.claude),
           fetchNpmLatest(NPM_PKG.codex),
+          fetchNpmLatest(NPM_PKG.dsh),
         ]);
         this.cache = {
           checkedAt: Date.now(),
-          latest: { claude: cl, codex: cx, cursor: null },
+          latest: { claude: cl, codex: cx, dsh: ds, cursor: null },
         };
         try {
           this.save();
@@ -118,8 +133,8 @@ export class CliUpdateService {
           /* 探测失败当作未安装 */
         }
         const latest = this.cache.latest[kind] ?? null;
-        const method = guessInstallMethod(bin);
-        const updateSupported = kind === 'claude' || kind === 'codex';
+        const method = kind === 'dsh' && bin ? 'npm' : guessInstallMethod(bin);
+        const updateSupported = isUpdatable(kind);
         return {
           kind,
           path: bin,
@@ -141,18 +156,18 @@ export class CliUpdateService {
         latest: null,
         installMethod: 'unknown' as const,
         updateAvailable: false,
-        updateSupported: kind === 'claude' || kind === 'codex',
+        updateSupported: isUpdatable(kind),
       }));
     }
   }
 
   /** 预览将执行的命令（不跑） */
   previewUpdate(
-    kind: 'claude' | 'codex',
+    kind: UpdatableCli,
   ): { argv: string[]; recipes: UpdateRecipe[] } | { error: string } {
     const bin = resolveCliBin(kind);
     if (!bin) return { error: t('{0} 未安装', kind) };
-    const method = guessInstallMethod(bin);
+    const method = kind === 'dsh' ? 'npm' : guessInstallMethod(bin);
     const recipes = updateRecipes(kind, bin, method);
     const first = recipes[0]!;
     if (!isAllowedUpdateArgv(first.argv)) return { error: t('更新命令未通过白名单') };
@@ -160,7 +175,7 @@ export class CliUpdateService {
   }
 
   async runUpdate(
-    kind: 'claude' | 'codex',
+    kind: UpdatableCli,
   ): Promise<{ ok: boolean; log: string; version: string | null }> {
     if (this.updating) return { ok: false, log: t('已有更新在进行'), version: null };
     const preview = this.previewUpdate(kind);
@@ -217,10 +232,8 @@ export class CliUpdateService {
       });
     };
     handle('ai:cli-update:inspect', (refresh) => this.inspect(refresh === true));
-    handle('ai:cli-update:preview', (kind) =>
-      this.previewUpdate(kind === 'codex' ? 'codex' : 'claude'),
-    );
-    handle('ai:cli-update:run', (kind) => this.runUpdate(kind === 'codex' ? 'codex' : 'claude'));
+    handle('ai:cli-update:preview', (kind) => this.previewUpdate(toUpdatable(kind)));
+    handle('ai:cli-update:run', (kind) => this.runUpdate(toUpdatable(kind)));
   }
 }
 

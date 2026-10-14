@@ -1,24 +1,26 @@
 /**
  * 探测本机 Claude Code / Codex / Cursor 可执行文件与版本。
  * 可通过环境变量覆盖路径（测试 / Mock）：
- *   NOMI_CLAUDE_BIN · NOMI_CODEX_BIN · NOMI_CURSOR_BIN
+ *   NOMI_CLAUDE_BIN · NOMI_CODEX_BIN · NOMI_DSH_BIN · NOMI_CURSOR_BIN
  */
 import { execFileSync, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { CliKind } from './types';
+import type { CliKind, UpdatableCli } from './types';
 
 const ENV_BIN: Record<CliKind, string> = {
   claude: 'NOMI_CLAUDE_BIN',
   codex: 'NOMI_CODEX_BIN',
+  dsh: 'NOMI_DSH_BIN',
   cursor: 'NOMI_CURSOR_BIN',
 };
 
 const CANDIDATES: Record<CliKind, string[]> = {
   claude: ['claude'],
   codex: ['codex'],
+  dsh: ['dsh'],
   cursor: ['cursor-agent', 'agent'],
 };
 
@@ -66,8 +68,9 @@ export function readVersion(bin: string): string | null {
       windowsHide: true,
       env: { ...process.env, NO_COLOR: '1' },
     });
-    const m = /(\d+\.\d+\.\d+)/.exec(out);
-    return m ? m[1] : out.trim().slice(0, 64) || null;
+    // 保留预发布段（dsh 当前发布 0.2.0-rc.x）
+    const m = /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/.exec(out);
+    return m ? m[1]! : out.trim().slice(0, 64) || null;
   } catch {
     return null;
   }
@@ -102,7 +105,8 @@ export function fetchNpmLatest(pkg: string, timeoutMs = 12_000): Promise<string 
   });
 }
 
-export const NPM_PKG: Record<'claude' | 'codex', string> = {
+export const NPM_PKG: Record<UpdatableCli, string> = {
   claude: '@anthropic-ai/claude-code',
   codex: '@openai/codex',
+  dsh: '@deepseek-ai/dsh',
 };

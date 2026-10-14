@@ -1,7 +1,7 @@
 import { t } from '@nomi-ai/ui';
 
 export interface CliInstallInfo {
-  kind: 'claude' | 'codex' | 'cursor';
+  kind: 'claude' | 'codex' | 'dsh' | 'cursor';
   path: string | null;
   version: string | null;
   latest: string | null;
@@ -32,9 +32,9 @@ async function call<T>(method: string, ...args: unknown[]): Promise<T> {
 export const cliUpdateClient = {
   available: () => !!bridge(),
   inspect: (refresh = false) => call<CliInstallInfo[]>('inspect', refresh),
-  preview: (kind: 'claude' | 'codex') =>
+  preview: (kind: 'claude' | 'codex' | 'dsh') =>
     call<{ argv: string[] } | { error: string }>('preview', kind),
-  run: (kind: 'claude' | 'codex') =>
+  run: (kind: 'claude' | 'codex' | 'dsh') =>
     call<{ ok: boolean; log: string; version: string | null }>('run', kind),
   onEvent: (fn: (e: unknown) => void) =>
     bridge()?.on('ai:cli-update:event', fn) ?? (() => undefined),
