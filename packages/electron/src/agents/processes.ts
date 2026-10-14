@@ -59,6 +59,13 @@ const RULES: Array<{ kind: AgentKind; test: (name: string, cmd: string) => boole
       /@google[\\/]gemini-cli/i.test(c) ||
       /(^|[\\/\s])gemini(\.exe)?(\s|$)/i.test(c),
   },
+  {
+    kind: 'dsh',
+    test: (n, c) =>
+      /^dsh(\.exe)?$/i.test(n) ||
+      /@deepseek-ai[\\/]dsh[\\/]/i.test(c) ||
+      /(^|[\\/\s])dsh(\.exe)?(\s|$)/i.test(c),
+  },
   { kind: 'cline', test: (n, c) => /^cline(\.exe)?$/i.test(n) || /[\\/]cline[\\/].*cli/i.test(c) },
 ];
 
@@ -159,4 +166,27 @@ export async function listAgentProcesses(platform = process.platform): Promise<A
   } catch {
     return null;
   }
+}
+
+/**
+ * Linux：/proc/locks 里被持有的文件 inode（dsh 用 flock 锁 session.lock）。
+ * 其它平台无法廉价判断，返回 null。
+ */
+export function readLockedInodes(platform: NodeJS.Platform = process.platform): Set<number> | null {
+  if (platform !== 'linux') return null;
+  try {
+    return parseProcLocks(fs.readFileSync('/proc/locks', 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export function parseProcLocks(raw: string): Set<number> {
+  const out = new Set<number>();
+  for (const line of raw.split('\n')) {
+    // 1: FLOCK  ADVISORY  WRITE 103198 00:2f:1680557 0 EOF
+    const m = /\s(?:[0-9a-f]+):(?:[0-9a-f]+):(\d+)\s/i.exec(line);
+    if (m && /FLOCK|POSIX|OFDLCK/.test(line)) out.add(Number(m[1]));
+  }
+  return out;
 }

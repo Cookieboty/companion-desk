@@ -1,6 +1,7 @@
 /**
- * 编程助手进度监视：只读本机 Codex / Claude Code / Aider / Cline / Continue / Cursor
+ * 编程助手进度监视：只读本机 Codex / Claude Code / dsh / Aider / Cline / Continue / Cursor
  * 已暴露的日志与会话文件，状态变化时通过看板娘气泡提醒。绝不刮取远端账号。
+ * 同时汇总 Nomi 自己的对话标签（实时状态优先于文件推断），在一个列表里展示所有端点。
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -26,10 +27,11 @@ import {
   parseClineJob,
   parseCodexSession,
   parseContinueSession,
+  parseDshProjcache,
   parseGeminiSession,
   phaseOf,
 } from './parsers';
-import { type AgentProc, listAgentProcesses } from './processes';
+import { type AgentProc, listAgentProcesses, readLockedInodes } from './processes';
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
 
@@ -51,6 +53,7 @@ export const DEFAULT_AGENT_WATCH: AgentWatchSettings = {
   tools: {
     codex: true,
     claude: true,
+    dsh: true,
     aider: true,
     cline: true,
     continue: true,
@@ -67,7 +70,14 @@ const MAX_FILES_PER_KIND = 60;
 
 export interface AgentSessionView {
   id: string;
-  kind: AgentKind;
+  /** 'nomi' = Nomi 主对话标签（Nomi 后端） */
+  kind: AgentKind | 'nomi';
+  /** 来源：本机会话文件 / Nomi 对话标签 */
+  source?: 'file' | 'tab';
+  /** source = tab 时的标签 id */
+  tabId?: string;
+  /** source = tab 时的未读结果数 */
+  unread?: number;
   /** 工具名 */
   label: string;
   /** 项目目录名（cwd basename） */
@@ -104,6 +114,8 @@ interface Candidate {
   path: string;
   mtime: number;
   info: SessionInfo;
+  /** dsh：session.lock 是否被持有（undefined = 无法判断） */
+  lockHeld?: boolean;
 }
 
 type Deps = {
@@ -116,11 +128,40 @@ type Deps = {
   /** 测试注入：返回编程助手进程；null = 无法判断 */
   processes?: () => AgentProc[] | null;
   platform?: NodeJS.Platform;
+  /** dsh 家目录（默认 DSH_HOME 或 ~/.dsh） */
+  dshHome?: string;
+  /** 测试注入：被 flock 持有的 inode；null = 无法判断 */
+  lockedInodes?: () => Set<number> | null;
 };
+
+/** Nomi 对话标签（来自 CliHarnessService），避免 agents 依赖 cli 模块 */
+export interface WatchedTab {
+  id: string;
+  title: string;
+  backend: 'nomi' | 'claude' | 'codex' | 'dsh';
+  cwd: string;
+  cliSessionId: string | null;
+  status: 'idle' | 'queued' | 'running' | 'error';
+  unread: number;
+  updatedAt: number;
+  lastError?: string;
+}
+
+/** 某个端点的一轮结束 / 需要注意（由 harness 推送） */
+export interface EndpointFinished {
+  tabId: string;
+  title: string;
+  backend: WatchedTab['backend'];
+  ok: boolean;
+  text: string;
+  error?: string;
+  background: boolean;
+}
 
 const LABEL: Record<AgentKind, string> = {
   codex: 'Codex',
   claude: 'Claude Code',
+  dsh: 'dsh',
   aider: 'Aider',
   cline: 'Cline',
   continue: 'Continue',
@@ -206,6 +247,7 @@ export function sanitizeAgentWatch(raw: unknown, base = DEFAULT_AGENT_WATCH): Ag
     tools: {
       codex: b(tools.codex, true),
       claude: b(tools.claude, true),
+      dsh: b(tools.dsh, true),
       aider: b(tools.aider, true),
       cline: b(tools.cline, true),
       continue: b(tools.continue, true),
@@ -231,9 +273,18 @@ export class AgentProgressService {
   private procs: AgentProc[] | null = null;
   private procsAt = 0;
   private procRefreshing = false;
+  private readonly dshHome: string;
+  /** 本轮 tick 的 flock 快照（dsh）；null = 无法判断 */
+  private dshLocks: Set<number> | null = null;
+  private tabs: () => WatchedTab[] = () => [];
 
   constructor(private readonly d: Deps) {
     this.home = d.home ?? os.homedir();
+    this.dshHome =
+      d.dshHome ??
+      (process.env.DSH_HOME?.trim()
+        ? path.resolve(process.env.DSH_HOME)
+        : path.join(this.home, '.dsh'));
     this.now = d.now ?? (() => Date.now());
     this.pollMs = d.pollMs ?? 8_000;
     this.settingsPath = path.join(d.root, 'settings.json');
@@ -255,8 +306,18 @@ export class AgentProgressService {
   }
 
   state(): AgentWatchState {
+    const tabs = this.safeTabs();
+    // 由 Nomi 标签驱动的 CLI 会话：标签的实时状态优先，隐藏对应的文件推断条目
+    const owned = new Set(
+      tabs.filter((t) => t.cliSessionId).map((t) => `${t.backend}:${t.cliSessionId}`),
+    );
     const sessions = [...this.tracked.values()]
-      .map(({ lastRemindAt: _a, lastRemindStatus: _b, ...v }) => v)
+      .filter((v) => !owned.has(v.id))
+      .map(({ lastRemindAt: _a, lastRemindStatus: _b, ...v }): AgentSessionView => ({
+        ...v,
+        source: 'file',
+      }))
+      .concat(tabs.map((t) => tabView(t)))
       .sort((a, b) => rank(a.status) - rank(b.status) || b.mtime - a.mtime);
     return {
       settings: this.settings,
@@ -286,6 +347,7 @@ export class AgentProgressService {
     const found: AgentKind[] = [];
     if (fs.existsSync(path.join(h, '.codex'))) found.push('codex');
     if (fs.existsSync(path.join(h, '.claude'))) found.push('claude');
+    if (fs.existsSync(path.join(this.dshHome, 'sessions'))) found.push('dsh');
     if (
       fs.existsSync(path.join(h, '.aider')) ||
       fs.existsSync(path.join(h, '.aider.chat.history.md'))
@@ -316,6 +378,17 @@ export class AgentProgressService {
         'claude',
         listFiles(path.join(h, '.claude', 'projects'), (n) => n.endsWith('.jsonl'), 3),
       );
+    if (tools.dsh) {
+      // $DSH_HOME/sessions/<编码后的 cwd>/session-<uuid>/{session.lock, session.v4.jsonl.zstd}
+      add(
+        'dsh',
+        listFiles(
+          path.join(this.dshHome, 'sessions'),
+          (n) => n === 'session.lock' || /^session\.v\d+\.jsonl/.test(n),
+          2,
+        ),
+      );
+    }
     if (tools.gemini)
       add(
         'gemini',
@@ -379,6 +452,26 @@ export class AgentProgressService {
         /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i.exec(
           filePath,
         )?.[1];
+    } else if (kind === 'dsh') {
+      const dir = path.dirname(filePath);
+      const id = path.basename(dir);
+      const meta = parseDshProjcache(
+        readSlice(
+          path.join(this.dshHome, 'storages', 'session_projcache', 'sessions', `${id}.json`),
+          'head',
+          256 * 1024,
+        ),
+      );
+      const lock = safeStat(path.join(dir, 'session.lock'));
+      const lockHeld = this.dshLocks && lock ? this.dshLocks.has(lock.ino) : undefined;
+      info = {
+        ...meta,
+        sessionId: id,
+        // 锁被持有 = 正在写；锁空闲 = 这一轮已提交；无法判断时按写入时间推断
+        phase: lockHeld === false ? 'turn-done' : 'working',
+        detail: lockHeld ? tr('运行中') : undefined,
+      };
+      return { key: `dsh:${id}`, kind, path: filePath, mtime, info, lockHeld };
     } else if (kind === 'gemini') {
       info = parseGeminiSession(readSlice(filePath, 'head', 4 * 1024 * 1024));
     } else if (kind === 'cursor') {
@@ -413,6 +506,7 @@ export class AgentProgressService {
       const isMain = !c.info.parentId || c.info.parentId === c.info.sessionId;
       const newer = c.mtime > prev.mtime;
       const merged: Candidate = newer ? { ...c, info: { ...c.info } } : prev;
+      merged.lockHeld = c.lockHeld ?? prev.lockHeld;
       // 标题 / cwd 以主会话为准
       merged.info.title = (isMain ? c.info.title : undefined) ?? prev.info.title ?? c.info.title;
       merged.info.cwd = prev.info.cwd ?? c.info.cwd;
@@ -434,7 +528,7 @@ export class AgentProgressService {
   ): Map<string, boolean | undefined> {
     const res = new Map<string, boolean | undefined>();
     if (!procs) {
-      for (const c of cands) res.set(c.key, undefined);
+      for (const c of cands) res.set(c.key, c.kind === 'dsh' ? c.lockHeld : undefined);
       return res;
     }
     const now = this.now();
@@ -476,7 +570,8 @@ export class AgentProgressService {
     // aider / cline / continue 的会话文件是全局的，进程匹配不可靠：只看是否有该类进程
     const kindsAlive = new Set(procs.map((p) => p.kind));
     for (const c of cands) {
-      if (c.kind === 'aider' || c.kind === 'cline' || c.kind === 'continue')
+      if (c.kind === 'dsh' && c.lockHeld !== undefined) res.set(c.key, c.lockHeld);
+      else if (c.kind === 'aider' || c.kind === 'cline' || c.kind === 'continue')
         res.set(c.key, kindsAlive.has(c.kind) ? undefined : false);
       else res.set(c.key, claimed.has(c.key));
     }
@@ -508,6 +603,9 @@ export class AgentProgressService {
     if (!this.settings.enabled) return;
     if (refresh) this.refreshProcs();
     const now = this.now();
+    this.dshLocks = this.settings.tools.dsh
+      ? (this.d.lockedInodes ?? (() => readLockedInodes(this.d.platform)))()
+      : null;
     const files = this.scanFiles().filter((f) => now - f.mtime < ALIVE_LOOKBACK_MS);
     const cands = this.dedupe(files.map((f) => this.inspect(f.kind, f.path, f.mtime)));
     // 首次进程快照还没回来：先不判定（避免把所有历史会话当成在跑）
@@ -581,7 +679,20 @@ export class AgentProgressService {
     const text = REMIND[next.status](who, next.summary);
     if (!text) return;
     this.d.desktop.say(text.slice(0, 140));
-    notifyIsland({ kind: 'agent', title: who, body: next.title });
+    notifyIsland({
+      kind: 'agent',
+      endpoint: next.kind,
+      status:
+        next.status === 'failed'
+          ? 'failed'
+          : next.status === 'stalled' || next.status === 'waiting'
+            ? 'attention'
+            : next.status === 'completed'
+              ? 'done'
+              : 'running',
+      title: who,
+      body: next.title,
+    });
     broadcastMascotCommand({
       type: 'motion',
       name: next.status === 'failed' || next.status === 'stalled' ? 'think' : 'wave',
@@ -592,6 +703,52 @@ export class AgentProgressService {
     this.lastRemindAt = next.lastRemindAt;
     this.tracked.set(next.id, next);
     this.d.logger.info('agent-progress remind', { kind: next.kind, status: next.status });
+  }
+
+  /**
+   * 接入 Nomi 对话标签：标签列表并入监视视图；任一端点一轮结束 / 出错时
+   * 看板娘说话 + 动作，灵动岛按端点显示事件。
+   */
+  attachHarness(h: {
+    tabs: () => WatchedTab[];
+    onTabs: (fn: () => void) => void;
+    onFinished: (fn: (e: EndpointFinished) => void) => void;
+  }): void {
+    this.tabs = h.tabs;
+    h.onTabs(() => this.broadcast());
+    h.onFinished((e) => this.onEndpointFinished(e));
+  }
+
+  private safeTabs(): WatchedTab[] {
+    try {
+      return this.tabs();
+    } catch {
+      return [];
+    }
+  }
+
+  /** 端点一轮结束：前台正看着这个标签就不打扰 */
+  onEndpointFinished(e: EndpointFinished): void {
+    if (!e.background) return;
+    if (!this.settings.enabled) return;
+    if (e.backend !== 'nomi' && !this.settings.tools[e.backend]) return;
+    const label = ENDPOINT_LABEL[e.backend];
+    const who = `${label}（${e.title}）`;
+    const brief = (e.ok ? e.text : e.error || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const text = e.ok ? REMIND.completed(who, brief) : REMIND.failed(who, brief);
+    this.d.desktop.say(text.slice(0, 140));
+    notifyIsland({
+      kind: 'agent',
+      endpoint: e.backend,
+      status: e.ok ? 'done' : 'failed',
+      title: who,
+      body: brief || (e.ok ? tr('这一轮做完了') : tr('出错了')),
+    });
+    broadcastMascotCommand({ type: 'motion', name: e.ok ? 'wave' : 'think' });
+    if (this.settings.osNotify) this.notify(label, text);
+    this.lastRemindAt = this.now();
+    this.d.logger.info('agent-progress endpoint finished', { backend: e.backend, ok: e.ok });
+    this.broadcast();
   }
 
   private notify(title: string, body: string) {
@@ -648,6 +805,42 @@ export class AgentProgressService {
       return this.state();
     });
   }
+}
+
+const ENDPOINT_LABEL: Record<WatchedTab['backend'], string> = {
+  nomi: 'Nomi',
+  claude: 'Claude Code',
+  codex: 'Codex',
+  dsh: 'dsh',
+};
+
+/** Nomi 标签 → 监视视图条目 */
+export function tabView(t: WatchedTab): AgentSessionView {
+  const status: AgentStatus =
+    t.status === 'running' || t.status === 'queued'
+      ? 'running'
+      : t.status === 'error'
+        ? 'failed'
+        : t.unread > 0
+          ? 'completed'
+          : 'waiting';
+  return {
+    id: `tab:${t.id}`,
+    kind: t.backend,
+    source: 'tab',
+    tabId: t.id,
+    unread: t.unread,
+    label: `Nomi · ${ENDPOINT_LABEL[t.backend]}`,
+    project: t.cwd ? path.basename(t.cwd) : undefined,
+    cwd: t.cwd,
+    title: t.title,
+    status,
+    summary: t.status === 'queued' ? tr('排队中') : t.lastError,
+    alive: t.status === 'running' || t.status === 'queued',
+    path: '',
+    mtime: t.updatedAt,
+    updatedAt: t.updatedAt,
+  };
 }
 
 const RANK: Record<AgentStatus, number> = {

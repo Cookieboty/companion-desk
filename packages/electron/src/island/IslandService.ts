@@ -24,6 +24,10 @@ export interface IslandNotice {
   title: string;
   body?: string;
   durationMs?: number;
+  /** 编程助手端点（claude / codex / dsh / nomi …），岛上显示端点徽标 */
+  endpoint?: string;
+  /** 端点事件：完成 / 出错 / 需要注意 / 运行中 */
+  status?: 'done' | 'failed' | 'attention' | 'running';
 }
 
 export interface IslandSettings {
@@ -120,6 +124,8 @@ export class IslandService {
       title: String(n.title ?? '').slice(0, 80),
       body: String(n.body ?? '').slice(0, 160),
       durationMs: n.durationMs,
+      ...(n.endpoint ? { endpoint: String(n.endpoint).slice(0, 24) } : {}),
+      ...(n.status ? { status: n.status } : {}),
     };
     // 同样的内容排队中就不重复
     if (!this.queue.some((q) => q.title === clean.title && q.body === clean.body))

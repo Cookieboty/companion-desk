@@ -352,6 +352,12 @@ export class Application implements IApplication {
         dshEnv: () => getCliProviderBridge()?.dshEnv() ?? {},
       });
       harness.registerIpc();
+      // 监视器汇总 Nomi 标签；任一标签一轮结束 → 看板娘 / 灵动岛
+      agents.attachHarness({
+        tabs: () => harness.listTabs().tabs,
+        onTabs: (fn) => harness.events.on('tabs', fn),
+        onFinished: (fn) => harness.events.on('tab-finished', fn),
+      });
 
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();

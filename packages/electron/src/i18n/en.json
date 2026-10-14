@@ -458,5 +458,9 @@
   "主对话标签不能关闭": "The main chat tab cannot be closed",
   "标题不能为空": "Title cannot be empty",
   "标签已关闭": "Tab was closed",
-  "已中止": "Cancelled"
+  "已中止": "Cancelled",
+  "运行中": "Running",
+  "这一轮做完了": "This turn is done",
+  "出错了": "Something went wrong",
+  "排队中": "Queued"
 }

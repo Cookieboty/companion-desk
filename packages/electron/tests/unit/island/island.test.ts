@@ -57,6 +57,14 @@ describe('island geometry', () => {
     expect(html).toContain('textContent');
     expect(html).not.toMatch(/innerHTML/);
   });
+
+  it('page shows a per-endpoint badge and status icon', () => {
+    const html = islandHtml(islandGeometry('darwin', notchMac));
+    expect(html).toContain('id="ep"');
+    expect(html).toContain("dsh: 'dsh'");
+    expect(html).toContain('STATUS_ICON');
+    expect(html).toContain("#icon[data-status='failed']");
+  });
 });
 
 describe('IslandService policy', () => {

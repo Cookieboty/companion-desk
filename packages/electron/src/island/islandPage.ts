@@ -30,7 +30,17 @@ export function islandHtml(g: IslandGeometry): string {
     font-size: 19px; background: rgba(251,148,102,.18); }
   #icon[data-kind='agent'] { background: rgba(120,170,255,.18); }
   #icon[data-kind='reminder'] { background: rgba(255,210,110,.18); }
+  #icon[data-status='done'] { background: rgba(110,220,150,.2); }
+  #icon[data-status='failed'] { background: rgba(255,110,110,.22); }
+  #icon[data-status='attention'] { background: rgba(255,210,110,.22); }
   #text { min-width: 0; flex: 1; }
+  #ep { display: none; margin-right: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px;
+    font-weight: 600; vertical-align: 1px; background: rgba(255,255,255,.12); color: #f5f2ee; }
+  #ep.on { display: inline-block; }
+  #ep[data-ep='claude'] { background: rgba(217,119,87,.35); }
+  #ep[data-ep='codex'] { background: rgba(120,170,255,.32); }
+  #ep[data-ep='dsh'] { background: rgba(90,140,255,.35); }
+  #ep[data-ep='nomi'] { background: rgba(251,148,102,.35); }
   #title { font-weight: 650; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #body { color: rgba(245,242,238,.72); font-weight: 450; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; margin-top: 2px; }
@@ -41,13 +51,20 @@ export function islandHtml(g: IslandGeometry): string {
   const el = document.getElementById('island');
   const $ = (id) => document.getElementById(id);
   const ICON = { message: '💬', agent: '🛠', reminder: '⏰', info: '✨' };
+  const STATUS_ICON = { done: '✅', failed: '⚠️', attention: '👀', running: '⏳' };
+  const EP = { claude: 'Claude Code', codex: 'Codex', dsh: 'dsh', nomi: 'Nomi' };
   let timer = 0;
   window.__island = {
     show(n) {
       clearTimeout(timer);
-      $('icon').textContent = ICON[n.kind] || ICON.info;
+      $('icon').textContent = (n.status && STATUS_ICON[n.status]) || ICON[n.kind] || ICON.info;
       $('icon').dataset.kind = n.kind || 'info';
-      $('title').textContent = String(n.title || '');
+      $('icon').dataset.status = n.status || '';
+      const ep = String(n.endpoint || '');
+      $('ep').textContent = EP[ep] || ep;
+      $('ep').dataset.ep = ep;
+      $('ep').classList.toggle('on', !!ep);
+      $('tt').textContent = String(n.title || '');
       $('body').textContent = String(n.body || '');
       el.classList.add('on');
       requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
@@ -67,6 +84,6 @@ export function islandHtml(g: IslandGeometry): string {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <style>${css}</style></head><body>
 <div id="island" role="status" aria-live="polite"><div id="row"><div id="icon"></div>
-<div id="text"><div id="title"></div><div id="body"></div></div><div id="spark">✦</div></div></div>
+<div id="text"><div id="title"><span id="ep"></span><span id="tt"></span></div><div id="body"></div></div><div id="spark">✦</div></div></div>
 <script>${js}</script></body></html>`;
 }
