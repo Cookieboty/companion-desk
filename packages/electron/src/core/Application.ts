@@ -128,7 +128,8 @@ export class Application implements IApplication {
       // 应用图标变体（窗口 / 任务栏 / Dock / 托盘 / 通知）
       initAppIcon(path.join(app.getPath('userData'), 'app-icon.json'));
 
-      // 统一 CSP 响应头（覆盖主窗口 / 对话窗 / 截图遮罩；dev HMR 需要内联脚本，跳过）。
+      // 统一 CSP 响应头：作用于 http(s) 加载的页面。打包后的 file:// 页面不经过响应头，
+      // 由构建期注入的 <meta> CSP 覆盖（renderer / ai-chat 的 vite 配置）；dev HMR 需要内联脚本，跳过。
       // 沙箱浏览器 AgentBrowser 使用独立内存分区，不受影响。
       if (app.isPackaged || process.env.NODE_ENV !== 'development') {
         session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

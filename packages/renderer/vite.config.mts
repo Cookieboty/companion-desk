@@ -20,7 +20,8 @@ export default defineConfig({
       transformIndexHtml: {
         order: 'pre',
         handler(html: string, ctx: { filename: string }) {
-          if (!/[\\/]index\.html$/.test(ctx.filename)) return html;
+          // index.html（看板娘）与 tts-config.html 都经 file:// 加载，都需要 meta CSP
+          if (!/\.html$/.test(ctx.filename)) return html;
           return html.replace(
             '<meta charset="UTF-8">',
             `<meta charset="UTF-8">\n    <meta http-equiv="Content-Security-Policy" content="${mascotCspString()}">`,
