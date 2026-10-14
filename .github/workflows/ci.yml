@@ -247,7 +247,7 @@ jobs:
 
   # ---------------------------------------------------------------
   # Electron 打包：三平台（AppImage / dmg / NSIS）每次都打，保证安装包可用；
-  # 签名/公证：仅 tag 构建注入 secret；其它事件不签名。
+  # 签名/公证：仅 tag 构建经 scripts/release/signing-env.mjs 门控注入 secret；其它事件不签名。
   # ---------------------------------------------------------------
   build-electron:
     name: build-electron (${{ matrix.os }})
@@ -306,32 +306,42 @@ jobs:
       - name: Build workspaces
         run: pnpm turbo run build --cache-dir=.turbo/cache
 
-      - name: electron-builder package (PR / push · no publish)
+      - name: electron-builder package (PR / push · no publish, unsigned)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         env:
-          CSC_LINK: ''
-          CSC_KEY_PASSWORD: ''
-          APPLE_ID: ''
-          APPLE_APP_SPECIFIC_PASSWORD: ''
-          APPLE_TEAM_ID: ''
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: pnpm run ${{ matrix.script }}
+
+      # 签名 / 公证门控：只有整组 secret 齐全才导出给 electron-builder（见 docs/RELEASE.md）。
+      # 缺失或不完整 → 降级为未签名 / 不公证并给出 ::notice::，不会让发布失败。
+      - name: Resolve signing / notarization env (tag)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: node scripts/release/signing-env.mjs ${{ matrix.artifact }}
 
       - name: electron-builder package + publish to GitHub Release (tag)
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_IDENTITY_AUTO_DISCOVERY: 'true'
           # Default GITHUB_TOKEN works with contents:write on this repo.
           # Set repository secret GH_TOKEN (PAT, repo scope) only if the default token cannot create Releases.
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # matrix.artifact is linux | mac | win → package:publish:{linux,mac,win}
         run: pnpm --filter @nomi-ai/electron run package:publish:${{ matrix.artifact }}
+
+      # PR / push 也跑一遍门控脚本（无 secret → 预期 unsigned），保证脚本在三平台都能执行
+      - name: Signing gate dry-run
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        run: node scripts/release/signing-env.mjs ${{ matrix.artifact }}
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

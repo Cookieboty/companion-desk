@@ -66,8 +66,9 @@ protocols:
       - nomi
 
 # ---------------------------------------------------------------
-# macOS · DMG（默认）；notarize 需要 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
-# APPLE_TEAM_ID 三件套齐全时才启用（缺失时静默降级，便于 CI 免凭证跑 build 冒烟）。
+# macOS · DMG（默认）。签名：CSC_LINK / CSC_KEY_PASSWORD（Developer ID Application .p12）。
+# 公证：electron-builder 检测到 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID 即自动
+# notarize（notarytool）。CI 由 scripts/release/signing-env.mjs 门控：整组齐全才导出，否则未签名 / 不公证。
 # ---------------------------------------------------------------
 mac:
   category: public.app-category.productivity
@@ -88,8 +89,8 @@ mac:
     NSMicrophoneUsageDescription: Nomi 用麦克风进行语音输入与唤醒词识别。
 
 # ---------------------------------------------------------------
-# Windows · NSIS；code sign 通过 CSC_LINK / CSC_KEY_PASSWORD 环境变量启用
-# （electron-builder 内建约定，CI 里未注入则自动跳过 sign）。
+# Windows · NSIS；code sign 通过 WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD 启用
+# （electron-builder 的 Windows 专用变量，与 mac 证书分开；未注入则跳过 sign）。
 # ---------------------------------------------------------------
 win:
   target:
