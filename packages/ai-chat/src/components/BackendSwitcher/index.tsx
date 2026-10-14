@@ -37,11 +37,7 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
       className={className}
       data-testid="backend-switcher"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-      title={
-        state.ccSwitchWarning
-          ? t('检测到本机安装了 cc-switch；Nomi 写入 CLI 配置前会备份，请避免两边同时改同一文件。')
-          : t('切换对话后端（Claude / Codex 为 UI 转发）')
-      }
+      title={t('切换对话后端（Claude / Codex 为 UI 转发）')}
     >
       <Select
         size="sm"

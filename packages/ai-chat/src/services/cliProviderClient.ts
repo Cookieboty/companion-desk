@@ -1,21 +1,39 @@
 import { t } from '@nomi-ai/ui';
 
+export type ClaudeApiFormat =
+  'anthropic_messages' | 'openai_chat_completions' | 'openai_responses' | 'gemini_generate_content';
+export type CodexApiFormat = 'openai_responses' | 'openai_chat_completions' | 'anthropic_messages';
+
 export interface CliProviderProfile {
   id: string;
   kind: 'claude' | 'codex';
   name: string;
   baseUrl: string;
   model: string;
+  apiFormat: ClaudeApiFormat | CodexApiFormat;
+  needsRouting: boolean;
   hasKey: boolean;
   keyHint: string;
   active: boolean;
 }
 
+export interface CliRouteSettings {
+  enabled: boolean;
+  host: string;
+  port: number;
+  claude: boolean;
+  codex: boolean;
+  listening: boolean;
+  listenUrl: string | null;
+}
+
 export interface CliProviderState {
   profiles: CliProviderProfile[];
-  ccSwitchWarning: boolean;
+  claudeStore: string;
+  codexStore: string;
   claudeSettings: string;
   codexConfig: string;
+  routing: CliRouteSettings | null;
 }
 
 interface AiBridge {
@@ -27,10 +45,21 @@ const bridge = (): AiBridge | undefined => {
   const b = (window as unknown as { aiIPC?: AiBridge }).aiIPC;
   return b && typeof b.invoke === 'function' ? b : undefined;
 };
+
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const b = bridge();
   if (!b) throw new Error(t('编程助手接入需要在桌面应用中使用'));
   const r = (await b.invoke(`ai:cli-provider:${method}`, ...args)) as T & {
+    __error?: { message: string };
+  };
+  if (r && typeof r === 'object' && '__error' in r && r.__error) throw new Error(r.__error.message);
+  return r;
+}
+
+async function routeCall<T>(method: string, ...args: unknown[]): Promise<T> {
+  const b = bridge();
+  if (!b) throw new Error(t('编程助手接入需要在桌面应用中使用'));
+  const r = (await b.invoke(`ai:cli-route:${method}`, ...args)) as T & {
     __error?: { message: string };
   };
   if (r && typeof r === 'object' && '__error' in r && r.__error) throw new Error(r.__error.message);
@@ -46,6 +75,7 @@ export const cliProviderClient = {
     name: string;
     baseUrl: string;
     model: string;
+    apiFormat?: ClaudeApiFormat | CodexApiFormat;
     apiKey?: string;
   }) => call<CliProviderProfile>('upsert', p),
   remove: (id: string) => call<CliProviderState>('remove', id),
@@ -54,11 +84,17 @@ export const cliProviderClient = {
       ok: boolean;
       backups: string[];
       restartRequired: boolean;
-      ccSwitchWarning: boolean;
+      usedRouting: boolean;
       error?: string;
     }>('activate', id),
-  backups: () => call<string[]>('backups'),
-  restore: (ts: string) => call<{ ok: boolean; error?: string }>('restore', ts),
   onChanged: (fn: (s: CliProviderState) => void) =>
     bridge()?.on('ai:cli-provider:changed', (p) => fn(p as CliProviderState)) ?? (() => undefined),
+};
+
+export const cliRouteClient = {
+  available: () => !!bridge(),
+  state: () => routeCall<CliRouteSettings>('state'),
+  set: (p: Partial<CliRouteSettings>) => routeCall<CliRouteSettings>('set', p),
+  start: () => routeCall<CliRouteSettings>('start'),
+  stop: () => routeCall<CliRouteSettings>('stop'),
 };

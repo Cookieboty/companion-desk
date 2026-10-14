@@ -1,9 +1,9 @@
-/** 编程助手 CLI 版本检测 / 白名单更新 + 简易供应商启用 */
-import { Button, Notice, t as tr } from '@nomi-ai/ui';
+/** 编程助手 CLI 版本检测 / 白名单更新 + 独立供应商面板 */
+import { Button, t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { cliProviderClient, type CliProviderState } from '../../services/cliProviderClient';
 import { cliUpdateClient, type CliInstallInfo } from '../../services/cliUpdateClient';
+import { CliProviderPanel } from '../CliProviderPanel';
 
 const KIND_LABEL = {
   claude: 'Claude Code',
@@ -13,7 +13,6 @@ const KIND_LABEL = {
 
 export const CliToolsBlock: React.FC = () => {
   const [rows, setRows] = useState<CliInstallInfo[]>([]);
-  const [prov, setProv] = useState<CliProviderState | null>(null);
   const [log, setLog] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -23,12 +22,6 @@ export const CliToolsBlock: React.FC = () => {
       .inspect(true)
       .then(setRows)
       .catch(() => setRows([]));
-    if (cliProviderClient.available()) {
-      void cliProviderClient
-        .state()
-        .then(setProv)
-        .catch(() => setProv(null));
-    }
   }, []);
 
   useEffect(() => {
@@ -43,13 +36,6 @@ export const CliToolsBlock: React.FC = () => {
       <p style={{ margin: 0, opacity: 0.8, fontSize: 13 }}>
         {tr('版本与更新（Claude Code / Codex 可更新；Cursor 仅检测）')}
       </p>
-      {prov?.ccSwitchWarning && (
-        <Notice tone="warning" data-testid="cc-switch-warn">
-          {tr(
-            '检测到本机安装了 cc-switch。Nomi 写入 CLI 配置前会自动备份；请避免两边同时改同一文件。',
-          )}
-        </Notice>
-      )}
       <div style={{ display: 'grid', gap: 6 }}>
         {rows.map((r) => (
           <div
@@ -111,6 +97,7 @@ export const CliToolsBlock: React.FC = () => {
           {log}
         </pre>
       )}
+      <CliProviderPanel />
     </div>
   );
 };

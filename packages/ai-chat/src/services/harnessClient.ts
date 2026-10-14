@@ -7,7 +7,6 @@ export interface HarnessState {
   cwd: string;
   cliSessionId: string | null;
   busy: boolean;
-  ccSwitchWarning: boolean;
   toolsDisabled: boolean;
   bins: Record<string, string | null>;
 }
