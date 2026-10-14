@@ -43,3 +43,4 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 ### Other
 
 - Documentation rewritten by feature module (docs/README.md); links in code and settings updated.
+- English strings for coding-agent harness backend switcher and CLI update panel. (`@nomi-ai/ui` patch)
