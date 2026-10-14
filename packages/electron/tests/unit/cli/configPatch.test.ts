@@ -53,6 +53,19 @@ describe('configPatch', () => {
     expect(out).toContain('other = 1');
   });
 
+  it('re-patching codex toml keeps a single provider table', () => {
+    const patch = { model: 'm1', model_provider: 'nomi', base_url: 'http://a/v1' };
+    const once = patchCodexToml('model = "x"\n[profiles.p]\nmodel = "y"\n', patch);
+    const twice = patchCodexToml(once, { ...patch, model: 'm2', base_url: 'http://b/v1' });
+    expect(twice.match(/^\[model_providers\.nomi\]$/gm)).toHaveLength(1);
+    expect(twice.match(/^base_url = /gm)).toHaveLength(1);
+    expect(twice).toContain('base_url = "http://b/v1"');
+    expect(twice).toContain('name = "nomi"');
+    expect(twice).toContain('model = "m2"');
+    // 其它表保持原样
+    expect(twice).toContain('[profiles.p]\nmodel = "y"');
+  });
+
   it('patches auth.json', () => {
     const out = JSON.parse(patchCodexAuth(null, 'sk-test'));
     expect(out.OPENAI_API_KEY).toBe('sk-test');

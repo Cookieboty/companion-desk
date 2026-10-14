@@ -77,6 +77,8 @@ export function patchCodexToml(raw: string | null, patch: CodexPatch): string {
   const lines = (raw ?? '').split(/\r?\n/);
   const out: string[] = [];
   let inProvider = false;
+  /** 只改写首个表头之前的顶层键；[profiles.*] 等表里的同名键保持原样 */
+  let inTable = false;
   let sawModel = false;
   let sawProviderKey = false;
   const provider = patch.providerName ?? 'nomi';
@@ -86,15 +88,17 @@ export function patchCodexToml(raw: string | null, patch: CodexPatch): string {
     const t = line.trim();
     if (t.startsWith('[') && t.endsWith(']')) {
       inProvider = t === providerHeader;
-      out.push(line);
+      inTable = true;
+      // 本段在文件末尾整体重写；保留原标题会导致重复的 TOML 表（Codex 拒绝解析）
+      if (!inProvider) out.push(line);
       continue;
     }
-    if (!inProvider && /^model\s*=/.test(t) && patch.model) {
+    if (!inTable && /^model\s*=/.test(t) && patch.model) {
       out.push(`model = "${escapeToml(patch.model)}"`);
       sawModel = true;
       continue;
     }
-    if (!inProvider && /^model_provider\s*=/.test(t) && patch.model_provider) {
+    if (!inTable && /^model_provider\s*=/.test(t) && patch.model_provider) {
       out.push(`model_provider = "${escapeToml(patch.model_provider)}"`);
       sawProviderKey = true;
       continue;
@@ -114,6 +118,7 @@ export function patchCodexToml(raw: string | null, patch: CodexPatch): string {
   while (out.length && out[out.length - 1] === '') out.pop();
   out.push('');
   out.push(providerHeader);
+  out.push(`name = "${escapeToml(provider)}"`);
   if (patch.base_url) out.push(`base_url = "${escapeToml(patch.base_url)}"`);
   out.push(`wire_api = "${patch.wire_api ?? 'responses'}"`);
   out.push('');
