@@ -393,7 +393,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 <RoutesTable state={state} onError={onError} />
                 <p className="cd-muted">
                   {t(
-                    '优先级：COMPANION_PROVIDER 环境变量 &gt; 任务路由 &gt; 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
+                    '优先级：COMPANION_PROVIDER 环境变量 → 任务路由 → 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
                   )}
                 </p>
               </section>
