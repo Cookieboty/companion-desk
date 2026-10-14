@@ -11,6 +11,7 @@ import { BrowserWindow, Notification, ipcMain } from 'electron';
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t as tr } from '../i18n';
+import { notifyIsland } from '../island/IslandService';
 
 import {
   type AgentKind,
@@ -579,6 +580,7 @@ export class AgentProgressService {
     const text = REMIND[next.status](who, next.summary);
     if (!text) return;
     this.d.desktop.say(text.slice(0, 140));
+    notifyIsland({ kind: 'agent', title: who, body: next.title });
     broadcastMascotCommand({
       type: 'motion',
       name: next.status === 'failed' || next.status === 'stalled' ? 'think' : 'wave',
