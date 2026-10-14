@@ -137,9 +137,9 @@
       ]
     },
     {
-      "pattern": "packages/electron/assets/{icon.png,icon.ico,icon.icns,logo.svg,tray.png,tray@2x.png,trayTemplate.png,trayTemplate@2x.png,icons/**}",
+      "pattern": "packages/electron/assets/{icon.png,icon.ico,icon.icns,logo.svg,logo-app.svg,tray.png,tray@2x.png,trayTemplate.png,trayTemplate@2x.png,icons/**}",
       "license": "MIT",
-      "author": "Nomi-ai project owner (Cookieboty) — owner-provided, AI-generated, licensed by project owner; vector recreation in docs/brand/*.svg",
+      "author": "Nomi-ai project owner (Cookieboty) — owner-provided, AI-generated, licensed by project owner; vector recreation in docs/brand/*.svg; app/tray icons redrawn as original vectors by scripts/brand/build-app-icon.py (docs/brand/icon-variants)",
       "source": "docs/BRAND.md (Nomi brand board)"
     },
     {
