@@ -1,6 +1,6 @@
 /**
- * 本地路由：CLI 原生协议 ↔ 上游协议 的请求体转换（非流式 JSON；流式由路由层包装）。
- * 覆盖 Claude / Codex 常用格式对；不做完整 SSE 事件复刻。
+ * 本地路由：CLI 原生协议 ↔ 上游协议 的请求体与非流式响应转换。
+ * 流式（SSE）转换见 ./stream。
  */
 
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };

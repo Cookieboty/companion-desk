@@ -17,6 +17,11 @@ import {
 } from '../formats';
 
 import {
+  createStreamConverter,
+  type DownstreamStreamFormat,
+  type UpstreamStreamFormat,
+} from './stream';
+import {
   chatCompletionsResponseToMessages,
   chatCompletionsResponseToResponses,
   geminiResponseToMessages,
@@ -30,6 +35,9 @@ import {
   responsesToMessages,
   chatCompletionsToMessages,
 } from './transforms';
+
+/** 流式转换方向；null 表示上游与下游同协议，原样透传字节 */
+export type StreamPlan = { from: UpstreamStreamFormat; to: DownstreamStreamFormat } | null;
 
 export interface RouteSettings {
   /** 总开关 */
@@ -232,10 +240,18 @@ export class CliRouteService {
         // native passthrough still ok via route
       }
       const body = await readJson(req);
-      const { upstreamUrl, requestBody, responseTransform } = this.plan(kind, up, url, body);
+      const wantsStream =
+        Boolean(body) && typeof body === 'object' && (body as { stream?: unknown }).stream === true;
+      const { upstreamUrl, requestBody, responseTransform, stream } = this.plan(
+        kind,
+        up,
+        url,
+        body,
+        wantsStream,
+      );
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        Accept: wantsStream ? 'text/event-stream' : 'application/json',
       };
       if (up.apiKey) {
         if (up.apiFormat === 'anthropic_messages' && kind === 'codex') {
@@ -248,11 +264,21 @@ export class CliRouteService {
           headers.Authorization = `Bearer ${up.apiKey}`;
         }
       }
+      const abort = new AbortController();
+      res.on('close', () => {
+        if (!res.writableFinished) abort.abort();
+      });
       const upstreamRes = await fetch(upstreamUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody),
+        signal: abort.signal,
       });
+      const isSse = (upstreamRes.headers.get('content-type') ?? '').includes('text/event-stream');
+      if (wantsStream && upstreamRes.ok && isSse && upstreamRes.body) {
+        await this.pipeStream(upstreamRes.body, res, stream, up.model);
+        return;
+      }
       const text = await upstreamRes.text();
       let parsed: unknown = text;
       try {
@@ -269,7 +295,52 @@ export class CliRouteService {
       sendJson(res, 200, out);
     } catch (e) {
       this.d.logger.warn('cli route error', e);
+      if (res.headersSent) {
+        res.end();
+        return;
+      }
       sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  /** 上游 SSE → 下游 SSE：按需逐片做协议转换，并在上游中断时补发错误事件 */
+  private async pipeStream(
+    body: ReadableStream<Uint8Array>,
+    res: http.ServerResponse,
+    stream: StreamPlan,
+    model: string,
+  ): Promise<void> {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    const conv = stream ? createStreamConverter(stream.from, stream.to, { model }) : null;
+    const decoder = new TextDecoder();
+    const reader = body.getReader();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (res.destroyed) return;
+        if (!conv) {
+          res.write(Buffer.from(value));
+          continue;
+        }
+        const outChunk = conv.push(decoder.decode(value, { stream: true }));
+        if (outChunk) res.write(outChunk);
+      }
+      if (conv) {
+        const tail = conv.push(decoder.decode()) + conv.end();
+        if (tail) res.write(tail);
+      }
+    } catch (e) {
+      if (res.destroyed) return;
+      this.d.logger.warn('cli route stream interrupted', e);
+      if (conv) res.write(conv.fail(e instanceof Error ? e.message : String(e)));
+    } finally {
+      reader.releaseLock();
+      if (!res.destroyed) res.end();
     }
   }
 
@@ -278,12 +349,19 @@ export class CliRouteService {
     up: RouteUpstream,
     reqUrl: string,
     body: unknown,
+    wantsStream = false,
   ): {
     upstreamUrl: string;
     requestBody: unknown;
     responseTransform: (u: unknown) => unknown;
+    stream: StreamPlan;
   } {
     const base = trimSlash(up.baseUrl);
+    /** Chat Completions 流默认不带 usage，显式请求 */
+    const withChatUsage = (b: unknown): unknown =>
+      wantsStream && b && typeof b === 'object'
+        ? { ...(b as object), stream: true, stream_options: { include_usage: true } }
+        : b;
     if (kind === 'claude') {
       const fmt = up.apiFormat as ClaudeApiFormat;
       if (fmt === 'anthropic_messages') {
@@ -291,13 +369,15 @@ export class CliRouteService {
           upstreamUrl: joinUrl(base.includes('/v1') ? base : `${base}/v1`, '/messages'),
           requestBody: body,
           responseTransform: (u) => u,
+          stream: null,
         };
       }
       if (fmt === 'openai_chat_completions') {
         return {
           upstreamUrl: joinUrl(base, '/chat/completions'),
-          requestBody: messagesToChatCompletions(body, up.model),
+          requestBody: withChatUsage(messagesToChatCompletions(body, up.model)),
           responseTransform: chatCompletionsResponseToMessages,
+          stream: { from: 'chat', to: 'messages' },
         };
       }
       if (fmt === 'openai_responses') {
@@ -305,14 +385,18 @@ export class CliRouteService {
           upstreamUrl: joinUrl(base, '/responses'),
           requestBody: messagesToResponses(body, up.model),
           responseTransform: responsesResponseToMessages,
+          stream: { from: 'responses', to: 'messages' },
         };
       }
       // gemini
       const model = up.model || 'gemini-pro';
       return {
-        upstreamUrl: joinUrl(base, `/models/${encodeURIComponent(model)}:generateContent`),
+        upstreamUrl: wantsStream
+          ? joinUrl(base, `/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`)
+          : joinUrl(base, `/models/${encodeURIComponent(model)}:generateContent`),
         requestBody: messagesToGemini(body, model),
         responseTransform: geminiResponseToMessages,
+        stream: { from: 'gemini', to: 'messages' },
       };
     }
     // codex
@@ -322,6 +406,7 @@ export class CliRouteService {
         upstreamUrl: joinUrl(base, '/responses'),
         requestBody: body,
         responseTransform: (u) => u,
+        stream: null,
       };
     }
     if (fmt === 'openai_chat_completions') {
@@ -329,8 +414,9 @@ export class CliRouteService {
       const isChat = reqUrl.includes('chat/completions');
       return {
         upstreamUrl: joinUrl(base, '/chat/completions'),
-        requestBody: isChat ? body : responsesToChatCompletions(body, up.model),
+        requestBody: isChat ? body : withChatUsage(responsesToChatCompletions(body, up.model)),
         responseTransform: isChat ? (u) => u : chatCompletionsResponseToResponses,
+        stream: isChat ? null : { from: 'chat', to: 'responses' },
       };
     }
     // anthropic_messages
@@ -342,6 +428,9 @@ export class CliRouteService {
       responseTransform: reqUrl.includes('chat/completions')
         ? messagesResponseToChatCompletions
         : messagesResponseToResponses,
+      stream: reqUrl.includes('chat/completions')
+        ? { from: 'messages', to: 'chat' }
+        : { from: 'messages', to: 'responses' },
     };
   }
 
