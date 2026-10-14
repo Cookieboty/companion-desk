@@ -15,6 +15,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 - **i18n:** label tables and provider names translated; English UI e2e; `check:i18n` now also fails on dead keys.
 - **shortcuts:** new chat, focus input, settings and a Cmd/Ctrl+K command palette; every shortcut is listed in Settings with rebinding and conflict hints.
 - **ui:** unified empty / error / loading states with retry, including failed model and voice downloads.
+- chat tabs run coding agents concurrently (Claude Code / Codex / dsh, default limit 3, queueing beyond it), each with its own session and working directory; tabs show status dots, unread badges and running/queued load, support add/close/rename and keyboard shortcuts, and persist across restarts. The coding agent monitor aggregates dsh sessions (detected via the held session lock) and Nomi tabs with endpoint filters; the mascot and the Dynamic Island react per endpoint. dsh tool results are paired with their tool names, and the app warns when dsh needs Node 24 or newer.
 
 ### Fixes
 
