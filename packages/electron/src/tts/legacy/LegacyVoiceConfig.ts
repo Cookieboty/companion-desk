@@ -9,6 +9,10 @@ import * as path from 'path';
 import { type TTSConfig } from '@nomi-ai/types';
 import { app } from 'electron';
 
+import { createMainLogger } from '../../utils/log';
+
+const log = createMainLogger('LegacyTTS');
+
 // 语音配置接口
 export interface VoiceConfig {
   voiceMode: 'fixed' | 'tts' | 'mixed';
@@ -44,7 +48,7 @@ const DEFAULT_CONFIG: MCPServerConfig = {
 
 // 调试细节（文件路径、配置内容）仅在显式开启时输出，避免配置被打进运行日志
 const debugLog = (...args: unknown[]): void => {
-  if (process.env.NOMI_MCP_DEBUG) console.log('[MCP]', ...args);
+  if (process.env.NOMI_MCP_DEBUG) log.info('[MCP]', ...args);
 };
 
 /**

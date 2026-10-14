@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- 库的默认 console sink；宿主可注入自己的 logger */
 /**
  * 运行时日志抽象。生产环境默认走 `console`，可通过 AIRuntimeServiceOptions.logger 覆盖
  * 成 ai-sdk 的 ILogger 或者业务方的 LoggerService。

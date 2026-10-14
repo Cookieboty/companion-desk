@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
 import { t } from '@nomi-ai/ui';
+import { createLogger } from '@nomi-ai/ui';
 import { OrbitControls, useProgress, Html } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import React, { Suspense, useRef, useEffect, useState } from 'react';
@@ -10,6 +11,8 @@ import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type Character3DCanvasProps } from '../../types/character3d';
 
 import { VRMCharacterController } from './VRMCharacterController';
+
+const log = createLogger('VRM');
 
 /**
  * 3D角色渲染画布组件
@@ -155,7 +158,7 @@ export const Character3DCanvas: React.FC<Character3DCanvasProps> = ({
 
         // 如果帧率过低，自动降低质量
         if (fps < 25 && renderQuality !== 'low') {
-          console.log('检测到低帧率，自动降低渲染质量');
+          log.info('检测到低帧率，自动降低渲染质量');
           setRenderQuality(
             renderQuality === 'ultra' ? 'high' : renderQuality === 'high' ? 'medium' : 'low',
           );

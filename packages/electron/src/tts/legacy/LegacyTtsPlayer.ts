@@ -11,8 +11,11 @@ import * as path from 'path';
 
 import { assertPublicHttpUrlResolved, safeLookup } from '../../security/netGuard';
 import { psQuote } from '../../security/shellEscape';
+import { createMainLogger } from '../../utils/log';
 
 import { MCPConfigManager } from './LegacyVoiceConfig';
+
+const log = createMainLogger('LegacyTTS');
 
 export class VoiceService {
   private configManager: MCPConfigManager;
@@ -30,39 +33,39 @@ export class VoiceService {
       this.configManager.loadFromApp();
       const voiceConfig = this.configManager.getVoiceConfig();
 
-      console.log(`MCP: 执行语音播放 - 模式: ${voiceConfig.voiceMode}, 消息: ${message}`);
+      log.info(`MCP: 执行语音播放 - 模式: ${voiceConfig.voiceMode}, 消息: ${message}`);
 
       let success = false;
 
       switch (voiceConfig.voiceMode) {
         case 'fixed':
-          console.log('MCP: 执行fixed模式语音播放');
+          log.info('MCP: 执行fixed模式语音播放');
           success = await this.playFixedVoice(urgency);
           if (!success) {
-            console.log('MCP: 固定语音失败，fallback到TTS');
+            log.info('MCP: 固定语音失败，fallback到TTS');
             await this.playTextToSpeech(message);
             success = true;
           }
           break;
 
         case 'tts':
-          console.log('MCP: 执行TTS模式语音播放，调用语音克隆API');
+          log.info('MCP: 执行TTS模式语音播放，调用语音克隆API');
           await this.playTextToSpeech(message);
           success = true;
           break;
 
         case 'mixed':
         default:
-          console.log('MCP: 执行mixed模式语音播放');
+          log.info('MCP: 执行mixed模式语音播放');
           if (message.length > 20) {
-            console.log('MCP: 消息较长，使用TTS');
+            log.info('MCP: 消息较长，使用TTS');
             await this.playTextToSpeech(message);
             success = true;
           } else {
-            console.log('MCP: 消息较短，尝试固定语音');
+            log.info('MCP: 消息较短，尝试固定语音');
             success = await this.playFixedVoice(urgency);
             if (!success) {
-              console.log('MCP: 固定语音失败，fallback到TTS');
+              log.info('MCP: 固定语音失败，fallback到TTS');
               await this.playTextToSpeech(message);
               success = true;
             }
@@ -104,15 +107,15 @@ export class VoiceService {
       const assetsPath = this.configManager.getAssetsPath();
       const voicePath = this.resolveVoicePath(assetsPath, selectedFile);
 
-      console.log(`MCP: 最终选择的语音文件路径: ${voicePath}`);
+      log.info(`MCP: 最终选择的语音文件路径: ${voicePath}`);
 
       // 检查文件是否存在
       if (!fs.existsSync(voicePath)) {
-        console.log(`MCP: 语音文件不存在: ${voicePath}`);
+        log.info(`MCP: 语音文件不存在: ${voicePath}`);
         return false;
       }
 
-      console.log(`MCP: 播放固定语音: ${selectedFile}`);
+      log.info(`MCP: 播放固定语音: ${selectedFile}`);
 
       // 播放音频文件
       this.playAudioFile(voicePath);
@@ -129,19 +132,19 @@ export class VoiceService {
   async playTextToSpeech(text: string): Promise<void> {
     return new Promise(async (resolve) => {
       try {
-        console.log('MCP: 使用语音克隆API播放:', text);
+        log.info('MCP: 使用语音克隆API播放:', text);
 
         // 限制文本长度，避免API调用失败
         const maxLength = 200;
         const truncatedText = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 
-        console.log('MCP: 处理后的文本长度:', truncatedText.length);
+        log.info('MCP: 处理后的文本长度:', truncatedText.length);
 
         // 获取TTS API配置
         const apiConfig = this.configManager.getTTSApiConfig();
 
         // 调用语音克隆API
-        console.log('MCP: 开始调用语音克隆API...');
+        log.info('MCP: 开始调用语音克隆API...');
 
         const postData = JSON.stringify({
           audio_url: apiConfig.audioUrl,
@@ -161,11 +164,11 @@ export class VoiceService {
           timeout: 30000,
         };
 
-        console.log('MCP: 请求参数:', options);
-        console.log('MCP: 请求数据:', postData);
+        log.info('MCP: 请求参数:', options);
+        log.info('MCP: 请求数据:', postData);
 
         const req = https.request(options, (res) => {
-          console.log('MCP: API响应状态码:', res.statusCode);
+          log.info('MCP: API响应状态码:', res.statusCode);
 
           let data = '';
           res.on('data', (chunk) => {
@@ -174,7 +177,7 @@ export class VoiceService {
 
           res.on('end', async () => {
             try {
-              console.log('MCP: API原始响应:', data);
+              log.info('MCP: API原始响应:', data);
               const result = JSON.parse(data);
 
               if (result.code !== 0) {
@@ -184,11 +187,11 @@ export class VoiceService {
               const audioUrl = result.data.cos_url;
               // cos_url 来自外部 API 响应（不可信）：拒绝内网 / 非 http(s)，防 SSRF
               const checked = await assertPublicHttpUrlResolved(audioUrl);
-              console.log('MCP: 获取到语音文件URL:', checked.href);
-              console.log('MCP: 语音克隆API调用成功，开始下载音频');
+              log.info('MCP: 获取到语音文件URL:', checked.href);
+              log.info('MCP: 语音克隆API调用成功，开始下载音频');
 
               await this.downloadAndPlayAudio(checked.href);
-              console.log('MCP: 语音克隆播放完成');
+              log.info('MCP: 语音克隆播放完成');
               resolve();
             } catch (parseError) {
               console.error('MCP: 解析API响应失败:', parseError);
@@ -223,7 +226,7 @@ export class VoiceService {
           errorMessage.includes('timeout');
 
         if (isNetworkError) {
-          console.log('MCP: 网络错误，fallback到系统TTS');
+          log.info('MCP: 网络错误，fallback到系统TTS');
           this.fallbackToSystemTTS(text);
           setTimeout(resolve, 2000);
         } else {
@@ -240,7 +243,7 @@ export class VoiceService {
   private async downloadAndPlayAudio(audioUrl: string): Promise<void> {
     return new Promise((resolve) => {
       try {
-        console.log('MCP: 开始下载音频文件:', audioUrl);
+        log.info('MCP: 开始下载音频文件:', audioUrl);
 
         // 创建临时文件
         const tmpDir = require('os').tmpdir();
@@ -254,7 +257,7 @@ export class VoiceService {
         // 下载音频文件
         // lookup=safeLookup：连接时的解析结果再校验一次（防 DNS 重绑定）
         const request = client.get(audioUrl, { lookup: safeLookup }, (response) => {
-          console.log('MCP: 下载响应状态码:', response.statusCode);
+          log.info('MCP: 下载响应状态码:', response.statusCode);
 
           if (response.statusCode !== 200) {
             throw new Error(`下载音频失败: ${response.statusCode}`);
@@ -264,7 +267,7 @@ export class VoiceService {
 
           file.on('finish', () => {
             file.close();
-            console.log('MCP: 音频文件已下载到:', tempFilePath);
+            log.info('MCP: 音频文件已下载到:', tempFilePath);
 
             // 播放音频文件
             this.playDownloadedAudio(tempFilePath, resolve);
@@ -297,7 +300,7 @@ export class VoiceService {
    * 播放下载的音频文件
    */
   private playDownloadedAudio(tempFilePath: string, callback: () => void): void {
-    console.log('MCP: 开始播放音频文件...');
+    log.info('MCP: 开始播放音频文件...');
 
     let audioProcess: ChildProcess;
     if (process.platform === 'darwin') {
@@ -314,13 +317,13 @@ export class VoiceService {
       });
     }
 
-    console.log('MCP: 音频播放进程已启动，PID:', audioProcess.pid);
+    log.info('MCP: 音频播放进程已启动，PID:', audioProcess.pid);
 
     // 监听播放完成
     audioProcess.on('close', (code) => {
-      console.log(`MCP: 音频播放完成，退出码: ${code}`);
+      log.info(`MCP: 音频播放完成，退出码: ${code}`);
       this.cleanupTempFile(tempFilePath);
-      console.log('MCP: 语音克隆播放完成');
+      log.info('MCP: 语音克隆播放完成');
       callback();
     });
 
@@ -333,7 +336,7 @@ export class VoiceService {
     // 添加超时机制，防止播放卡住
     setTimeout(() => {
       if (!audioProcess.killed) {
-        console.log('MCP: 音频播放超时，强制完成');
+        log.info('MCP: 音频播放超时，强制完成');
         audioProcess.kill();
         this.cleanupTempFile(tempFilePath);
         callback();
@@ -378,7 +381,7 @@ export class VoiceService {
       const voicePath =
         possiblePaths.find((p) => {
           const exists = fs.existsSync(p);
-          console.log(`MCP: 检查语音文件路径: ${p} -> ${exists ? '存在' : '不存在'}`);
+          log.info(`MCP: 检查语音文件路径: ${p} -> ${exists ? '存在' : '不存在'}`);
           return exists;
         }) || possiblePaths[0]; // 如果都不存在，使用第一个作为fallback
 
@@ -415,7 +418,7 @@ export class VoiceService {
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log('MCP: 临时音频文件已清理:', filePath);
+          log.info('MCP: 临时音频文件已清理:', filePath);
         }
       } catch (cleanupError) {
         console.warn('MCP: 清理临时文件失败:', cleanupError);

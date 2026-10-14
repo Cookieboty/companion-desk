@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- 库的默认 console sink；宿主可注入自己的 logger */
 /**
  * 结构化 Logger
  *
@@ -98,8 +99,7 @@ function defaultSink(record: LogRecord): void {
       : record.level === 'warn'
         ? console.warn
         : record.level === 'debug' || record.level === 'trace'
-          ? // eslint-disable-next-line no-console
-            (console.debug ?? console.log)
+          ? (console.debug ?? console.log)
           : console.info;
   try {
     target(JSON.stringify(record));

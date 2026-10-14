@@ -39,5 +39,3 @@ const aiChatAPI = {
 
 // 将API暴露给渲染进程
 contextBridge.exposeInMainWorld('electronAPI', aiChatAPI);
-
-console.log('AI Chat preload script loaded');

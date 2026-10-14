@@ -173,4 +173,13 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  // 集中日志：产品源码只能用 createLogger / createMainLogger（生产环境静默 debug / info），
+  // console.warn / console.error 仍允许（始终输出）。日志实现文件自行 eslint-disable。
+  {
+    files: ['packages/*/src/**/*.{ts,tsx}'],
+    ignores: ['**/*.{test,spec}.{ts,tsx}', '**/tests/**'],
+    rules: {
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+    },
+  },
 );

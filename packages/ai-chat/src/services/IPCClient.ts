@@ -1,5 +1,6 @@
 import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 import { t } from '@nomi-ai/ui';
+import { createLogger } from '@nomi-ai/ui';
 
 import { type ChatMessage, type ChatConfig, type ChatSession } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
@@ -8,6 +9,8 @@ import { type IPCClient, type ElectronAPI } from '../types/ipc';
 import { ConversationStore } from './conversationStore';
 import { buildProviderMessages } from './history';
 import { providerClientAvailable } from './providerClient';
+
+const log = createLogger('IPC');
 
 declare global {
   interface Window {
@@ -338,7 +341,7 @@ export class MockIPCClient implements IPCClient {
   private models: AIModelConfig[] = [...DEFAULT_MODELS];
 
   async sendMessage(message: string, modelId?: string, history?: ChatMessage[]): Promise<string> {
-    console.log(
+    log.info(
       '[Mock] Send message:',
       message,
       'to model:',
@@ -412,7 +415,7 @@ export class MockIPCClient implements IPCClient {
   }
 
   async testModelConnection(modelId: string): Promise<boolean> {
-    console.log('[Mock] Test model connection:', modelId);
+    log.info('[Mock] Test model connection:', modelId);
     return true;
   }
 }

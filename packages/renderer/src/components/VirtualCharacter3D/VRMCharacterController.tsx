@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
 import { t } from '@nomi-ai/ui';
+import { perfMark } from '@nomi-ai/ui';
 import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useState } from 'react';
@@ -84,13 +85,13 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
             if (cancelled || backendRef.current !== backend) return;
             backend.attachMotions(new MotionController(vrm, lib, { allow: modelConfig?.motions }));
             mascotRegistry.refresh();
-            console.info('[perf] mascot-motions-loaded');
+            perfMark('mascot-motions-loaded');
           })
           .catch((err) => console.warn('VRMCharacterController: 动作库加载失败', err));
         setIsLoaded(true);
         onModelLoaded?.(vrm);
-        console.info('[perf] mascot-model-loaded');
-        console.info('[perf] vrm-model-loaded');
+        perfMark('mascot-model-loaded');
+        perfMark('vrm-model-loaded');
       })
       .catch((err) => {
         if (cancelled) return;

@@ -14,7 +14,10 @@ import {
   LEGACY_PRODUCT_NAMES,
   migrateLegacyUserData,
 } from './utils/legacyUserData';
+import { createMainLogger } from './utils/log';
 import { perfMark } from './utils/perfMarks';
+
+const log = createMainLogger('main');
 
 perfMark('main-entry');
 
@@ -76,7 +79,7 @@ if (isPrimaryInstance) {
           app.isPackaged ? LEGACY_PRODUCT_NAMES : LEGACY_DEV_NAMES,
         )
       : { migrated: false as const, from: '', to: userData };
-    if (res.migrated) console.log(`📦 已迁移旧版用户数据: ${res.from} → ${res.to}`);
+    if (res.migrated) log.info(`📦 已迁移旧版用户数据: ${res.from} → ${res.to}`);
   } catch (error) {
     console.warn('旧版用户数据迁移失败:', error);
   }
@@ -100,7 +103,7 @@ async function main(): Promise<void> {
     await application.initialize();
     await application.start();
 
-    console.log('✅ Nomi 启动成功');
+    log.info('✅ Nomi 启动成功');
   } catch (error) {
     console.error('❌ 应用启动失败:', error);
     process.exit(1);

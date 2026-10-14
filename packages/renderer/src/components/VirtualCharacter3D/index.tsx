@@ -1,4 +1,5 @@
 import { t } from '@nomi-ai/ui';
+import { createLogger } from '@nomi-ai/ui';
 import React, { useState, useEffect } from 'react';
 
 import { DEFAULT_VRM_MODEL_PATH } from '../../config/vrm';
@@ -6,6 +7,8 @@ import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type VirtualCharacter3DProps } from '../../types/character3d';
 
 import { Character3DCanvas } from './Character3DCanvas';
+
+const log = createLogger('VRM');
 
 /**
  * 3D虚拟角色主组件
@@ -32,13 +35,13 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   useEffect(() => {
     const initialize = async () => {
       try {
-        console.log('VirtualCharacter3D: 开始初始化...');
+        log.info('VirtualCharacter3D: 开始初始化...');
 
         // 设置当前模型
         setCurrentModel(modelPath);
 
         setIsInitialized(true);
-        console.log('VirtualCharacter3D: 初始化完成');
+        log.info('VirtualCharacter3D: 初始化完成');
 
         // 触发就绪回调
         onReady?.();
@@ -56,7 +59,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   // 处理模型加载成功
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
   const handleModelLoaded = (vrm: any) => {
-    console.log('VirtualCharacter3D: 模型加载成功', vrm);
+    log.info('VirtualCharacter3D: 模型加载成功', vrm);
 
     // 触发模型加载事件
     window.dispatchEvent(
