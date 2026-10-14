@@ -51,7 +51,12 @@ test.describe('Shortcuts and command palette', () => {
       timeout: 30_000,
     });
     const shot = async (p: Page, name: string) => {
-      if (shotDir) await p.screenshot({ path: join(shotDir, `${name}.png`) });
+      if (!shotDir) return;
+      // 等入场动画结束再截图（否则弹层半透明）
+      await p.evaluate(() =>
+        Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))),
+      );
+      await p.screenshot({ path: join(shotDir, `${name}.png`) });
     };
     const main = await app.firstWindow({ timeout: 20_000 });
     await main.waitForFunction(() => 'electronAPI' in window, undefined, { timeout: 20_000 });

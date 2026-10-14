@@ -12,6 +12,24 @@ Nomi 是一个在本机运行的桌面 AI 助手：基于 Electron + React，AI 
 可以对接 DeepSeek / OpenAI 等云端模型，也可以完全离线地使用本地 Ollama / llama.cpp。
 桌面伙伴是形象层：默认是 2D 的品牌角色「Nomi·诺米」，也可切换开源 VRM 3D 角色、表情、语音与口型同步，但不是产品核心。
 
+## 📸 截图 · Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="32%"><img src="docs/screenshots/mascot.png" alt="桌面上的 Nomi 与对话气泡 · Nomi on the desktop with a reply bubble"><br><sub>桌面伙伴 · Desktop companion</sub></td>
+    <td align="center"><img src="docs/screenshots/chat.png" alt="对话窗口 · Chat window"><br><sub>对话窗口 · Chat</sub></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="docs/screenshots/command-palette.png" alt="Ctrl/Cmd+K 命令面板 · Command palette" width="49%"> <img src="docs/screenshots/settings-providers.png" alt="供应商设置 · Provider settings" width="49%"><br><sub>命令面板（Ctrl/⌘+K）与供应商设置 · Command palette and provider settings</sub></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="docs/screenshots/settings-en.png" alt="English settings" width="66%"><br><sub>English UI（设置 → 通用 → 语言）</sub></td>
+  </tr>
+</table>
+
+截图均来自真实应用（headed Playwright 截取，见 `e2e-headed/tests/UI.surfaces`、`KEYS.*`、`A11Y.*`、`I18N.*`、`E15.*` 的 `*_SHOTS*` 环境变量）。
+Screenshots are captured from the running app by the headed e2e suite.
+
 ## 🚀 项目特点
 
 - 🤖 **本地 AI 助手** - 独立的 AI 对话窗口，流式输出，支持多 provider（DeepSeek / OpenAI / Ollama / llama.cpp / Qwen / 豆包）
