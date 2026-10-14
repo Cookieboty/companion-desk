@@ -1,6 +1,6 @@
 # Soft system voice (TTS)
 
-Nomi uses the **OS / Edge Web Speech** stack for mascot reaction lines and keyword voice tips — not Live2D audio packs.
+Nomi uses the **OS / Edge Web Speech** stack for mascot reaction lines and keyword voice tips.
 
 ## Defaults (soft)
 

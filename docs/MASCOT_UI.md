@@ -19,7 +19,7 @@
 - `object-src`、`frame-src`、`base-uri`、`form-action` 均为 `'none'`
 - `connect-src` 只允许本地（`'self'`、`cdmodel:`、`blob:`、`data:`）
 
-开发模式（Vite HMR 需要内联脚本）不注入。工具栏里会加载远程脚本的「小行星」与访问外网的「一言」已移除。
+开发模式（Vite HMR 需要内联脚本）不注入。
 
 测试：`tests/security/*.test.ts(x)`（单元）、`e2e-headed/tests/E11.bubble-security-toolbar.headed.spec.ts`
 （真实窗口：CSP 生效、内联脚本被拦截、`mascot:say` 与 AI 摘要中的 HTML 按文本显示）。

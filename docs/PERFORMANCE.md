@@ -10,13 +10,13 @@ xvfb-run -a node scripts/measure-startup.mjs 9 --json /tmp/startup.json   # Linu
 脚本会用全新的 `--user-data-dir` 启动未打包的生产构建（`packages/electron/dist`），设置 `IG_PERF_LOG=1`，
 并读取主进程的 `[perf]` 打点（时间从启动 `electron` 进程开始算，取中位数）：
 
-| 打点                                  | 含义                                                                                   |
-| ------------------------------------- | -------------------------------------------------------------------------------------- |
-| `main-entry`                          | 主进程模块加载完毕                                                                     |
-| `app-ready`                           | `app.whenReady()`                                                                      |
-| `ai-runtime-ready`                    | AI runtime（AI SDK providers、MCP、IPC 通道）启动完成                                  |
-| `main-did-finish-load` / `main-shown` | 主窗口加载完成 / 触发 `ready-to-show` 并显示                                           |
-| `main:mascot-model-loaded`            | 渲染进程首个看板娘模型加载完成（由 renderer 的 console 转发；当时为 Live2D，现为 VRM） |
+| 打点                                  | 含义                                                          |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `main-entry`                          | 主进程模块加载完毕                                            |
+| `app-ready`                           | `app.whenReady()`                                             |
+| `ai-runtime-ready`                    | AI runtime（AI SDK providers、MCP、IPC 通道）启动完成         |
+| `main-did-finish-load` / `main-shown` | 主窗口加载完成 / 触发 `ready-to-show` 并显示                  |
+| `main:mascot-model-loaded`            | 渲染进程首个看板娘模型加载完成（由 renderer 的 console 转发） |
 
 `--enable-unsafe-swiftshader` 让 xvfb 下也有软件 WebGL（否则 WebGL 看板娘永远不会加载）。
 
@@ -40,7 +40,7 @@ xvfb-run -a node scripts/measure-startup.mjs 9 --json /tmp/startup.json   # Linu
 ### 改了什么
 
 - **打包**：生产环境的 renderer / ai-chat 本来就从 `process.resourcesPath` 加载（`extraResources`），
-  但 `files: dist/**/*` 又把 `copy-renderer` 生成的同一份 224 MB 副本（主要是 Live2D 模型）打进了 asar。现在把它排除了，
+  但 `files: dist/**/*` 又把 `copy-renderer` 生成的同一份 224 MB 副本（主要是模型资源）打进了 asar。现在把它排除了，
   同时排除 `*.map`、`*.ts`/`*.d.ts`、node_modules 里的 markdown/测试/文档/示例目录，以及没有打包的 preload 源文件。
   保留了 LICENSE 文件；**没有删掉任何对用户可见的模型**。
 - **renderer**：3D 模式（three、@react-three、VRM）改用 `React.lazy` 按需加载（自定义图片模式已于 Phase 3 移除）；
@@ -55,5 +55,3 @@ xvfb-run -a node scripts/measure-startup.mjs 9 --json /tmp/startup.json   # Linu
   中位数没有可测量的变化（`require` 是同步的，`ready` 仍然要等它执行完），所以撤回了。要真正把这部分并行起来，
   就得先创建窗口、后注册 IPC 处理函数，这需要渲染进程能容忍 `ai:*` 处理函数还没注册好的情况，留作后续工作。
 - 窗口本来就是在 `ready-to-show` 时才显示；preload 包很小（8.6 KB / 2.7 KB）；启动阶段的同步 fs 调用只有 userData 迁移检查。
-- **Live2D 模型**（`packages/renderer/public/assets/models`，约 222 MB，60 个目录）是安装包里最大的部分，
-  但它们都能在「切换模型」里被用户看到，所以一个都没删。如果之后要缩小体积，可以考虑按需下载模型包。
