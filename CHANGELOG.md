@@ -10,6 +10,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 - **a11y:** dialogs trap focus, Esc closes only the top-most dialog and focus returns to the opener; reduced motion calms the VRM rig and the island.
 - **brand:** every user-visible 看板娘 / Live2D / Companion Desk string is now Nomi.
 - **cli-providers:** separate Claude/Codex provider stores, upstream API formats, and local routing UI strings. (`@nomi-ai/ui` patch, `@nomi-ai/ai-runtime` patch)
+- **electron:** the local CLI route now converts streaming (SSE) responses between Anthropic Messages, OpenAI Chat Completions, OpenAI Responses and Gemini, including text deltas, tool calls, stop reasons, usage and mid-stream errors.
 - **i18n:** label tables and provider names translated; English UI e2e; `check:i18n` now also fails on dead keys.
 - **shortcuts:** new chat, focus input, settings and a Cmd/Ctrl+K command palette; every shortcut is listed in Settings with rebinding and conflict hints.
 - **ui:** unified empty / error / loading states with retry, including failed model and voice downloads.
