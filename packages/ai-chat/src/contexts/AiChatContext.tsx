@@ -12,6 +12,7 @@ import React, {
 
 import { desktopClient } from '../services/desktopClient';
 import { extClient } from '../services/extClient';
+import { harnessClient } from '../services/harnessClient';
 import { createIPCClient } from '../services/IPCClient';
 import { kbClient } from '../services/kbClient';
 import { ingestConversation, memoryContext } from '../services/memClient';
@@ -248,6 +249,25 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
       schedClient.activity();
 
+      // CLI 后端：全部转发，禁用 Nomi 工具 / 记忆注入
+      if (harnessClient.available()) {
+        const hs = await harnessClient.state();
+        if (hs.backend !== 'nomi') {
+          const r = await harnessClient.send(content);
+          const aiMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: r.text,
+            timestamp: Date.now(),
+            modelId: hs.backend === 'claude' ? 'claude-code' : 'codex',
+          };
+          dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+          await state.ipcClient.saveMessage(userMessage);
+          await state.ipcClient.saveMessage(aiMessage);
+          return;
+        }
+      }
+
       const mem = await memoryContext(content);
       const response = await state.ipcClient.sendMessage(
         content,
@@ -351,6 +371,25 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       const history = state.messages;
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
       schedClient.activity();
+
+      if (harnessClient.available()) {
+        const hs = await harnessClient.state();
+        if (hs.backend !== 'nomi') {
+          if (images?.length) throw new Error(t('编程助手后端暂不支持图片，请切回 Nomi'));
+          const r = await harnessClient.send(content);
+          const done: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: r.text,
+            timestamp: Date.now(),
+            modelId: hs.backend === 'claude' ? 'claude-code' : 'codex',
+          };
+          dispatch({ type: 'ADD_MESSAGE', payload: done });
+          await state.ipcClient.saveMessage(userMessage);
+          await state.ipcClient.saveMessage(done);
+          return;
+        }
+      }
 
       const [mem, skills] = await Promise.all([memoryContext(content), extClient.context()]);
       const aiMessageId = (Date.now() + 1).toString();

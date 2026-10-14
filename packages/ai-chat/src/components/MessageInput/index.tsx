@@ -18,6 +18,7 @@ import {
   type ImageAttachment,
 } from '../../services/screenClient';
 import { getBindings, matchShortcut } from '../../services/shortcuts';
+import { BackendSwitcher } from '../BackendSwitcher';
 import { ErrorHint } from '../ErrorHint';
 import { ProviderSwitcher } from '../ProviderSwitcher';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
@@ -643,10 +644,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           )}
           <div className={styles.modelStatus}>
             {provOk ? (
-              <ProviderSwitcher
-                className={styles.currentModel}
-                onManage={() => onProvidersClick?.()}
-              />
+              <>
+                <BackendSwitcher />
+                <ProviderSwitcher
+                  className={styles.currentModel}
+                  onManage={() => onProvidersClick?.()}
+                />
+              </>
             ) : state.models.filter((m) => m.enabled).length === 0 ? (
               <span className={styles.noModel}>{tr('没有可用的AI模型')}</span>
             ) : (
