@@ -259,7 +259,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
             role: 'assistant',
             content: r.text,
             timestamp: Date.now(),
-            modelId: hs.backend === 'claude' ? 'claude-code' : 'codex',
+            modelId: hs.backend === 'claude' ? 'claude-code' : hs.backend,
           };
           dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
           await state.ipcClient.saveMessage(userMessage);
@@ -382,7 +382,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
             role: 'assistant',
             content: r.text,
             timestamp: Date.now(),
-            modelId: hs.backend === 'claude' ? 'claude-code' : 'codex',
+            modelId: hs.backend === 'claude' ? 'claude-code' : hs.backend,
           };
           dispatch({ type: 'ADD_MESSAGE', payload: done });
           await state.ipcClient.saveMessage(userMessage);

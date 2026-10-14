@@ -1,5 +1,5 @@
 /**
- * 对话后端切换：Nomi（默认）| Claude Code | Codex。
+ * 对话后端切换：Nomi（默认）| Claude Code | Codex | dsh。
  * CLI 模式下禁用 Nomi 工具（由 harness + send 路径保证）。
  */
 import { Select, t } from '@nomi-ai/ui';
@@ -15,6 +15,7 @@ const LABELS: Record<HarnessBackend, () => string> = {
   nomi: () => t('Nomi'),
   claude: () => t('Claude Code'),
   codex: () => t('Codex'),
+  dsh: () => 'dsh',
 };
 
 export const BackendSwitcher: React.FC<{ className?: string }> = ({ className }) => {
@@ -37,7 +38,7 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
       className={className}
       data-testid="backend-switcher"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-      title={t('切换对话后端（Claude / Codex 为 UI 转发）')}
+      title={t('切换对话后端（Claude / Codex / dsh 为 UI 转发）')}
     >
       <Select
         size="sm"
@@ -63,9 +64,13 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
                 ? state.bins.claude
                   ? t('转发到本机 Claude Code')
                   : t('未检测到 claude')
-                : state.bins.codex
-                  ? t('转发到本机 Codex')
-                  : t('未检测到 codex'),
+                : k === 'codex'
+                  ? state.bins.codex
+                    ? t('转发到本机 Codex')
+                    : t('未检测到 codex')
+                  : state.bins.dsh
+                    ? t('转发到本机 dsh')
+                    : t('未检测到 dsh'),
           disabled: k !== 'nomi' && !state.bins[k],
         }))}
       />

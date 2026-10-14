@@ -1450,7 +1450,6 @@
   "重试中…": "Retrying…",
   "重试": "Retry",
   "Nomi 工具已关闭": "Nomi tools disabled",
-  "切换对话后端（Claude / Codex 为 UI 转发）": "Switch chat backend (Claude / Codex are UI forwarders)",
   "对话后端": "Chat backend",
   "将执行：{0}\n确定更新？": "Will run: {0}\nConfirm update?",
   "已装 {0}": "Installed {0}",
@@ -1508,5 +1507,8 @@
   "需路由": "Needs routing",
   "非原生上游格式时，CLI 仍发原生协议；由本机路由转换后再转发。": "For non-native upstream formats the CLI still speaks its native protocol; the local route converts and forwards.",
   "高级设置 · 本地路由": "Advanced · Local routing",
-  "（无文本输出）": "(no text output)"
+  "（无文本输出）": "(no text output)",
+  "切换对话后端（Claude / Codex / dsh 为 UI 转发）": "Switch chat backend (Claude / Codex / dsh are forwarded)",
+  "转发到本机 dsh": "Forward to local dsh",
+  "未检测到 dsh": "dsh not found"
 }
