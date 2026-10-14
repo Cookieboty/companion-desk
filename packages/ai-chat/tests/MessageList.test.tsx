@@ -30,4 +30,20 @@ describe('MessageList', () => {
     expect(rows[0]?.getAttribute('aria-setsize')).toBe('200');
     expect(container.textContent).toMatch(/message \d+/);
   });
+
+  it('never renders an empty assistant placeholder bubble (stream start / empty finish)', () => {
+    const msgs: ChatMessage[] = [
+      { id: 'u', role: 'user', content: '你好', timestamp: 0 },
+      { id: 'a', role: 'assistant', content: '', timestamp: 0 },
+    ];
+    const { container, rerender } = render(<MessageList messages={msgs} isLoading />);
+    expect(container.textContent).toContain('你好');
+    // 只有用户这一条气泡 + 「正在思考」指示
+    expect(container.textContent).not.toContain('AI助手');
+    rerender(<MessageList messages={[msgs[0], { ...msgs[1], content: '   ' }]} />);
+    expect(container.textContent).not.toContain('AI助手');
+    rerender(<MessageList messages={[msgs[0], { ...msgs[1], content: '在的' }]} />);
+    expect(container.textContent).toContain('在的');
+    expect(container.textContent).toContain('AI助手');
+  });
 });

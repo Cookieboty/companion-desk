@@ -122,3 +122,8 @@
 .measure .scroll {
   max-height: none;
 }
+
+/* 没有文本时绝不画出空气泡（淡出期间文本由 bubbleHold 保留） */
+.messageBubble[data-empty] {
+  visibility: hidden;
+}
