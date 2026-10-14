@@ -1,4 +1,9 @@
-import { parseClaudeLine, parseCodexLine, parseDshLine } from '../../../src/cli/streamParse';
+import {
+  createDshParser,
+  parseClaudeLine,
+  parseCodexLine,
+  parseDshLine,
+} from '../../../src/cli/streamParse';
 
 describe('streamParse', () => {
   it('parses claude text deltas and result', () => {
@@ -59,5 +64,25 @@ describe('parseDshLine', () => {
     expect(p({ type: 'status', phase: 'turn_end', reason: { kind: 'completed' } })).toEqual([]);
     expect(p({ type: 'thinking', text: 'hmm' })).toEqual([]);
     expect(parseDshLine('not json')).toEqual([]);
+  });
+});
+
+describe('createDshParser', () => {
+  it('pairs tool_result with the tool_call name', () => {
+    const p = createDshParser();
+    const j = (o: unknown) => p(JSON.stringify(o));
+    j({ type: 'tool_call', callId: 'a', tool: 'bash' });
+    j({ type: 'tool_call', callId: 'b', tool: 'edit' });
+    expect(j({ type: 'tool_result', callId: 'b', status: 'completed' })[0]).toMatchObject({
+      name: 'edit',
+      status: 'done',
+    });
+    expect(j({ type: 'tool_result', callId: 'a', status: 'error' })[0]).toMatchObject({
+      name: 'bash',
+      status: 'error',
+    });
+    expect(j({ type: 'tool_result', callId: 'zz', status: 'completed' })[0]).toMatchObject({
+      name: 'tool',
+    });
   });
 });

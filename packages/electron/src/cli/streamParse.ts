@@ -147,3 +147,22 @@ export function parseDshLine(line: string): HarnessEvent[] {
       return [];
   }
 }
+
+/**
+ * 有状态的 dsh 解析器：tool_result 只带 callId，按先前的 tool_call 补回工具名。
+ * 每次运行新建一个。
+ */
+export function createDshParser(): (line: string) => HarnessEvent[] {
+  const names = new Map<string, string>();
+  return (line) =>
+    parseDshLine(line).map((ev) => {
+      if (ev.type !== 'tool' || !ev.detail) return ev;
+      if (ev.status === 'start') {
+        names.set(ev.detail, ev.name);
+        return ev;
+      }
+      const name = names.get(ev.detail);
+      if (name) names.delete(ev.detail);
+      return name ? { ...ev, name } : ev;
+    });
+}

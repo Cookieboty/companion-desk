@@ -171,7 +171,7 @@ describe('CliHarnessService session handling', () => {
       expect(r1.events).toEqual(
         expect.arrayContaining([
           { type: 'tool', name: 'read_file', status: 'start', detail: 'call_1' },
-          { type: 'tool', name: 'tool', status: 'done', detail: 'call_1' },
+          { type: 'tool', name: 'read_file', status: 'done', detail: 'call_1' },
         ]),
       );
       expect(h.state().cliSessionId).toBe('session-mock-dsh-1');

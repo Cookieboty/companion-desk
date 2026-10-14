@@ -12,7 +12,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { t } from '../i18n';
 
 import { resolveCliBin } from './detect';
-import { parseClaudeLine, parseCodexLine, parseDshLine } from './streamParse';
+import { createDshParser, parseClaudeLine, parseCodexLine } from './streamParse';
 import type { HarnessBackend, HarnessEvent, HarnessSendResult, HarnessSessionState } from './types';
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
@@ -238,7 +238,7 @@ export class CliHarnessService {
       cmd: useNode ? process.execPath : bin,
       argv: useNode ? [bin, ...argv] : argv,
       cwd: this.cwd,
-      parseLine: parseDshLine,
+      parseLine: createDshParser(),
       kind: 'dsh',
       env: extraEnv,
     });
