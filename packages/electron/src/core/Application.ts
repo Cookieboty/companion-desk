@@ -39,6 +39,7 @@ import { getVoiceService } from '../voice/VoiceService';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
 import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
+import { applyTitleBarTheme } from './titleBar';
 import { TrayManager } from './TrayManager';
 import { WindowManager } from './WindowManager';
 
@@ -256,7 +257,14 @@ export class Application implements IApplication {
       localLlm.registerIpc();
 
       // 界面主题（设置 → 通用 → 主题），对话窗口与看板娘同步
-      new ThemeService(path.join(app.getPath('userData'), 'theme.json')).registerIpc();
+      const themes = new ThemeService(path.join(app.getPath('userData'), 'theme.json'));
+      themes.registerIpc();
+      // 对话窗口一体化标题栏跟随主题（窗口底色 + Windows / Linux 原生按钮配色）
+      this.windowManager.chromeTheme = () => themes.get().resolved;
+      themes.onChange((st) => {
+        const w = this.windowManager.getAiChatWindow();
+        if (w) applyTitleBarTheme(w, st.resolved);
+      });
 
       // 首次启动引导（语言 / 主题 / 角色与声音 / 称呼与语气 / 供应商 / 隐私），显示在对话窗口里
       const onboarding = new OnboardingService({

@@ -21,6 +21,7 @@ import { SchedulePanel } from './components/SchedulePanel';
 import { ScreenPanel } from './components/ScreenPanel';
 import { SettingsView, type SettingsSection } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
+import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
 import { desktopClient } from './services/desktopClient';
@@ -174,6 +175,7 @@ const AiChatContent: React.FC = () => {
   if (settings) {
     return (
       <div className="ai-chat-app">
+        <AppTitleBar />
         <SettingsView
           section={settings}
           onSection={setSettings}
@@ -185,6 +187,7 @@ const AiChatContent: React.FC = () => {
 
   return (
     <div className="ai-chat-app">
+      <AppTitleBar />
       {/* 侧边栏 */}
       <Sidebar
         collapsed={sidebarCollapsed}
