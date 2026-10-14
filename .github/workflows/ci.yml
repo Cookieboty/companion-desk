@@ -245,6 +245,9 @@ jobs:
       - name: Verify changeset status against baseBranch
         run: pnpm run changeset:status
 
+      - name: Root CHANGELOG matches changesets
+        run: pnpm run changelog:check
+
   # ---------------------------------------------------------------
   # Electron 打包：三平台（AppImage / dmg / NSIS）每次都打，保证安装包可用；
   # 签名/公证：仅 tag 构建经 scripts/release/signing-env.mjs 门控注入 secret；其它事件不签名。

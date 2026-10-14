@@ -34,7 +34,7 @@
     "dev:smoke": "node scripts/dev-smoke.mjs",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=origin/main",
-    "changeset:version": "changeset version",
+    "changeset:version": "node scripts/release/changelog.mjs --release && changeset version",
     "preinstall": "node scripts/check-node.cjs",
     "prepare": "husky",
     "check:licenses": "node scripts/check-licenses.mjs",
@@ -42,7 +42,9 @@
     "package:publish": "turbo run package:publish",
     "package:publish:mac": "turbo run package:publish:mac",
     "package:publish:win": "turbo run package:publish:win",
-    "package:publish:linux": "turbo run package:publish:linux"
+    "package:publish:linux": "turbo run package:publish:linux",
+    "changelog": "node scripts/release/changelog.mjs",
+    "changelog:check": "node scripts/release/changelog.mjs --check"
   },
   "author": "",
   "license": "MIT",
