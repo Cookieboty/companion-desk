@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -7,6 +7,7 @@ import { _electron as electron, test, expect } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * E14 · 首次启动引导 + 中英文切换（真实应用、全新 userData）：
@@ -34,7 +35,7 @@ test.describe('E14 · onboarding + i18n', () => {
       ]);
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
-    rmSync(userData, { recursive: true, force: true });
+    safeRm(userData);
   });
 
   test('first launch shows a skippable guide; language switches live', async () => {

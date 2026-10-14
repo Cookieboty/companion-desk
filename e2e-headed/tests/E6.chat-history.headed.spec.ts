@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -9,6 +9,7 @@ import { _electron as electron, test, expect } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * E6 · 真实应用 · AI 对话多轮上下文
@@ -85,7 +86,7 @@ test.describe('E6 · real app · AI chat history', () => {
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
     await new Promise((r) => server?.close(r));
-    rmSync(userData, { recursive: true, force: true });
+    safeRm(userData);
   });
 
   test('second request carries prior turns; new conversation starts fresh', async () => {

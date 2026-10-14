@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -6,6 +6,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * 英文界面巡检：CD_LOCALE=en 启动真实应用，逐个打开桌宠工具栏、对话窗口与全部设置分区，
@@ -41,7 +42,7 @@ test.describe('English UI has no untranslated Chinese', () => {
       ]);
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
-    rmSync(userData, { recursive: true, force: true });
+    safeRm(userData);
   });
 
   test('mascot, chat and every settings section render in English', async () => {

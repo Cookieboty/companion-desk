@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -11,6 +11,7 @@ import type { ElectronApplication, Page } from '@playwright/test';
 
 import { makeTinyVrm, solidPng } from '../../packages/electron/tests/fixtures/tinyVrm';
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * E8 · 模型商店 + 本地导入（真实应用，本地 mock 目录服务器）
@@ -59,7 +60,7 @@ test.describe('E8 · model store + local import', () => {
     }
     server?.close();
     server = null;
-    for (const d of [userData, work]) if (d) rmSync(d, { recursive: true, force: true });
+    for (const d of [userData, work]) if (d) safeRm(d);
   });
 
   test('browse → download → use; import user VRM; offline catalog', async () => {

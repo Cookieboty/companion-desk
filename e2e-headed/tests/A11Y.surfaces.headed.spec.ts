@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -6,6 +6,7 @@ import { _electron as electron, expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from '@playwright/test';
 
 import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
 
 /**
  * 无障碍巡检（真实应用）：
@@ -80,7 +81,7 @@ test.describe('A11y: names, focus trap, Esc, reduced motion', () => {
       ]);
       if (proc.exitCode === null) proc.kill('SIGKILL');
     }
-    rmSync(userData, { recursive: true, force: true });
+    safeRm(userData);
   });
 
   test('every control has an accessible name; dialogs trap focus and close on Esc', async () => {
