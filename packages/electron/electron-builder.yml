@@ -100,6 +100,12 @@ win:
         - x64
   icon: assets/icon.ico
 
+# 安装 / 卸载程序与安装向导标题图标同样使用 ink（显式声明，避免回落到默认 Electron 图标）
+nsis:
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  installerHeaderIcon: assets/icon.ico
+
 # ---------------------------------------------------------------
 # Linux · AppImage（P9-9 alpha 首发目标）
 # ---------------------------------------------------------------

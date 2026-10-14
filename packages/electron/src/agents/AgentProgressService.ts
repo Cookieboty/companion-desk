@@ -9,6 +9,7 @@ import path from 'node:path';
 import { BrowserWindow, Notification, ipcMain } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
+import { iconImage } from '../core/appIcon';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t as tr } from '../i18n';
 import { notifyIsland } from '../island/IslandService';
@@ -596,7 +597,7 @@ export class AgentProgressService {
   private notify(title: string, body: string) {
     try {
       if (!Notification.isSupported()) return;
-      new Notification({ title: `🛠 ${title}`, body: body.slice(0, 180) }).show();
+      new Notification({ title: `🛠 ${title}`, body: body.slice(0, 180), icon: iconImage() }).show();
     } catch (e) {
       this.d.logger.warn('agent notify failed', String(e));
     }

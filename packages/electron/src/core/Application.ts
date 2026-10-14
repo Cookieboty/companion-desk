@@ -37,6 +37,7 @@ import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { perfMark } from '../utils/perfMarks';
 import { getVoiceService } from '../voice/VoiceService';
 
+import { initAppIcon } from './appIcon';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
 import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
@@ -124,6 +125,8 @@ export class Application implements IApplication {
 
       // 界面语言（默认跟随系统：zh* → 中文，其余 → English）；须早于托盘 / 通知等主进程文案
       new LocaleService(path.join(app.getPath('userData'), 'locale.json')).registerIpc();
+      // 应用图标变体（窗口 / 任务栏 / Dock / 托盘 / 通知）
+      initAppIcon(path.join(app.getPath('userData'), 'app-icon.json'));
       this.logger.info('Electron应用准备就绪');
 
       // 模型注册表 / 商店 / 用户导入（cdmodel:// 协议 + models:* IPC）

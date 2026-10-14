@@ -20,6 +20,7 @@ import { ProviderPanel } from '../ProviderPanel';
 import { SchedulePanel } from '../SchedulePanel';
 import { ScreenPanel } from '../ScreenPanel';
 
+import { AppIconSettings } from './AppIconSettings';
 import { CalendarSettings } from './CalendarSettings';
 import styles from './index.module.css';
 import { IslandSettings } from './IslandSettings';
@@ -117,6 +118,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return (
           <>
             <LanguageSettings />
+            <AppIconSettings />
             <UpdateSettings />
             <section className={styles.block}>
               <h2 className={styles.h2}>{t('新手引导')}</h2>

@@ -50,6 +50,7 @@
     "@nomi-ai/bundle-ig-base": "workspace:*",
     "@nomi-ai/bundle-ig-electron-caps": "workspace:*",
     "@nomi-ai/bundle-ig-mascot": "workspace:*",
+    "@nomi-ai/types": "workspace:*",
     "ai": "^7.0.136",
     "electron-updater": "^6.6.2",
     "fflate": "^0.8.3",
@@ -59,7 +60,6 @@
     "unpdf": "^1.8.1"
   },
   "devDependencies": {
-    "@nomi-ai/types": "workspace:*",
     "@types/jest": "^30.0.0",
     "cross-env": "^10.1.0",
     "electron": "44.7.0",
