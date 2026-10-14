@@ -7,15 +7,15 @@ still in git history (`git log --diff-filter=D --stat -- <path>`).
 
 ### 2D sprite spike (2026-10)
 
-- Optional **expression-swapped PNG** mascot path (`docs/plans/sprite-2d.md`): Pastel Girl / Michona (CC0). Not Live2D; Inochi2D still deferred.
+- Optional **expression-swapped PNG** mascot path (`docs/archive/plans/sprite-2d.md`): Pastel Girl / Michona (CC0). Not Live2D; Inochi2D still deferred.
 
 - The first versions rendered the mascot with the proprietary **Live2D Cubism 2** runtime and
   Live2D models of unclear provenance. Both were removed for licensing reasons and replaced by
   open-source **three-vrm** with CC0 / openly licensed VRM models (see `docs/MODELS.md`,
   `THIRD_PARTY_NOTICES.md`). AI tool names `live2d_play_motion` / `live2d_set_expression` keep the
   old protocol name for compatibility.
-- `docs/plans/P4-bundle-ig-live2d.md` — plan for the old Live2D bundle; superseded by
-  `packages/bundle-ig-mascot` and `docs/plans/mascot-open-source.md`.
+- `docs/archive/plans/P4-bundle-ig-live2d.md` — plan for the old Live2D bundle; superseded by
+  `packages/bundle-ig-mascot` and `docs/archive/plans/mascot-open-source.md`.
 - `experiments/inochi2d-spike/` — a throw-away spike that evaluated Inochi2D (BSD-2) as a 2D
   alternative. Result: no maintained web runtime, so VRM was chosen. Never built or shipped.
 - `specs/custom-image-mode`, `specs/3d-virtual-character`, `specs/electron-optimization` —

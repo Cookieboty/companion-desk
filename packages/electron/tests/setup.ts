@@ -3,8 +3,6 @@
  * 配置全局测试环境和模拟
  */
 
-import { jest } from '@jest/globals';
-
 // 模拟Electron模块
 jest.mock('electron', () => ({
   app: {

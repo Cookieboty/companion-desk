@@ -1,7 +1,7 @@
 # Changesets
 
 > 本目录由 [@changesets/cli](https://github.com/changesets/changesets) 管理。
-> 计划背景：[P9-8 · SDK 版本化与发布](../docs/plans/P9-polish-observability-release.md#p9-8-sdk-版本化与发布)
+> 计划背景：[P9-8 · SDK 版本化与发布](../docs/archive/plans/P9-polish-observability-release.md#p9-8-sdk-版本化与发布)
 
 ## Fixed group
 

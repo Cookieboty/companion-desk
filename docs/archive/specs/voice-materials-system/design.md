@@ -13,7 +13,7 @@ graph TB
     C -->|播放控制| F[AudioPlayer]
     E -->|扫描加载| G[Voice Assets Directory]
     F -->|播放音频| H[系统音频接口]
-    
+
     D -.->|fallback| I[TTS Engine]
     F -.->|失败时| I
 ```
@@ -38,12 +38,12 @@ class VoiceMaterialsManager {
   private ttsEngine: TTSEngine;
   private projectAnalyzer: ProjectAnalyzer;
   private config: VoiceConfig;
-  
-  async playCompletionVoice(urgency: string, message?: string): Promise<boolean>
-  async playProjectSummary(): Promise<boolean>
-  async switchVoiceMode(mode: 'fixed' | 'tts' | 'mixed'): Promise<void>
-  async reloadVoiceLibrary(): Promise<void>
-  async getAvailableVoices(): Promise<VoiceItem[]>
+
+  async playCompletionVoice(urgency: string, message?: string): Promise<boolean>;
+  async playProjectSummary(): Promise<boolean>;
+  async switchVoiceMode(mode: 'fixed' | 'tts' | 'mixed'): Promise<void>;
+  async reloadVoiceLibrary(): Promise<void>;
+  async getAvailableVoices(): Promise<VoiceItem[]>;
 }
 ```
 
@@ -60,9 +60,9 @@ interface VoiceItem {
 }
 
 class VoiceLibrary {
-  async loadVoices(directory: string): Promise<VoiceItem[]>
-  async validateVoiceFile(filePath: string): Promise<boolean>
-  getCategorizedVoices(category: string): VoiceItem[]
+  async loadVoices(directory: string): Promise<VoiceItem[]>;
+  async validateVoiceFile(filePath: string): Promise<boolean>;
+  getCategorizedVoices(category: string): VoiceItem[];
 }
 ```
 
@@ -70,9 +70,9 @@ class VoiceLibrary {
 
 ```typescript
 class VoiceSelector {
-  selectByUrgency(urgency: string, availableVoices: VoiceItem[]): VoiceItem | null
-  selectRandom(voices: VoiceItem[]): VoiceItem | null
-  selectByPreference(preference: string, voices: VoiceItem[]): VoiceItem | null
+  selectByUrgency(urgency: string, availableVoices: VoiceItem[]): VoiceItem | null;
+  selectRandom(voices: VoiceItem[]): VoiceItem | null;
+  selectByPreference(preference: string, voices: VoiceItem[]): VoiceItem | null;
 }
 ```
 
@@ -80,9 +80,9 @@ class VoiceSelector {
 
 ```typescript
 class AudioPlayer {
-  async playVoiceFile(filePath: string): Promise<boolean>
-  async testVoiceFile(filePath: string): Promise<boolean>
-  isSupported(filePath: string): boolean
+  async playVoiceFile(filePath: string): Promise<boolean>;
+  async testVoiceFile(filePath: string): Promise<boolean>;
+  isSupported(filePath: string): boolean;
 }
 ```
 
@@ -99,11 +99,11 @@ interface TTSConfig {
 
 class TTSEngine {
   private config: TTSConfig;
-  
-  async generateSpeech(text: string, options?: Partial<TTSConfig>): Promise<string>
-  async playText(text: string, options?: Partial<TTSConfig>): Promise<boolean>
-  async getAvailableVoices(): Promise<string[]>
-  isSupported(): boolean
+
+  async generateSpeech(text: string, options?: Partial<TTSConfig>): Promise<string>;
+  async playText(text: string, options?: Partial<TTSConfig>): Promise<boolean>;
+  async getAvailableVoices(): Promise<string[]>;
+  isSupported(): boolean;
 }
 ```
 
@@ -120,10 +120,10 @@ interface ProjectSummary {
 }
 
 class ProjectAnalyzer {
-  async analyzeCurrentProject(): Promise<ProjectSummary>
-  async getRecentChanges(timespan?: string): Promise<string[]>
-  async extractTaskInfo(): Promise<string | null>
-  async generateSummaryText(summary: ProjectSummary): Promise<string>
+  async analyzeCurrentProject(): Promise<ProjectSummary>;
+  async getRecentChanges(timespan?: string): Promise<string[]>;
+  async extractTaskInfo(): Promise<string | null>;
+  async generateSummaryText(summary: ProjectSummary): Promise<string>;
 }
 ```
 
@@ -238,16 +238,19 @@ packages/renderer/public/assets/voice/
 ## 测试策略
 
 ### 单元测试
+
 - VoiceLibrary 文件扫描和验证
 - VoiceSelector 选择逻辑
 - AudioPlayer 播放功能
 
 ### 集成测试
+
 - MCP工具端到端调用
 - 语音文件播放完整流程
 - 错误处理和fallback机制
 
 ### 用户测试
+
 - 不同urgency级别的语音效果
 - 随机选择的多样性
 - 配置修改的即时生效

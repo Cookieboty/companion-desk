@@ -8,7 +8,7 @@
  *
  * 保留期：2 个次版本；下线时删除本文件与 mapping 文档即可。
  *
- * mapping 表见 [docs/legacy-channel-mapping.md](file:///../../../../docs/legacy-channel-mapping.md)。
+ * mapping 表见 [docs/archive/legacy-channel-mapping.md](file:///../../../../docs/archive/legacy-channel-mapping.md)。
  */
 
 import type { AIClient } from '@nomi-ai/ai-sdk';
