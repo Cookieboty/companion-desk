@@ -9,7 +9,7 @@ import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
 
-import { assertPublicHttpUrl } from '../../security/netGuard';
+import { assertPublicHttpUrlResolved, safeLookup } from '../../security/netGuard';
 import { psQuote } from '../../security/shellEscape';
 
 import { MCPConfigManager } from './LegacyVoiceConfig';
@@ -183,7 +183,7 @@ export class VoiceService {
 
               const audioUrl = result.data.cos_url;
               // cos_url 来自外部 API 响应（不可信）：拒绝内网 / 非 http(s)，防 SSRF
-              const checked = assertPublicHttpUrl(audioUrl);
+              const checked = await assertPublicHttpUrlResolved(audioUrl);
               console.log('MCP: 获取到语音文件URL:', checked.href);
               console.log('MCP: 语音克隆API调用成功，开始下载音频');
 
@@ -252,7 +252,8 @@ export class VoiceService {
         const client = url.protocol === 'https:' ? https : http;
 
         // 下载音频文件
-        const request = client.get(audioUrl, (response) => {
+        // lookup=safeLookup：连接时的解析结果再校验一次（防 DNS 重绑定）
+        const request = client.get(audioUrl, { lookup: safeLookup }, (response) => {
           console.log('MCP: 下载响应状态码:', response.statusCode);
 
           if (response.statusCode !== 200) {
