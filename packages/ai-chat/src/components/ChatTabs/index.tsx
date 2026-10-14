@@ -283,3 +283,14 @@ export const CliTabLive: React.FC = () => {
     </div>
   );
 };
+
+const CLI_LABEL: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', dsh: 'dsh' };
+
+/** CLI 标签的输入框提示：随运行状态与后端变化（不显示 Nomi 的「请先选择AI模型」） */
+export function cliTabPlaceholder(tab: { title: string; backend: string; status: string }): string {
+  const label = CLI_LABEL[tab.backend] ?? tab.backend;
+  if (tab.status === 'running') return t('{0} 正在处理，完成后可继续发送…', label);
+  if (tab.status === 'queued') return t('{0} 排队中，等待其它标签完成…', label);
+  if (tab.title && tab.title !== label) return t('发给 {0}（{1}）…', tab.title, label);
+  return t('发给 {0}…', label);
+}

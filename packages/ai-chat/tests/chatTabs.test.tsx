@@ -139,3 +139,24 @@ describe('ChatTabs', () => {
     expect(ipc.invoke).toHaveBeenCalledWith('ai:harness:tab-activate', 'b');
   });
 });
+
+describe('cliTabPlaceholder', () => {
+  it('uses a backend/status specific hint instead of the Nomi model hint', async () => {
+    const { cliTabPlaceholder } = await import('../src/components/ChatTabs');
+    expect(cliTabPlaceholder({ title: 'Codex', backend: 'codex', status: 'idle' })).toBe(
+      '发给 Codex…',
+    );
+    expect(cliTabPlaceholder({ title: 'Tests', backend: 'codex', status: 'idle' })).toBe(
+      '发给 Tests（Codex）…',
+    );
+    expect(cliTabPlaceholder({ title: 'x', backend: 'claude', status: 'running' })).toContain(
+      'Claude Code 正在处理',
+    );
+    expect(cliTabPlaceholder({ title: 'x', backend: 'dsh', status: 'queued' })).toContain(
+      'dsh 排队中',
+    );
+    expect(cliTabPlaceholder({ title: 'x', backend: 'dsh', status: 'queued' })).not.toContain(
+      'AI模型',
+    );
+  });
+});

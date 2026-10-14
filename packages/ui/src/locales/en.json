@@ -1546,5 +1546,8 @@
   "Nomi 标签": "Nomi tabs",
   "启动 Claude Code、Codex、dsh 等工具或打开编程助手标签后会出现在这里。": "Sessions show up here once you start Claude Code, Codex, dsh or open a coding agent tab.",
   "查看 {0} 条新结果": "View {0} new results",
-  "打开标签": "Open tab"
+  "打开标签": "Open tab",
+  "{0} 正在处理，完成后可继续发送…": "{0} is working — you can send again when it finishes…",
+  "{0} 排队中，等待其它标签完成…": "{0} is queued, waiting for other tabs to finish…",
+  "发给 {0}（{1}）…": "Message {0} ({1})…"
 }

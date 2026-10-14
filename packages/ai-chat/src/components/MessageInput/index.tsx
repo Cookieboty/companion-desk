@@ -29,6 +29,7 @@ interface MessageInputProps {
   onSend?: (message: string) => void;
   /** 独立于 Nomi 对话的忙碌状态（CLI 标签）；设置后不再看 Nomi 的 isLoading / 模型 */
   busyOverride?: boolean;
+  /** 设置 busyOverride（CLI 标签）时始终使用这里的提示，不显示 Nomi 的模型提示 */
   placeholder?: string;
   disabled?: boolean;
   onConfigClick?: () => void;
@@ -602,11 +603,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             }
           }}
           placeholder={
-            isDisabled
-              ? tr('请先选择AI模型...')
-              : kbMode && kbAvailable
-                ? tr('向知识库提问，回答会标注出处…')
-                : placeholder
+            busyOverride !== undefined
+              ? placeholder
+              : isDisabled
+                ? tr('请先选择AI模型...')
+                : kbMode && kbAvailable
+                  ? tr('向知识库提问，回答会标注出处…')
+                  : placeholder
           }
           disabled={isDisabled}
           className={styles.messageTextarea}

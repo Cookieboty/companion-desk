@@ -5,7 +5,7 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
-import { ChatTabs, CliTabInfo, CliTabLive } from './components/ChatTabs';
+import { ChatTabs, CliTabInfo, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import {
@@ -352,7 +352,7 @@ const AiChatContent: React.FC = () => {
                   onSend: (text: string) => void tabs.send(text),
                   busyOverride:
                     tabs.activeTab!.status === 'running' || tabs.activeTab!.status === 'queued',
-                  placeholder: t('发给 {0}…', tabs.activeTab!.title),
+                  placeholder: cliTabPlaceholder(tabs.activeTab!),
                 }
               : {})}
             onConfigClick={() => setShowConfig(true)}
