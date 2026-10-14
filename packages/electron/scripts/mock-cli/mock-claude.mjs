@@ -7,6 +7,8 @@
 import { createInterface } from 'node:readline';
 
 const args = process.argv.slice(2);
+// 并发测试用：每轮模拟耗时（毫秒）
+const delayMs = Number(process.env.NOMI_MOCK_DELAY_MS || 0);
 if (args.includes('--version') || args.includes('-v')) {
   process.stdout.write('2.0.0-mock (Claude Code Mock)\n');
   process.exit(0);
@@ -19,6 +21,7 @@ if (args.includes('update')) {
 const reply = process.env.NOMI_MOCK_CLAUDE_REPLY || '【Mock Claude】已收到，并完成演示回复。';
 const sessionId = process.env.NOMI_MOCK_SESSION || 'mock-claude-session-1';
 
+if (delayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
 function emit(obj) {
   process.stdout.write(`${JSON.stringify(obj)}\n`);
 }

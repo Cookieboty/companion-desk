@@ -192,7 +192,9 @@ describe('CliHarnessService session handling', () => {
       h.setBackend('dsh');
       await h.send('first');
       // 伪造一个失效的会话 id
-      (h as unknown as { cliSessionId: string }).cliSessionId = 'session-unknown';
+      (h as unknown as { tabs: Map<string, { cliSessionId: string }> }).tabs.get(
+        'main',
+      )!.cliSessionId = 'session-unknown';
       await expect(h.send('x')).rejects.toThrow('session not found: session-unknown');
     });
 

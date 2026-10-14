@@ -4,6 +4,8 @@
  * Supports: --version | exec --json [prompt] | update
  */
 const args = process.argv.slice(2);
+// 并发测试用：每轮模拟耗时（毫秒）
+const delayMs = Number(process.env.NOMI_MOCK_DELAY_MS || 0);
 if (args.includes('--version') || args.includes('-v')) {
   process.stdout.write('codex-cli 0.0.0-mock\n');
   process.exit(0);
@@ -16,6 +18,7 @@ if (args.includes('update')) {
 const reply = process.env.NOMI_MOCK_CODEX_REPLY || '【Mock Codex】任务完成。';
 const threadId = process.env.NOMI_MOCK_SESSION || 'mock-codex-thread-1';
 
+if (delayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
 function emit(obj) {
   process.stdout.write(`${JSON.stringify(obj)}\n`);
 }

@@ -68,3 +68,41 @@ export interface HarnessSendResult {
   sessionId: string | null;
   events: HarnessEvent[];
 }
+
+/** 标签运行状态 */
+export type HarnessTabStatus = 'idle' | 'queued' | 'running' | 'error';
+
+export interface HarnessTabMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  error?: boolean;
+  tools?: string[];
+}
+
+/**
+ * 对话标签：绑定后端 + CLI 会话 + 工作目录。
+ * id 为 'main' 的标签即原有对话（可为 Nomi 或任一 CLI，消息存于 Nomi 历史）；
+ * 其它标签只绑定 CLI 后端，消息存于 harness/tabs/<id>.json。
+ */
+export interface HarnessTabMeta {
+  id: string;
+  title: string;
+  backend: HarnessBackend;
+  cwd: string;
+  cliSessionId: string | null;
+  status: HarnessTabStatus;
+  unread: number;
+  createdAt: number;
+  updatedAt: number;
+  lastError?: string;
+}
+
+export interface HarnessTabsState {
+  tabs: HarnessTabMeta[];
+  activeTabId: string;
+  maxConcurrent: number;
+  running: number;
+  queued: number;
+}

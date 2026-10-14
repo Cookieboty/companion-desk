@@ -4,6 +4,8 @@
  * Supports: --version | --profile headless --json [--session-id <id>] <prompt>
  */
 const args = process.argv.slice(2);
+// 并发测试用：每轮模拟耗时（毫秒）
+const delayMs = Number(process.env.NOMI_MOCK_DELAY_MS || 0);
 if (args.includes('--version') || args.includes('-v')) {
   process.stdout.write('0.2.0-rc.2\n');
   process.exit(0);
@@ -18,6 +20,7 @@ if (flag('--profile') !== 'headless' || !args.includes('--json')) {
   process.exit(2);
 }
 
+if (delayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
 const emit = (obj) => process.stdout.write(`${JSON.stringify(obj)}\n`);
 const resumed = flag('--session-id');
 if (resumed === 'session-unknown') {

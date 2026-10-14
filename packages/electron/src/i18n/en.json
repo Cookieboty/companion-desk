@@ -451,5 +451,12 @@
   "OpenAI Chat Completions（原生）": "OpenAI Chat Completions (native)",
   "OpenAI Responses（原生）": "OpenAI Responses (native)",
   "dsh 没有任何输出：需要 Node ≥ {0}（当前 PATH 上的 Node 为 {1}）": "dsh produced no output: it needs Node ≥ {0} (the Node on PATH is {1})",
-  "未找到": "not found"
+  "未找到": "not found",
+  "对话": "Chat",
+  "标签不存在": "Tab not found",
+  "新标签只能绑定编程助手后端": "New tabs can only use a coding agent backend",
+  "主对话标签不能关闭": "The main chat tab cannot be closed",
+  "标题不能为空": "Title cannot be empty",
+  "标签已关闭": "Tab was closed",
+  "已中止": "Cancelled"
 }
