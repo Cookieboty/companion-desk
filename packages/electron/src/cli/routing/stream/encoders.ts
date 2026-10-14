@@ -107,7 +107,11 @@ export class MessagesEncoder implements StreamEncoder {
           formatSse('message_delta', {
             type: 'message_delta',
             delta: { stop_reason: ev.reason, stop_sequence: null },
-            usage: { output_tokens: usage.outputTokens ?? 0 },
+            // Chat/Gemini 上游的输入用量只在流尾给出，随 message_delta 一并补报
+            usage: {
+              ...(usage.inputTokens !== undefined ? { input_tokens: usage.inputTokens } : {}),
+              output_tokens: usage.outputTokens ?? 0,
+            },
           }) +
           formatSse('message_stop', { type: 'message_stop' })
         );

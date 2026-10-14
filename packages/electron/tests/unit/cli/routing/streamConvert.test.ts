@@ -435,7 +435,7 @@ describe('stream → Anthropic Messages (Claude Code)', () => {
     expect(messagesText(evs)).toBe('Hello 世界');
     const md = evs.find((e) => e.event === 'message_delta')!;
     expect(md.data.delta.stop_reason).toBe('end_turn');
-    expect(md.data.usage.output_tokens).toBe(4);
+    expect(md.data.usage).toEqual({ input_tokens: 11, output_tokens: 4 });
     expect(types(evs).slice(-1)).toEqual(['message_stop']);
   });
 
