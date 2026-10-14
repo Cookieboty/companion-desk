@@ -35,6 +35,11 @@ export interface AiSdkMcpServiceOptions {
    * and across MCP servers. Default true.
    */
   prefixToolNames?: boolean;
+  /**
+   * 工具注册前的包装钩子（如强制用户确认）。不设置时工具原样注册，
+   * 但 dangerous 仍按 inferToolDanger 保守标注。
+   */
+  guardTool?: McpToolGuard;
   /** Override for tests. */
   createClient?: CreateMcpClient;
 }
@@ -48,6 +53,28 @@ interface LiveServer {
 function toolNameFor(serverId: string, name: string, prefix: boolean): string {
   return prefix ? `${serverId}__${name}` : name;
 }
+
+/** 危险工具名片段（保守匹配，命中即按破坏性处理） */
+const DANGEROUS_NAME_RE =
+  /(^|[_:\-\s])(exec|execute|shell|terminal|console|spawn|run[-_:]?command|delete|remove|rm|write|create|move|copy|install|uninstall|kill|restart|shutdown|reboot|format|chmod|chown|curl|wget|download|upload|send|post|request|fetch)([_:\-\s]|$)/i;
+
+/**
+ * 不能盲信远端 MCP annotations：本地（stdio）服务器的非只读工具、以及名字像
+ * 命令执行 / 文件写 / 网络发送的工具，一律按破坏性（dangerous）处理。
+ */
+export function inferToolDanger(
+  tool: { name: string; annotations?: { destructiveHint?: boolean; readOnlyHint?: boolean } },
+  transport: McpServerConfig['transport'],
+): boolean {
+  if (tool.annotations?.destructiveHint === true) return true;
+  const readOnly = tool.annotations?.readOnlyHint === true;
+  if (readOnly) return false;
+  if (transport === 'stdio') return true;
+  return DANGEROUS_NAME_RE.test(tool.name);
+}
+
+/** 在 MCP 工具注册进 ToolRegistry 前做一次包装（例如强制用户确认） */
+export type McpToolGuard = (server: McpServerConfig, def: ToolDefinition) => ToolDefinition;
 
 /** Normalize MCP callTool payload into something models can read. */
 export function formatMcpToolResult(result: {
@@ -156,7 +183,7 @@ export class AiSdkMcpService implements McpService {
         name: registeredName,
         description: t.description ?? t.title ?? registeredName,
         input: jsonSchema(inputSchema as never),
-        dangerous: t.annotations?.destructiveHint === true,
+        dangerous: inferToolDanger(t, cfg.transport),
         readOnly: t.annotations?.readOnlyHint === true,
         execute: async (input, { signal }) => {
           const result = await client.callTool({
@@ -168,12 +195,14 @@ export class AiSdkMcpService implements McpService {
         },
       };
 
+      const registered = this.opts.guardTool ? this.opts.guardTool(cfg, def) : def;
+
       if (!registry) {
         this.opts.logger?.warn(
           `MCP tools discovered but ToolRegistry missing; skip register (${registeredName})`,
         );
       } else {
-        registry.register(def);
+        registry.register(registered);
       }
       toolNames.push(registeredName);
     }

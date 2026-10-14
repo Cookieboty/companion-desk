@@ -42,6 +42,11 @@ const DEFAULT_CONFIG: MCPServerConfig = {
   assetsPath: 'packages/electron/assets',
 };
 
+// 调试细节（文件路径、配置内容）仅在显式开启时输出，避免配置被打进运行日志
+const debugLog = (...args: unknown[]): void => {
+  if (process.env.NOMI_MCP_DEBUG) console.log('[MCP]', ...args);
+};
+
 /**
  * 配置管理器
  */
@@ -90,7 +95,7 @@ export class MCPConfigManager {
       }
 
       const ttsConfigPath = path.join(userDataPath, 'tts-config.json');
-      console.log(`MCP: 尝试读取TTS配置文件: ${ttsConfigPath}`);
+      debugLog('尝试读取TTS配置文件:', ttsConfigPath);
 
       if (fs.existsSync(ttsConfigPath)) {
         const configData = fs.readFileSync(ttsConfigPath, 'utf8');
@@ -105,22 +110,22 @@ export class MCPConfigManager {
           ttsConfig.audioUrl &&
           ttsConfig.promptText
         ) {
-          console.log('MCP: TTS配置加载成功', {
+          debugLog('TTS配置加载成功', {
             hostname: ttsConfig.hostname,
             port: ttsConfig.port,
             enabled: ttsConfig.enabled,
           });
           return ttsConfig;
         } else {
-          console.log('MCP: TTS配置不完整，忽略');
+          debugLog('TTS配置不完整，忽略');
           return null;
         }
       } else {
-        console.log('MCP: TTS配置文件不存在');
+        debugLog('TTS配置文件不存在');
         return null;
       }
     } catch (error) {
-      console.error('MCP: 读取TTS配置失败:', error);
+      console.error('[MCP] 读取TTS配置失败:', error);
       return null;
     }
   }
@@ -130,31 +135,29 @@ export class MCPConfigManager {
    */
   loadFromApp(): VoiceConfig {
     try {
-      console.log(`MCP: 尝试读取配置文件: ${this.appConfigPath}`);
+      debugLog('尝试读取配置文件:', this.appConfigPath);
 
       if (fs.existsSync(this.appConfigPath)) {
         const configData = fs.readFileSync(this.appConfigPath, 'utf8');
         const appConfig = JSON.parse(configData);
 
-        console.log(`MCP: 配置文件内容: ${JSON.stringify(appConfig, null, 2)}`);
-
         if (appConfig.voiceSettings?.voiceMode) {
           const newMode = appConfig.voiceSettings.voiceMode;
-          console.log(`MCP: 从配置文件读取到voiceMode: ${newMode}`);
+          debugLog('从配置文件读取到voiceMode:', newMode);
 
           this.config.voice.voiceMode = newMode;
           this.config.voice.enableProjectSummary =
             appConfig.voiceSettings.enableProjectSummary !== false;
 
-          console.log(`MCP: 动态更新语音模式为: ${this.config.voice.voiceMode}`);
+          debugLog('动态更新语音模式为:', this.config.voice.voiceMode);
         } else {
-          console.log('MCP: 配置文件中没有找到voiceSettings.voiceMode');
+          debugLog('配置文件中没有找到voiceSettings.voiceMode');
         }
       } else {
-        console.log(`MCP: 配置文件不存在: ${this.appConfigPath}`);
+        debugLog('配置文件不存在:', this.appConfigPath);
       }
     } catch (error) {
-      console.error('MCP: 读取配置失败:', error);
+      console.error('[MCP] 读取配置失败:', error);
     }
 
     // 加载TTS配置
@@ -172,18 +175,18 @@ export class MCPConfigManager {
       // 如果TTS配置存在且启用，则优先使用TTS模式
       if (this.config.voice.voiceMode === 'fixed') {
         this.config.voice.voiceMode = 'tts';
-        console.log('MCP: 检测到TTS配置，自动切换到TTS模式');
+        debugLog('检测到TTS配置，自动切换到TTS模式');
       }
     } else {
       // 没有TTS配置或配置无效，确保使用固定语音模式
       this.config.voice.ttsApiConfig = undefined;
       if (this.config.voice.voiceMode === 'tts') {
         this.config.voice.voiceMode = 'fixed';
-        console.log('MCP: 没有TTS配置，自动切换到固定语音模式');
+        debugLog('没有TTS配置，自动切换到固定语音模式');
       }
     }
 
-    console.log(`MCP: 最终使用的语音配置: ${JSON.stringify(this.config.voice)}`);
+    debugLog('最终语音模式:', this.config.voice.voiceMode);
     return this.config.voice;
   }
 
@@ -220,7 +223,7 @@ export class MCPConfigManager {
    */
   updateVoiceMode(mode: 'fixed' | 'tts' | 'mixed'): void {
     this.config.voice.voiceMode = mode;
-    console.log(`MCP: 语音模式已更新为: ${mode}`);
+    debugLog('语音模式已更新为:', mode);
   }
 
   /**
@@ -232,7 +235,7 @@ export class MCPConfigManager {
         ...this.config.voice.ttsApiConfig,
         ...config,
       };
-      console.log(`MCP: TTS API配置已更新:`, this.config.voice.ttsApiConfig);
+      debugLog('TTS API配置已更新');
     }
   }
 
@@ -240,7 +243,7 @@ export class MCPConfigManager {
    * 重新加载配置（支持热更新）
    */
   reloadConfig(): VoiceConfig {
-    console.log('MCP: 重新加载配置...');
+    debugLog('重新加载配置...');
     // 重置为默认配置
     this.config = { ...DEFAULT_CONFIG };
     // 重新加载

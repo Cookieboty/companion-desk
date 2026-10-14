@@ -11,7 +11,6 @@ import { type ILoggerService } from '../../services/LoggerService';
 
 import { type BaseIpcHandler } from './BaseIpcHandler';
 import { ConfigIpcHandler } from './ConfigIpcHandler';
-import { FileIpcHandler } from './FileIpcHandler';
 import { McpIpcHandler } from './McpIpcHandler';
 import { VoiceIpcHandler } from './VoiceIpcHandler';
 import { WindowIpcHandler } from './WindowIpcHandler';
@@ -61,10 +60,6 @@ export class IpcRegistry implements IIpcRegistry {
       // 注册配置处理器
       const configHandler = new ConfigIpcHandler(this.options.logger, this.options.configService);
       this.registerHandler('config', configHandler);
-
-      // 注册文件处理器
-      const fileHandler = new FileIpcHandler(this.options.logger, this.options.cacheService);
-      this.registerHandler('file', fileHandler);
 
       // 注册语音处理器
       const voiceHandler = new VoiceIpcHandler(this.options.logger, this.options.configService);

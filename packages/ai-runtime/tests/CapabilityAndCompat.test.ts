@@ -27,7 +27,6 @@ describe('CapabilityIpcServer', () => {
       injector: {
         getScreen: () => undefined,
         getClipboard: () => undefined,
-        getKeyStore: () => undefined,
       },
       logger: NoopRuntimeLogger,
     });
@@ -40,7 +39,6 @@ describe('CapabilityIpcServer', () => {
   it('forwards to injected services', async () => {
     const listDisplays = vi.fn(async () => [{ id: 'main' }]);
     const readText = vi.fn(async () => 'clip');
-    const keyGet = vi.fn(async (id: string) => `val:${id}`);
 
     const adapter = createFakeIpcAdapter();
     const server = new CapabilityIpcServer({
@@ -48,7 +46,6 @@ describe('CapabilityIpcServer', () => {
       injector: {
         getScreen: () => ({ listDisplays, capture: vi.fn() }),
         getClipboard: () => ({ readText, writeText: vi.fn(), readImage: vi.fn() }),
-        getKeyStore: () => ({ get: keyGet, set: vi.fn(), del: vi.fn(), list: vi.fn() }),
       },
       logger: NoopRuntimeLogger,
     });
@@ -56,7 +53,6 @@ describe('CapabilityIpcServer', () => {
 
     expect(await adapter.invoke(1, 'ai:screen:listDisplays')).toEqual([{ id: 'main' }]);
     expect(await adapter.invoke(1, 'ai:clipboard:readText')).toBe('clip');
-    expect(await adapter.invoke(1, 'ai:keyStore:get', 'openai')).toBe('val:openai');
     server.stop();
   });
 });

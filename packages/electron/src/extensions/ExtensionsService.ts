@@ -11,6 +11,7 @@ import path from 'node:path';
 
 import {
   McpKey,
+  type McpServerConfig,
   type McpService,
   type ToolDefinition,
   type ToolRegistry,
@@ -21,6 +22,7 @@ import { z } from 'zod';
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t } from '../i18n';
+import { writePrivateFileAtomic } from '../utils/privateFile';
 
 import {
   MCP_PRESETS,
@@ -32,6 +34,7 @@ import {
   parseImport,
   sanitizeServer,
   type McpServerEntry,
+  type Trust,
 } from './mcpConfig';
 import {
   SkillError,
@@ -147,8 +150,8 @@ export class ExtensionsService {
     }
   }
   private writeJson(p: string, v: unknown) {
-    fs.writeFileSync(`${p}.tmp`, JSON.stringify(v, null, 2));
-    fs.renameSync(`${p}.tmp`, p);
+    // mcp.json 含 env / headers 敏感值（safeStorage 加密串），收紧为 0600
+    writePrivateFileAtomic(p, JSON.stringify(v, null, 2));
   }
   private enc(v: string): string {
     try {
@@ -262,12 +265,15 @@ export class ExtensionsService {
         name: (i as { name?: string }).name ?? i.id,
         origin: 'env' as const,
         status: 'connected' as Status,
-        tools: ((i as { toolNames?: string[] }).toolNames ?? []).map((n) => ({
-          name: n,
-          description: '',
-          readOnly: false,
-          dangerous: false,
-        })),
+        tools: ((i as { toolNames?: string[] }).toolNames ?? []).map((n) => {
+          const def = this.registry?.get?.(n);
+          return {
+            name: n,
+            description: def?.description ?? '',
+            readOnly: def?.readOnly === true,
+            dangerous: def?.dangerous === true,
+          };
+        }),
       })),
       presets: MCP_PRESETS,
       ready: !!svc,
@@ -390,12 +396,37 @@ export class ExtensionsService {
 
   /** 包装 MCP 工具：按信任级别确认 + 审计 */
   private guard(serverId: string, def: ToolDefinition): ToolDefinition {
+    const s = this.servers.find((x) => x.id === serverId);
+    return this.withConfirm(def, {
+      serverId,
+      serverName: s?.name ?? serverId,
+      trust: s?.trust ?? 'ask',
+    });
+  }
+
+  /**
+   * 环境变量 MCP_SERVERS 来的工具没有用户配置的信任级别：
+   * 按最保守策略处理——每次调用都确认，危险工具强制弹窗。
+   * GUI 管理的服务器不在此包装（connect() 会按用户配置的信任级别自行包装）。
+   */
+  guardEnvTool(server: McpServerConfig, def: ToolDefinition): ToolDefinition {
+    if (this.servers.some((s) => s.id === server.id)) return def;
+    return this.withConfirm(def, {
+      serverId: server.id,
+      serverName: server.name || server.id,
+      trust: 'ask',
+    });
+  }
+
+  private withConfirm(
+    def: ToolDefinition,
+    opts: { serverId: string; serverName: string; trust: Trust },
+  ): ToolDefinition {
     const broker = this.d.desktop.broker;
+    const { serverId, serverName, trust } = opts;
     return {
       ...def,
       execute: async (input, ctx) => {
-        const s = this.servers.find((x) => x.id === serverId);
-        const trust = s?.trust ?? 'ask';
         const t0 = Date.now();
         let decision: string = 'auto';
         if (needsConfirm(trust, def.readOnly === true)) {
@@ -403,11 +434,7 @@ export class ExtensionsService {
             tool: def.name,
             // 信任级别已判定需要确认 → 至少按「写」处理，避免只读工具被默认策略放行
             danger: def.dangerous ? 'destructive' : 'write',
-            summary: t(
-              '扩展工具 {0}（{1}）',
-              def.name.replace(`${serverId}__`, ''),
-              s?.name ?? serverId,
-            ),
+            summary: t('扩展工具 {0}（{1}）', def.name.replace(`${serverId}__`, ''), serverName),
             args: input,
             preview: t('参数：\n{0}', JSON.stringify(input ?? {}, null, 2).slice(0, 1200)),
             signal: ctx.signal,

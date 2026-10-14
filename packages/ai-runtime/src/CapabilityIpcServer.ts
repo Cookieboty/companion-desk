@@ -16,7 +16,6 @@ import { ConsoleRuntimeLogger } from './logger';
 export interface CapabilityInjector {
   getScreen(): unknown | undefined;
   getClipboard(): unknown | undefined;
-  getKeyStore(): unknown | undefined;
 }
 
 export interface CapabilityIpcServerOptions {
@@ -31,10 +30,6 @@ export const CAPABILITY_CHANNELS = Object.freeze([
   'ai:clipboard:readText',
   'ai:clipboard:writeText',
   'ai:clipboard:readImage',
-  'ai:keyStore:get',
-  'ai:keyStore:set',
-  'ai:keyStore:del',
-  'ai:keyStore:list',
 ] as const);
 
 export class CapabilityIpcServer {
@@ -89,33 +84,6 @@ export class CapabilityIpcServer {
           readImage: () => Promise<unknown>;
         }
       ).readImage(),
-    );
-
-    adapter.handle('ai:keyStore:get', async (_e, id) =>
-      (
-        requireSvc('keyStore', () => injector.getKeyStore()) as {
-          get: (id: string) => Promise<string | undefined>;
-        }
-      ).get(id as string),
-    );
-    adapter.handle('ai:keyStore:set', async (_e, id, value) =>
-      (
-        requireSvc('keyStore', () => injector.getKeyStore()) as {
-          set: (id: string, value: string) => Promise<void>;
-        }
-      ).set(id as string, value as string),
-    );
-    adapter.handle('ai:keyStore:del', async (_e, id) =>
-      (
-        requireSvc('keyStore', () => injector.getKeyStore()) as {
-          del: (id: string) => Promise<void>;
-        }
-      ).del(id as string),
-    );
-    adapter.handle('ai:keyStore:list', async () =>
-      (
-        requireSvc('keyStore', () => injector.getKeyStore()) as { list: () => Promise<string[]> }
-      ).list(),
     );
 
     this.logger.info(`capability ipc ready · ${CAPABILITY_CHANNELS.length} channels`);

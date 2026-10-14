@@ -249,6 +249,9 @@ export class ModelService {
           ? filePath
           : await this.pickFile(win(e), vrmFilter);
       if (!src) return { ok: false, error: 'cancelled' };
+      if (path.extname(src).toLowerCase() !== '.vrm') {
+        return { ok: false, error: '仅支持 .vrm 文件' };
+      }
       return this.userResult(() => this.user.import(src, config ?? {}));
     });
     ipcMain.handle('models:replace-vrm', async (e, id: string, filePath?: string) => {
@@ -257,6 +260,9 @@ export class ModelService {
           ? filePath
           : await this.pickFile(win(e), vrmFilter);
       if (!src) return { ok: false, error: 'cancelled' };
+      if (path.extname(src).toLowerCase() !== '.vrm') {
+        return { ok: false, error: '仅支持 .vrm 文件' };
+      }
       return this.userResult(() => this.user.replace(String(id), src));
     });
     ipcMain.handle('models:update-config', (_e, id: string, config: ModelConfig) =>

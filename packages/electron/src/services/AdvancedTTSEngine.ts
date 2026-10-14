@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { t } from '../i18n';
+import { psQuote } from '../security/shellEscape';
 
 /**
  * TTS音色配置接口
@@ -297,9 +298,11 @@ export class AdvancedTTSEngine {
     const preferred = [voice.systemVoice, 'Meijia', 'Ting-Ting', 'Sinji', 'Yu-shu'].filter(
       (v, i, a) => v && a.indexOf(v) === i,
     );
+    // argv 经 POSIX 单引号转义后再拼进 bash，避免文本中的 $ ` " 等被 shell 解释
+    const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
     // bash: try voices until say succeeds
     const script = preferred
-      .map((v) => `say -v ${JSON.stringify(v)} -r ${rate} ${JSON.stringify(text)}`)
+      .map((v) => `say -v ${shQuote(v)} -r ${rate} ${shQuote(text)}`)
       .join(' || ');
     return spawn('bash', ['-lc', script]);
   }
@@ -315,10 +318,10 @@ export class AdvancedTTSEngine {
     const script = `
       Add-Type -AssemblyName System.speech;
       $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer;
-      $speak.SelectVoice('${voice.systemVoice}');
+      $speak.SelectVoice(${psQuote(voice.systemVoice)});
       $speak.Rate = ${Math.round((settings.speed - 1) * 10)};
       $speak.Volume = ${Math.round(settings.volume * 100)};
-      $speak.Speak('${text.replace(/'/g, "''")}');
+      $speak.Speak(${psQuote(text)});
     `;
 
     return spawn('powershell', ['-Command', script]);
