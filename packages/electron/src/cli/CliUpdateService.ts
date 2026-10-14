@@ -91,33 +91,59 @@ export class CliUpdateService {
 
   async inspect(refreshLatest = false): Promise<CliInstallInfo[]> {
     const kinds: CliKind[] = ['claude', 'codex', 'cursor'];
-    if (refreshLatest || Date.now() - this.cache.checkedAt > 6 * 60 * 60_000) {
-      const [cl, cx] = await Promise.all([
-        fetchNpmLatest(NPM_PKG.claude),
-        fetchNpmLatest(NPM_PKG.codex),
-      ]);
-      this.cache = {
-        checkedAt: Date.now(),
-        latest: { claude: cl, codex: cx, cursor: null },
-      };
-      this.save();
-    }
-    return kinds.map((kind) => {
-      const bin = resolveCliBin(kind);
-      const version = bin ? readVersion(bin) : null;
-      const latest = this.cache.latest[kind] ?? null;
-      const method = guessInstallMethod(bin);
-      const updateSupported = kind === 'claude' || kind === 'codex';
-      return {
+    try {
+      if (refreshLatest || Date.now() - this.cache.checkedAt > 6 * 60 * 60_000) {
+        const [cl, cx] = await Promise.all([
+          fetchNpmLatest(NPM_PKG.claude),
+          fetchNpmLatest(NPM_PKG.codex),
+        ]);
+        this.cache = {
+          checkedAt: Date.now(),
+          latest: { claude: cl, codex: cx, cursor: null },
+        };
+        try {
+          this.save();
+        } catch {
+          /* cache 写失败不影响探测结果 */
+        }
+      }
+      return kinds.map((kind) => {
+        let bin: string | null = null;
+        let version: string | null = null;
+        try {
+          const resolved = resolveCliBin(kind);
+          bin = resolved;
+          version = resolved ? readVersion(resolved) : null;
+        } catch {
+          /* 探测失败当作未安装 */
+        }
+        const latest = this.cache.latest[kind] ?? null;
+        const method = guessInstallMethod(bin);
+        const updateSupported = kind === 'claude' || kind === 'codex';
+        return {
+          kind,
+          path: bin,
+          version,
+          latest,
+          installMethod: method,
+          updateAvailable: Boolean(
+            updateSupported && version && latest && isNewer(latest, version),
+          ),
+          updateSupported,
+        };
+      });
+    } catch (err) {
+      this.d.logger.warn('cli-update inspect failed', err);
+      return kinds.map((kind) => ({
         kind,
-        path: bin,
-        version,
-        latest,
-        installMethod: method,
-        updateAvailable: Boolean(updateSupported && version && latest && isNewer(latest, version)),
-        updateSupported,
-      };
-    });
+        path: null,
+        version: null,
+        latest: null,
+        installMethod: 'unknown' as const,
+        updateAvailable: false,
+        updateSupported: kind === 'claude' || kind === 'codex',
+      }));
+    }
   }
 
   /** 预览将执行的命令（不跑） */

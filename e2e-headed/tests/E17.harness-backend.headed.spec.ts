@@ -20,9 +20,10 @@ const mainJs = resolve(electronPkgDir, 'dist', 'main.js');
 const rendererIndex = resolve(electronPkgDir, 'dist', 'renderer', 'index.html');
 const rendererBuild = resolve(repoRoot(), 'packages', 'renderer', 'dist', 'index.html');
 
+type AiIpc = { invoke: (c: string, ...a: unknown[]) => Promise<unknown> };
+
 test.describe('E17 · harness backend · mock CLI', () => {
   let app: ElectronApplication | null = null;
-  let userData: string;
 
   test.beforeAll(() => {
     if (existsSync(rendererBuild)) {
@@ -50,18 +51,17 @@ test.describe('E17 · harness backend · mock CLI', () => {
       `需要先构建：${mainJs} / ${rendererIndex}`,
     );
 
-    userData = mkdtempSync(join(tmpdir(), 'e17-harness-'));
+    const userData = mkdtempSync(join(tmpdir(), 'e17-harness-'));
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
       NOMI_USE_MOCK_CLI: '1',
-      ELECTRON_USER_DATA: userData,
     };
     delete env.NODE_ENV;
 
     app = await electron.launch({
       executablePath: resolveElectronExecutable(),
-      args: [electronPkgDir, '--enable-unsafe-swiftshader'],
+      args: [electronPkgDir, `--user-data-dir=${userData}`, '--enable-unsafe-swiftshader'],
       cwd: electronPkgDir,
       env,
       timeout: 60_000,
@@ -75,10 +75,15 @@ test.describe('E17 · harness backend · mock CLI', () => {
       { timeout: 30_000 },
     );
 
+    // 保证干净起点（避免同机残留 harness session）
+    await page.evaluate(async () => {
+      const ipc = (window as unknown as { aiIPC: AiIpc }).aiIPC;
+      await ipc.invoke('ai:harness:set-backend', 'nomi');
+    });
+
     const state0 = await page.evaluate(async () => {
-      return (await (
-        window as unknown as { aiIPC: { invoke: (c: string, ...a: unknown[]) => Promise<unknown> } }
-      ).aiIPC.invoke('ai:harness:state')) as {
+      const ipc = (window as unknown as { aiIPC: AiIpc }).aiIPC;
+      return (await ipc.invoke('ai:harness:state')) as {
         backend: string;
         toolsDisabled: boolean;
         bins: Record<string, string | null>;
@@ -90,9 +95,8 @@ test.describe('E17 · harness backend · mock CLI', () => {
     expect(state0.bins.codex).toBeTruthy();
 
     const state1 = await page.evaluate(async () => {
-      return (await (
-        window as unknown as { aiIPC: { invoke: (c: string, ...a: unknown[]) => Promise<unknown> } }
-      ).aiIPC.invoke('ai:harness:set-backend', 'claude')) as {
+      const ipc = (window as unknown as { aiIPC: AiIpc }).aiIPC;
+      return (await ipc.invoke('ai:harness:set-backend', 'claude')) as {
         backend: string;
         toolsDisabled: boolean;
       };
@@ -101,9 +105,8 @@ test.describe('E17 · harness backend · mock CLI', () => {
     expect(state1.toolsDisabled).toBe(true);
 
     const send = await page.evaluate(async () => {
-      return (await (
-        window as unknown as { aiIPC: { invoke: (c: string, ...a: unknown[]) => Promise<unknown> } }
-      ).aiIPC.invoke('ai:harness:send', 'ping from E17')) as {
+      const ipc = (window as unknown as { aiIPC: AiIpc }).aiIPC;
+      return (await ipc.invoke('ai:harness:send', 'ping from E17')) as {
         text: string;
         sessionId: string | null;
         __error?: { message: string };
@@ -113,15 +116,14 @@ test.describe('E17 · harness backend · mock CLI', () => {
     expect(send.text).toMatch(/Mock Claude/);
 
     const inspect = await page.evaluate(async () => {
-      return (await (
-        window as unknown as { aiIPC: { invoke: (c: string, ...a: unknown[]) => Promise<unknown> } }
-      ).aiIPC.invoke('ai:cli-update:inspect', false)) as Array<{
-        kind: string;
-        version: string | null;
-      }>;
+      const ipc = (window as unknown as { aiIPC: AiIpc }).aiIPC;
+      return await ipc.invoke('ai:cli-update:inspect', false);
     });
+    expect(inspect && typeof inspect === 'object' && !('__error' in (inspect as object))).toBe(
+      true,
+    );
     expect(Array.isArray(inspect)).toBe(true);
-    const kinds = inspect.map((r) => r.kind);
+    const kinds = (inspect as Array<{ kind: string }>).map((r) => r.kind);
     expect(kinds).toEqual(expect.arrayContaining(['claude', 'codex', 'cursor']));
   });
 });
