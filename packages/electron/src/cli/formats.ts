@@ -49,12 +49,46 @@ export function codexFormatNeedsRouting(f: CodexApiFormat): boolean {
   return f !== 'openai_responses';
 }
 
-export function formatNeedsRouting(kind: 'claude' | 'codex', format: CliApiFormat): boolean {
+export function formatNeedsRouting(
+  kind: 'claude' | 'codex' | 'dsh',
+  format: CliApiFormat,
+): boolean {
+  if (kind === 'dsh') return false;
   return kind === 'claude'
     ? claudeFormatNeedsRouting(format as ClaudeApiFormat)
     : codexFormatNeedsRouting(format as CodexApiFormat);
 }
 
-export function defaultFormat(kind: 'claude' | 'codex'): CliApiFormat {
+export function defaultFormat(kind: 'claude' | 'codex' | 'dsh'): CliApiFormat {
+  if (kind === 'dsh') return 'openai_chat_completions';
   return kind === 'claude' ? 'anthropic_messages' : 'openai_responses';
+}
+
+/**
+ * dsh 内置适配器原生支持三种上游协议，均无需本地路由。
+ */
+export const DSH_API_FORMATS = [
+  'openai_chat_completions',
+  'openai_responses',
+  'anthropic_messages',
+] as const;
+export type DshApiFormat = (typeof DSH_API_FORMATS)[number];
+
+export const DSH_FORMAT_LABELS: Record<DshApiFormat, string> = {
+  openai_chat_completions: 'OpenAI Chat Completions（原生）',
+  openai_responses: 'OpenAI Responses（原生）',
+  anthropic_messages: 'Anthropic Messages（原生）',
+};
+
+export function isDshApiFormat(v: unknown): v is DshApiFormat {
+  return typeof v === 'string' && (DSH_API_FORMATS as readonly string[]).includes(v);
+}
+
+/** Nomi 格式名 → dsh 配置中的 api 名 */
+export function dshApiName(f: DshApiFormat): string {
+  return f === 'openai_responses'
+    ? 'openai-responses'
+    : f === 'anthropic_messages'
+      ? 'anthropic-messages'
+      : 'openai-completions';
 }

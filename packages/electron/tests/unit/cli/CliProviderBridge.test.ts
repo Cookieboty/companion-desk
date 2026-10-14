@@ -148,3 +148,76 @@ describe('CliProviderBridge separate stores', () => {
     expect(conf).toContain('[model_providers.nomi]');
   });
 });
+
+describe('CliProviderBridge dsh store (#4)', () => {
+  const setup = () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-home-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cli-root-'));
+    const prevHome = process.env.DSH_HOME;
+    delete process.env.DSH_HOME;
+    const b = new CliProviderBridge({ root, home, logger: { info() {}, warn() {} } });
+    const restore = () => {
+      if (prevHome === undefined) delete process.env.DSH_HOME;
+      else process.env.DSH_HOME = prevHome;
+    };
+    return { home, root, b, restore };
+  };
+
+  it('stores dsh profiles separately and activates without routing', () => {
+    const { home, b, restore } = setup();
+    try {
+      const patchFile = path.join(home, '.dsh', 'cordis.patch.yml');
+      fs.mkdirSync(path.dirname(patchFile), { recursive: true });
+      fs.writeFileSync(patchFile, '- id: user-plugin\n  config: { a: 1 }\n');
+      const p = b.upsert({
+        kind: 'dsh',
+        name: 'Local',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        model: 'qwen2.5:0.5b',
+        apiKey: 'sk-dsh-secret',
+        apiFormat: 'anthropic_messages',
+      });
+      expect(p.needsRouting).toBe(false);
+      const st = b.state();
+      expect(st.dshStore).toContain(`${path.sep}dsh${path.sep}store.json`);
+      expect(st.dshConfig).toBe(patchFile);
+      expect(b.dshEnv()).toEqual({});
+
+      const r = b.activate(p.id);
+      expect(r).toMatchObject({ ok: true, usedRouting: false });
+      expect(r.backups).toHaveLength(1);
+      const yml = fs.readFileSync(patchFile, 'utf8');
+      expect(yml).toContain('- id: user-plugin');
+      expect(yml).toContain('api: "anthropic-messages"');
+      expect(yml).toContain('model: "qwen2.5:0.5b"');
+      expect(yml).not.toContain('sk-dsh-secret');
+      expect(b.dshEnv()).toEqual({ NOMI_DSH_API_KEY: 'sk-dsh-secret' });
+
+      const off = b.deactivateDsh();
+      expect(off.ok).toBe(true);
+      expect(fs.readFileSync(patchFile, 'utf8')).toBe('- id: user-plugin\n  config: { a: 1 }\n');
+      expect(b.dshEnv()).toEqual({});
+    } finally {
+      restore();
+    }
+  });
+
+  it('honours DSH_HOME and gives keyless upstreams a placeholder key', () => {
+    const { root, b, restore } = setup();
+    try {
+      const dshHome = path.join(root, 'custom-dsh');
+      process.env.DSH_HOME = dshHome;
+      const p = b.upsert({
+        kind: 'dsh',
+        name: 'Ollama',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        model: 'qwen2.5:0.5b',
+      });
+      expect(b.activate(p.id).ok).toBe(true);
+      expect(fs.existsSync(path.join(dshHome, 'cordis.patch.yml'))).toBe(true);
+      expect(b.dshEnv()).toEqual({ NOMI_DSH_API_KEY: 'nomi-local' });
+    } finally {
+      restore();
+    }
+  });
+});

@@ -1,7 +1,8 @@
 /**
- * Claude Code / Codex **各自独立** 的供应商档案。
- * - 存储：userData/cli-providers/claude/store.json 与 …/codex/store.json
- * - 写入：Claude → ~/.claude/settings.json；Codex → ~/.codex/config.toml + auth.json
+ * Claude Code / Codex / dsh **各自独立** 的供应商档案。
+ * - 存储：userData/cli-providers/{claude,codex,dsh}/store.json
+ * - 写入：Claude → ~/.claude/settings.json；Codex → ~/.codex/config.toml + auth.json；
+ *   dsh → $DSH_HOME/cordis.patch.yml 中的 Nomi 管理区块（密钥只经环境变量注入）
  * - 与 Nomi 自有 ProviderStore（ai-providers.json）完全隔离
  */
 import { randomUUID } from 'node:crypto';
@@ -18,28 +19,31 @@ import {
   claudeSettingsPath,
   codexAuthPath,
   codexConfigPath,
+  DSH_KEY_ENV,
+  dshPatchPath,
   ensureDir,
   patchClaudeSettings,
   patchCodexAuth,
   patchCodexToml,
+  patchDshYaml,
 } from './configPatch';
 import {
-  type ClaudeApiFormat,
   type CliApiFormat,
-  type CodexApiFormat,
   defaultFormat,
+  dshApiName,
   formatNeedsRouting,
   isClaudeApiFormat,
   isCodexApiFormat,
+  isDshApiFormat,
 } from './formats';
 import { getCliRouteService, type RouteUpstream } from './routing/CliRouteService';
-import type { CliProviderInput, CliProviderProfile } from './types';
+import type { CliProviderInput, CliProviderKind, CliProviderProfile } from './types';
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
 
 interface StoredProfile {
   id: string;
-  kind: 'claude' | 'codex';
+  kind: CliProviderKind;
   name: string;
   baseUrl: string;
   model: string;
@@ -86,19 +90,23 @@ function mask(key: string): string {
   return `${key.slice(0, 2)}••••${key.slice(-2)}`;
 }
 
-function normalizeFormat(kind: 'claude' | 'codex', raw: unknown): CliApiFormat {
+const KINDS: readonly CliProviderKind[] = ['claude', 'codex', 'dsh'];
+
+function normalizeFormat(kind: CliProviderKind, raw: unknown): CliApiFormat {
   if (kind === 'claude' && isClaudeApiFormat(raw)) return raw;
   if (kind === 'codex' && isCodexApiFormat(raw)) return raw;
+  if (kind === 'dsh' && isDshApiFormat(raw)) return raw;
   return defaultFormat(kind);
 }
 
 export class CliProviderBridge {
   private readonly home: string;
   private readonly backupRoot: string;
-  private readonly storePaths: Record<'claude' | 'codex', string>;
-  private data: Record<'claude' | 'codex', StoreFile> = {
+  private readonly storePaths: Record<CliProviderKind, string>;
+  private data: Record<CliProviderKind, StoreFile> = {
     claude: { profiles: [] },
     codex: { profiles: [] },
+    dsh: { profiles: [] },
   };
 
   constructor(private readonly d: { root: string; logger: Logger; home?: string }) {
@@ -107,11 +115,11 @@ export class CliProviderBridge {
     this.storePaths = {
       claude: path.join(d.root, 'claude', 'store.json'),
       codex: path.join(d.root, 'codex', 'store.json'),
+      dsh: path.join(d.root, 'dsh', 'store.json'),
     };
     // migrate legacy single store.json if present
     this.migrateLegacy(path.join(d.root, 'store.json'));
-    this.loadKind('claude');
-    this.loadKind('codex');
+    for (const k of KINDS) this.loadKind(k);
   }
 
   private migrateLegacy(legacyPath: string) {
@@ -133,7 +141,7 @@ export class CliProviderBridge {
     }
   }
 
-  private loadKind(kind: 'claude' | 'codex') {
+  private loadKind(kind: CliProviderKind) {
     try {
       const parsed = JSON.parse(fs.readFileSync(this.storePaths[kind], 'utf8')) as StoreFile;
       this.data[kind] = {
@@ -148,14 +156,14 @@ export class CliProviderBridge {
     }
   }
 
-  private saveKind(kind: 'claude' | 'codex') {
+  private saveKind(kind: CliProviderKind) {
     const file = this.storePaths[kind];
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(this.data[kind], null, 2), 'utf8');
   }
 
   private allProfiles(): StoredProfile[] {
-    return [...this.data.claude.profiles, ...this.data.codex.profiles];
+    return KINDS.flatMap((k) => this.data[k].profiles);
   }
 
   private toView(p: StoredProfile): CliProviderProfile {
@@ -187,6 +195,36 @@ export class CliProviderBridge {
     };
   }
 
+  /**
+   * 启动 dsh 时注入的环境变量：仅当 dsh 档案启用时提供 NOMI_DSH_API_KEY。
+   * 无密钥的本机上游（如 Ollama）也给占位值，避免 dsh 因变量缺失拒绝启动。
+   */
+  dshEnv(): Record<string, string> {
+    const p = this.data.dsh.profiles.find((x) => x.active);
+    if (!p) return {};
+    return { [DSH_KEY_ENV]: decrypt(p.keyEnc) || 'nomi-local' };
+  }
+
+  /** 停用 dsh 档案：移除 Nomi 区块，回到 dsh 自身的默认供应商 */
+  deactivateDsh(): { ok: boolean; backups: string[]; error?: string } {
+    const file = dshPatchPath(this.home);
+    const backups: string[] = [];
+    try {
+      if (fs.existsSync(file)) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const b = backupFile(file, path.join(this.backupRoot, ts), 'dsh-cordis.patch.yml');
+        if (b) backups.push(b);
+        fs.writeFileSync(file, patchDshYaml(fs.readFileSync(file, 'utf8'), null), 'utf8');
+      }
+      for (const x of this.data.dsh.profiles) x.active = false;
+      this.saveKind('dsh');
+      this.broadcast();
+      return { ok: true, backups };
+    } catch (e) {
+      return { ok: false, backups, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   state() {
     const route = getCliRouteService()?.getSettings();
     return {
@@ -195,6 +233,8 @@ export class CliProviderBridge {
       codexStore: this.storePaths.codex,
       claudeSettings: claudeSettingsPath(this.home),
       codexConfig: codexConfigPath(this.home),
+      dshStore: this.storePaths.dsh,
+      dshConfig: dshPatchPath(this.home),
       routing: route ?? null,
     };
   }
@@ -226,7 +266,7 @@ export class CliProviderBridge {
   }
 
   remove(id: string): void {
-    for (const kind of ['claude', 'codex'] as const) {
+    for (const kind of KINDS) {
       const before = this.data[kind].profiles.length;
       this.data[kind].profiles = this.data[kind].profiles.filter((p) => p.id !== id);
       if (this.data[kind].profiles.length !== before) this.saveKind(kind);
@@ -255,7 +295,9 @@ export class CliProviderBridge {
     const needs = formatNeedsRouting(p.kind, p.apiFormat);
     const route = getCliRouteService();
     const routeSettings = route?.getSettings();
-    const routingOn = Boolean(routeSettings?.enabled && routeSettings?.[p.kind]);
+    const routingOn = Boolean(
+      p.kind !== 'dsh' && routeSettings?.enabled && routeSettings?.[p.kind],
+    );
     if (needs && !routingOn) {
       return {
         ok: false,
@@ -269,7 +311,19 @@ export class CliProviderBridge {
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     const backups: string[] = [];
     try {
-      if (p.kind === 'claude') {
+      if (p.kind === 'dsh') {
+        const file = dshPatchPath(this.home);
+        const b = backupFile(file, path.join(this.backupRoot, ts), 'dsh-cordis.patch.yml');
+        if (b) backups.push(b);
+        ensureDir(file);
+        const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+        const fmt = isDshApiFormat(p.apiFormat) ? p.apiFormat : 'openai_chat_completions';
+        fs.writeFileSync(
+          file,
+          patchDshYaml(raw, { api: dshApiName(fmt), baseURL: p.baseUrl, model: p.model }),
+          'utf8',
+        );
+      } else if (p.kind === 'claude') {
         const settings = claudeSettingsPath(this.home);
         const b = backupFile(settings, path.join(this.backupRoot, ts), 'claude-settings.json');
         if (b) backups.push(b);
@@ -338,6 +392,11 @@ export class CliProviderBridge {
       const cl = path.join(root, 'claude-settings.json');
       const ct = path.join(root, 'codex-config.toml');
       const ca = path.join(root, 'codex-auth.json');
+      const dp = path.join(root, 'dsh-cordis.patch.yml');
+      if (fs.existsSync(dp)) {
+        ensureDir(dshPatchPath(this.home));
+        fs.copyFileSync(dp, dshPatchPath(this.home));
+      }
       if (fs.existsSync(cl)) {
         ensureDir(claudeSettingsPath(this.home));
         fs.copyFileSync(cl, claudeSettingsPath(this.home));
@@ -397,6 +456,7 @@ export class CliProviderBridge {
       return this.state();
     });
     handle('ai:cli-provider:activate', (id) => this.activate(String(id)));
+    handle('ai:cli-provider:deactivate-dsh', () => this.deactivateDsh());
     handle('ai:cli-provider:backups', () => this.listBackups());
     handle('ai:cli-provider:restore', (ts) => this.restoreBackup(String(ts)));
   }

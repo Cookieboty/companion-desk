@@ -9,6 +9,8 @@ import path from 'node:path';
 
 import { isAllowedUpdateArgv, updateRecipes } from '../../../src/cli/CliUpdateService';
 import {
+  DSH_MARK_BEGIN,
+  patchDshYaml,
   backupFile,
   patchClaudeSettings,
   patchCodexAuth,
@@ -128,5 +130,28 @@ describe('dsh update recipe', () => {
     expect(
       isAllowedUpdateArgv(['npm', 'install', '-g', '@deepseek-ai/dsh@latest', '--prefix=/x']),
     ).toBe(false);
+  });
+});
+
+describe('patchDshYaml', () => {
+  const patch = { api: 'openai-completions', baseURL: 'http://h/v1', model: 'm:1' };
+  it('creates the managed block in an empty file', () => {
+    const out = patchDshYaml(null, patch);
+    expect(out.startsWith(DSH_MARK_BEGIN)).toBe(true);
+    expect(out).toContain('apiKeyEnv: NOMI_DSH_API_KEY');
+    expect(out).toContain('baseURL: "http://h/v1"');
+    expect(out).toContain('- id: agent-default-model');
+  });
+  it('replaces an existing block and keeps user content', () => {
+    const first = patchDshYaml('- id: mine\n', patch);
+    const second = patchDshYaml(first, { ...patch, model: 'other' });
+    expect(second.match(/nomi managed/g)).toHaveLength(2);
+    expect(second).toContain('- id: mine');
+    expect(second).toContain('model: "other"');
+    expect(second).not.toContain('"m:1"');
+  });
+  it('removes only the block', () => {
+    expect(patchDshYaml(patchDshYaml('- id: mine\n', patch), null)).toBe('- id: mine\n');
+    expect(patchDshYaml(patchDshYaml(null, patch), null)).toBe('');
   });
 });

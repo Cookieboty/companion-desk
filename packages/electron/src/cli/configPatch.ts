@@ -141,3 +141,72 @@ export function patchCodexAuth(raw: string | null, apiKey: string | undefined): 
   if (apiKey) obj.OPENAI_API_KEY = apiKey;
   return `${JSON.stringify(obj, null, 2)}\n`;
 }
+
+/** dsh 家目录：DSH_HOME 或 ~/.dsh */
+export function dshHomePath(home = os.homedir(), env: NodeJS.ProcessEnv = process.env): string {
+  const fromEnv = env.DSH_HOME?.trim();
+  return fromEnv ? path.resolve(fromEnv) : path.join(home, '.dsh');
+}
+
+/** dsh 家目录级配置补丁（对所有 profile 生效） */
+export function dshPatchPath(home = os.homedir(), env: NodeJS.ProcessEnv = process.env): string {
+  return path.join(dshHomePath(home, env), 'cordis.patch.yml');
+}
+
+export const DSH_MARK_BEGIN = '# >>> nomi managed (dsh provider) >>>';
+export const DSH_MARK_END = '# <<< nomi managed (dsh provider) <<<';
+/** 密钥不写盘：dsh 从该环境变量读取，由接管服务在启动时注入 */
+export const DSH_KEY_ENV = 'NOMI_DSH_API_KEY';
+
+export interface DshPatch {
+  /** dsh 的 api 名：openai-completions / openai-responses / anthropic-messages */
+  api: string;
+  baseURL: string;
+  model: string;
+}
+
+/** YAML 双引号标量与 JSON 字符串兼容 */
+const yq = (v: string) => JSON.stringify(v);
+
+/**
+ * 在 cordis.patch.yml（顶层为插件补丁列表）里替换 / 移除 Nomi 管理的区块，
+ * 其余内容原样保留。patch 为 null 时只移除区块。
+ */
+export function patchDshYaml(raw: string | null, patch: DshPatch | null): string {
+  const lines = (raw ?? '').replace(/\r\n/g, '\n').split('\n');
+  const kept: string[] = [];
+  let inBlock = false;
+  for (const line of lines) {
+    if (line.trim() === DSH_MARK_BEGIN) {
+      inBlock = true;
+      continue;
+    }
+    if (inBlock) {
+      if (line.trim() === DSH_MARK_END) inBlock = false;
+      continue;
+    }
+    kept.push(line);
+  }
+  while (kept.length && kept[kept.length - 1]!.trim() === '') kept.pop();
+  if (patch) {
+    if (kept.length) kept.push('');
+    kept.push(
+      DSH_MARK_BEGIN,
+      '- id: llm-pi-ai',
+      '  config:',
+      '    providers:',
+      '      nomi:',
+      `        api: ${yq(patch.api)}`,
+      `        baseURL: ${yq(patch.baseURL)}`,
+      `        apiKeyEnv: ${DSH_KEY_ENV}`,
+      '        models:',
+      `          - id: ${yq(patch.model)}`,
+      '- id: agent-default-model',
+      '  config:',
+      '    provider: nomi',
+      `    model: ${yq(patch.model)}`,
+      DSH_MARK_END,
+    );
+  }
+  return kept.length ? `${kept.join('\n')}\n` : '';
+}

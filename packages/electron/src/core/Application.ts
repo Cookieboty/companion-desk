@@ -349,6 +349,7 @@ export class Application implements IApplication {
         root: path.join(app.getPath('userData'), 'harness'),
         logger: this.logger as never,
         defaultCwd: app.getPath('documents'),
+        dshEnv: () => getCliProviderBridge()?.dshEnv() ?? {},
       });
       harness.registerIpc();
 

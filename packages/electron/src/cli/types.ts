@@ -1,10 +1,13 @@
 /** 编程助手 CLI 接入 · 共享类型 */
 
-import type { ClaudeApiFormat, CodexApiFormat, CliApiFormat } from './formats';
+import type { ClaudeApiFormat, CodexApiFormat, CliApiFormat, DshApiFormat } from './formats';
 
 export type HarnessBackend = 'nomi' | 'claude' | 'codex' | 'dsh';
 
 export type CliKind = 'claude' | 'codex' | 'dsh' | 'cursor';
+
+/** 拥有独立供应商档案库的 CLI */
+export type CliProviderKind = 'claude' | 'codex' | 'dsh';
 
 /** 支持版本更新的 CLI */
 export type UpdatableCli = 'claude' | 'codex' | 'dsh';
@@ -21,7 +24,7 @@ export interface CliInstallInfo {
 
 export interface CliProviderProfile {
   id: string;
-  kind: 'claude' | 'codex';
+  kind: CliProviderKind;
   name: string;
   baseUrl: string;
   model: string;
@@ -35,11 +38,11 @@ export interface CliProviderProfile {
 
 export interface CliProviderInput {
   id?: string;
-  kind: 'claude' | 'codex';
+  kind: CliProviderKind;
   name: string;
   baseUrl: string;
   model: string;
-  apiFormat?: ClaudeApiFormat | CodexApiFormat;
+  apiFormat?: ClaudeApiFormat | CodexApiFormat | DshApiFormat;
   apiKey?: string;
 }
 
