@@ -10,7 +10,6 @@
     "typecheck": "node ../../scripts/run-bin.mjs tsc --noEmit",
     "clean": "node ../../scripts/run-bin.mjs rimraf dist",
     "test": "node ../../scripts/run-bin.mjs vitest run",
-    "package": "echo 'AI Chat client build completed'",
     "lint": "eslint ."
   },
   "author": "",
