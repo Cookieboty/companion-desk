@@ -6,9 +6,7 @@
  * 内部把请求转发到新 AIClient（chat / sessions / memory）；每次调用打一次 `deprecation`
  * warning + 计数器 +1，方便后续统计和下线。
  *
- * 保留期：2 个次版本；下线时删除本文件与 mapping 文档即可。
- *
- * mapping 表见 [docs/archive/legacy-channel-mapping.md](file:///../../../../docs/archive/legacy-channel-mapping.md)。
+ * 保留期：2 个次版本；下线时删除本文件即可。
  */
 
 import type { AIClient } from '@nomi-ai/ai-sdk';

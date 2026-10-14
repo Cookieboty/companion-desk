@@ -5,6 +5,4 @@
 **/.turbo/**
 **/*.min.js
 packages/renderer/public/**
-docs/archive/AI_HARNESS_DESIGN.md
-docs/archive/plans/**
 pnpm-lock.yaml

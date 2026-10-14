@@ -186,4 +186,4 @@ Nomi 构建在这些优秀的开源项目之上：
 
 - [问题反馈](https://github.com/Cookieboty/nomi-ai/issues)
 - [更新日志](CHANGELOG.md)
-- [文档](docs/)
+- [文档](docs/README.md)：功能说明、开发与测试

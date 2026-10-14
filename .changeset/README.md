@@ -1,7 +1,7 @@
 # Changesets
 
 > 本目录由 [@changesets/cli](https://github.com/changesets/changesets) 管理。
-> 计划背景：[P9-8 · SDK 版本化与发布](../docs/archive/plans/P9-polish-observability-release.md#p9-8-sdk-版本化与发布)
+> 发布流程见 [docs/RELEASE.md](../docs/RELEASE.md)。
 
 ## Fixed group
 
@@ -44,5 +44,3 @@
 - AIClient 公开签名破坏 → **major**
 - 新增 facade / 方法 → **minor**
 - bugfix / 内部重构 → **patch**
-
-详见 [docs/sdk-compat.md](../docs/sdk-compat.md)（P9 后续补齐）。

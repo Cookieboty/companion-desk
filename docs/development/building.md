@@ -1,0 +1,56 @@
+# 构建与运行
+
+## 环境
+
+- Node.js ≥ 22.12（`.nvmrc` 为 22，CI 使用 24），pnpm 9（通过 Corepack）
+- Linux 运行 Electron 需要图形环境；无显示器时用 `xvfb-run -a`
+
+```bash
+corepack enable
+pnpm install
+```
+
+## 开发
+
+```bash
+pnpm dev          # 先做环境自检，再启动主进程 + 两个渲染进程（热更新）
+pnpm doctor       # 完整环境自检
+pnpm dev:smoke    # 启动开发环境并确认窗口正常（CI 也会跑）
+```
+
+开发端口见根目录 `dev-ports.json`：
+
+| 用途                   | 端口 | 覆盖变量           |
+| ---------------------- | ---- | ------------------ |
+| 看板娘窗口（renderer） | 6127 | `CD_RENDERER_PORT` |
+| 对话窗口（ai-chat）    | 6128 | `CD_CHAT_PORT`     |
+| demo                   | 6129 | `CD_DEMO_PORT`     |
+
+## 检查
+
+```bash
+pnpm build          # 构建全部包
+pnpm typecheck
+pnpm lint
+pnpm test           # 各包单元测试 + scripts 测试
+pnpm check:i18n     # 中文 key 与 en.json 是否一致
+pnpm check:licenses # 依赖与素材许可是否全部为开源许可
+pnpm format:check
+```
+
+## 打包
+
+```bash
+pnpm build && pnpm package            # 当前平台安装包
+pnpm package:prod:mac | :win | :linux # 指定平台（需在对应系统上）
+pnpm package:debug                    # 不打 asar 的调试包
+```
+
+产物在 `packages/electron/dist/`，配置见 `packages/electron/electron-builder.yml`。签名、公证与发布流程见 [RELEASE.md](../RELEASE.md)。
+
+## 性能测量
+
+```bash
+xvfb-run -a node scripts/measure-startup.mjs 7   # 启动耗时
+node scripts/measure-chat-open.mjs               # 打开对话窗口耗时
+```
