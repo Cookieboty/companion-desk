@@ -195,8 +195,8 @@ pnpm package:prod          # 当前平台
 pnpm package:debug         # 调试包（asar 关闭、DEBUG=true）
 ```
 
-产物在仓库根目录 `dist/`。打包前会自动 `build`。签名/公证所需的证书环境变量
-（`CSC_LINK`、`CSC_KEY_PASSWORD`、`APPLE_ID` 等）按 electron-builder 文档设置，未设置时生成未签名包。
+产物在仓库根目录 `dist/`。打包前会自动 `build`。签名/公证所需的 CI secret
+（`MAC_CSC_LINK`、`APPLE_ID`、`WIN_CSC_LINK` 等）的确切名称与门控规则见 [docs/RELEASE.md](docs/RELEASE.md)，未设置时生成未签名包。
 
 ### 测试
 

@@ -56,19 +56,54 @@ Auto-check can be toggled off in Settings. Periodic re-check is every 6 hours wh
 
 ---
 
-## Secrets · 凭证
+## Secrets · 凭证（签名与公证）
 
-| Name                                                         | Required? | Purpose                                                                                                |
-| ------------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------ |
-| `GITHUB_TOKEN`                                               | automatic | Create/upload the Release (`contents: write` on the job)                                               |
-| `GH_TOKEN`                                                   | optional  | Classic PAT with `repo` scope — set only if org policy blocks the default token from creating Releases |
-| `CSC_LINK` / `CSC_KEY_PASSWORD`                              | optional  | Windows code signing                                                                                   |
-| `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` | optional  | macOS notarization                                                                                     |
+Set these as **repository secrets** (Settings → Secrets and variables → Actions). Exact names:
 
-No extra secret is required for a public repo: the workflow sets
-`GH_TOKEN: ${{ secrets.GH_TOKEN \|\| secrets.GITHUB_TOKEN }}`.
+| Secret name                   | Platform | Required?               | Purpose                                                                                        |
+| ----------------------------- | -------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `MAC_CSC_LINK`                | macOS    | optional                | Base64 of the **Developer ID Application** `.p12` (or an `https://` URL to it)                 |
+| `MAC_CSC_KEY_PASSWORD`        | macOS    | with `MAC_CSC_LINK`     | Password of that `.p12`                                                                        |
+| `APPLE_ID`                    | macOS    | optional (notarization) | Apple ID e-mail of the developer account                                                       |
+| `APPLE_APP_SPECIFIC_PASSWORD` | macOS    | with `APPLE_ID`         | App-specific password from appleid.apple.com                                                   |
+| `APPLE_TEAM_ID`               | macOS    | with `APPLE_ID`         | 10-character Team ID                                                                           |
+| `WIN_CSC_LINK`                | Windows  | optional                | Base64 of the Authenticode code-signing `.pfx`/`.p12` (or an `https://` URL)                   |
+| `WIN_CSC_KEY_PASSWORD`        | Windows  | with `WIN_CSC_LINK`     | Password of that certificate                                                                   |
+| `GH_TOKEN`                    | all      | optional                | Classic PAT (`repo` scope), only if org policy blocks the default token from creating Releases |
+| `GITHUB_TOKEN`                | all      | automatic               | Provided by Actions; creates/uploads the Release (`contents: write`)                           |
+
+Encode a certificate for a secret: `base64 -i cert.p12 | pbcopy` (macOS) or
+`[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))` (PowerShell).
+
+### How the gate works · 门控规则
+
+Only **tag** builds (`v*`) read these secrets. The step _Resolve signing / notarization env_ runs
+[`scripts/release/signing-env.mjs`](../scripts/release/signing-env.mjs), which exports variables for
+electron-builder **only when a whole group is present**:
+
+| Group present                                                     | Exported to electron-builder                  | Result                                    |
+| ----------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------- |
+| `MAC_CSC_LINK` + `MAC_CSC_KEY_PASSWORD`                           | `CSC_LINK`, `CSC_KEY_PASSWORD`                | macOS app + DMG signed (hardened runtime) |
+| …and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` | the same three names                          | **notarized** (notarytool) and stapled    |
+| `WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD`                           | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`        | NSIS installer + exe signed               |
+| anything missing / partial                                        | nothing (`CSC_IDENTITY_AUTO_DISCOVERY=false`) | unsigned build, `::notice::` explains why |
+
+Notarization is enabled automatically when the three Apple secrets are present (electron-builder 26
+notarizes whenever `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` are in the environment);
+it needs a signed build, so it is skipped when the macOS certificate is missing. A partial set is never
+passed through, because electron-builder would fail the build on it. PR / push builds never sign; they
+run the gate as a dry-run to keep the script working on all three runners.
+
+中文：在仓库 Secrets 中配置上表名称。只有打 tag 的构建会读取；整组齐全才签名 / 公证，缺失或不完整时降级为未签名构建，不会让发布失败。
 
 Unsigned builds still install and update; SmartScreen / Gatekeeper may warn until certificates are configured.
+
+### Local signed build
+
+```bash
+CSC_LINK=./devid.p12 CSC_KEY_PASSWORD=… APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=… APPLE_TEAM_ID=… \
+  pnpm --filter @nomi-ai/electron run package:prod:mac
+```
 
 ---
 
