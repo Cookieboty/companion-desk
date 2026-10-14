@@ -15,5 +15,6 @@ mouths) come from the owner's front-facing HD head image
 Same licence as above.
 
 The body parts (torso, sleeves, badge, strap) are split from the same body layer
-with scripts/brand/build-nomi-body-parts.py (hidden areas inpainted locally).
+with scripts/brand/build-nomi-body-parts.py (hidden areas inpainted locally);
+the neck/collar join is then finished with scripts/brand/polish-nomi-neck.py.
 Same licence as above.

@@ -35,9 +35,9 @@
 
    选择本次涉及的包 + 版本类型（`patch` / `minor` / `major`）+ 摘要。命令会生成 `.changeset/xxx-yyy-zzz.md` 文件，一并提交。
 
-2. **CI 校验**：CI 会跑 `pnpm changeset status --since=origin/main`，若涉及 fixed-group 三个包的 PR 未附 changeset，将失败。
+2. **CI 校验**：CI 会跑 `pnpm changeset:status`（即 `changeset status --since=origin/main`）和 `pnpm changelog:check`；改动了包却没有 changeset 时会失败，纯文档 / 测试改动可用 `pnpm changeset --empty`。
 
-3. **发版**：在 `main` 上执行 `pnpm changeset version` 会一次性把 fixed-group 三个包 bump 到同版本、并汇总 changelog；随后 `pnpm publish -r --filter '@nomi-ai/ai-*' --access=restricted --no-git-checks` 走内部 registry。首个 alpha tag 目标 `v0.1.0-alpha.1`。
+3. **发版**：在 `main` 上执行 `pnpm changeset:version`，把 changeset 汇总进根目录 `CHANGELOG.md` 并把 fixed-group 三个包 bump 到同版本。这些包都是 `private`，不发布到 npm；应用的发布流程见 [docs/RELEASE.md](../docs/RELEASE.md)。
 
 ## 版本策略
 

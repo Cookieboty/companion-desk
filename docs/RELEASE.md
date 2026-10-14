@@ -115,7 +115,6 @@ CSC_LINK=./devid.p12 CSC_KEY_PASSWORD=… APPLE_ID=… APPLE_APP_SPECIFIC_PASSWO
 ```bash
 pnpm install
 pnpm turbo run build
-pnpm --filter @nomi-ai/electron run copy-renderer
 GH_TOKEN=… pnpm --filter @nomi-ai/electron run package:publish:linux   # or :win / :mac
 ```
 

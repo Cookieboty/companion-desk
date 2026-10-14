@@ -9,11 +9,11 @@ Workspace 包模板。**不要**直接改这里，用于给新包提供起手骨
 cp -r templates/pkg-template packages/<your-pkg>
 
 # 2. 改名（package.json.name）
-sed -i '' 's|@nomi-ai/pkg-template|@nomi-ai/<your-pkg>|g' packages/<your-pkg>/package.json packages/<your-pkg>/src/*.ts
+perl -pi -e 's|@nomi-ai/pkg-template|@nomi-ai/<your-pkg>|g' packages/<your-pkg>/package.json packages/<your-pkg>/src/*.ts
 
 # 3. 安装 + 冒烟
 pnpm install
-pnpm --filter @nomi-ai/<your-pkg> build test lint typecheck
+pnpm turbo run build test lint typecheck --filter=@nomi-ai/<your-pkg>
 ```
 
 ## 结构

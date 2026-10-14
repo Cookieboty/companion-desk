@@ -158,7 +158,7 @@ pnpm install
 pnpm dev                    # 开发模式运行
 
 pnpm test                   # 测试
-pnpm package:prod           # 为当前平台打包，产物在 dist/
+pnpm package                # 为当前平台打包，产物在 dist/
 ```
 
 可用 `pnpm run doctor` 检查开发环境。打包与发布说明见 [docs/RELEASE.md](docs/RELEASE.md)。

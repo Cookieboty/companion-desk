@@ -5,7 +5,6 @@
 | 单元测试     | `packages/*/src/**`、`packages/*/tests/**` | `pnpm test`            | 各包逻辑；`electron` 用 Jest（`packages/electron/tests/unit`），其余包用 Vitest                                 |
 | 脚本测试     | `scripts/__tests__`                        | `pnpm test:root`       | changelog 与签名环境脚本                                                                                        |
 | 无界面 E2E   | `e2e/tests`                                | `pnpm test:e2e`        | 不启动 Electron：真实 `AIClient` + IPC 服务端 + 事件广播，配合假的 IPC / LLM / 工具，验证跨窗口的调用与事件契约 |
-| 包内 E2E     | 各包的 `test:e2e` 脚本                     | `pnpm test:e2e:pkg`    | 预留入口：目前只有 `electron` 定义了（`jest tests/e2e`），该目录暂无用例                                        |
 | 真实应用 E2E | `e2e-headed/tests`                         | `pnpm test:e2e:headed` | Playwright 启动真实 Electron，操作界面                                                                          |
 
 ## 无界面 E2E（`e2e/`，Vitest，4 个文件 / 11 个用例）

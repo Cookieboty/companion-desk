@@ -25,7 +25,8 @@ pnpm 9 + Turborepo monorepo，Electron 桌面应用（React 19 + Vite）。Node 
 pnpm install
 pnpm dev                 # 开发（renderer 6127、chat 6128，见 dev-ports.json）
 pnpm build
-pnpm typecheck && pnpm lint
+pnpm typecheck && pnpm lint   # lint 覆盖全部包
+pnpm format:check
 pnpm test                # 单元测试：electron 用 Jest（tests/unit），其余包用 Vitest
 pnpm test:e2e            # 无界面 E2E
 xvfb-run -a pnpm test:e2e:headed   # 真实应用 E2E，必须在仓库根目录运行

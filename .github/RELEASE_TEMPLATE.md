@@ -1,6 +1,5 @@
 # Release Notes · {{VERSION}}
 
-> 首个 alpha 目标：`v0.1.0-alpha.1`
 > 发布流程：[docs/RELEASE.md](../docs/RELEASE.md)
 
 ## 摘要
@@ -64,7 +63,7 @@
 - [ ] 三平台 CI matrix build 全绿（[ci.yml · build-electron](workflows/ci.yml)）
 - [ ] 手工验收危险工具确认弹窗同意路径（确认弹窗 → 同意 → 文件写入成功）
 - [ ] `pnpm changelog:check` 通过，根目录 `CHANGELOG.md` 已包含本版本
-- [ ] 内部 npm registry / GitHub Releases 上传完成
+- [ ] GitHub Releases 安装包上传完成
 - [ ] Release notes 中的 SHA256 与产物大小已填写
 
 ## 致谢
