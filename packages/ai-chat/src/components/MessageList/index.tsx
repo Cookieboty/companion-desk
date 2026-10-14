@@ -27,7 +27,18 @@ const MessageItem = ({
   </div>
 );
 
-export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading }) => {
+/**
+ * 流式回复开始前会先插入一条空的 assistant 占位消息；没有内容（也没出错 / 没图片）时不渲染，
+ * 否则在第一个 chunk 到达前 / 流以空结果结束时会闪出一个空气泡。
+ */
+export function visibleMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(
+    (m) => m.role !== 'assistant' || !!m.error || !!m.images?.length || !!m.content?.trim(),
+  );
+}
+
+export const MessageList: React.FC<MessageListProps> = ({ messages: all, isLoading }) => {
+  const messages = visibleMessages(all);
   const listRef = useListRef(null);
   const containerRef = useRef<HTMLDivElement>(null);
 

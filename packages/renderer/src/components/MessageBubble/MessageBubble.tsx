@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import styles from './style.module.css';
 
 import { bubbleHover, useMascot } from '@/contexts/MascotContext';
+import { EMPTY_HOLD, holdOnHidden, holdOnMessage, type BubbleHold } from '@/mascot/bubbleHold';
 import {
   bubbleScale,
   intersects,
@@ -24,24 +25,27 @@ const PREF_W = 220;
  */
 export const MessageBubble: React.FC = () => {
   const { state } = useMascot();
-  const [active, setActive] = useState(false);
+  const [hold, setHold] = useState<BubbleHold>(EMPTY_HOLD);
   const [place, setPlace] = useState<BubblePlacement | null>(null);
   const [scale, setScale] = useState(1);
   const measureRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [scrolls, setScrolls] = useState(false);
   // 模块常量里的台词（tips / 触摸反应）在显示时晚翻译
-  const text = tr(toBubbleText(state.currentMessage));
-  const more = state.messageMore === true;
+  const incoming = tr(toBubbleText(state.currentMessage));
+  const incomingMore = state.messageMore === true;
+  // 首帧（SSR / 初次渲染）直接用当前消息，之后经 hold 保持淡出期间的旧文本
+  const live = incoming.trim() ? { text: incoming, more: incomingMore } : null;
+  const text = live?.text ?? hold.text;
+  const more = live ? live.more : hold.more;
+  const active = !!live;
 
-  useEffect(() => {
-    if (state.currentMessage) {
-      setActive(true);
-      return undefined;
-    }
-    const timer = setTimeout(() => setActive(false), 300);
+  useLayoutEffect(() => {
+    setHold((prev) => holdOnMessage(prev, incoming, incomingMore));
+    if (incoming.trim()) return undefined;
+    const timer = setTimeout(() => setHold(holdOnHidden()), 300);
     return () => clearTimeout(timer);
-  }, [state.currentMessage]);
+  }, [incoming, incomingMore]);
 
   const compute = useCallback(() => {
     const { head, gutter } = layoutStore.get();
@@ -152,6 +156,7 @@ export const MessageBubble: React.FC = () => {
         data-scroll={scrolls ? '' : undefined}
         data-testid="mascot-bubble"
         data-tail={place?.tail ?? 'bottom'}
+        data-empty={text.trim() ? undefined : ''}
         role="status"
         aria-live="polite"
         className={`${styles.messageBubble} ${place ? styles.placed : ''} ${active ? styles.active : ''}`}
