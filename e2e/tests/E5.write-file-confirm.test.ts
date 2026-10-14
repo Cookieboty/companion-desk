@@ -1,7 +1,7 @@
 /**
  * E5 · 危险工具 `write_file` 确认弹窗（headless / 拒绝路径自动化）
  *
- * 语义对齐（对照 [P9-11](../../docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)）：
+ * 语义对齐（对照 [P9-11](../../docs/archive/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)）：
  * - 场景：chat-only profile，Agent 触发 `write_file` 时应弹出确认；
  *   本 headless 用例只跑**拒绝路径自动化**（同意路径涉及真实 fs / dialog，
  *   延到 [P9-11 手工验收清单](../../docs/consumer-integration.md)）；

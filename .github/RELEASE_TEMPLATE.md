@@ -1,7 +1,7 @@
 # Release Notes · {{VERSION}}
 
 > 首个 alpha 目标：`v0.1.0-alpha.1`
-> 面向消费方的迁移背景：[docs/plans/README.md](../docs/plans/README.md)
+> 面向消费方的迁移背景：[docs/archive/plans/README.md](../docs/archive/plans/README.md)
 
 ## 摘要
 
@@ -19,7 +19,7 @@
 
 ## 变更
 
-> 逐条从 [docs/plans/CHANGELOG.md](../docs/plans/CHANGELOG.md) 的 `[Unreleased]` 复制，按分类：
+> 逐条从 [docs/archive/plans/CHANGELOG.md](../docs/archive/plans/CHANGELOG.md) 的 `[Unreleased]` 复制，按分类：
 
 ### Added
 
@@ -62,8 +62,8 @@
 - [ ] `pnpm run doctor:dsh waifu && pnpm run doctor:dsh chat-only && pnpm run doctor:dsh mcp-headless` 全绿
 - [ ] `pnpm changeset status` 无未消费 changeset
 - [ ] 三平台 CI matrix build 全绿（[ci.yml · build-electron](workflows/ci.yml)）
-- [ ] 手工验收 [P9-11 E5 同意路径](../docs/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)（危险工具确认弹窗 → 同意 → fs 写入成功）
-- [ ] `docs/plans/CHANGELOG.md` 已把 `[Unreleased]` 归档到本版本号
+- [ ] 手工验收 [P9-11 E5 同意路径](../docs/archive/plans/P9-polish-observability-release.md#p9-11-e2e-补齐p8-8-交接项)（危险工具确认弹窗 → 同意 → fs 写入成功）
+- [ ] `docs/archive/plans/CHANGELOG.md` 已把 `[Unreleased]` 归档到本版本号
 - [ ] 内部 npm registry / GitHub Releases 上传完成
 - [ ] Release notes 中的 SHA256 与产物大小已填写
 

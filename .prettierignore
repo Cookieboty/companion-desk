@@ -6,5 +6,5 @@
 **/*.min.js
 packages/renderer/public/**
 docs/AI_HARNESS_DESIGN.md
-docs/plans/**
+docs/archive/plans/**
 pnpm-lock.yaml

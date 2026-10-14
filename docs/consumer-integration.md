@@ -2,7 +2,7 @@
 
 > P8-9 交付物。适用于把「主进程 / renderer（看板娘） / ai-chat」三端接入 dsh + `@nomi-ai/ai-sdk-client` 的最短路径。
 >
-> 迁移总纲：[P8-consumer-migration.md](plans/P8-consumer-migration.md)　·　变更时间线：[docs/plans/CHANGELOG.md](plans/CHANGELOG.md)　·　旧通道映射：[legacy-channel-mapping.md](legacy-channel-mapping.md)
+> 迁移总纲：[P8-consumer-migration.md](plans/P8-consumer-migration.md)　·　变更时间线：[docs/archive/plans/CHANGELOG.md](plans/CHANGELOG.md)　·　旧通道映射：[legacy-channel-mapping.md](legacy-channel-mapping.md)
 
 ## 0. 心智模型
 
@@ -187,7 +187,7 @@ userData 目录迁到 Nomi 目录（见 `packages/electron/src/utils/legacyUserD
 ## 引用
 
 - 计划：[P8-consumer-migration.md](plans/P8-consumer-migration.md)
-- 变更：[docs/plans/CHANGELOG.md](plans/CHANGELOG.md)
+- 变更：[docs/archive/plans/CHANGELOG.md](plans/CHANGELOG.md)
 - Preload 深入：[docs/preload-usage.md](preload-usage.md)
-- 旧通道映射：[docs/legacy-channel-mapping.md](legacy-channel-mapping.md)
+- 旧通道映射：[docs/archive/legacy-channel-mapping.md](legacy-channel-mapping.md)
 - 设计基线：[docs/AI_HARNESS_DESIGN.md](AI_HARNESS_DESIGN.md)

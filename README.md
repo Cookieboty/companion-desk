@@ -444,7 +444,7 @@ for await (const chunk of runtime.client.chat.stream({
 
 **preload**：使用 [`mkAiPreload`](packages/ai-sdk-client/src/preload/mkAiPreload.ts) 注入白名单 IPC 通道（`ai:*` 前缀）；详见 [docs/preload-usage.md](docs/preload-usage.md)。
 
-**升级说明与旧 API 弃用时间线**：[docs/plans/CHANGELOG.md](docs/plans/CHANGELOG.md)、[docs/HISTORY.md](docs/HISTORY.md)。
+**升级说明与旧 API 弃用时间线**：[docs/archive/plans/CHANGELOG.md](docs/archive/plans/CHANGELOG.md)、[docs/HISTORY.md](docs/HISTORY.md)。
 
 ## 🙏 致谢
 
@@ -484,7 +484,7 @@ for await (const chunk of runtime.client.chat.stream({
 [assets-licenses.json](assets-licenses.json)，CI 通过 `pnpm check:licenses` 强制校验。
 
 > 历史：早期版本使用 Live2D Cubism 2 专有运行时与来源不明的 Live2D 模型，已因许可原因全部移除
-> （见 [docs/plans/mascot-open-source.md](docs/plans/mascot-open-source.md)）。
+> （见 [docs/archive/plans/mascot-open-source.md](docs/archive/plans/mascot-open-source.md)）。
 
 ---
 

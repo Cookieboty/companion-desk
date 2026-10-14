@@ -1,5 +1,3 @@
-import { describe, expect, it, jest } from '@jest/globals';
-
 import { createIpcMascotHost, mascotIgPlugins } from '../../../src/ai/mascotBridge';
 import type { MascotCommand } from '../../../src/ai/mascotCommand';
 
