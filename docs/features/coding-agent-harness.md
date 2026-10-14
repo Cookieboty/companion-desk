@@ -235,3 +235,65 @@ Aggregation（多上游合并）仍为 **P2**。
 ---
 
 _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code headless/CLI 文档、OpenAI Codex CLI reference、Cursor headless CLI 文档（2026-10）。_
+
+## 12. 第三个接管端点：dsh + 多标签并发后端（设计稿，2026-10-15）
+
+### 12.1 dsh 调研摘要（`@deepseek-ai/dsh`）
+
+| 项目     | 事实（2026-10-15 实测）                                                                                                                                                                                                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| npm 版本 | `latest` / `next` = `0.2.0-rc.2`，`alpha` = `0.2.1-alpha.3`；bin 为 `dsh`                                                                                                                                                                                                        |
+| 运行时   | **需要 Node ≥ 24**（使用 `import.meta.main`）；Node 22 下不报错、无输出、退出码 0，因此探测时要把「`--version` 无输出」视为运行时过旧                                                                                                                                            |
+| 版本     | `dsh --version`                                                                                                                                                                                                                                                                  |
+| 更新     | 无自更新命令，使用 `npm i -g @deepseek-ai/dsh@latest`；插件使用 `dsh plugin --profile <name> <pnpm 参数>` 管理                                                                                                                                                                   |
+| 无头运行 | `dsh --profile headless --json [--session-id <id>] "<任务>"`；任务写 `-` 时从 stdin 读取                                                                                                                                                                                         |
+| 事件流   | NDJSON：`session{sessionId,cwd}`、`status{phase:turn_start/step_start/step_end/turn_end, usage, reason}`、`text`、`thinking`、`tool_call{callId,tool,input}`、`tool_result{callId,status,result}`、`final{text}`、`error{message}`；文本按「已提交的步骤」整段输出，不是逐 token |
+| 退出码   | 0 = 完成；1 = 中止或出错                                                                                                                                                                                                                                                         |
+| 续接     | `--session-id session-<uuid>`；必须在同一 cwd 下运行，未知 id 会报错                                                                                                                                                                                                             |
+| 其它模式 | `--profile acp`（stdio 上的 ACP）、`--profile sdk`（stdio JSON-RPC），留待 P2                                                                                                                                                                                                    |
+| 配置根   | `DSH_HOME`（默认 `~/.dsh`）：`profiles/<name>/`、家目录级补丁 `cordis.patch.yml`、凭据 `.credentials.yaml`                                                                                                                                                                       |
+| 会话存储 | `$DSH_HOME/sessions/<编码后的 cwd>/session-<uuid>/{session.lock, session.v4.jsonl.zstd}`；运行中的会话持有 `session.lock`                                                                                                                                                        |
+| 供应商   | 默认使用 DeepSeek 官方接口（`DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`）；内置适配器原生支持 `openai-completions`、`openai-responses`、`anthropic-messages`，**不需要本地路由**                                                                                                    |
+
+### 12.2 dsh 供应商档案（第 4 套档案库）
+
+- 档案库位于 `userData/cli-providers/dsh/store.json`，与 Nomi / Claude / Codex 的档案相互隔离。
+- 启用档案时，在 `$DSH_HOME/cordis.patch.yml` 中写入一段带 `# >>> nomi managed (dsh provider) >>>` 标记的区块，其余内容原样保留，并且先备份再原子写入：
+
+```yaml
+- id: llm-pi-ai
+  config:
+    providers:
+      nomi:
+        api: openai-completions # 或 openai-responses / anthropic-messages
+        baseURL: https://example.com/v1
+        apiKeyEnv: NOMI_DSH_API_KEY
+        models:
+          - id: <model>
+- id: agent-default-model
+  config:
+    provider: nomi
+    model: <model>
+```
+
+- **密钥不落盘到 dsh 配置**：由接管服务在启动 dsh 时注入环境变量 `NOMI_DSH_API_KEY`。用户在终端里自己运行 dsh 时，需要自行导出该变量，或停用档案、回到 dsh 默认供应商。
+- 停用档案时只移除标记区块。
+
+### 12.3 接管适配器
+
+- 启动 `dsh --profile headless --json [--session-id <id>] <prompt>`，stdin 立即关闭，cwd 为会话目录。
+- 事件映射：`text`/`final` → 文本；`tool_call` → 工具开始；`tool_result` → 工具完成或出错；`error`、`status.reason.kind=error` → 错误；`session.sessionId` 写回会话状态，供下一轮续接。
+- 测试和 Mock 使用 `NOMI_DSH_BIN` 覆盖可执行文件，Mock 脚本为 `scripts/mock-cli/mock-dsh.mjs`。
+- 版本检查和更新复用 `CliUpdateService`，类型为 `dsh`，安装方式固定为 npm。
+
+### 12.4 多标签并发后端（下一里程碑）
+
+- **标签 = 会话**：每个对话标签绑定 `{backend, cliSessionId, cwd}`，各自独立运行；一个标签忙碌不会阻塞其它标签。`CliHarnessService` 从单例状态改为 `Map<tabId, HarnessSessionState>`，每个标签最多运行一个子进程，全局并发上限默认 3（防止内存吃紧）。
+- 切换标签的后端只清空该标签的 `cliSessionId`；关闭标签会终止它的子进程。
+- IPC 全部带 `tabId`，事件按 `tabId` 分发到对应窗口或标签。
+- **看板娘监视器聚合**：统一的 `AgentSessionIndex` 扫描三类来源并合并为一个列表（按最近活动排序）：
+  - Claude Code：`~/.claude/projects/*/*.jsonl`
+  - Codex：`~/.codex/sessions/**/rollout-*.jsonl`
+  - dsh：`$DSH_HOME/sessions/*/session-*/`（有 `session.lock` 视为运行中）
+  - 以及 Nomi 自己管理的标签（实时状态优先于文件推断）。
+- 每条记录展示后端图标、cwd、最后活动时间、运行状态；点击即可在新标签中续接该会话。
