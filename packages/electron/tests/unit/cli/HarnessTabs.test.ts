@@ -83,7 +83,7 @@ describe('CliHarnessService tabs', () => {
     expect(rb.text).toContain('new');
     const msgs = h.tabMessages(a.id);
     expect(msgs.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
-    expect(msgs[1]!.tools).toEqual(['read_file']);
+    expect(msgs[1]!.tools).toEqual(['read_file ✓']);
     expect(h.state().cliSessionId).toBeNull(); // main tab untouched
   });
 

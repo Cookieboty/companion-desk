@@ -42,6 +42,7 @@ interface HarnessTabsValue {
   send: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
   replyPermission: (requestId: string, allow: boolean) => Promise<void>;
+  setMaxConcurrent: (n: number) => Promise<void>;
   /** 最近使用的编程助手后端（新建标签默认） */
   lastBackend: HarnessBackend;
 }
@@ -202,6 +203,10 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
     },
     [isCliTab, activeId],
   );
+  const setMaxConcurrent = useCallback(async (n: number) => {
+    const next = await harnessClient.setMaxConcurrent(n);
+    setState(next);
+  }, []);
 
   const value: HarnessTabsValue = {
     available,
@@ -219,6 +224,7 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
     send,
     cancel,
     replyPermission,
+    setMaxConcurrent,
     lastBackend,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -240,6 +246,7 @@ const EMPTY: HarnessTabsValue = {
   send: async () => undefined,
   cancel: async () => undefined,
   replyPermission: async () => undefined,
+  setMaxConcurrent: async () => undefined,
   lastBackend: 'claude',
 };
 

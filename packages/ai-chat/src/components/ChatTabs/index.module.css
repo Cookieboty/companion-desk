@@ -184,9 +184,21 @@
 
 .load {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   font-size: 11px;
   color: var(--cd-color-text-subtle);
   white-space: nowrap;
+}
+.limitSelect {
+  font-size: 11px;
+  padding: 0 2px;
+  border-radius: 4px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-bg);
+  color: inherit;
+  cursor: pointer;
 }
 
 .live {

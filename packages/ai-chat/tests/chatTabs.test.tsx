@@ -42,6 +42,11 @@ function mockIpc(initial: HarnessTabsState) {
       return t;
     }
     if (ch === 'ai:harness:tab-messages') return [];
+    if (ch === 'ai:harness:set-max-concurrent') {
+      state = { ...state, maxConcurrent: Number(a[0]) };
+      listeners['ai:harness:tabs']?.forEach((f) => f(state));
+      return state;
+    }
     return state;
   });
   const on = (ch: string, fn: (p: unknown) => void) => {
@@ -91,9 +96,30 @@ describe('ChatTabs', () => {
     expect(r.getByTestId('chat-tab-1').getAttribute('data-status')).toBe('running');
     expect(r.getByTestId('chat-tab-2').getAttribute('data-status')).toBe('unread');
     expect(r.getByTestId('chat-tab-unread').textContent).toBe('2');
-    expect(r.getByTestId('chat-tabs-load').textContent).toContain('1/3');
+    expect(r.getByTestId('chat-tabs-load').textContent).toContain('运行 1/');
+    expect((r.getByTestId('chat-tabs-max-concurrent') as HTMLSelectElement).value).toBe('3');
     // main 标签没有关闭按钮
     expect(r.queryByTestId('chat-tab-close-0')).toBeNull();
+  });
+
+  it('shows and changes the concurrency limit (1–8)', async () => {
+    const ipc = mockIpc(base());
+    const r = render(
+      <HarnessTabsProvider>
+        <ChatTabs />
+      </HarnessTabsProvider>,
+    );
+    await waitFor(() => expect(r.getByTestId('chat-tabs-max-concurrent')).toBeTruthy());
+    const sel = r.getByTestId('chat-tabs-max-concurrent') as HTMLSelectElement;
+    expect(sel.value).toBe('3');
+    expect(r.getByTestId('chat-tabs-load').textContent).toContain('1');
+    await act(async () => {
+      fireEvent.change(sel, { target: { value: '5' } });
+    });
+    await waitFor(() => {
+      expect(ipc.invoke).toHaveBeenCalledWith('ai:harness:set-max-concurrent', 5);
+      expect((r.getByTestId('chat-tabs-max-concurrent') as HTMLSelectElement).value).toBe('5');
+    });
   });
 
   it('activates, renames and creates tabs', async () => {
