@@ -45,6 +45,9 @@ async function launch(
   delete env.DSH_HOME;
   mkdirSync(env.APPDATA!, { recursive: true });
   mkdirSync(env.LOCALAPPDATA!, { recursive: true });
+  // app.getPath('documents' 等) 在 Windows 取 %USERPROFILE%\<Known Folder>，目录不存在会报错
+  for (const d of ['Documents', 'Desktop', 'Downloads', 'Music', 'Pictures', 'Videos'])
+    mkdirSync(join(home, d), { recursive: true });
   const app = await electron.launch({
     executablePath: resolveElectronExecutable(),
     args: [electronPkgDir, `--user-data-dir=${userData}`, '--enable-unsafe-swiftshader'],
