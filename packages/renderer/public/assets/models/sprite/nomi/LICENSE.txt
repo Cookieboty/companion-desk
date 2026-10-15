@@ -25,6 +25,7 @@ scripts/brand/fix-nomi-brand-parts.py (crops only, no generative redraw).
 Same licence as above.
 
 layers/hands/*.png are AI-generated, non-brand hand / forearm pieces, cut out
-and colour-matched to the master with scripts/brand/build-nomi-hands.py and
+and colour-matched to the master with scripts/brand/build-nomi-hands.py,
+scripts/brand/build-nomi-hands-extra.py (prayer / OK / chest) and
 scripts/brand/build-nomi-arm-parts.py. Licensed by the project owner under the
 repository's MIT license. They contain no brand-bearing detail.

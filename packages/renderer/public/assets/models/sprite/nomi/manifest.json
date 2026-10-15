@@ -292,6 +292,34 @@
         "ay": 558.0,
         "sleeveW": 148.0,
         "cuffY": 328.0
+      },
+      "prayer": {
+        "file": "hands/hand-prayer.png",
+        "w": 202,
+        "h": 539,
+        "ax": 100.5,
+        "ay": 539.0,
+        "sleeveW": 184.0,
+        "cuffY": 297.9,
+        "k": 1.2
+      },
+      "ok": {
+        "file": "hands/hand-ok.png",
+        "w": 342,
+        "h": 702,
+        "ax": 139.5,
+        "ay": 702.0,
+        "sleeveW": 184.0,
+        "cuffY": 460.0
+      },
+      "chest": {
+        "file": "hands/hand-chest.png",
+        "w": 242,
+        "h": 655,
+        "ax": 123.5,
+        "ay": 655.0,
+        "sleeveW": 184.0,
+        "cuffY": 413.1
       }
     },
     "arms": {

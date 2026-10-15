@@ -33,6 +33,8 @@ export interface HandPieceMeta {
   ay: number;
   sleeveW: number;
   cuffY: number;
+  /** optional size multiplier applied after the cuff-width fit (default 1) */
+  k?: number;
 }
 
 export interface ArmDrawParams {
@@ -327,7 +329,7 @@ export function drawArmStrip(
 export function handScaleFor(meta: HandPieceMeta, cuffWidth: number): number {
   // Hands read oversized vs head/torso on Windows; bias small vs cuff width.
   const sw = Math.max(40, meta.sleeveW || 160);
-  return Math.max(0.28, Math.min(0.48, (cuffWidth * 0.5) / sw));
+  return Math.max(0.28, Math.min(0.48, (cuffWidth * 0.5) / sw)) * (meta.k ?? 1);
 }
 
 export function drawHandPiece(

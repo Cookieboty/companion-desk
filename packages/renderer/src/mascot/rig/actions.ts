@@ -118,10 +118,10 @@ const P = {
   surprise: { r: [10, 62, 8], l: [10, 62, -8] },
   salute: { r: [14, 86, -18], l: [12, 82, -8] },
   heart: { r: [7, 84, 42], l: [5, 84, 40] },
-  chest: { r: [6, 80, 38], l: [4, 78, 32] },
+  chest: { r: [-40, 125, 60], l: [4, 78, 32] },
   type: { r: [8, 88, 48], l: [6, 88, 46] },
   stretch: { r: [14, 66, -14], l: [12, 64, -10] },
-  pray: { r: [6, 84, 34], l: [4, 84, 36] },
+  pray: { r: [-46, 135, 45], l: [4, 84, 36] },
   clap: { r: [7, 84, 36], l: [5, 82, 40] },
 } as const satisfies Record<string, { r: Pose; l: Pose }>;
 
@@ -224,6 +224,39 @@ export const ACTIONS: readonly ActionDef[] = [
     ],
   },
   // ---- think / explain -----------------------------------------------------------------------
+
+  {
+    id: 'pray',
+    label: '合十',
+    category: 'emotion',
+    dur: 2.8,
+    trigger: '感谢 / 拜托 / 祈祷', // i18n-ignore
+    tracks: [
+      // prayer PNG already shows both palms — attach once on the right arm
+      ...arm('r', HAND.prayer, P.pray.r, 0.45, 2.2, 2.8, { ease: 'io' }),
+      hold('armFront', 0.35, 99, 1),
+      T('headNod', [0, 0], [0.5, 10, 'io'], [2.0, 10], [2.8, 0]),
+      hold('eyeL', 0.4, 2.4, EYE.closed),
+      hold('eyeR', 0.4, 2.4, EYE.closed),
+      hold('mouth', 0.4, 2.4, MOUTH.smile),
+      T('fxSparkle', [0, 0], [0.6, 0.6], [2.2, 0.6], [2.8, 0]),
+    ],
+  },
+  {
+    id: 'ok_hand',
+    label: 'OK 手势',
+    category: 'celebrate',
+    dur: 2.2,
+    trigger: '确认 / 没问题 / OK', // i18n-ignore
+    tracks: [
+      ...arm('r', HAND.ok, P.thumb.r, 0.35, 1.8, 2.2),
+      T('headNod', [0, 0], [0.4, 6, 'o'], [1.6, 6], [2.2, 0]),
+      hold('eyeL', 0.3, 1.9, EYE.happy),
+      hold('eyeR', 0.3, 1.9, EYE.happy),
+      hold('mouth', 0.3, 1.9, MOUTH.smile),
+      T('fxSparkle', [0, 0], [0.4, 0.7], [1.8, 0.7], [2.2, 0]),
+    ],
+  },
   {
     id: 'think',
     label: '托腮思考',
@@ -485,7 +518,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 3.0,
     trigger: '长时间失败 / 无聊', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.chest.r, 0.6, 2.5, 3.0, { ease: 'io' }),
+      ...arm('r', HAND.chest, P.chest.r, 0.6, 2.5, 3.0, { ease: 'io' }),
       hold('armFront', 0.4, 99, 1),
       T('headNod', [0, 0], [0.8, 8, 'io'], [2.0, 12, 'io'], [3.0, 0]),
       T('shoulder', [0, 0], [0.6, -6, 'o'], [1.6, 4, 'io'], [3.0, 0]),
