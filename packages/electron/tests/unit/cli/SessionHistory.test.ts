@@ -247,6 +247,53 @@ describe('SessionHistoryService', () => {
     });
   });
 
+  it('codex: one session id spread over several rollout files is listed once (newest wins, across pages)', async () => {
+    const id = '01a0a531-1d64-7361-bb69-ebd1c7349662';
+    const text = fx('codex-rollout.jsonl').replace(
+      /"cwd":\s*"\/tmp"/g,
+      `"cwd":${JSON.stringify(work)}`,
+    );
+    const put = (day: string, name: string, body: string, mtime: number) => {
+      const dir = path.join(home, '.codex', 'sessions', '2026', '10', day);
+      fs.mkdirSync(dir, { recursive: true });
+      const p = path.join(dir, name);
+      fs.writeFileSync(p, body);
+      touch(p, mtime);
+      return p;
+    };
+    // 同一个 id：续接后 Codex 在另一天的目录里又写了一个 rollout
+    const base = text.split('01a13a9b-34b0-7612-ba36-613a55008483').join(id);
+    expect(base).toContain(id);
+    put('13', `rollout-2026-10-13T09-00-00-${id}.jsonl`, base, 1_000_000);
+    put('15', `rollout-2026-10-15T09-00-00-${id}.jsonl`, base, 3_000_000);
+    const otherId = '01a0a3b7-aaaa-7361-bb69-ebd1c7349662';
+    put(
+      '14',
+      `rollout-2026-10-14T09-00-00-${otherId}.jsonl`,
+      base.split(id).join(otherId),
+      2_000_000,
+    );
+    const svc = mk();
+    const keys: string[] = [];
+    let offset: number | undefined;
+    let updated = 0;
+    for (let guard = 0; guard < 6; guard++) {
+      const page = await svc.list('codex', { limit: 1, offset });
+      for (const it of page.items) {
+        keys.push(it.key);
+        if (it.sessionId === id) updated = it.updatedAt;
+      }
+      if (!page.hasMore) break;
+      offset = page.nextOffset ?? undefined;
+    }
+    expect(keys.sort()).toEqual([`codex:${id}`, `codex:${otherId}`].sort());
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(updated).toBe(3_000_000);
+    // 一次拉满也只有两条
+    const all = await mk().list('codex', { limit: 50, force: true });
+    expect(all.items.map((x) => x.key).sort()).toEqual(keys);
+  });
+
   const dshSetup = (id: string): boolean => {
     const dsh = path.join(home, '.dsh');
     const dir = path.join(dsh, 'sessions', '--work--', id);

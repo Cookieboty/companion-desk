@@ -289,7 +289,18 @@ export class SessionHistoryService {
       if (this.parsed.size > MAX_PARSED_CACHE) this.parsed.clear();
       this.parsed.set(f.path, { mtime: f.mtime, size: f.size, meta });
     }
-    if (meta) this.byKey.set(meta.key, { ...f, meta });
+    if (meta) {
+      // 同一会话 id 可能对应多个文件（Codex 续接会新写一个 rollout）：反查表只保留最新的一个，
+      // 平手时按路径取小，保证并行解析时结果稳定
+      const cur = this.byKey.get(meta.key);
+      if (
+        !cur ||
+        cur.path === f.path ||
+        f.mtime > cur.mtime ||
+        (f.mtime === cur.mtime && f.path < cur.path)
+      )
+        this.byKey.set(meta.key, { ...f, meta });
+    }
     return meta;
   }
 
@@ -311,6 +322,8 @@ export class SessionHistoryService {
         const m = metas[k];
         i++;
         if (!m || open.has(m.key)) continue;
+        // 同一会话的旧文件不再单列（只有「最新的那个文件」才是这条会话）
+        if (this.byKey.get(m.key)?.path !== batch[k]!.path) continue;
         items.push({
           ...m,
           cwdMissing: m.cwd ? !isDir(m.cwd) : false,

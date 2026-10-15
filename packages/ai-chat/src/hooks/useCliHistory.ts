@@ -18,6 +18,24 @@ interface EndpointState {
   loading: boolean;
 }
 
+/** 按 key 去重，保留 updatedAt 最新的一条（防御：数据层按理已去重，但 React key 必须唯一） */
+export function dedupeHistory(list: readonly HistorySession[]): HistorySession[] {
+  const best = new Map<string, HistorySession>();
+  for (const x of list) {
+    const cur = best.get(x.key);
+    if (!cur || x.updatedAt > cur.updatedAt) best.set(x.key, x);
+  }
+  // 保持首次出现的顺序
+  const seen = new Set<string>();
+  const out: HistorySession[] = [];
+  for (const x of list) {
+    if (seen.has(x.key)) continue;
+    seen.add(x.key);
+    out.push(best.get(x.key)!);
+  }
+  return out;
+}
+
 const EMPTY: EndpointState = { items: [], nextOffset: null, hasMore: false, loading: false };
 
 export interface CliHistory {
@@ -69,7 +87,7 @@ export function useCliHistory(
             const page = await historyClient.list(b, { force });
             if (my !== seq.current) return;
             patch(b, {
-              items: page?.items ?? [],
+              items: dedupeHistory(page?.items ?? []),
               nextOffset: page?.nextOffset ?? null,
               hasMore: !!page?.hasMore,
               loading: false,
@@ -110,10 +128,7 @@ export function useCliHistory(
             setState((s) => ({
               ...s,
               [ep]: {
-                items: [
-                  ...s[ep].items,
-                  ...(page?.items ?? []).filter((x) => !s[ep].items.some((y) => y.key === x.key)),
-                ],
+                items: dedupeHistory([...s[ep].items, ...(page?.items ?? [])]),
                 nextOffset: page?.nextOffset ?? null,
                 hasMore: !!page?.hasMore,
                 loading: false,
@@ -129,7 +144,7 @@ export function useCliHistory(
   const items = useCallback(
     (b?: HistoryBackend) => {
       const src = b ? state[b].items : active.flatMap((x) => state[x].items);
-      return b ? src : [...src].sort((x, y) => y.updatedAt - x.updatedAt);
+      return b ? src : dedupeHistory([...src].sort((x, y) => y.updatedAt - x.updatedAt));
     },
     [state, active],
   );
