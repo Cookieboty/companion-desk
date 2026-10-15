@@ -10,6 +10,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 - **a11y:** dialogs trap focus, Esc closes only the top-most dialog and focus returns to the opener; reduced motion calms the VRM rig and the island.
 - **brand:** every user-visible 看板娘 / Live2D / Companion Desk string is now Nomi.
 - **chat:** normal/dev chat mode, per-endpoint conversation isolation, dual sidebar list (全部/按端), and same/cross-endpoint fork (CLI tabs seed compact transcripts; not resume).
+- **chat:** one provider page per endpoint, CLI history in the sidebar, unified new/conversation menus, endpoint icons and workspace picker UI strings. (`@nomi-ai/ui` patch)
 - **cli-providers:** separate Claude/Codex provider stores, upstream API formats, and local routing UI strings. (`@nomi-ai/ui` patch, `@nomi-ai/ai-runtime` patch)
 - **electron:** dsh becomes the third coding agent takeover endpoint: version check and npm update, headless JSON sessions forwarded and resumed, and a separate dsh provider store that writes a managed block into `cordis.patch.yml` (the API key is only injected at launch). Docs add the Ollama context length note and the multi-tab concurrent backend design.
 - **electron:** the local CLI route now converts streaming (SSE) responses between Anthropic Messages, OpenAI Chat Completions, OpenAI Responses and Gemini, including text deltas, tool calls, stop reasons, usage and mid-stream errors.
