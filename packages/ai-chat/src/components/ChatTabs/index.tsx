@@ -311,7 +311,26 @@ export const CliTabLive: React.FC = () => {
               </div>
             </div>
           )}
-          {l?.tool && <span className={styles.liveTool}>{t('正在使用工具：{0}', l.tool)}</span>}
+          {l?.tools && l.tools.length > 0 && (
+            <ul className={styles.toolList} data-testid="cli-tool-timeline">
+              {l.tools.map((x, i) => (
+                <li
+                  key={`${x.name}-${i}`}
+                  data-status={x.status}
+                  data-testid={`cli-tool-${x.status}`}
+                >
+                  {x.status === 'start'
+                    ? t('正在使用工具：{0}', x.name)
+                    : x.status === 'error'
+                      ? t('工具失败：{0}', x.name)
+                      : t('工具完成：{0}', x.name)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!l?.tools?.length && l?.tool && (
+            <span className={styles.liveTool}>{t('正在使用工具：{0}', l.tool)}</span>
+          )}
           <span>{l?.text || (l?.permission ? t('等待你的确认…') : t('思考中…'))}</span>
         </>
       )}

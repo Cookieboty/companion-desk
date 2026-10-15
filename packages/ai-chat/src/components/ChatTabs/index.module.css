@@ -242,3 +242,23 @@
   color: #fff;
   border-color: transparent;
 }
+
+.toolList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--cd-color-text-subtle);
+}
+.toolList li[data-status='done'] {
+  color: var(--cd-color-success, #16a34a);
+}
+.toolList li[data-status='error'] {
+  color: var(--cd-color-danger, #dc2626);
+}
+.toolList li[data-status='start'] {
+  color: var(--cd-color-accent, #3b82f6);
+}

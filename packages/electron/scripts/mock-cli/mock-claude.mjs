@@ -80,6 +80,28 @@ async function runOnce(prompt) {
       return;
     }
   }
+  if (process.env.NOMI_MOCK_TOOLS === '1') {
+    emit({
+      type: 'assistant',
+      session_id: sessionId,
+      message: {
+        role: 'assistant',
+        content: [
+          { type: 'tool_use', id: 'mock-tu-1', name: 'Bash', input: { command: 'echo hi' } },
+        ],
+      },
+    });
+    emit({
+      type: 'user',
+      session_id: sessionId,
+      message: {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'mock-tu-1', content: 'hi', is_error: false },
+        ],
+      },
+    });
+  }
   const chunks = reply.match(/.{1,8}/gs) || [reply];
   for (const c of chunks) {
     emit({

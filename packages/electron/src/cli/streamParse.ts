@@ -49,12 +49,12 @@ export function parseClaudeLine(line: string): HarnessEvent[] {
       });
     }
   }
-  // tool_use blocks
-  if (type === 'assistant') {
+  // tool_use / tool_result blocks
+  if (type === 'assistant' || type === 'user') {
     const msg = j.message as { content?: unknown } | undefined;
     if (Array.isArray(msg?.content)) {
       for (const c of msg.content as Array<Record<string, unknown>>) {
-        if (c.type === 'tool_use') {
+        if (type === 'assistant' && c.type === 'tool_use') {
           out.push({
             type: 'tool',
             name: String(c.name ?? 'tool'),
@@ -62,10 +62,39 @@ export function parseClaudeLine(line: string): HarnessEvent[] {
             detail: typeof c.id === 'string' ? c.id : undefined,
           });
         }
+        if (type === 'user' && c.type === 'tool_result') {
+          const id = typeof c.tool_use_id === 'string' ? c.tool_use_id : undefined;
+          const err = c.is_error === true || c.is_error === 'true';
+          out.push({
+            type: 'tool',
+            name: 'tool',
+            status: err ? 'error' : 'done',
+            detail: id,
+          });
+        }
       }
     }
   }
   return out;
+}
+
+/**
+ * 有状态的 Claude 解析器：用先前 tool_use 的 id 给 tool_result 补回工具名。
+ * 每次运行新建一个。
+ */
+export function createClaudeParser(): (line: string) => HarnessEvent[] {
+  const names = new Map<string, string>();
+  return (line) =>
+    parseClaudeLine(line).map((ev) => {
+      if (ev.type !== 'tool' || !ev.detail) return ev;
+      if (ev.status === 'start') {
+        names.set(ev.detail, ev.name);
+        return ev;
+      }
+      const name = names.get(ev.detail);
+      if (name) names.delete(ev.detail);
+      return name ? { ...ev, name } : ev;
+    });
 }
 
 function extractClaudeText(content: unknown): string {

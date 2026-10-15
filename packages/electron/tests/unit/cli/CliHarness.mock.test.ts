@@ -37,6 +37,35 @@ describe('CliHarnessService mock CLI', () => {
     expect(h.state().toolsDisabled).toBe(true);
   });
 
+  it('surfaces Claude tool start and completion in events and message', async () => {
+    const prev = process.env.NOMI_MOCK_TOOLS;
+    process.env.NOMI_MOCK_TOOLS = '1';
+    try {
+      const h = new CliHarnessService({
+        root: path.join(os.tmpdir(), `harness-tools-${Date.now()}`),
+        logger: { info() {}, warn() {} },
+        defaultCwd: process.cwd(),
+      });
+      const tab = h.createTab({ backend: 'claude' });
+      const tools: Array<{ name: string; status: string }> = [];
+      h.events.on('event', (p: { event: { type: string; name?: string; status?: string } }) => {
+        if (p.event.type === 'tool') tools.push({ name: p.event.name!, status: p.event.status! });
+      });
+      const r = await h.sendTab(tab.id, 'hello');
+      expect(tools.some((x) => x.name === 'Bash' && x.status === 'start')).toBe(true);
+      expect(tools.some((x) => x.name === 'Bash' && x.status === 'done')).toBe(true);
+      expect(r.text).toContain('Mock Claude');
+      const assistant = h
+        .tabMessages(tab.id)
+        .filter((m) => m.role === 'assistant')
+        .pop();
+      expect(assistant?.tools?.some((n) => n.includes('Bash'))).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.NOMI_MOCK_TOOLS;
+      else process.env.NOMI_MOCK_TOOLS = prev;
+    }
+  }, 15_000);
+
   it('forwards to mock codex', async () => {
     const h = new CliHarnessService({
       root: path.join(os.tmpdir(), `harness-${Date.now()}-c`),

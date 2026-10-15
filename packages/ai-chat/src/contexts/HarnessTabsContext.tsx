@@ -17,6 +17,10 @@ import {
 export interface TabLive {
   text: string;
   tool?: string;
+  /** start | done | error */
+  toolStatus?: 'start' | 'done' | 'error';
+  /** 本轮已见过的工具时间线（名 + 状态） */
+  tools?: Array<{ name: string; status: 'start' | 'done' | 'error' }>;
   /** Claude can_use_tool 待确认 */
   permission?: { id: string; summary: string };
 }
@@ -89,8 +93,17 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
         if (e.type === 'text-delta')
           return { ...cur, [e.tabId]: { ...prev, text: prev.text + e.text } };
         if (e.type === 'text') return { ...cur, [e.tabId]: { ...prev, text: e.text } };
-        if (e.type === 'tool' && e.status === 'start')
-          return { ...cur, [e.tabId]: { ...prev, tool: e.name } };
+        if (e.type === 'tool') {
+          const tools = [...(prev.tools ?? [])];
+          const i = tools.findIndex((x) => x.name === e.name && x.status === 'start');
+          if (e.status === 'start') tools.push({ name: e.name, status: 'start' });
+          else if (i >= 0) tools[i] = { name: e.name, status: e.status };
+          else tools.push({ name: e.name, status: e.status });
+          return {
+            ...cur,
+            [e.tabId]: { ...prev, tool: e.name, toolStatus: e.status, tools },
+          };
+        }
         if (e.type === 'permission')
           return {
             ...cur,

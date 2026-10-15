@@ -1,4 +1,5 @@
 import {
+  createClaudeParser,
   createDshParser,
   parseClaudeLine,
   parseCodexLine,
@@ -42,6 +43,56 @@ describe('streamParse', () => {
         }),
       ),
     ).toEqual([]);
+  });
+
+  it('parses claude tool_use start and tool_result done/error', () => {
+    const start = parseClaudeLine(
+      JSON.stringify({
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'tool_use', id: 'tu1', name: 'Bash', input: { command: 'ls' } }],
+        },
+      }),
+    );
+    expect(start[0]).toMatchObject({ type: 'tool', name: 'Bash', status: 'start', detail: 'tu1' });
+    const done = parseClaudeLine(
+      JSON.stringify({
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'tu1', content: 'ok', is_error: false }],
+        },
+      }),
+    );
+    expect(done[0]).toMatchObject({ type: 'tool', status: 'done', detail: 'tu1' });
+    const err = parseClaudeLine(
+      JSON.stringify({
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'tu2', content: 'fail', is_error: true }],
+        },
+      }),
+    );
+    expect(err[0]).toMatchObject({ type: 'tool', status: 'error', detail: 'tu2' });
+  });
+
+  it('createClaudeParser pairs tool_result with tool_use name', () => {
+    const p = createClaudeParser();
+    const j = (o: unknown) => p(JSON.stringify(o));
+    j({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'tool_use', id: 'a', name: 'Read' }],
+      },
+    });
+    expect(
+      j({
+        type: 'user',
+        message: { content: [{ type: 'tool_result', tool_use_id: 'a', content: 'x' }] },
+      })[0],
+    ).toMatchObject({ name: 'Read', status: 'done' });
   });
 
   it('parses codex agent_message', () => {

@@ -78,14 +78,22 @@ const AiChatContent: React.FC = () => {
   const [tabNew, setTabNew] = useState(0);
   const cliMessages = useMemo<ChatMessage[]>(
     () =>
-      tabs.messages.map((m) => ({
-        id: m.id,
-        role: m.role,
-        content: m.error ? '' : m.content,
-        timestamp: m.timestamp,
-        modelId: m.role === 'assistant' ? tabs.activeTab?.backend : undefined,
-        ...(m.error ? { error: m.content } : {}),
-      })),
+      tabs.messages.map((m) => {
+        const toolsLine =
+          !m.error && m.tools && m.tools.length
+            ? `${m.tools.map((n) => `⚙ ${n}`).join(' · ')}
+
+`
+            : '';
+        return {
+          id: m.id,
+          role: m.role,
+          content: m.error ? '' : `${toolsLine}${m.content}`,
+          timestamp: m.timestamp,
+          modelId: m.role === 'assistant' ? tabs.activeTab?.backend : undefined,
+          ...(m.error ? { error: m.content } : {}),
+        };
+      }),
     [tabs.messages, tabs.activeTab?.backend],
   );
   const [showConfig, setShowConfig] = useState(false);

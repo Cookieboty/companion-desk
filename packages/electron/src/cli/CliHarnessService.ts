@@ -20,7 +20,7 @@ import { t } from '../i18n';
 
 import { buildCliEnv } from './cliEnv';
 import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
-import { createDshParser, parseClaudeLine, parseCodexLine } from './streamParse';
+import { createClaudeParser, createDshParser, parseCodexLine } from './streamParse';
 import type {
   HarnessBackend,
   HarnessEvent,
@@ -593,10 +593,23 @@ export class CliHarnessService {
             : await this.runCodex(tab, text);
       if (result.sessionId && tab.backend === backend) tab.cliSessionId = result.sessionId;
       tab.status = 'idle';
-      const tools = result.events
-        .filter((e): e is Extract<HarnessEvent, { type: 'tool' }> => e.type === 'tool')
-        .filter((e) => e.status === 'start')
-        .map((e) => e.name);
+      // 去重保序：同一 tool_use 后出现的 done/error 覆盖开始态标签
+      const toolEvents = result.events.filter(
+        (e): e is Extract<HarnessEvent, { type: 'tool' }> => e.type === 'tool',
+      );
+      const tools: string[] = [];
+      const byKey = new Map<string, number>();
+      for (const e of toolEvents) {
+        const key = e.detail || e.name;
+        const label =
+          e.status === 'error' ? `${e.name} ✗` : e.status === 'done' ? `${e.name} ✓` : e.name;
+        const idx = byKey.get(key);
+        if (idx !== undefined) tools[idx] = label;
+        else {
+          byKey.set(key, tools.length);
+          tools.push(label);
+        }
+      }
       this.appendMessage(id, {
         id: randomUUID(),
         role: 'assistant',
@@ -691,7 +704,7 @@ export class CliHarnessService {
     return this.spawnCollect(tab, {
       cmd: useNode ? process.execPath : bin,
       argv,
-      parseLine: parseClaudeLine,
+      parseLine: createClaudeParser(),
       kind: 'claude',
       keepStdin: true,
     });
