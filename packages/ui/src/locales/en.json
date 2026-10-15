@@ -1686,5 +1686,7 @@
   "工具完成：{0}": "Tool finished: {0}",
   "工具失败：{0}": "Tool failed: {0}",
   "同时运行的编程助手标签上限（1–8）": "Max concurrent coding-agent tabs (1–8)",
-  "并发上限": "Concurrency limit"
+  "并发上限": "Concurrency limit",
+  "语音播报引擎": "Speech engine",
+  "默认使用内置离线语音（sherpa-onnx，本机合成，首次使用需在「TTS 语音配置」下载模型）。模型未就绪或合成失败时自动回退下方系统音色。Fish Audio 为可选高级引擎，不提供上传克隆。": "Uses the built-in offline voice (sherpa-onnx, synthesized on this device; download the model once in \"TTS voice settings\"). If the model is not ready or synthesis fails, it falls back to the system voices below. Fish Audio is an optional advanced engine; voice-clone uploads are not provided."
 }

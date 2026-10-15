@@ -258,10 +258,10 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
       </section>
 
       <section className={styles.group} data-testid="fish-voice-note">
-        <h4 className="cd-section-title">{tr('Fish Audio 播报')}</h4>
+        <h4 className="cd-section-title">{tr('语音播报引擎')}</h4>
         <p className="cd-muted" style={{ fontSize: 12 }}>
           {tr(
-            '默认走内置 Fish Audio（可爱 Nomi 预设）。服务未就绪时自动回退下方系统音色。不提供上传克隆。更多选项见「TTS 语音配置」。',
+            '默认使用内置离线语音（sherpa-onnx，本机合成，首次使用需在「TTS 语音配置」下载模型）。模型未就绪或合成失败时自动回退下方系统音色。Fish Audio 为可选高级引擎，不提供上传克隆。',
           )}
         </p>
         <p className="cd-notice" style={{ fontSize: 12 }} data-testid="fish-attribution">

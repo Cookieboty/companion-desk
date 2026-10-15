@@ -506,5 +506,7 @@
   "离线语音模型下载失败: {0}": "Offline voice model download failed: {0}",
   "离线语音模型尚未下载，当前使用系统语音；可在此页点击「下载离线语音模型」": "The offline voice model is not downloaded yet, so system speech is used; click \"Download offline voice model\" on this page",
   "离线语音引擎就绪（模型位置：{0}）": "Offline voice engine ready (model location: {0})",
-  "离线语音引擎加载失败，将回退系统语音: {0}": "Offline voice engine failed to load, falling back to system speech: {0}"
+  "离线语音引擎加载失败，将回退系统语音: {0}": "Offline voice engine failed to load, falling back to system speech: {0}",
+  "模型文件校验失败：{0}": "Model file verification failed: {0}",
+  "系统语音模式，无需连接 TTS 服务": "System speech mode; no TTS service connection needed"
 }

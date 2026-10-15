@@ -12,8 +12,9 @@
       <header class="header">
         <h1>TTS 语音配置</h1>
         <p>
-          默认使用内置 <strong>Fish Audio</strong> 播报（可爱声线预设 Nomi）。未就绪时自动回退系统语音。
-          不提供用户上传/克隆任意音色；仍可对接自建 legacy TTS。
+          默认使用内置<strong>离线语音</strong>（sherpa-onnx，本机合成，无需联网/外部服务）。
+          首次使用需下载一次模型；未就绪或合成失败时自动回退系统语音。
+          Fish Audio 为可选高级引擎；不提供用户上传/克隆任意音色；仍可自行接入外部 TTS（legacy）。
         </p>
         <p class="cd-notice" data-testid="fish-attribution" style="margin-top: 8px">
           <strong>Built with Fish Audio</strong> —
@@ -28,18 +29,33 @@
       </div>
 
       <section class="editor-section cd-field" data-testid="fish-section">
-        <h2 class="cd-section-title">Fish Audio（内置）</h2>
+        <h2 class="cd-section-title">语音引擎</h2>
         <label class="cd-field__label">
           <input type="checkbox" id="enabled" /> 启用高质量播报（关闭则仅用系统语音）
         </label>
 
         <label class="cd-field__label" for="provider">提供方</label>
         <select id="provider" class="cd-textarea" style="min-height: auto; height: 36px">
-          <option value="fish-local">Fish 本地（fish-speech，推荐）</option>
-          <option value="fish-cloud">Fish 云 API（自备 Key）</option>
-          <option value="legacy">外部 legacy TTS（自建克隆服务）</option>
+          <option value="sherpa-theresa">内置离线语音（sherpa-onnx，默认）</option>
+          <option value="fish-local">高级：Fish 本地（fish-speech）</option>
+          <option value="fish-cloud">高级：Fish 云 API（自备 Key）</option>
+          <option value="legacy">自行接入外部 TTS（legacy，自建克隆服务）</option>
           <option value="system">仅系统语音（Web Speech）</option>
         </select>
+
+        <div id="sherpa-fields" data-testid="sherpa-section">
+          <p class="cd-muted" style="font-size: 12px; margin: 4px 0 8px">
+            声线 sid 0，语速 1.0（固定默认，不加速）。模型约 115 MB（解压后约 133 MB），保存在应用数据目录
+            <code>tts-models/</code>，下载后校验 sha256。开发态也可用环境变量
+            <code>NOMI_SHERPA_TTS_MODEL_DIR</code> 指向已解压目录。
+          </p>
+          <div id="sherpa-model-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+            <span id="sherpa-model-text" class="cd-muted">模型状态：检测中…</span>
+            <button id="sherpa-download-btn" class="cd-btn cd-btn--primary" type="button">下载离线语音模型</button>
+            <button id="sherpa-cancel-btn" class="cd-btn" type="button" style="display: none">取消下载</button>
+          </div>
+          <progress id="sherpa-progress" max="100" value="0" style="width: 100%; margin-top: 6px; display: none"></progress>
+        </div>
 
         <div id="fish-fields">
           <label class="cd-field__label" for="baseUrl">服务地址</label>
@@ -105,12 +121,12 @@
       <div id="result-message" style="display: none"></div>
 
       <div class="help-text cd-notice">
-        <strong>怎么用（内置 Fish）</strong><br />
-        1. 推荐本地：用 Docker / uv 启动 fish-speech，监听 <code>127.0.0.1:8080</code>。
-        应用会内置带上 Nomi 可爱参考音（无需拷到服务器 <code>references/</code>）。<br />
-        2. 或 Fish 云：填写你自己的 API Key（不捆绑 Research-only 权重）。<br />
-        3. 服务未就绪时，看板娘自动回退系统语音，无需试听步骤。<br />
-        4. 需要对接其它克隆 API 时，选择「外部 legacy TTS」。
+        <strong>怎么用</strong><br />
+        1. 默认「内置离线语音」：首次点「下载离线语音模型」（一次性，带进度），之后完全本机合成，无需联网。<br />
+        2. 模型未下载 / 下载失败 / 合成出错时，看板娘自动回退系统语音，无需试听步骤。<br />
+        3. 高级：Fish 本地（Docker / uv 启动 fish-speech，监听 <code>127.0.0.1:8080</code>）或 Fish 云（自备 API Key，
+        不捆绑 Research-only 权重）。<br />
+        4. 需要对接其它克隆 API 时，选择「自行接入外部 TTS（legacy）」。
       </div>
     </main>
 
@@ -118,7 +134,9 @@
       const $ = (id) => document.getElementById(id);
       const defaultConfig = {
         enabled: true,
-        provider: 'fish-local',
+        provider: 'sherpa-theresa',
+        sherpaSid: 0,
+        sherpaSpeed: 1.0,
         baseUrl: 'http://127.0.0.1:8080',
         referenceId: 'nomi',
         format: 'mp3',
@@ -159,7 +177,7 @@
       function configToForm(cfg) {
         const c = { ...defaultConfig, ...(cfg || {}) };
         $('enabled').checked = c.enabled !== false;
-        $('provider').value = c.provider || 'fish-local';
+        $('provider').value = c.provider || 'sherpa-theresa';
         $('baseUrl').value = c.baseUrl || defaultConfig.baseUrl;
         $('referenceId').value = c.referenceId || 'nomi';
         $('format').value = c.format || 'mp3';
@@ -179,6 +197,8 @@
       function syncVisibility() {
         const p = $('provider').value;
         const fish = p === 'fish-local' || p === 'fish-cloud';
+        $('sherpa-fields').style.display = p === 'sherpa-theresa' ? '' : 'none';
+        if (p === 'sherpa-theresa') refreshSherpaStatus();
         $('fish-fields').style.display = fish ? '' : 'none';
         $('cloud-fields').style.display = p === 'fish-cloud' ? '' : 'none';
         $('legacy-fields').style.display = p === 'legacy' ? '' : 'none';
@@ -196,13 +216,69 @@
       function updateStatusFromConfig(c) {
         if (!c || c.enabled === false || c.provider === 'system') {
           updateStatus('none', '使用系统语音（Web Speech）');
+        } else if (c.provider === 'sherpa-theresa') {
+          updateStatus('valid', '内置离线语音（sherpa-onnx）· 模型未就绪则回退系统语音');
         } else if (c.provider === 'fish-local') {
-          updateStatus('valid', '内置 Fish 本地 · 预设 ' + (c.referenceId || 'nomi') + '（未就绪则回退系统语音）');
+          updateStatus('valid', 'Fish 本地（高级） · 预设 ' + (c.referenceId || 'nomi') + '（未就绪则回退系统语音）');
         } else if (c.provider === 'fish-cloud') {
           updateStatus('valid', 'Fish 云 · ' + (c.hasApiKey ? '已配置 Key' : '需填写 API Key'));
         } else {
           updateStatus('valid', '外部 legacy TTS');
         }
+      }
+
+      // ---- sherpa 离线模型：状态 / 下载进度（轮询主进程） ----
+      let sherpaTimer = null;
+      const fmtMB = (n) => (n / 1048576).toFixed(1) + ' MB';
+
+      function renderSherpaStatus(st) {
+        const bar = $('sherpa-progress');
+        const text = $('sherpa-model-text');
+        const dl = $('sherpa-download-btn');
+        const cancel = $('sherpa-cancel-btn');
+        const busy = st.state === 'downloading' || st.state === 'extracting';
+        bar.style.display = busy ? '' : 'none';
+        cancel.style.display = busy ? '' : 'none';
+        dl.style.display = st.state === 'ready' || busy ? 'none' : '';
+        if (st.state === 'downloading') {
+          const pct = st.totalBytes ? Math.min(100, (st.receivedBytes / st.totalBytes) * 100) : 0;
+          bar.value = pct;
+          text.textContent = '下载中 ' + fmtMB(st.receivedBytes) + ' / ' + fmtMB(st.totalBytes) + '（' + pct.toFixed(0) + '%）';
+        } else if (st.state === 'extracting') {
+          bar.removeAttribute('value');
+          text.textContent = '解压 / 校验中…（约十几秒）';
+        } else if (st.state === 'ready') {
+          text.textContent = '模型已就绪' + (st.source === 'dev' ? '（开发目录）' : st.source === 'env' ? '（环境变量目录）' : '');
+        } else if (st.state === 'error') {
+          text.textContent = '下载失败：' + (st.message || '未知错误') + '（当前使用系统语音，可重试）';
+          dl.textContent = '重试下载';
+        } else {
+          text.textContent = '模型未下载（当前使用系统语音）';
+          dl.textContent = '下载离线语音模型';
+        }
+        if (busy) {
+          clearTimeout(sherpaTimer);
+          sherpaTimer = setTimeout(refreshSherpaStatus, 600);
+        }
+      }
+
+      async function refreshSherpaStatus() {
+        if (!window.electronAPI || !window.electronAPI.ttsSherpaStatus) return;
+        try {
+          renderSherpaStatus(await window.electronAPI.ttsSherpaStatus());
+        } catch (e) {
+          $('sherpa-model-text').textContent = '无法获取模型状态：' + e.message;
+        }
+      }
+
+      async function startSherpaDownload() {
+        if (!window.electronAPI || !window.electronAPI.ttsSherpaDownload) return;
+        renderSherpaStatus(await window.electronAPI.ttsSherpaDownload());
+      }
+
+      async function cancelSherpaDownload() {
+        if (!window.electronAPI || !window.electronAPI.ttsSherpaCancel) return;
+        renderSherpaStatus(await window.electronAPI.ttsSherpaCancel());
       }
 
       function showResult(message, ok) {
@@ -330,6 +406,8 @@
         $('health-btn').addEventListener('click', checkHealth);
         $('save-btn').addEventListener('click', saveConfig);
         $('reset-btn').addEventListener('click', resetConfig);
+        $('sherpa-download-btn').addEventListener('click', startSherpaDownload);
+        $('sherpa-cancel-btn').addEventListener('click', cancelSherpaDownload);
       });
     </script>
   </body>

@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { t } from '../../i18n';
 import { downloadVerified, type DownloadProgress } from '../../voice/download';
 
 import { extractTarBz2 } from './bz2Extract';
@@ -96,7 +97,7 @@ export async function installModel(opts: InstallOptions): Promise<string> {
     opts.onProgress?.('extract', { received: 0, total: 1 });
     await extract(archive, partialDir, { stripTop: manifest.topDir, signal: opts.signal });
     const v = verifyModelDir(partialDir, manifest);
-    if (!v.ok) throw new Error(`模型文件校验失败：${v.bad.slice(0, 3).join(', ')}`);
+    if (!v.ok) throw new Error(t('模型文件校验失败：{0}', v.bad.slice(0, 3).join(', ')));
     fs.rmSync(finalDir, { recursive: true, force: true });
     fs.renameSync(partialDir, finalDir);
     opts.onProgress?.('extract', { received: 1, total: 1 });
