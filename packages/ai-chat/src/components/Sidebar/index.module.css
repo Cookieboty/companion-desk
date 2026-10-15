@@ -362,43 +362,67 @@
   color: var(--cd-color-text);
 }
 
-/* ── 行尾操作：重命名 / 删除 / 更多（悬浮、行内焦点、选中行显示；触屏常显）──
-   标题尾部用渐隐遮罩让位，时间文字隐藏（占位不变，布局不跳动）。 */
+/* ── 行尾操作：重命名 / 删除 / 更多（仅悬浮、行内键盘焦点或删除二次确认时浮现；触屏常显）──
+   底色画在整行 .row 上（一整块连续 pill），按钮浮层透明融入；
+   右侧预留固定槽位：默认显示时间，悬浮时与按钮交叉淡入淡出，
+   标题在槽位前截断、永不进入按钮区，故不需要任何遮罩。 */
 .row {
   position: relative;
   min-width: 0;
+  border-radius: 8px;
+}
+.row .thread {
+  width: 100%;
+  grid-template-columns: 8px 14px minmax(0, 1fr) 72px;
+  background: transparent;
+}
+.row .thread:hover {
+  background: transparent;
+}
+/* 选中底色画在 .row 容器上，按钮自身不再叠一层，避免半透明色叠加变深 */
+.row .threadActive {
+  background: transparent;
+}
+.row:hover,
+.row:focus-within {
+  background: var(--cd-color-hover);
+}
+.row[data-active] {
+  background: rgba(var(--cd-accent-rgb), 0.12);
+  color: var(--cd-color-text);
 }
 .rowActions {
   position: absolute;
   right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   gap: 1px;
-  border-radius: 8px;
+  background: transparent;
   opacity: 0;
   pointer-events: none;
 }
 .row:hover .rowActions,
 .row:focus-within .rowActions,
-.row[data-active] .rowActions,
 .row[data-confirming] .rowActions {
   opacity: 1;
   pointer-events: auto;
 }
+/* 二次确认条比图标宽，给一块与行同色的底，保证文字可读 */
+.row[data-confirming] .rowActions {
+  right: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--cd-color-hover);
+}
+.row .threadTime {
+  justify-self: end;
+}
 .row:hover .threadTime,
 .row:focus-within .threadTime,
-.row[data-active] .threadTime,
 .row[data-confirming] .threadTime {
   opacity: 0;
-}
-.row:hover .threadName,
-.row:focus-within .threadName,
-.row[data-active] .threadName,
-.row[data-confirming] .threadName {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
 }
 @media (hover: none) {
   .rowActions {
@@ -444,7 +468,8 @@
   background: rgba(255, 107, 107, 0.14);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .rowActions {
+  .rowActions,
+  .threadTime {
     transition: opacity 0.12s ease;
   }
 }

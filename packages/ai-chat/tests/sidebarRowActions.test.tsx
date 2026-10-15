@@ -257,7 +257,7 @@ describe('sidebar row actions', () => {
     expect(w.getByTestId('row-more')).toBeTruthy();
   });
 
-  it('the active row and focus-within reveal the actions via CSS state (active flag)', async () => {
+  it('the current row carries the active flag (highlight only; actions reveal on hover/focus via CSS)', async () => {
     const r = mount();
     await waitFor(() => r.getAllByTestId('history-item'));
     expect(row(r, 'n1').hasAttribute('data-active')).toBe(true);
