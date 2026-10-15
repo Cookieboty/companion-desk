@@ -23,6 +23,18 @@ export function selectEngine(cfg: Pick<TTSConfig, 'enabled' | 'provider'>): TtsE
   }
 }
 
+/**
+ * CD_TTS=off（e2e）：不跑离线 sherpa / Fish 合成，tts:speak 直接走 fallbackToSystem。
+ * 4 线程 ONNX 合成 + 自动下载解压模型会和 swiftshader 渲染抢 CPU，拖垮 Windows runner
+ * （气泡事件迟到、对话窗渲染进程 crash）。真实 sherpa 行为由单测覆盖。
+ */
+export function applyTtsEnvOverride<T extends Pick<TTSConfig, 'enabled'>>(
+  cfg: T,
+  env: Record<string, string | undefined> = process.env,
+): T {
+  return env.CD_TTS === 'off' ? { ...cfg, enabled: false } : cfg;
+}
+
 export interface SherpaSpeaker {
   synthesize(
     text: string,

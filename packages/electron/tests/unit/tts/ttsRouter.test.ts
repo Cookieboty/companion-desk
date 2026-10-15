@@ -1,7 +1,7 @@
 import { DEFAULT_TTS_CONFIG, type TTSConfig, type TTSSpeakResult } from '@nomi-ai/types';
 
 import { SherpaTtsError } from '../../../src/tts/sherpa/SherpaTtsService';
-import { TtsRouter, selectEngine } from '../../../src/tts/ttsRouter';
+import { TtsRouter, applyTtsEnvOverride, selectEngine } from '../../../src/tts/ttsRouter';
 
 const cfg = (patch: Partial<TTSConfig> = {}): TTSConfig => ({
   ...DEFAULT_TTS_CONFIG,
@@ -193,5 +193,25 @@ describe('TtsRouter.speak', () => {
         expect.objectContaining({ outcome: 'error', message: 'cfg boom' }),
       );
     });
+  });
+});
+
+describe('applyTtsEnvOverride (CD_TTS=off for e2e)', () => {
+  it('leaves config untouched by default', () => {
+    const c = cfg();
+    expect(applyTtsEnvOverride(c, {})).toBe(c);
+  });
+
+  it('disables synthesis: no sherpa call, falls back to system voice', async () => {
+    const { sherpa, fish } = setup(cfg());
+    const router = new TtsRouter({
+      getConfig: () => applyTtsEnvOverride(cfg(), { CD_TTS: 'off' }),
+      sherpa,
+      fish,
+    });
+    const r = await router.speak({ text: '你好' });
+    expect(r.fallbackToSystem).toBe(true);
+    expect(sherpa.synthesize).not.toHaveBeenCalled();
+    expect(fish.speak).not.toHaveBeenCalled();
   });
 });

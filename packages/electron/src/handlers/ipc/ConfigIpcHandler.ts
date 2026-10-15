@@ -20,7 +20,7 @@ import { type ILoggerService } from '../../services/LoggerService';
 import { getFishTtsService } from '../../tts/fish';
 import { validateTtsConfig } from '../../tts/fish/validateTtsConfig';
 import { getSherpaTtsService } from '../../tts/sherpa';
-import { TtsRouter } from '../../tts/ttsRouter';
+import { TtsRouter, applyTtsEnvOverride } from '../../tts/ttsRouter';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -267,7 +267,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     const fish = getFishTtsService();
     const sherpa = getSherpaTtsService();
     const router = new TtsRouter({
-      getConfig: () => fish.getConfig(),
+      getConfig: () => applyTtsEnvOverride(fish.getConfig()),
       sherpa,
       fish,
       onSherpaFailure: (error) => {
