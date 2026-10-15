@@ -305,6 +305,50 @@ describe('RigAnimator + actions', () => {
     expect(pose.ext!.v[IDX.rHand]).toBe(HAND.wave);
   });
 
+  it('raising an arm swings (forearm foreshortens), settles, then lowers by itself', () => {
+    const a = new RigAnimator(3);
+    let maxFore = 0;
+    let peakA = 0;
+    let lean = 0;
+    let atEnd = 99;
+    const dur = ACTIONS.find((x) => x.id === 'wave')!.dur;
+    for (let i = 0; i < Math.round((dur + 0.1) * 60); i++) {
+      const pose = a.step(1 / 60, i / 60, {
+        ...base,
+        gesture: i === 0 ? { name: 'wave', id: 1 } : undefined,
+      });
+      if (!pose.ext) continue;
+      maxFore = Math.max(maxFore, pose.ext.v[IDX.rF]);
+      peakA = Math.max(peakA, pose.ext.v[IDX.rA]);
+      lean = Math.min(lean, pose.ext.v[IDX.torsoRot]);
+      if (i === Math.round((dur - 0.05) * 60)) atEnd = pose.ext.v[IDX.rA];
+    }
+    expect(maxFore).toBeGreaterThan(0.3); // visible foreshortening during the swing
+    expect(peakA).toBeGreaterThan(30);
+    expect(lean).toBeLessThan(-0.4); // torso leans away from the raised arm
+    expect(atEnd).toBeLessThan(peakA * 0.35); // the arm is lowered before the action ends
+  });
+
+  it('follow-through never leaves a parameter outside its range', () => {
+    const a = new RigAnimator(3);
+    const bad: string[] = [];
+    for (const def of ACTIONS) {
+      for (let i = 0; i < 150; i++) {
+        const pose = a.step(1 / 60, i / 60, {
+          ...base,
+          gesture: i === 0 ? { name: def.id, id: Math.random() + 1 } : undefined,
+        });
+        if (!pose.ext) continue;
+        for (let p = 0; p < PARAM_DEFS.length; p++) {
+          const v = pose.ext.v[p];
+          if (v < PARAM_DEFS[p].min - 1e-3 || v > PARAM_DEFS[p].max + 1e-3)
+            bad.push(`${def.id}.${PARAM_DEFS[p].name}=${v}`);
+        }
+      }
+    }
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+
   it('release ends a held action', () => {
     const a = new RigAnimator(3);
     for (let i = 0; i < 20; i++)

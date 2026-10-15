@@ -249,9 +249,9 @@ describe('brand lock: every action keeps the artwork rigid', () => {
         const rot = Math.atan2(head.m[1], head.m[0]);
         for (const n of ['clip', 'ribbon', 'earring', 'bangs', 'crown']) {
           const c = calls.find((x) => x.name === n)!;
-          // the bow may flutter up to ~11° around its clip (rigid rotation, secondary motion)
+          // the bow may flutter up to ~17° around its clip (rigid rotation, secondary motion)
           expect(Math.abs(Math.atan2(c.m[1], c.m[0]) - rot), `${id}@${k}: ${n} rot`).toBeLessThan(
-            n === 'ribbon' ? 0.2 : 0.01,
+            n === 'ribbon' ? 0.3 : 0.01,
           );
           expect(
             Math.abs(

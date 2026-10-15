@@ -95,11 +95,14 @@ export const PARAM_DEFS: readonly ParamDef[] = [
   D('rE', 0, -40, 230),
   D('rW', 0, -90, 90),
   D('rHand', 0, 0, 6, { discrete: true }),
+  /** derived by the animator (never keyed): forearm foreshortening while the arm swings, 0..1 */
+  D('rF', 0, 0, 1),
   D('lOn', 0, 0, 1),
   D('lA', 0, -60, 150),
   D('lE', 0, -40, 230),
   D('lW', 0, -90, 90),
   D('lHand', 0, 0, 6, { discrete: true }),
+  D('lF', 0, 0, 1),
   /** 1 = arms are drawn in front of the head (hand over face / chin) */
   D('armFront', 0, 0, 1, { discrete: true }),
   // face

@@ -3,7 +3,7 @@
  *
  * Authoring rules
  *  - Only action / pose parameters are driven here. Brand layers (hair clips, ribbon, N logo, tag,
- *    choker charm …) are never touched; arms are the master sleeve warped by a mesh, hands are the
+ *    choker charm …) are never touched; arms are the master sleeve cut into rigid pieces, hands are the
  *    hand pieces, faces use the master eye / mouth plates plus vector strokes.
  *  - Arm poses are given as [shoulder a°, elbow e°, wrist w°]; they were solved against the real
  *    geometry so hands land in the free space around the head (never off the canvas).
@@ -20,7 +20,11 @@ const T = (p: string, ...k: Key[]): Track => ({ p, k });
 const hold = (p: string, from: number, to: number, v: number): Track =>
   from <= 0 ? T(p, [0, v], [to, 0, 's']) : T(p, [0, 0], [from, v, 's'], [to, 0, 's']);
 
-/** one arm: rest → pose (overshoot) → hold → rest */
+/**
+ * One arm: anticipation dip → lift (overshoot) → hold → lower back to rest. Actions that end before
+ * `dur - 0.3` lower the arm on their own (real swing, foreshortened by the animator); held actions
+ * and ones that run to the end keep the pose and let the manager cross-fade the sleeve back.
+ */
 function arm(
   side: 'r' | 'l',
   hand: number,
@@ -32,13 +36,23 @@ function arm(
 ): Track[] {
   const ease = opts.ease ?? 'b';
   const win = opts.win ?? [t0, t1];
-  // The pose is held to the end: the manager cross-fades the sleeve back to the rest arm (no swing
-  // down through the canvas edge).
-  const key = (i: number): Key[] => [
-    [0, 0],
-    [i === 0 ? t0 : t0 * 0.85, pose[i], ease],
-    [dur, pose[i]],
-  ];
+  const ret = opts.ret ?? t1 <= dur - 0.3;
+  // small counter-move before the lift (shoulder dips, elbow straightens a touch)
+  const ant = [Math.min(-4, -Math.abs(pose[0]) * 0.1), Math.min(-6, -Math.abs(pose[1]) * 0.05), 0];
+  const key = (i: number): Key[] => {
+    // the swing takes at least ~0.4 s (a faster lift reads as robotic), landing a bit after t0
+    const tAnt = Math.max(0.06, t0 * 0.3);
+    const tUp = Math.min(Math.max(t0, tAnt + 0.4), t1 - 0.05);
+    const keys: Key[] = [
+      [0, 0],
+      [tAnt, ant[i], 'o'],
+      [tUp, pose[i], ease],
+    ];
+    if (ret) {
+      keys.push([t1, pose[i]], [dur, 0, 'io']);
+    } else keys.push([dur, pose[i]]);
+    return keys;
+  };
   return [
     T(`${side}On`, [0, 1]),
     T(`${side}Hand`, [0, hand]),
@@ -54,6 +68,8 @@ type ArmOpts = {
   oscA?: Osc;
   win?: [number, number];
   ease?: Ease;
+  /** lower the arm again before the action ends (default: when t1 <= dur - 0.3) */
+  ret?: boolean;
 };
 const both = (
   hand: number,
@@ -803,7 +819,11 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: '深夜 / 长时间无操作 / 说晚安', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.wave, [20, 160, 0], 0.5, 1.8, 3.4, { oscW: [10, 2.2, 0], win: [0.8, 1.8] }),
+      ...arm('r', HAND.wave, [20, 160, 0], 0.5, 1.8, 3.4, {
+        oscW: [10, 2.2, 0],
+        win: [0.8, 1.8],
+        ret: false,
+      }),
       T('headNod', [0, 0], [1.4, 12, 'io'], [3.4, 12]),
       T('headRot', [0, 0], [1.4, 6], [3.4, 6]),
       T('bodyY', [0, 0], [1.4, 3], [3.4, 3]),

@@ -12,12 +12,12 @@ import { ACTIONS } from './rig/actions';
 import { drawBrow, drawFx, drawMouth } from './rig/fx';
 import {
   ARM_HAND_S,
-  drawArmStrip,
+  drawArmPieces,
   drawHandPiece,
   type ArmGeom,
   type HandPieceMeta,
 } from './rig/meshArm';
-import { HAND_NAMES, IDX, type ParamBag } from './rig/params';
+import { HAND_NAMES, IDX, PARAM_DEFS, type ParamBag } from './rig/params';
 
 export interface RigEyeMetrics {
   /** eye opening bbox in rig px */
@@ -595,6 +595,28 @@ export class RigAnimator {
   private started = false;
   /** keyframe actions (arms, face states, effects) blended on top of the idle layer */
   readonly actions = new ActionManager(ACTIONS);
+  /** follow-through: action parameters pass through springs so keyframes never read as robotic */
+  private sprung = (
+    [
+      ['headRot', 256, 0.55],
+      ['headNod', 324, 0.6],
+      ['headX', 196, 0.7],
+      ['torsoRot', 100, 0.6],
+      ['torsoX', 81, 0.7],
+      ['bodyY', 121, 0.6],
+      ['shoulder', 144, 0.6],
+      ['scale', 100, 0.7],
+      ['rA', 196, 0.5],
+      ['rE', 196, 0.5],
+      ['rW', 225, 0.45],
+      ['lA', 196, 0.5],
+      ['lE', 196, 0.5],
+      ['lW', 225, 0.45],
+    ] as const
+  ).map(([n, k, z]) => ({ idx: IDX[n], sp: new Spring(k, z) }));
+  private armPrev = { rA: 0, rE: 0, lA: 0, lE: 0 };
+  private foreS = { r: 0, l: 0 };
+  private lift = { r: 0, l: 0 };
   private eyeMixL: EyeMix = { cl: 0, happy: 0, slope: 0, scale: 1, lidAlpha: 0 };
   private eyeMixR: EyeMix = { cl: 0, happy: 0, slope: 0, scale: 1, lidAlpha: 0 };
   // smoothed per-eye extras: closure, ^ ^, slope, scale
@@ -672,6 +694,65 @@ export class RigAnimator {
     m.lidAlpha = smooth(0.6, 0.95, m.cl) * (1 - m.happy);
   }
 
+  /**
+   * Overlapping action on top of the keyframes (never touches artwork, only parameters): springs
+   * give overshoot / settle, arms drift a little while held, the torso leans away from a raised
+   * arm and the shoulder lifts, and the forearm foreshortens while the arm swings.
+   */
+  private followThrough(pb: ParamBag, dt: number, t: number, rm: boolean): void {
+    const v = pb.v;
+    const busy = this.actions.busy();
+    if (!busy || rm) {
+      for (const e of this.sprung) e.sp.reset(v[e.idx]);
+      this.foreS.r = this.foreS.l = this.lift.r = this.lift.l = 0;
+      this.armPrev.rA = v[IDX.rA];
+      this.armPrev.rE = v[IDX.rE];
+      this.armPrev.lA = v[IDX.lA];
+      this.armPrev.lE = v[IDX.lE];
+      v[IDX.rF] = 0;
+      v[IDX.lF] = 0;
+      return;
+    }
+    for (const e of this.sprung) {
+      const d = PARAM_DEFS[e.idx];
+      v[e.idx] = Math.max(d.min, Math.min(d.max, e.sp.step(v[e.idx], dt)));
+    }
+    const inv = dt > 0 ? 1 / dt : 0;
+    for (const side of ['r', 'l'] as const) {
+      const on = v[IDX[`${side}On`]];
+      const ia = IDX[`${side}A`];
+      const ie = IDX[`${side}E`];
+      const prevA = this.armPrev[`${side}A`];
+      const prevE = this.armPrev[`${side}E`];
+      const speed = (Math.abs(v[ie] - prevE) + 0.5 * Math.abs(v[ia] - prevA)) * inv;
+      this.armPrev[`${side}A`] = v[ia];
+      this.armPrev[`${side}E`] = v[ie];
+      const target = Math.max(0, Math.min(1, (speed - 40) / 300)) * (on > 0.01 ? 1 : 0);
+      this.foreS[side] = approach(this.foreS[side], target, target > this.foreS[side] ? 28 : 9, dt);
+      v[IDX[`${side}F`]] = this.foreS[side];
+      // a held arm is never perfectly still
+      const drift = on > 0.5 ? on : 0;
+      if (drift) {
+        const sd = side === 'r' ? 0 : 7;
+        v[ia] += fbm(t * 0.55, 31 + sd) * 2.4 * drift;
+        v[ie] += fbm(t * 0.7, 32 + sd) * 3.2 * drift;
+        v[IDX[`${side}W`]] += fbm(t * 0.9, 33 + sd) * 4 * drift;
+      }
+      const raised = on * Math.max(0, Math.min(1, v[ia] / 45));
+      this.lift[side] = approach(this.lift[side], raised, 6, dt);
+    }
+    // weight shifts away from the raised arm; the head tilts toward it
+    const lr = this.lift.r;
+    const ll = this.lift.l;
+    v[IDX.torsoRot] += -1.3 * lr + 1.3 * ll;
+    v[IDX.headRot] += 1.6 * lr - 1.6 * ll;
+    v[IDX.bodyY] += -1.5 * Math.max(lr, ll);
+    for (const n of ['rA', 'rE', 'rW', 'lA', 'lE', 'lW', 'torsoRot', 'headRot', 'bodyY']) {
+      const d = PARAM_DEFS[IDX[n]];
+      v[IDX[n]] = Math.max(d.min, Math.min(d.max, v[IDX[n]]));
+    }
+  }
+
   step(dt: number, t: number, input: RigInput): RigPose {
     const st = expressionStyle(input.expression);
     const rm = !!input.reducedMotion;
@@ -708,6 +789,7 @@ export class RigAnimator {
     const pb = this.actions.update(dt);
     const av = pb.v;
     const actionOn = this.actions.busy();
+    this.followThrough(pb, dt, t, rm);
     const g = (this.gesture && gestureCurve(this.gesture.name, t - this.gesture.t0)) || ZERO_G;
     if (this.gesture && g === ZERO_G) this.gesture = null;
 
@@ -834,8 +916,8 @@ export class RigAnimator {
     const tiltSh = (torsoRot / DEG) * 1.85;
     const talkBob = talkLean * (1.8 + 1.2 * Math.abs(Math.sin(t * 9)));
     const sh = (-breath * 2.6 + g.shoulder + slump * 5 - talkBob) * m + av[IDX.shoulder];
-    const shL = sh - tiltSh * m;
-    const shR = sh + tiltSh * m;
+    const shL = sh - tiltSh * m - 7 * this.lift.l * m;
+    const shR = sh + tiltSh * m - 7 * this.lift.r * m;
 
     // brow micro-raise (expression + idle noise) — drives bangs lift only
     const browTarget =
@@ -1405,7 +1487,7 @@ export function drawRig(
     pivot(pv, () => layer(name, alpha), rot);
     ctx.restore();
   };
-  /** one arm: rigid master layer at rest, mesh-warped sleeve + hand piece while a pose drives it */
+  /** one arm: rigid master layer at rest, three-piece sleeve + hand piece while a pose drives it */
   const drawArm = (side: 'l' | 'r') => {
     const name = side === 'l' ? 'arm-l' : 'arm-r';
     const on = side === 'l' ? lOn : rOn;
@@ -1426,7 +1508,7 @@ export function drawRig(
     const himg = hn ? imgs.get(`hand-${hn}`) : undefined;
     const ia = side === 'l' ? IDX.lA : IDX.rA;
     // while the pose fades in / out the sleeve cross-fades with the rest arm underneath; it is
-    // drawn on a scratch canvas first so the mesh triangles never double-blend at their seams
+    // drawn on a scratch canvas first so the overlapping sleeve pieces never double-blend
     const alpha = smooth(0, 0.85, on);
     let target: CanvasRenderingContext2D | null = null;
     const main = ctx;
@@ -1444,7 +1526,7 @@ export function drawRig(
       }
     }
     const g = target ?? main;
-    drawArmStrip(
+    drawArmPieces(
       g,
       img,
       geom,
@@ -1456,6 +1538,7 @@ export function drawRig(
         w: ex[ia + 2] * DEG,
         lift,
         handAlpha: 1,
+        fore: ex[side === 'l' ? IDX.lF : IDX.rF],
       },
       meta && himg ? ARM_HAND_S + 40 : 1e9,
     );
