@@ -10,7 +10,8 @@ import { useConversationListView } from '../../hooks/useConversationListView';
 import { MAIN_TAB_ID, harnessClient, type HarnessTabMeta } from '../../services/harnessClient';
 import type { ConversationBackend, ChatSession } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
-import { ENDPOINT_FULL, ENDPOINT_SHORT } from '../../utils/endpointBadge';
+import { ENDPOINT_FULL } from '../../utils/endpointBadge';
+import { EndpointIcon } from '../EndpointIcon';
 
 import styles from './index.module.css';
 
@@ -58,13 +59,9 @@ const ThreadItem: React.FC<{
     data-conversation-id={c.id}
   >
     <span className={styles.dot} data-live={liveOf(tab) || undefined} aria-hidden />
+    <EndpointIcon backend={c.backend} size={14} />
     <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
-    <span className={styles.threadMeta}>
-      <span className={styles.badge} data-ep={c.backend}>
-        {ENDPOINT_SHORT[c.backend]}
-      </span>
-      <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
-    </span>
+    <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
   </button>
 );
 
@@ -320,10 +317,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => void createFor(b)}
                 data-testid={`new-chat-${b}`}
               >
-                <span className={styles.badge} data-ep={b}>
-                  {ENDPOINT_SHORT[b]}
-                </span>
-                {ENDPOINT_FULL[b]()}
+                <EndpointIcon backend={b} size={16} decorative />
+                <span>{ENDPOINT_FULL[b]()}</span>
+                {cliMissing(b) && <span className={styles.newMenuMiss}>{t('未安装')}</span>}
               </button>
             ))}
           </div>
@@ -365,7 +361,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => setEndpointFilter(b)}
                   title={ENDPOINT_FULL[b]()}
                 >
-                  {ENDPOINT_SHORT[b]}
+                  <EndpointIcon backend={b} size={14} decorative />
+                  <span>{ENDPOINT_FULL[b]()}</span>
                   <span className={styles.epCount}>{counts[b]}</span>
                 </button>
               ))}

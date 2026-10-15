@@ -7,7 +7,8 @@ import React, { useEffect, useState } from 'react';
 import { harnessClient } from '../../services/harnessClient';
 import type { ConversationBackend } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
-import { ENDPOINT_FULL, ENDPOINT_SHORT } from '../../utils/endpointBadge';
+import { ENDPOINT_FULL } from '../../utils/endpointBadge';
+import { EndpointIcon } from '../EndpointIcon';
 
 import styles from './index.module.css';
 
@@ -56,9 +57,7 @@ export const ForkTargetMenu: React.FC<{
                 data-testid={`fork-target-${b}`}
                 onClick={() => onPick(b)}
               >
-                <span className={styles.badge} data-ep={b}>
-                  {ENDPOINT_SHORT[b]}
-                </span>
+                <EndpointIcon backend={b} size={18} decorative />
                 <span>{ENDPOINT_FULL[b]()}</span>
                 {missing && <span className={styles.miss}>{t('未安装')}</span>}
               </button>

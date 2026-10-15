@@ -34,13 +34,8 @@ export function islandHtml(g: IslandGeometry): string {
   #icon[data-status='failed'] { background: rgba(255,110,110,.22); }
   #icon[data-status='attention'] { background: rgba(255,210,110,.22); }
   #text { min-width: 0; flex: 1; }
-  #ep { display: none; margin-right: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px;
-    font-weight: 600; vertical-align: 1px; background: rgba(255,255,255,.12); color: #f5f2ee; }
+  #ep { display: none; margin-right: 6px; width: 15px; height: 15px; vertical-align: -3px; }
   #ep.on { display: inline-block; }
-  #ep[data-ep='claude'] { background: rgba(217,119,87,.35); }
-  #ep[data-ep='codex'] { background: rgba(120,170,255,.32); }
-  #ep[data-ep='dsh'] { background: rgba(90,140,255,.35); }
-  #ep[data-ep='nomi'] { background: rgba(251,148,102,.35); }
   #title { font-weight: 650; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #body { color: rgba(245,242,238,.72); font-weight: 450; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; margin-top: 2px; }
@@ -53,6 +48,33 @@ export function islandHtml(g: IslandGeometry): string {
   const ICON = { message: '💬', agent: '🛠', reminder: '⏰', info: '✨' };
   const STATUS_ICON = { done: '✅', failed: '⚠️', attention: '👀', running: '⏳' };
   const EP = { claude: 'Claude Code', codex: 'Codex', dsh: 'dsh', nomi: 'Nomi' };
+  // same colors and glyphs as ai-chat EndpointIcon
+  const EP_COLOR = { nomi: '#f4895a', claude: '#d97757', codex: '#5f93f0', dsh: '#6a73e8' };
+  const EP_GLYPH = {
+    nomi: [{ d: 'M8 3.2l1.2 3.1 3.1 1.2-3.1 1.2L8 11.8 6.8 8.7 3.7 7.5l3.1-1.2z', fill: true }],
+    claude: [{ d: 'M8 3v10M3 8h10M4.5 4.5l7 7M11.5 4.5l-7 7' }],
+    codex: [{ d: 'M4.5 5.5L7.5 8l-3 2.5M8.8 11h3' }],
+    dsh: [{ d: 'M4 5.5L6.5 8 4 10.5M8 5.5L10.5 8 8 10.5' }],
+  };
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgEl = (name, attrs) => {
+    const n = document.createElementNS(SVGNS, name);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  };
+  function paintEndpoint(node, ep) {
+    node.replaceChildren();
+    if (!Object.prototype.hasOwnProperty.call(EP, ep)) return false;
+    const title = svgEl('title', {});
+    title.textContent = EP[ep];
+    node.append(title, svgEl('rect', { width: 16, height: 16, rx: 4, fill: EP_COLOR[ep] }));
+    for (const g of EP_GLYPH[ep]) {
+      node.append(svgEl('path', g.fill
+        ? { d: g.d, fill: '#fff' }
+        : { d: g.d, stroke: '#fff', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none' }));
+    }
+    return true;
+  }
   let timer = 0;
   window.__island = {
     show(n) {
@@ -61,9 +83,12 @@ export function islandHtml(g: IslandGeometry): string {
       $('icon').dataset.kind = n.kind || 'info';
       $('icon').dataset.status = n.status || '';
       const ep = String(n.endpoint || '');
-      $('ep').textContent = EP[ep] || ep;
+      // endpoint icon with accessible name + tooltip
+      const known = paintEndpoint($('ep'), ep);
+      $('ep').setAttribute('aria-label', known ? EP[ep] : '');
+      $('ep').setAttribute('role', known ? 'img' : 'presentation');
       $('ep').dataset.ep = ep;
-      $('ep').classList.toggle('on', !!ep);
+      $('ep').classList.toggle('on', known);
       $('tt').textContent = String(n.title || '');
       $('body').textContent = String(n.body || '');
       el.classList.add('on');
@@ -84,6 +109,6 @@ export function islandHtml(g: IslandGeometry): string {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <style>${css}</style></head><body>
 <div id="island" role="status" aria-live="polite"><div id="row"><div id="icon"></div>
-<div id="text"><div id="title"><span id="ep"></span><span id="tt"></span></div><div id="body"></div></div><div id="spark">✦</div></div></div>
+<div id="text"><div id="title"><svg id="ep" viewBox="0 0 16 16" width="15" height="15" aria-hidden="false"></svg><span id="tt"></span></div><div id="body"></div></div><div id="spark">✦</div></div></div>
 <script>${js}</script></body></html>`;
 }

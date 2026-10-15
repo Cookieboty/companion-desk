@@ -39,6 +39,7 @@ import {
   type TaskResult,
 } from '../../services/schedClient';
 import { RemindersTab } from '../DesktopPanel/RemindersTab';
+import { EndpointIcon } from '../EndpointIcon';
 
 import { CliToolsBlock } from './CliToolsBlock';
 import styles from './index.module.css';
@@ -626,6 +627,9 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                             data-testid={`agents-filter-${k}`}
                             onClick={() => setAgentFilter(k)}
                           >
+                            {k === 'claude' || k === 'codex' || k === 'dsh' ? (
+                              <EndpointIcon backend={k} size={14} decorative />
+                            ) : null}
                             {k === 'all'
                               ? tr('全部')
                               : k === 'tabs'
@@ -654,6 +658,12 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                               data-testid={`agents-session-${s.source ?? 'file'}`}
                             >
                               <div className={styles.row}>
+                                {s.kind === 'nomi' ||
+                                s.kind === 'claude' ||
+                                s.kind === 'codex' ||
+                                s.kind === 'dsh' ? (
+                                  <EndpointIcon backend={s.kind} size={16} />
+                                ) : null}
                                 <strong className={styles.grow} title={s.cwd || s.path}>
                                   {s.title}
                                 </strong>

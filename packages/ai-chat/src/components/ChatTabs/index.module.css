@@ -103,15 +103,6 @@
   }
 }
 
-.kind {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: var(--cd-color-bg-subtle);
-  color: var(--cd-color-text-subtle);
-  flex-shrink: 0;
-}
-
 .title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -216,6 +207,11 @@
 .menuItem:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.menuName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .menuHint {
   color: var(--cd-color-text-subtle);

@@ -14,6 +14,7 @@ import {
 } from '../../services/harnessClient';
 import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
 import { ENDPOINT_NAME } from '../../utils/endpointBadge';
+import { EndpointIcon } from '../EndpointIcon';
 
 import styles from './index.module.css';
 
@@ -142,9 +143,7 @@ export const ChatTabs: React.FC<{
               }}
             >
               <span className={styles.dot} data-status={dot} aria-label={statusLabel(dot)} />
-              {tab.id !== MAIN_TAB_ID && (
-                <span className={styles.kind}>{KIND_LABEL[tab.backend]}</span>
-              )}
+              <EndpointIcon backend={tab.backend} size={14} />
               {editing === tab.id ? (
                 <input
                   className={styles.rename}
@@ -226,7 +225,10 @@ export const ChatTabs: React.FC<{
                   void tabs.create(b).catch(() => undefined);
                 }}
               >
-                <span>{ENDPOINT_NAME[b]}</span>
+                <span className={styles.menuName}>
+                  <EndpointIcon backend={b} size={16} decorative />
+                  {ENDPOINT_NAME[b]}
+                </span>
                 <span className={styles.menuHint}>
                   {bins[b] === null ? t('未安装') : b === tabs.lastBackend ? t('上次使用') : ''}
                 </span>

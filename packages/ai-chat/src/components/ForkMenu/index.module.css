@@ -51,24 +51,6 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-.badge {
-  font-size: 10px;
-  font-weight: 650;
-  padding: 1px 6px;
-  border-radius: 999px;
-}
-.badge[data-ep='nomi'] {
-  background: rgba(251, 148, 102, 0.28);
-}
-.badge[data-ep='claude'] {
-  background: rgba(217, 119, 87, 0.32);
-}
-.badge[data-ep='codex'] {
-  background: rgba(120, 170, 255, 0.3);
-}
-.badge[data-ep='dsh'] {
-  background: rgba(90, 140, 255, 0.32);
-}
 .miss {
   margin-left: auto;
   font-size: 11px;

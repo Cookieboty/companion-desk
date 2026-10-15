@@ -139,10 +139,8 @@
 }
 .thread {
   display: grid;
-  grid-template-columns: 8px 1fr auto;
-  grid-template-rows: auto auto;
+  grid-template-columns: 8px 14px minmax(0, 1fr) auto;
   column-gap: 8px;
-  row-gap: 2px;
   align-items: center;
   padding: 7px 10px;
   text-align: left;
@@ -157,7 +155,6 @@
   height: 7px;
   border-radius: 50%;
   background: transparent;
-  grid-row: 1 / span 2;
 }
 .dot[data-live='running'] {
   background: #5b9cff;
@@ -182,20 +179,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  grid-column: 2;
-}
-.threadMeta {
-  grid-column: 2 / span 2;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
 }
 .threadTime {
   font-size: 11px;
   color: var(--cd-color-text-subtle);
   white-space: nowrap;
   margin-left: auto;
+}
+.newMenuMiss {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--cd-color-text-subtle);
 }
 .badge {
   font-size: 10px;
@@ -204,22 +198,6 @@
   border-radius: 999px;
   letter-spacing: 0.01em;
   flex-shrink: 0;
-}
-.badge[data-ep='nomi'] {
-  background: rgba(251, 148, 102, 0.28);
-  color: var(--cd-color-text);
-}
-.badge[data-ep='claude'] {
-  background: rgba(217, 119, 87, 0.32);
-  color: var(--cd-color-text);
-}
-.badge[data-ep='codex'] {
-  background: rgba(120, 170, 255, 0.3);
-  color: var(--cd-color-text);
-}
-.badge[data-ep='dsh'] {
-  background: rgba(90, 140, 255, 0.32);
-  color: var(--cd-color-text);
 }
 .bottom {
   margin-top: auto;

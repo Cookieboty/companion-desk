@@ -58,9 +58,11 @@ describe('island geometry', () => {
     expect(html).not.toMatch(/innerHTML/);
   });
 
-  it('page shows a per-endpoint badge and status icon', () => {
+  it('page shows a per-endpoint icon (not a text badge) and status icon', () => {
     const html = islandHtml(islandGeometry('darwin', notchMac));
-    expect(html).toContain('id="ep"');
+    expect(html).toContain('<svg id="ep"');
+    expect(html).toContain('paintEndpoint');
+    expect(html).toContain("setAttribute('aria-label'");
     expect(html).toContain("dsh: 'dsh'");
     expect(html).toContain('STATUS_ICON');
     expect(html).toContain("#icon[data-status='failed']");
