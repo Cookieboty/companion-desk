@@ -13,6 +13,7 @@ import {
   usePins,
 } from '../../services/pins';
 import { useShortcutBindings } from '../../services/shortcuts';
+import { AppIcon } from '../AppIcons';
 
 import styles from './index.module.css';
 
@@ -80,7 +81,9 @@ export const PinsSettings: React.FC = () => {
                   <span className={styles.grip} aria-hidden>
                     ⋮⋮
                   </span>
-                  <span aria-hidden>{d.icon}</span>
+                  <span aria-hidden>
+                    <AppIcon icon={d.icon} size={16} />
+                  </span>
                   <span className={styles.orderLabel}>{t(d.label)}</span>
                   <button
                     type="button"
@@ -133,7 +136,9 @@ export const PinsSettings: React.FC = () => {
                       onChange={() => update(togglePin(pins, d.id))}
                       data-testid={`pin-check-${d.id}`}
                     />
-                    <span aria-hidden>{d.icon}</span>
+                    <span aria-hidden>
+                      <AppIcon icon={d.icon} size={16} />
+                    </span>
                     <span className={styles.orderLabel}>{t(d.label)}</span>
                     {pinHint(d) && <span className={styles.hint}>{pinHint(d)}</span>}
                   </label>

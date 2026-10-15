@@ -12,6 +12,7 @@ import { memClient } from '../../services/memClient';
 import { MAX_PINS, pinDef, pinHint, runPinCommand, togglePin, usePins } from '../../services/pins';
 import { schedClient } from '../../services/schedClient';
 import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
+import { AppIcon } from '../AppIcons';
 import { ChatModeSwitch } from '../ChatModeSwitch';
 
 import styles from './index.module.css';
@@ -185,7 +186,9 @@ export const ChatHeader: React.FC<Props> = (p) => {
                 aria-label={t(d.label)}
                 data-testid={`pin-${id}`}
               >
-                <span aria-hidden>{d.icon}</span>
+                <span aria-hidden>
+                  <AppIcon icon={d.icon} size={16} />
+                </span>
               </button>
             </Tooltip>
           );
@@ -217,7 +220,9 @@ export const ChatHeader: React.FC<Props> = (p) => {
                       onContextMenu={ctx(id)}
                       data-testid={`pin-overflow-${id}`}
                     >
-                      <span aria-hidden>{d.icon}</span>
+                      <span aria-hidden>
+                        <AppIcon icon={d.icon} size={16} />
+                      </span>
                       <span className={styles.popLabel}>{t(d.label)}</span>
                       {pinHint(d) && <span className={styles.popHint}>{pinHint(d)}</span>}
                     </button>

@@ -18,6 +18,7 @@ import {
   type ImageAttachment,
 } from '../../services/screenClient';
 import { getBindings, matchShortcut } from '../../services/shortcuts';
+import { AppIcon, FEATURE_ICONS } from '../AppIcons';
 import { EndpointControls } from '../EndpointControls';
 import { ErrorHint } from '../ErrorHint';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
@@ -313,7 +314,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const openModels = provOk ? () => onProvidersClick?.() : onConfigClick;
   type Cmd = {
     id: string;
-    icon: string;
+    icon: React.ReactNode;
     label: string;
     hint?: string;
     testId: string;
@@ -326,7 +327,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const commands: Cmd[] = [
     {
       id: 'kb',
-      icon: '📚',
+      icon: <AppIcon icon={FEATURE_ICONS.kb} />,
       label: kbMode ? tr('知识库问答：开') : tr('知识库问答：关'),
       hint: '⌘/Ctrl+Shift+K',
       testId: 'kb-mode-toggle',
@@ -337,7 +338,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'snip',
-      icon: '✂️',
+      icon: <AppIcon icon={FEATURE_ICONS.fork} />,
       label: tr('截图提问'),
       hint: '⌘/Ctrl+Shift+S',
       testId: 'snip-button',
@@ -347,7 +348,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'model',
-      icon: '⚙️',
+      icon: <AppIcon icon={FEATURE_ICONS.settings} />,
       label: provOk ? tr('供应商与模型') : tr('配置模型'),
       testId: 'open-config',
       menu: true,
@@ -356,7 +357,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'voice',
-      icon: '🎙',
+      icon: <AppIcon icon={FEATURE_ICONS.voice} />,
       label: tr('语音设置'),
       hint: tr('F2 说话'),
       testId: 'open-voice-settings',
@@ -365,7 +366,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'kbm',
-      icon: '🗂',
+      icon: <AppIcon icon={FEATURE_ICONS.files} />,
       label: tr('知识库管理'),
       hint: '⌘/Ctrl+Shift+L',
       testId: 'open-kb-panel',
@@ -374,7 +375,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'memory',
-      icon: '🧠',
+      icon: <AppIcon icon={FEATURE_ICONS.memory} />,
       label: tr('长期记忆'),
       hint: '⌘/Ctrl+Shift+M',
       testId: 'open-mem-panel',
@@ -383,7 +384,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'schedule',
-      icon: '🗓',
+      icon: <AppIcon icon={FEATURE_ICONS.schedule} />,
       label: tr('日程 · 提醒 · 编程助手'),
       hint: '⌘/Ctrl+Shift+D',
       testId: 'open-sched-panel',
@@ -392,7 +393,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'screen',
-      icon: '🖥',
+      icon: <AppIcon icon={FEATURE_ICONS.screen} />,
       label: tr('截图与屏幕记忆'),
       hint: '⌘/Ctrl+Shift+O',
       testId: 'open-screen-panel',
@@ -401,7 +402,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'ext',
-      icon: '🧩',
+      icon: <AppIcon icon={FEATURE_ICONS.ext} />,
       label: tr('扩展：MCP 与技能'),
       hint: '⌘/Ctrl+Shift+E',
       testId: 'open-ext-panel',
@@ -410,7 +411,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'desktop',
-      icon: '📁',
+      icon: <AppIcon icon={FEATURE_ICONS.desktop} />,
       label: tr('桌面能力'),
       testId: 'open-desktop-panel',
       run: () => onDesktopClick?.(),
@@ -418,7 +419,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'local',
-      icon: '🏠',
+      icon: <AppIcon icon={FEATURE_ICONS.local} />,
       label: tr('本地中心（辅助）'),
       hint: '⌘/Ctrl+Shift+J',
       testId: 'open-local-panel',
@@ -427,7 +428,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'settings',
-      icon: '⚙️',
+      icon: <AppIcon icon={FEATURE_ICONS.appSettings} />,
       label: tr('全部设置…'),
       hint: '⌘/Ctrl+,',
       testId: 'composer-settings',

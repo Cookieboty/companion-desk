@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAiChat } from '../../contexts/AiChatContext';
 import { cliProviderClient } from '../../services/cliProviderClient';
 import { providerClientAvailable } from '../../services/providerClient';
+import { AppIcon } from '../AppIcons';
 import {
   ConfigPanel,
   DesktopPanel,
@@ -218,7 +219,9 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             }}
             data-testid={`settings-nav-${s.id}`}
           >
-            <span className={styles.navIcon}>{s.icon}</span>
+            <span className={styles.navIcon}>
+              <AppIcon icon={s.icon} size={16} />
+            </span>
             {t(s.label)}
           </button>
         ))}
