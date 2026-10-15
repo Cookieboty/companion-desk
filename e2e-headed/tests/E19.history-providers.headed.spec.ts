@@ -257,8 +257,16 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await histRow.locator('[data-testid="history-session-item"]').focus();
     await expect(histActions).toHaveCSS('opacity', '1');
     await chat.locator('[data-testid="sidebar-settings"]').focus();
-    // 选中的 Nomi 对话常显三个图标；改名 Enter 确认 / Esc 取消
+    // 空对话不再隐式创建：通过「新建对话 → Nomi」显式建一个，它会成为选中行
+    await chat.click('[data-testid="new-chat"]');
+    await chat.click('[data-testid="new-chat-nomi"]');
+    await expect(chat.locator('[data-testid="conversation-row"][data-active]').first()).toBeVisible(
+      { timeout: 20_000 },
+    );
+    // 选中的 Nomi 对话与其他行一样只在悬浮 / 焦点时浮现三个图标；改名 Enter 确认 / Esc 取消
     const nomiRow = chat.locator('[data-testid="conversation-row"][data-active]').first();
+    await expect(nomiRow.locator('[data-testid="row-actions"]')).toHaveCSS('opacity', '0');
+    await nomiRow.hover();
     await expect(nomiRow.locator('[data-testid="row-actions"]')).toHaveCSS('opacity', '1');
     await nomiRow.locator('[data-testid="row-rename"]').click();
     const rn = chat.locator('[data-testid="conversation-rename-input"]');
@@ -457,6 +465,7 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await shot(chat, '18-sidebar-normal-mode');
     // 普通模式：Nomi 对话不能分叉到其他端；同端「分叉为新对话」可用（更多 + 右键）
     const nrow = chat.locator('[data-testid="conversation-row"]').first();
+    await nrow.hover(); // 行尾图标只在悬浮 / 焦点时可点
     await nrow.locator('[data-testid="row-more"]').click();
     const nmenu = chat.locator('[data-testid="conversation-context-menu"]');
     await expect(nmenu.locator('[data-testid="fork-same"]')).toBeVisible();
