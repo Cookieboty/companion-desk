@@ -278,7 +278,7 @@ describe('sprite backend with rig', () => {
     expect(b.playMotion('shrug')).toBe(true);
     expect(b.snapshot().gesture?.name).toBe('shrug');
     expect(b.playMotion('look_around')).toBe(true);
-    expect(b.capabilities().motions).toContain('point');
+    expect(b.capabilities().motions).toContain('explain');
     expect(b.capabilities().motions).toContain('shy');
     b.playMotion('think-on');
     expect(b.snapshot().thinking).toBe(true);

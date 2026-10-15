@@ -30,6 +30,15 @@ export interface MascotCapabilities {
   motions: string[];
 }
 
+/** 动作播放选项（2D 骨架）：priority 0 空闲行为 · 1 普通 · 2 互动反应 · 3 任务事件 */
+export interface MotionOptions {
+  priority?: 0 | 1 | 2 | 3;
+  /** 被更高优先级占用时排队，而不是丢弃 */
+  queue?: boolean;
+  /** 保持末姿态直到 release（仅声明了 hold 的动作） */
+  hold?: boolean;
+}
+
 export interface MascotBackend {
   readonly kind: MascotBackendKind;
   /** 设置表情；weight 0..1，其它情绪表情会被淡出。'neutral' = 清空情绪。 */
@@ -40,8 +49,8 @@ export interface MascotBackend {
   lookAt(x: number, y: number): void;
   /** 立即眨一次眼（后端自身也会随机眨眼）。 */
   blink(): void;
-  /** 播放身体动作（'random' = 随机手势）；返回是否找到该动作。 */
-  playMotion(name: string): boolean;
+  /** 播放身体动作（'random' = 随机手势）；返回是否找到该动作。opts 仅 2D 骨架使用（优先级 / 排队 / 保持）。 */
+  playMotion(name: string, opts?: MotionOptions): boolean;
   /** 说话中（TTS 播放）：基础循环切到说话姿态。 */
   setTalking(talking: boolean): void;
   capabilities(): MascotCapabilities;
