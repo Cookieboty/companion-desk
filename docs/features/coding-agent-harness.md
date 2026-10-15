@@ -327,7 +327,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
   - 「新对话」：普通 → 总是 Nomi；开发 + 按端 → 当前端；全部 → 弹出端点菜单。
 - **分叉**（侧栏右键 / Mod+Shift+F）：
   1. **分叉为新对话**：同端复制可见消息，标题「原标题 (副本)」。
-  2. **分叉到其他端**：选目标端；复制 user/assistant 文本（工具调用压成短注）。CLI 目标写入 seed 转录或 preface，**不声称跨 CLI resume**。
+  2. **分叉到其他端**（仅开发模式）：选目标端；复制 user/assistant 文本（工具调用压成短注）。CLI 目标写入 seed 转录或 preface，**不声称跨 CLI resume**。
 - **已知取舍**：主标签在开发模式下切到 CLI 会开新标签，避免 Nomi 历史被 CLI 污染；跨端分叉是上下文粘贴，不是会话续接。
 - **示意**：见 [`assets/chat-mode/`](./assets/chat-mode/)（storyboard SVG；headed e2e 截图可替换）。
 
