@@ -24,6 +24,8 @@ export type { FormFieldProps } from './FormField';
 export { Notice } from './Notice';
 export type { NoticeProps } from './Notice';
 export { BrandIcon, hasBrandIcon } from './BrandIcon';
+export { ENDPOINT_GLYPHS, ENDPOINT_COLOR as ENDPOINT_BRAND_COLOR } from './brand/endpointGlyphs';
+export type { EndpointGlyph, EndpointGlyphKey, GlyphPath } from './brand/endpointGlyphs';
 export type { BrandIconProps } from './BrandIcon';
 export { Skeleton, SkeletonList, Truncate } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';

@@ -573,7 +573,7 @@ export const ToolBar: React.FC = () => {
       case 'voice-input':
         return tr('免按键语音：开/关（工具栏麦克风按住说话）');
       case 'motion':
-        return tr('做个动作（右键：动作列表）');
+        return tr('做个动作');
       default:
         return toolId;
     }
@@ -603,6 +603,7 @@ export const ToolBar: React.FC = () => {
             }
           : undefined;
 
+  // Tooltips open toward the mascot (left of the vertical bar when bar is on the right).
   const tipSide = place?.side === 'left' ? 'right' : 'left';
 
   const iconButton = (toolId: string) => {

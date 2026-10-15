@@ -18,14 +18,18 @@ import {
   type ImageAttachment,
 } from '../../services/screenClient';
 import { getBindings, matchShortcut } from '../../services/shortcuts';
+import { AppIcon, FEATURE_ICONS } from '../AppIcons';
+import { EndpointControls } from '../EndpointControls';
 import { ErrorHint } from '../ErrorHint';
-import { ProviderSwitcher } from '../ProviderSwitcher';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
 
 import styles from './index.module.css';
 
 interface MessageInputProps {
   onSend?: (message: string) => void;
+  /** 独立于 Nomi 对话的忙碌状态（CLI 标签）；设置后不再看 Nomi 的 isLoading / 模型 */
+  busyOverride?: boolean;
+  /** 设置 busyOverride（CLI 标签）时始终使用这里的提示，不显示 Nomi 的模型提示 */
   placeholder?: string;
   disabled?: boolean;
   onConfigClick?: () => void;
@@ -38,11 +42,12 @@ interface MessageInputProps {
   onExtClick?: () => void;
   onLocalClick?: () => void;
   /** 打开统一设置页的某个分区 */
-  onSettingsClick?: (section?: string) => void;
+  onSettingsClick?: (section?: string, endpoint?: string) => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
+  busyOverride,
   placeholder = tr('输入消息...'),
   disabled = false,
   onConfigClick,
@@ -188,14 +193,18 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleSend = async () => {
     const trimmedMessage = message.trim() || (images.length ? tr('请看看这张图片。') : '');
-    if (!trimmedMessage || state.isLoading) return;
+    if (!trimmedMessage || (busyOverride ?? state.isLoading)) return;
     const sendImages = images;
 
     try {
       setMessage('');
       setImages([]);
       setImgErr('');
-      if (sendImages.length) {
+      if (sendImages.length && busyOverride !== undefined) {
+        setImgErr(tr('编程助手后端暂不支持图片，请切回 Nomi'));
+        setImages(sendImages);
+        setMessage(trimmedMessage);
+      } else if (sendImages.length) {
         await actions.sendStreamMessage(trimmedMessage, sendImages);
       } else if (onSend) {
         onSend(trimmedMessage);
@@ -277,7 +286,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
-  const isDisabled = disabled || state.isLoading || !state.currentModelId;
+  const isDisabled =
+    disabled ||
+    (busyOverride !== undefined ? busyOverride : state.isLoading || !state.currentModelId);
 
   // 语音：自动发送（对话空闲时）或填入输入框
   const busyRef = useRef(false);
@@ -303,7 +314,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const openModels = provOk ? () => onProvidersClick?.() : onConfigClick;
   type Cmd = {
     id: string;
-    icon: string;
+    icon: React.ReactNode;
     label: string;
     hint?: string;
     testId: string;
@@ -316,7 +327,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const commands: Cmd[] = [
     {
       id: 'kb',
-      icon: '📚',
+      icon: <AppIcon icon={FEATURE_ICONS.kb} />,
       label: kbMode ? tr('知识库问答：开') : tr('知识库问答：关'),
       hint: '⌘/Ctrl+Shift+K',
       testId: 'kb-mode-toggle',
@@ -327,7 +338,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'snip',
-      icon: '✂️',
+      icon: <AppIcon icon={FEATURE_ICONS.fork} />,
       label: tr('截图提问'),
       hint: '⌘/Ctrl+Shift+S',
       testId: 'snip-button',
@@ -337,7 +348,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'model',
-      icon: '⚙️',
+      icon: <AppIcon icon={FEATURE_ICONS.settings} />,
       label: provOk ? tr('供应商与模型') : tr('配置模型'),
       testId: 'open-config',
       menu: true,
@@ -346,7 +357,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'voice',
-      icon: '🎙',
+      icon: <AppIcon icon={FEATURE_ICONS.voice} />,
       label: tr('语音设置'),
       hint: tr('F2 说话'),
       testId: 'open-voice-settings',
@@ -355,7 +366,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'kbm',
-      icon: '🗂',
+      icon: <AppIcon icon={FEATURE_ICONS.files} />,
       label: tr('知识库管理'),
       hint: '⌘/Ctrl+Shift+L',
       testId: 'open-kb-panel',
@@ -364,7 +375,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'memory',
-      icon: '🧠',
+      icon: <AppIcon icon={FEATURE_ICONS.memory} />,
       label: tr('长期记忆'),
       hint: '⌘/Ctrl+Shift+M',
       testId: 'open-mem-panel',
@@ -373,7 +384,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'schedule',
-      icon: '🗓',
+      icon: <AppIcon icon={FEATURE_ICONS.schedule} />,
       label: tr('日程 · 提醒 · 编程助手'),
       hint: '⌘/Ctrl+Shift+D',
       testId: 'open-sched-panel',
@@ -382,7 +393,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'screen',
-      icon: '🖥',
+      icon: <AppIcon icon={FEATURE_ICONS.screen} />,
       label: tr('截图与屏幕记忆'),
       hint: '⌘/Ctrl+Shift+O',
       testId: 'open-screen-panel',
@@ -391,7 +402,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'ext',
-      icon: '🧩',
+      icon: <AppIcon icon={FEATURE_ICONS.ext} />,
       label: tr('扩展：MCP 与技能'),
       hint: '⌘/Ctrl+Shift+E',
       testId: 'open-ext-panel',
@@ -400,7 +411,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'desktop',
-      icon: '📁',
+      icon: <AppIcon icon={FEATURE_ICONS.desktop} />,
       label: tr('桌面能力'),
       testId: 'open-desktop-panel',
       run: () => onDesktopClick?.(),
@@ -408,7 +419,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'local',
-      icon: '🏠',
+      icon: <AppIcon icon={FEATURE_ICONS.local} />,
       label: tr('本地中心（辅助）'),
       hint: '⌘/Ctrl+Shift+J',
       testId: 'open-local-panel',
@@ -417,7 +428,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'settings',
-      icon: '⚙️',
+      icon: <AppIcon icon={FEATURE_ICONS.appSettings} />,
       label: tr('全部设置…'),
       hint: '⌘/Ctrl+,',
       testId: 'composer-settings',
@@ -592,11 +603,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             }
           }}
           placeholder={
-            isDisabled
-              ? tr('请先选择AI模型...')
-              : kbMode && kbAvailable
-                ? tr('向知识库提问，回答会标注出处…')
-                : placeholder
+            busyOverride !== undefined
+              ? placeholder
+              : isDisabled
+                ? tr('请先选择AI模型...')
+                : kbMode && kbAvailable
+                  ? tr('向知识库提问，回答会标注出处…')
+                  : placeholder
           }
           disabled={isDisabled}
           className={styles.messageTextarea}
@@ -643,10 +656,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           )}
           <div className={styles.modelStatus}>
             {provOk ? (
-              <ProviderSwitcher
-                className={styles.currentModel}
-                onManage={() => onProvidersClick?.()}
-              />
+              <>
+                <EndpointControls
+                  className={styles.currentModel}
+                  onManageNomi={() => onProvidersClick?.()}
+                  onManageCli={(b) => onSettingsClick?.('coding', b)}
+                />
+              </>
             ) : state.models.filter((m) => m.enabled).length === 0 ? (
               <span className={styles.noModel}>{tr('没有可用的AI模型')}</span>
             ) : (
@@ -664,7 +680,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             title={tr('发送消息 (Enter)')}
             aria-label={tr('发送')}
           >
-            {state.isLoading ? (
+            {(busyOverride ?? state.isLoading) ? (
               <div className={styles.loadingSpinner} />
             ) : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

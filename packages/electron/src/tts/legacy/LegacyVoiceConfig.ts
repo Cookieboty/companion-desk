@@ -105,7 +105,13 @@ export class MCPConfigManager {
         const configData = fs.readFileSync(ttsConfigPath, 'utf8');
         const ttsConfig = JSON.parse(configData) as TTSConfig;
 
-        // 验证配置完整性
+        // Legacy clone path only when classic fields are complete.
+        // Fish-era configs (fish-local / fish-cloud / system) are handled by FishTtsService.
+        const provider = (ttsConfig as { provider?: string }).provider;
+        if (provider && provider !== 'legacy') {
+          debugLog('非 legacy TTS provider，跳过 MCP legacy 加载', { provider });
+          return null;
+        }
         if (
           ttsConfig.enabled &&
           ttsConfig.hostname &&

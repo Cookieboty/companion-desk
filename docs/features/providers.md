@@ -2,7 +2,7 @@
 
 ![供应商设置](../screenshots/settings-providers.png)
 
-入口：设置 →「供应商与模型」，或对话窗口输入框旁的 🔑。
+入口：设置 →「编程助手」→ Nomi 标签（原「供应商与模型」），或对话窗口输入框旁的 🔑。
 
 ## 一键切换
 
@@ -32,6 +32,10 @@
 
 ## 技术说明
 
-- 也可以用环境变量提供供应商（如 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GEMINI_API_KEY`、`OLLAMA_BASE_URL`），它们在面板里只读显示；`COMPANION_PROVIDER=<id>` 可强制指定供应商。
-- 选择顺序：`COMPANION_PROVIDER` → 任务路由 → 当前供应商 → 环境变量供应商。
+- 也可以用环境变量提供供应商（如 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GEMINI_API_KEY`、`OLLAMA_BASE_URL`），它们在面板里只读显示；`NOMI_PROVIDER=<id>` 可强制指定供应商。
+- 选择顺序：`NOMI_PROVIDER` → 任务路由 → 当前供应商 → 环境变量供应商。
 - 服务商图标来自 `@lobehub/icons-static-svg`（MIT），仅用于标识对应服务；没有图标时显示首字母头像。
+
+## Claude Code / Codex / dsh 的供应商
+
+「编程助手」页的另外三个标签（Claude Code / Codex / dsh）与 Nomi 使用同样的卡片列表、预设模板、添加 / 编辑 / 删除 / 测速 / 启用。默认使用各 CLI 自带的登录或默认配置，不启用任何档案；档案库与 Nomi 互相独立。详见 [编程助手接入设计稿 §14](coding-agent-harness.md)。每个端点页顶部还有「版本」卡片，可检查并一键安装 / 更新该 CLI（执行前会显示完整命令并确认）。

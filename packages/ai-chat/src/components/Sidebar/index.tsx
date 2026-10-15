@@ -1,8 +1,31 @@
 import { t } from '@nomi-ai/ui';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { List, type RowComponentProps } from 'react-window';
 
 import { useAiChat } from '../../contexts/AiChatContext';
-import type { ChatSession } from '../../types/chat';
+import { useHarnessTabs } from '../../contexts/HarnessTabsContext';
+import { useChatMode } from '../../hooks/useChatMode';
+import { useCliHistory } from '../../hooks/useCliHistory';
+import { useCliTabSync } from '../../hooks/useCliTabSync';
+import { useConversationListView } from '../../hooks/useConversationListView';
+import { useHistorySearchIndex } from '../../hooks/useHistorySearchIndex';
+import { useNewWorkspace } from '../../hooks/useNewWorkspace';
+import { MAIN_TAB_ID, harnessClient, type HarnessTabMeta } from '../../services/harnessClient';
+import {
+  HISTORY_BACKENDS,
+  historyClient,
+  type HistoryBackend,
+  type HistorySession,
+} from '../../services/historyClient';
+import { SEARCH_CHATS_EVENT, formatCombo, useShortcutBindings } from '../../services/shortcuts';
+import type { ConversationBackend, ChatSession } from '../../types/chat';
+import { CONVERSATION_BACKENDS } from '../../types/chat';
+import { ENDPOINT_FULL } from '../../utils/endpointBadge';
+import { rankItems, type Range, type SearchField } from '../../utils/fuzzy';
+import { AppIcon, SETTINGS_ICONS } from '../AppIcons';
+import { ConversationMenu } from '../ConversationMenu';
+import { EndpointIcon } from '../EndpointIcon';
+import { NewChatMenu } from '../NewChatMenu';
 
 import styles from './index.module.css';
 
@@ -11,6 +34,9 @@ interface SidebarProps {
   onToggle: () => void;
   onNewChat: () => void;
   onSettings?: () => void;
+  onForkRequest?: (id: string, mode: 'same' | 'cross') => void;
+  /** 打开历史会话失败 / 有提示时 */
+  onNotice?: (message: string) => void;
 }
 
 type Meta = Omit<ChatSession, 'messages'>;
@@ -23,12 +49,383 @@ const rel = (ts: number) => {
   return t('{0} 天前', Math.floor(d / 86_400_000));
 };
 
-/** Codex 风格的极简侧栏：新对话 + 历史线程列表，⌘/Ctrl+B 收起 */
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat, onSettings }) => {
+function liveOf(tab: HarnessTabMeta | undefined): string {
+  if (!tab) return '';
+  if (tab.status === 'running' || tab.status === 'queued' || tab.status === 'error')
+    return tab.status;
+  return tab.unread > 0 ? 'unread' : '';
+}
+
+/** 把命中区间渲染成 <mark>（区间基于折叠后的文本，与原文等长） */
+const Highlight: React.FC<{ text: string; ranges?: Range[] }> = ({ text, ranges }) => {
+  if (!ranges?.length) return <>{text}</>;
+  const out: React.ReactNode[] = [];
+  let at = 0;
+  ranges.forEach(([a, b], i) => {
+    if (a >= text.length) return;
+    if (a > at) out.push(text.slice(at, a));
+    out.push(
+      <mark key={i} className={styles.hit}>
+        {text.slice(a, Math.min(b, text.length))}
+      </mark>,
+    );
+    at = Math.min(b, text.length);
+  });
+  if (at < text.length) out.push(text.slice(at));
+  return <>{out}</>;
+};
+
+type SearchEntry =
+  | { kind: 'conv'; id: string; meta: Meta; title: string; first: string; cwd: string }
+  | { kind: 'hist'; id: string; h: HistorySession };
+
+const fieldsOf = (e: SearchEntry): SearchField[] =>
+  e.kind === 'conv'
+    ? [
+        { text: e.title, weight: 3, highlight: true },
+        { text: e.first, weight: 2 },
+        { text: e.cwd, weight: 1.5 },
+        { text: ENDPOINT_FULL[e.meta.backend](), weight: 1 },
+      ]
+    : [
+        { text: e.h.title, weight: 3, highlight: true },
+        { text: e.h.cwd ?? '', weight: 1.5 },
+        { text: ENDPOINT_FULL[e.h.backend](), weight: 1 },
+      ];
+
+const MAX_RESULTS = 200;
+
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setV(value), ms);
+    return () => window.clearTimeout(id);
+  }, [value, ms]);
+  return v;
+}
+
+const SearchIcon = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-3.8-3.8" />
+  </svg>
+);
+
+/** 行内操作的图标（描边，随文字色） */
+const PenIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" strokeLinejoin="round" />
+    <path d="m13.5 6.5 4 4" />
+  </svg>
+);
+const TrashIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" strokeLinejoin="round" strokeLinecap="round" />
+  </svg>
+);
+const MoreIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="5" cy="12" r="1.8" />
+    <circle cx="12" cy="12" r="1.8" />
+    <circle cx="19" cy="12" r="1.8" />
+  </svg>
+);
+
+export interface RowActionHandlers {
+  onRename?: () => void;
+  /** Nomi 对话：删除（两步确认）；CLI 标签：关闭标签 */
+  onDelete?: () => void;
+  onCancelDelete?: () => void;
+  onMore: (anchor: DOMRect) => void;
+}
+
+/**
+ * 行尾三个图标按钮：重命名 / 删除（或关闭标签）/ 更多。悬浮、行内键盘焦点、选中行时显示；
+ * 「更多」只触发父级按需渲染的菜单（与右键菜单共用 ConversationMenu），行内不常驻挂载菜单。
+ */
+const RowActions: React.FC<
+  RowActionHandlers & { kind: 'conv' | 'tab' | 'hist'; confirming?: boolean }
+> = ({ kind, confirming, onRename, onDelete, onCancelDelete, onMore }) => {
+  const delLabel = kind === 'tab' ? t('关闭标签') : t('删除对话');
+  return (
+    <div
+      className={styles.rowActions}
+      role="group"
+      aria-label={t('对话操作')}
+      data-testid="row-actions"
+      data-confirming={confirming || undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && confirming) {
+          e.stopPropagation();
+          onCancelDelete?.();
+        }
+      }}
+    >
+      {confirming ? (
+        <>
+          <button
+            type="button"
+            className={`${styles.rowBtn} ${styles.rowBtnDanger} ${styles.rowBtnText}`}
+            onClick={onDelete}
+            data-testid="row-delete-confirm"
+            autoFocus
+          >
+            {t('确认删除')}
+          </button>
+          <button
+            type="button"
+            className={`${styles.rowBtn} ${styles.rowBtnText}`}
+            onClick={onCancelDelete}
+            data-testid="row-delete-cancel"
+          >
+            {t('取消')}
+          </button>
+        </>
+      ) : (
+        <>
+          {onRename && (
+            <button
+              type="button"
+              className={styles.rowBtn}
+              title={t('重命名')}
+              aria-label={t('重命名')}
+              onClick={onRename}
+              data-testid="row-rename"
+            >
+              <PenIcon />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className={`${styles.rowBtn} ${styles.rowBtnDanger}`}
+              title={delLabel}
+              aria-label={delLabel}
+              onClick={onDelete}
+              data-testid="row-delete"
+            >
+              <TrashIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className={styles.rowBtn}
+            title={t('更多操作')}
+            aria-label={t('更多操作')}
+            aria-haspopup="menu"
+            onClick={(e) => onMore(e.currentTarget.getBoundingClientRect())}
+            data-testid="row-more"
+          >
+            <MoreIcon />
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+
+const ThreadItem: React.FC<{
+  c: Meta;
+  active: boolean;
+  tab?: HarnessTabMeta;
+  onOpen: (id: string) => void;
+  onCtx: (id: string, e: React.MouseEvent) => void;
+  renaming?: boolean;
+  onRename?: (id: string, name: string | null) => void;
+  confirming?: boolean;
+  onRenameStart?: (id: string) => void;
+  onDeleteRequest?: (id: string) => void;
+  onDeleteCancel?: () => void;
+  onMore?: (id: string, anchor: DOMRect) => void;
+  style?: React.CSSProperties;
+}> = ({
+  c,
+  active,
+  tab,
+  onOpen,
+  onCtx,
+  renaming,
+  onRename,
+  confirming,
+  onRenameStart,
+  onDeleteRequest,
+  onDeleteCancel,
+  onMore,
+  style,
+}) => {
+  const cls = `${styles.thread} ${active ? styles.threadActive : ''}`;
+  const lead = (
+    <>
+      <span className={styles.dot} data-live={liveOf(tab) || undefined} aria-hidden />
+      <EndpointIcon backend={c.backend} size={14} />
+    </>
+  );
+  if (renaming) {
+    return (
+      <div className={cls} style={style} data-testid="history-item" data-backend={c.backend}>
+        {lead}
+        <input
+          className={styles.renameInput}
+          data-testid="conversation-rename-input"
+          defaultValue={c.name ? t(c.name) : ''}
+          aria-label={t('重命名')}
+          maxLength={60}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => onRename?.(c.id, e.currentTarget.value.trim() || null)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') onRename?.(c.id, e.currentTarget.value.trim() || null);
+            if (e.key === 'Escape') onRename?.(c.id, null);
+          }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={styles.row}
+      style={style}
+      data-active={active || undefined}
+      data-confirming={confirming || undefined}
+      data-testid="conversation-row"
+    >
+      <button
+        className={cls}
+        onClick={() => void onOpen(c.id)}
+        onContextMenu={(e) => onCtx(c.id, e)}
+        title={t(c.name)}
+        data-testid="history-item"
+        data-backend={c.backend}
+        data-conversation-id={c.id}
+      >
+        {lead}
+        <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
+        <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
+      </button>
+      {onMore && (
+        <RowActions
+          kind={c.tabId ? 'tab' : 'conv'}
+          confirming={confirming}
+          onRename={() => onRenameStart?.(c.id)}
+          onDelete={() => onDeleteRequest?.(c.id)}
+          onCancelDelete={onDeleteCancel}
+          onMore={(r) => onMore(c.id, r)}
+        />
+      )}
+    </div>
+  );
+};
+
+type VirtualProps = {
+  items: Meta[];
+  current?: string;
+  tabById: Map<string, HarnessTabMeta>;
+  open: (id: string) => void;
+  onCtx: (id: string, e: React.MouseEvent) => void;
+  renamingId: string | null;
+  onRename: (id: string, name: string | null) => void;
+  confirmId: string | null;
+  onRenameStart: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
+  onDeleteCancel: () => void;
+  onMore: (id: string, anchor: DOMRect) => void;
+};
+
+const VirtualRow = ({
+  index,
+  style,
+  items,
+  current,
+  tabById,
+  open,
+  onCtx,
+  renamingId,
+  onRename,
+  confirmId,
+  onRenameStart,
+  onDeleteRequest,
+  onDeleteCancel,
+  onMore,
+  ariaAttributes,
+}: RowComponentProps<VirtualProps>) => {
+  const c = items[index]!;
+  return (
+    <div style={style} {...ariaAttributes}>
+      <ThreadItem
+        c={c}
+        active={c.id === current}
+        tab={c.tabId ? tabById.get(c.tabId) : undefined}
+        onOpen={open}
+        onCtx={onCtx}
+        renaming={renamingId === c.id}
+        onRename={onRename}
+        confirming={confirmId === c.id}
+        onRenameStart={onRenameStart}
+        onDeleteRequest={onDeleteRequest}
+        onDeleteCancel={onDeleteCancel}
+        onMore={onMore}
+      />
+    </div>
+  );
+};
+
+/** 侧栏：全部 / 按端 + 端点徽标；点击按后端路由到主对话或 CLI 标签 */
+export const Sidebar: React.FC<SidebarProps> = ({
+  collapsed,
+  onToggle,
+  onNewChat,
+  onSettings,
+  onForkRequest,
+  onNotice,
+}) => {
   const { state, actions } = useAiChat();
   const ipc = state.ipcClient;
+  const tabs = useHarnessTabs();
+  const { isDev, isNormal, setMode } = useChatMode();
+  const {
+    view: storedView,
+    setView,
+    endpointFilter,
+    setEndpointFilter,
+  } = useConversationListView();
+  // 普通模式只有 Nomi：视图固定为「全部」，但不改动已保存的选择，切回开发模式即恢复
+  const view = isNormal ? 'all' : storedView;
+  const bindings = useShortcutBindings();
   const [list, setList] = useState<Meta[]>([]);
   const [current, setCurrent] = useState<string | undefined>();
+  const [bins, setBins] = useState<Record<string, string | null>>({});
+  const [newMenu, setNewMenu] = useState(false);
+  const [ctx, setCtx] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  // 行内删除的二次确认（只对 Nomi 对话；CLI 标签是「关闭」，运行中才确认）
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [histMenu, setHistMenu] = useState<{ h: HistorySession; x: number; y: number } | null>(
+    null,
+  );
+  const ws = useNewWorkspace();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
     if (!ipc?.listConversations) return;
@@ -40,15 +437,394 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
       })
       .catch(() => undefined);
   }, [ipc]);
-  // 消息数量变化（新消息 / 新对话）时刷新列表
-  useEffect(refresh, [refresh, state.messages.length]);
 
-  const open = async (id: string) => {
-    if (!ipc || id === current) return;
-    await ipc.switchConversation(id);
-    await actions.loadChatHistory();
+  useCliTabSync(refresh);
+  // loading 变化时也刷新：首个会话在第一条消息保存时才创建，发送结束后需要让它出现在列表里
+  useEffect(refresh, [refresh, state.messages.length, state.isLoading, tabs.state]);
+
+  useEffect(() => {
+    if (!harnessClient.available()) return;
+    void harnessClient
+      .state()
+      .then((s) => setBins(s.bins))
+      .catch(() => undefined);
+  }, [isDev]);
+
+  useEffect(() => {
+    if (!newMenu) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+      if (e instanceof MouseEvent && menuRef.current?.contains(e.target as Node)) return;
+      setNewMenu(false);
+    };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('keydown', close);
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('keydown', close);
+    };
+  }, [newMenu]);
+
+  const tabById = useMemo(() => {
+    const m = new Map<string, HarnessTabMeta>();
+    for (const x of tabs.state?.tabs ?? []) m.set(x.id, x);
+    return m;
+  }, [tabs.state]);
+
+  // 普通模式：侧栏只列 Nomi 会话（CLI 标签仍在后台运行，切回开发模式即可看到）
+  const navList = useMemo(
+    () => (isNormal ? list.filter((x) => x.backend === 'nomi') : list),
+    [list, isNormal],
+  );
+
+  const counts = useMemo(() => {
+    const c: Record<ConversationBackend, number> = { nomi: 0, claude: 0, codex: 0, dsh: 0 };
+    for (const x of navList) c[x.backend] = (c[x.backend] ?? 0) + 1;
+    return c;
+  }, [navList]);
+
+  const visible = useMemo(() => {
+    if (view === 'by-endpoint') return navList.filter((x) => x.backend === endpointFilter);
+    return navList;
+  }, [navList, view, endpointFilter]);
+
+  const open = useCallback(
+    async (id: string) => {
+      if (!ipc) return;
+      const meta =
+        list.find((x) => x.id === id) ?? (await ipc.listConversations()).find((x) => x.id === id);
+      if (!meta) return;
+      setCtx(null);
+
+      if (meta.backend !== 'nomi' && meta.tabId) {
+        if (!isDev) setMode('dev');
+        await tabs.activate(meta.tabId);
+        await ipc.switchConversation(id).catch(() => undefined);
+        refresh();
+        return;
+      }
+
+      if (tabs.available) await tabs.activate(MAIN_TAB_ID);
+      if (harnessClient.available()) {
+        await harnessClient.setBackend('nomi').catch(() => undefined);
+      }
+      if (id !== current) {
+        await ipc.switchConversation(id);
+        await actions.loadChatHistory();
+      }
+      refresh();
+    },
+    [ipc, list, isDev, setMode, tabs, refresh, current, actions],
+  );
+
+  const createFor = async (backend: ConversationBackend) => {
+    setNewMenu(false);
+    if (backend === 'nomi') {
+      if (tabs.available) await tabs.activate(MAIN_TAB_ID);
+      if (harnessClient.available()) await harnessClient.setBackend('nomi').catch(() => undefined);
+      onNewChat();
+      const store = ipc.conversationStore?.();
+      if (store) {
+        const id = store.ensureCurrent();
+        const m = store.get(id);
+        if (m && m.backend !== 'nomi') store.updateMeta(id, { backend: 'nomi' });
+      }
+      refresh();
+      return;
+    }
+    if (!isDev) setMode('dev');
+    if (!tabs.available) return;
+    await tabs.create(backend, ws.chosen);
     refresh();
   };
+
+  const handleNewClick = () => {
+    if (isNormal) {
+      void createFor('nomi');
+      return;
+    }
+    if (view === 'by-endpoint') {
+      void createFor(endpointFilter);
+      return;
+    }
+    setNewMenu((v) => !v);
+  };
+
+  const removeItem = async (id: string) => {
+    setCtx(null);
+    const meta = list.find((x) => x.id === id);
+    if (!meta || !ipc) return;
+    setConfirmId(null);
+    if (meta.tabId) {
+      const st = tabById.get(meta.tabId)?.status;
+      if (
+        (st === 'running' || st === 'queued') &&
+        !window.confirm(t('该标签仍在运行，关闭会中止它。确定关闭？'))
+      )
+        return;
+      await tabs.close(meta.tabId);
+    } else {
+      await ipc.deleteConversation?.(id);
+      if (id === current) {
+        // store 已把当前会话切到同后端最近更新的会话；一个不剩则只清空消息区，不新建会话
+        if (ipc.currentConversationId?.()) await actions.loadChatHistory();
+        else await actions.clearChatHistory();
+      }
+    }
+    refresh();
+  };
+
+  const commitRename = useCallback(
+    (id: string, name: string | null) => {
+      setRenamingId(null);
+      if (!name || !ipc) return;
+      const meta = list.find((x) => x.id === id);
+      if (!meta || meta.name === name) return;
+      if (meta.tabId) void tabs.rename(meta.tabId, name).catch(() => undefined);
+      else ipc.conversationStore?.()?.updateMeta(id, { name });
+      refresh();
+    },
+    [ipc, list, tabs, refresh],
+  );
+
+  const requestDelete = (id: string) => {
+    const meta = list.find((x) => x.id === id);
+    if (!meta) return;
+    // CLI 标签：关闭标签（可从历史重新打开），运行中沿用关闭确认；Nomi 对话：永久删除，先二次确认
+    if (meta.tabId || confirmId === id) void removeItem(id);
+    else setConfirmId(id);
+  };
+  const cancelDelete = useCallback(() => setConfirmId(null), []);
+  useEffect(() => {
+    if (!confirmId) return;
+    const timer = window.setTimeout(() => setConfirmId(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [confirmId]);
+
+  /** 行内「更多」：与右键共用同一个 ConversationMenu，只是锚在按钮下方 */
+  const openMore = useCallback((id: string, a: DOMRect) => {
+    setNewMenu(false);
+    setHistMenu(null);
+    setCtx({ id, x: a.right - 184, y: a.bottom + 2 });
+  }, []);
+
+  const onCtx = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setNewMenu(false);
+    setCtx({ id, x: e.clientX, y: e.clientY });
+  };
+
+  const cliMissing = (b: ConversationBackend) => b !== 'nomi' && !bins[b];
+
+  // 开发模式：磁盘上的 CLI 历史会话（每端 50 条一页）
+  const histBackends = useMemo(() => HISTORY_BACKENDS.filter((b) => Boolean(bins[b])), [bins]);
+  const tabsKey = (tabs.state?.tabs ?? []).map((x) => `${x.id}:${x.cliSessionId ?? ''}`).join('|');
+  const history = useCliHistory(isDev, histBackends, tabsKey);
+  const histScope: HistoryBackend | undefined =
+    view === 'by-endpoint' && endpointFilter !== 'nomi'
+      ? (endpointFilter as HistoryBackend)
+      : undefined;
+  const histItems: HistorySession[] =
+    view === 'by-endpoint' && endpointFilter === 'nomi' ? [] : history.items(histScope);
+  const [openingKey, setOpeningKey] = useState<string | null>(null);
+
+  const openHistory = async (h: HistorySession) => {
+    if (openingKey) return;
+    setOpeningKey(h.key);
+    try {
+      const r = await historyClient.open(h.backend, h.sessionId);
+      if (!r.ok) onNotice?.(r.error || t('打开历史会话失败'));
+      else if (r.notice) onNotice?.(r.notice);
+    } catch (e) {
+      onNotice?.(e instanceof Error ? e.message : String(e));
+    } finally {
+      setOpeningKey(null);
+      history.refresh();
+    }
+  };
+
+  // ── 模式切换：普通模式下当前会话若是 CLI 会话，自动换到最近的 Nomi 会话（没有则新建）；
+  //    切回开发模式时回到离开前选中的会话。CLI 标签一直在后台运行。
+  const leftDevOn = useRef<string | null>(null);
+  const redirecting = useRef(false);
+  const currentMeta = list.find((x) => x.id === current);
+  useEffect(() => {
+    if (isDev) {
+      const back = leftDevOn.current;
+      leftDevOn.current = null;
+      if (back && back !== current && list.some((x) => x.id === back)) void open(back);
+      return;
+    }
+    if (!currentMeta || currentMeta.backend === 'nomi' || redirecting.current || !list.length)
+      return;
+    redirecting.current = true;
+    leftDevOn.current = currentMeta.id;
+    const nomi = list.find((x) => x.backend === 'nomi');
+    void (nomi ? open(nomi.id) : createFor('nomi')).finally(() => {
+      redirecting.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDev, currentMeta?.id, currentMeta?.backend, list.length]);
+
+  // ── 搜索：图标按钮 → 原位展开为搜索框；Mod+F 聚焦；Esc 清空 / 收起；150ms 防抖
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeIdx, setActiveIdx] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounced = useDebounced(query, 150);
+  const searching = !collapsed && searchOpen && debounced.trim() !== '';
+  const searchIndex = useHistorySearchIndex(isDev && searching, histBackends, tabsKey);
+  const firstMsgCache = useRef(new Map<string, string>());
+
+  useEffect(() => {
+    const onEvent = () => {
+      setSearchOpen(true);
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    };
+    window.addEventListener(SEARCH_CHATS_EVENT, onEvent);
+    return () => window.removeEventListener(SEARCH_CHATS_EVENT, onEvent);
+  }, []);
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus();
+  }, [searchOpen]);
+  // 普通 / 开发模式切换后端点范围变了，丢掉光标
+  useEffect(() => setActiveIdx(0), [debounced, isDev, view, endpointFilter]);
+
+  const firstUserMessage = useCallback(
+    (m: Meta): string => {
+      if (m.tabId) return '';
+      const k = `${m.id}:${m.updatedAt}`;
+      const hit = firstMsgCache.current.get(k);
+      if (hit !== undefined) return hit;
+      let text = '';
+      try {
+        const msgs = ipc?.conversationStore?.()?.getMessages(m.id) ?? [];
+        text = (
+          msgs.find((x: { role: string; content?: string }) => x.role === 'user')?.content ?? ''
+        ).slice(0, 300);
+      } catch {
+        /* 取不到就只搜标题 */
+      }
+      if (firstMsgCache.current.size > 2000) firstMsgCache.current.clear();
+      firstMsgCache.current.set(k, text);
+      return text;
+    },
+    [ipc],
+  );
+
+  const results = useMemo(() => {
+    if (!searching) return [];
+    const seen = new Set<string>();
+    const entries: SearchEntry[] = [];
+    for (const m of visible) {
+      seen.add(m.id);
+      entries.push({
+        kind: 'conv',
+        id: m.id,
+        meta: m,
+        title: m.name ? t(m.name) : t('新对话'),
+        first: firstUserMessage(m),
+        cwd: (m.tabId ? tabById.get(m.tabId)?.cwd : '') ?? '',
+      });
+    }
+    if (isDev && !(view === 'by-endpoint' && endpointFilter === 'nomi')) {
+      // 已加载的分页 + 搜索索引合并，同一会话（backend:sessionId）只保留一条
+      for (const h of [...history.items(histScope), ...searchIndex.items]) {
+        if (histScope && h.backend !== histScope) continue;
+        if (seen.has(h.key)) continue;
+        seen.add(h.key);
+        entries.push({ kind: 'hist', id: h.key, h });
+      }
+    }
+    return rankItems(entries, debounced, fieldsOf);
+  }, [
+    searching,
+    visible,
+    tabById,
+    isDev,
+    view,
+    endpointFilter,
+    history.items,
+    histScope,
+    searchIndex.items,
+    debounced,
+    firstUserMessage,
+  ]);
+  const shown = results.slice(0, MAX_RESULTS);
+  const activeEntry = shown[Math.min(activeIdx, Math.max(shown.length - 1, 0))]?.item;
+
+  const openEntry = (e: SearchEntry | undefined) => {
+    if (!e) return;
+    if (e.kind === 'conv') void open(e.id);
+    else void openHistory(e.h);
+  };
+  const closeSearch = () => {
+    setQuery('');
+    setSearchOpen(false);
+  };
+  const onSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (query) setQuery('');
+      else closeSearch();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, Math.max(shown.length - 1, 0)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      openEntry(activeEntry);
+    }
+  };
+  useEffect(() => {
+    if (!searching) return;
+    document
+      .getElementById(`sb-result-${Math.min(activeIdx, Math.max(shown.length - 1, 0))}`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIdx, searching, shown.length]);
+
+  const canSearchMore = isDev && searchIndex.hasMore;
+  const newTip = [t('新对话'), formatCombo(bindings.newChat)].join(' ');
+  const searchTip = [t('搜索对话'), formatCombo(bindings.searchChats)].join(' ');
+  const showHistory = isDev;
+
+  const newBtn = (
+    <div className={styles.newWrap} ref={menuRef}>
+      <button
+        className={styles.iconBtn}
+        onClick={handleNewClick}
+        title={newTip}
+        aria-label={t('新对话')}
+        aria-haspopup={isDev && view === 'all' ? 'menu' : undefined}
+        aria-expanded={isDev && view === 'all' ? newMenu : undefined}
+        data-testid="new-chat"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        >
+          <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+        </svg>
+      </button>
+      {newMenu && !collapsed && (
+        <NewChatMenu
+          className={styles.newMenu}
+          backends={CONVERSATION_BACKENDS}
+          bins={bins}
+          strictBins
+          workspace={ws}
+          onPick={(b) => void createFor(b)}
+        />
+      )}
+    </div>
+  );
 
   return (
     <aside
@@ -75,46 +851,375 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
             <path d="M9 4v16" />
           </svg>
         </button>
-        {!collapsed && <span className={styles.brand}>Nomi</span>}
+        {!collapsed && searchOpen && (
+          <div className={styles.searchBox} role="search" data-testid="sidebar-search">
+            <span className={styles.searchGlyph} aria-hidden>
+              <SearchIcon />
+            </span>
+            <input
+              ref={inputRef}
+              className={styles.searchInput}
+              type="text"
+              role="searchbox"
+              value={query}
+              placeholder={t('搜索会话…')}
+              aria-label={t('搜索对话')}
+              aria-controls="sidebar-search-results"
+              aria-activedescendant={
+                searching && shown.length
+                  ? `sb-result-${Math.min(activeIdx, shown.length - 1)}`
+                  : undefined
+              }
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="sidebar-search-input"
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={onSearchKey}
+            />
+            <button
+              type="button"
+              className={styles.searchClear}
+              title={query ? t('清除搜索') : t('关闭搜索')}
+              aria-label={query ? t('清除搜索') : t('关闭搜索')}
+              data-testid="sidebar-search-clear"
+              onClick={() => (query ? (setQuery(''), inputRef.current?.focus()) : closeSearch())}
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {!collapsed && !searchOpen && (
+          <>
+            <span className={styles.brandWrap}>
+              <EndpointIcon backend="nomi" size={20} decorative />
+              <span className={styles.brand}>Nomi</span>
+            </span>
+            <span className={styles.spacer} />
+            <button
+              className={styles.iconBtn}
+              onClick={() => setSearchOpen(true)}
+              title={searchTip}
+              aria-label={t('搜索对话')}
+              data-testid="sidebar-search-toggle"
+            >
+              <SearchIcon />
+            </button>
+            {newBtn}
+          </>
+        )}
       </div>
+      {collapsed && <div className={styles.collapsedNew}>{newBtn}</div>}
 
-      <button
-        className={styles.newChat}
-        onClick={onNewChat}
-        title={t('开始新对话')}
-        data-testid="new-chat"
-      >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        >
-          <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-        </svg>
-        {!collapsed && <span>{t('新对话')}</span>}
-      </button>
+      {!collapsed && !searching && (
+        <div className={styles.listHeader}>
+          <div className={styles.listHeadRow}>
+            <span className={styles.sectionTitleInline}>
+              {view === 'by-endpoint' ? ENDPOINT_FULL[endpointFilter]() : t('对话')}
+            </span>
+            {isDev && (
+              <div className={styles.seg} role="group" aria-label={t('对话列表视图')}>
+                <button
+                  type="button"
+                  className={styles.segBtn}
+                  aria-pressed={view === 'all'}
+                  data-testid="list-view-all"
+                  onClick={() => setView('all')}
+                >
+                  {t('全部')}
+                </button>
+                <button
+                  type="button"
+                  className={styles.segBtn}
+                  aria-pressed={view === 'by-endpoint'}
+                  data-testid="list-view-by-endpoint"
+                  onClick={() => setView('by-endpoint')}
+                >
+                  {t('按端')}
+                </button>
+              </div>
+            )}
+          </div>
+          {isDev && view === 'by-endpoint' && (
+            <div className={styles.epRow} role="group" aria-label={t('按端点筛选')}>
+              {CONVERSATION_BACKENDS.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  className={styles.epChip}
+                  aria-pressed={endpointFilter === b}
+                  disabled={cliMissing(b)}
+                  data-testid={`endpoint-filter-${b}`}
+                  onClick={() => setEndpointFilter(b)}
+                  title={ENDPOINT_FULL[b]()}
+                >
+                  <EndpointIcon backend={b} size={14} decorative />
+                  <span>{ENDPOINT_FULL[b]()}</span>
+                  <span className={styles.epCount}>{counts[b]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {!collapsed && (
-        <nav className={styles.threads} aria-label={t('历史对话')}>
-          <div className={styles.sectionTitle}>{t('对话')}</div>
-          {list.length === 0 && <div className={styles.empty}>{t('还没有历史对话')}</div>}
-          {list.map((c) => (
-            <button
-              key={c.id}
-              className={`${styles.thread} ${c.id === current ? styles.threadActive : ''}`}
-              onClick={() => void open(c.id)}
-              title={t(c.name)}
-              data-testid="history-item"
+        <nav className={styles.threads} aria-label={t('历史对话')} data-testid="conversation-list">
+          {searching && (
+            <div
+              id="sidebar-search-results"
+              role="listbox"
+              aria-label={t('搜索结果')}
+              data-testid="sidebar-search-results"
             >
-              <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
-              <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
-            </button>
-          ))}
+              <div
+                className={styles.sectionTitle}
+                aria-live="polite"
+                data-testid="sidebar-search-count"
+              >
+                {t('搜索结果 {0}', results.length)}
+                {searchIndex.loading ? ['', t('正在索引历史会话…')].join(' · ') : ''}
+              </div>
+              {shown.map(({ item, ranges }, i) => {
+                const selected = i === Math.min(activeIdx, shown.length - 1);
+                if (item.kind === 'conv') {
+                  const c = item.meta;
+                  return (
+                    <button
+                      key={item.id}
+                      id={`sb-result-${i}`}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={`${styles.thread} ${styles.resultRow} ${selected ? styles.resultActive : ''}`}
+                      data-testid="search-result"
+                      data-kind="conv"
+                      data-backend={c.backend}
+                      data-conversation-id={c.id}
+                      title={[item.title, item.cwd].filter(Boolean).join('\n')}
+                      onMouseMove={() => setActiveIdx(i)}
+                      onClick={() => void open(c.id)}
+                      onContextMenu={(e) => onCtx(c.id, e)}
+                    >
+                      <span
+                        className={styles.dot}
+                        data-live={liveOf(c.tabId ? tabById.get(c.tabId) : undefined) || undefined}
+                        aria-hidden
+                      />
+                      <EndpointIcon backend={c.backend} size={14} decorative />
+                      <span className={styles.threadName}>
+                        <Highlight text={item.title} ranges={ranges} />
+                      </span>
+                      <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
+                    </button>
+                  );
+                }
+                const h = item.h;
+                return (
+                  <button
+                    key={item.id}
+                    id={`sb-result-${i}`}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    className={`${styles.thread} ${styles.resultRow} ${selected ? styles.resultActive : ''} ${styles.histRow}`}
+                    data-testid="search-result"
+                    data-kind="hist"
+                    data-backend={h.backend}
+                    data-session-id={h.sessionId}
+                    data-cwd-missing={h.cwdMissing || undefined}
+                    aria-busy={openingKey === h.key}
+                    title={[h.title, h.cwd].filter(Boolean).join('\n')}
+                    onMouseMove={() => setActiveIdx(i)}
+                    onClick={() => void openHistory(h)}
+                  >
+                    <span className={styles.dot} aria-hidden />
+                    <EndpointIcon backend={h.backend} size={14} decorative />
+                    <span className={styles.threadName}>
+                      <Highlight text={h.title} ranges={ranges} />
+                    </span>
+                    <span className={styles.threadTime}>{rel(h.updatedAt)}</span>
+                  </button>
+                );
+              })}
+              {results.length > MAX_RESULTS && (
+                <div className={styles.empty} data-testid="sidebar-search-capped">
+                  {t('只显示前 {0} 条，请输入更多关键词', MAX_RESULTS)}
+                </div>
+              )}
+              {results.length === 0 && (
+                <div className={styles.empty} data-testid="sidebar-search-empty">
+                  {searchIndex.loading ? t('正在搜索…') : t('没有匹配的会话')}
+                </div>
+              )}
+              {canSearchMore && (
+                <button
+                  type="button"
+                  className={styles.histMore}
+                  onClick={searchIndex.more}
+                  disabled={searchIndex.loading}
+                  data-testid="sidebar-search-more"
+                >
+                  {searchIndex.loading ? t('加载中…') : t('搜索更早的历史')}
+                </button>
+              )}
+            </div>
+          )}
+          {!searching && visible.length === 0 && (
+            <div className={styles.empty}>{t('还没有历史对话')}</div>
+          )}
+          {!searching &&
+            visible.length > 0 &&
+            visible.length <= 100 &&
+            visible.map((c) => (
+              <ThreadItem
+                key={c.id}
+                c={c}
+                active={c.id === current}
+                tab={c.tabId ? tabById.get(c.tabId) : undefined}
+                onOpen={open}
+                onCtx={onCtx}
+                renaming={renamingId === c.id}
+                onRename={commitRename}
+                confirming={confirmId === c.id}
+                onRenameStart={setRenamingId}
+                onDeleteRequest={requestDelete}
+                onDeleteCancel={cancelDelete}
+                onMore={openMore}
+              />
+            ))}
+          {!searching && visible.length > 100 && (
+            <div style={{ height: '100%', minHeight: 320 }} data-testid="conversation-list-virtual">
+              <List
+                rowCount={visible.length}
+                rowHeight={52}
+                rowComponent={VirtualRow}
+                rowProps={{
+                  items: visible,
+                  current,
+                  tabById,
+                  open,
+                  onCtx,
+                  renamingId,
+                  onRename: commitRename,
+                  confirmId,
+                  onRenameStart: setRenamingId,
+                  onDeleteRequest: requestDelete,
+                  onDeleteCancel: cancelDelete,
+                  onMore: openMore,
+                }}
+                style={{ height: '100%', width: '100%' }}
+              />
+            </div>
+          )}
+          {!searching && showHistory && history.available && histBackends.length > 0 && (
+            <div className={styles.histSection} data-testid="cli-history">
+              <div className={styles.histHead}>
+                <span className={styles.sectionTitle}>{t('编程助手历史会话')}</span>
+                <button
+                  type="button"
+                  className={styles.histRefresh}
+                  onClick={history.refresh}
+                  disabled={history.loading}
+                  title={t('刷新历史会话')}
+                  aria-label={t('刷新历史会话')}
+                  data-testid="cli-history-refresh"
+                >
+                  ↻
+                </button>
+              </div>
+              {histItems.length === 0 && history.loaded && !history.loading && (
+                <div className={styles.empty} data-testid="cli-history-empty">
+                  {t('没有找到本机的历史会话')}
+                </div>
+              )}
+              {histItems.length === 0 && history.loading && !history.loaded && (
+                <div className={styles.empty}>{t('正在扫描历史会话…')}</div>
+              )}
+              {histItems.map((h) => (
+                <div
+                  key={h.key}
+                  className={`${styles.row} ${styles.histRow}`}
+                  data-testid="history-session-row"
+                >
+                  <button
+                    type="button"
+                    className={styles.thread}
+                    data-testid="history-session-item"
+                    data-backend={h.backend}
+                    data-session-id={h.sessionId}
+                    data-cwd-missing={h.cwdMissing || undefined}
+                    aria-busy={openingKey === h.key}
+                    title={[h.title, h.cwd, h.cwdMissing ? t('原目录已不存在') : '']
+                      .filter(Boolean)
+                      .join('\n')}
+                    onClick={() => void openHistory(h)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setNewMenu(false);
+                      setCtx(null);
+                      setHistMenu({ h, x: e.clientX, y: e.clientY });
+                    }}
+                  >
+                    <span className={styles.dot} aria-hidden />
+                    <EndpointIcon backend={h.backend} size={14} />
+                    <span className={styles.threadName}>{h.title}</span>
+                    <span className={styles.threadTime}>{rel(h.updatedAt)}</span>
+                  </button>
+                  {/* 磁盘历史是只读的：没有重命名 / 删除，「更多」里只有「在标签中打开」 */}
+                  <RowActions
+                    kind="hist"
+                    onMore={(a) => {
+                      setCtx(null);
+                      setHistMenu({ h, x: a.right - 184, y: a.bottom + 2 });
+                    }}
+                  />
+                </div>
+              ))}
+              {history.hasMore(histScope) && (
+                <button
+                  type="button"
+                  className={styles.histMore}
+                  onClick={() => history.loadMore(histScope)}
+                  disabled={history.loading}
+                  data-testid="cli-history-more"
+                >
+                  {history.loading ? t('加载中…') : t('加载更多')}
+                </button>
+              )}
+            </div>
+          )}
         </nav>
       )}
+
+      {ctx &&
+        (() => {
+          const meta = list.find((x) => x.id === ctx.id);
+          return (
+            <ConversationMenu
+              x={ctx.x}
+              y={ctx.y}
+              isTab={Boolean(meta?.tabId)}
+              onDismiss={() => setCtx(null)}
+              onRename={() => setRenamingId(ctx.id)}
+              onFork={() => onForkRequest?.(ctx.id, 'same')}
+              // 跨端分叉只在开发模式提供；普通模式只有「分叉为新对话」（同端 Nomi）
+              onForkCross={isDev ? () => onForkRequest?.(ctx.id, 'cross') : undefined}
+              onClose={meta?.tabId ? () => void removeItem(ctx.id) : undefined}
+              onDelete={meta?.tabId ? undefined : () => void removeItem(ctx.id)}
+            />
+          );
+        })()}
+
+      {histMenu && (
+        <ConversationMenu
+          x={histMenu.x}
+          y={histMenu.y}
+          isTab={false}
+          onDismiss={() => setHistMenu(null)}
+          onOpen={() => void openHistory(histMenu.h)}
+        />
+      )}
+
       {onSettings && (
         <button
           className={`${styles.newChat} ${styles.bottom}`}
@@ -122,7 +1227,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, onNewChat
           title={t('设置 (⌘/Ctrl+,)')}
           data-testid="sidebar-settings"
         >
-          <span aria-hidden>⚙</span>
+          <span aria-hidden>
+            <AppIcon icon={SETTINGS_ICONS.general} size={16} />
+          </span>
           {!collapsed && <span>{t('设置')}</span>}
         </button>
       )}

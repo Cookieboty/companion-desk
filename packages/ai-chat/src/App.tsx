@@ -5,8 +5,10 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
+import { ChatTabs, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ForkTargetMenu } from './components/ForkMenu';
 import {
   ConfigPanel,
   DesktopPanel,
@@ -24,25 +26,76 @@ import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
-import { SETTINGS_SECTIONS, type SettingsSection } from './components/SettingsView/sections';
+import {
+  SETTINGS_SECTIONS,
+  resolveSection,
+  type SettingsSection,
+} from './components/SettingsView/sections';
 import { Sidebar } from './components/Sidebar';
 import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
+import { HarnessTabsProvider, useHarnessTabs } from './contexts/HarnessTabsContext';
+import { useChatMode } from './hooks/useChatMode';
+import { setProviderEndpoint } from './services/chatPrefs';
 import { desktopClient } from './services/desktopClient';
+import { forkCrossBackend, forkSameBackend } from './services/forkConversation';
 import { providerClient } from './services/providerClient';
 import { screenClient, type ScreenState } from './services/screenClient';
 import {
+  SEARCH_CHATS_EVENT,
   SHORTCUT_DEFS,
   formatCombo,
+  isMac,
   matchShortcut,
   useShortcutBindings,
   type ShortcutId,
 } from './services/shortcuts';
+import type { ConversationBackend } from './types/chat';
+import { isConversationBackend } from './types/chat';
+import { type ChatMessage } from './types/chat';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
   const { state, actions } = useAiChat();
+  const tabs = useHarnessTabs();
+  const { isDev, setMode } = useChatMode();
+  const [forkCross, setForkCross] = useState<{
+    id: string;
+    backend: ConversationBackend;
+  } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  // 切到普通模式时关掉已打开的「分叉到其他端」选择框
+  useEffect(() => {
+    if (!isDev) setForkCross(null);
+  }, [isDev]);
+  useEffect(() => {
+    if (!toast) return;
+    const tid = window.setTimeout(() => setToast(null), 2400);
+    return () => window.clearTimeout(tid);
+  }, [toast]);
+  const [tabRename, setTabRename] = useState(0);
+  const [tabNew, setTabNew] = useState(0);
+  const cliMessages = useMemo<ChatMessage[]>(
+    () =>
+      tabs.messages.map((m) => {
+        const toolsLine =
+          !m.error && m.tools && m.tools.length
+            ? `${m.tools.map((n) => `⚙ ${n}`).join(' · ')}
+
+`
+            : '';
+        return {
+          id: m.id,
+          role: m.role,
+          content: m.error ? '' : `${toolsLine}${m.content}`,
+          timestamp: m.timestamp,
+          modelId: m.role === 'assistant' ? tabs.activeTab?.backend : undefined,
+          ...(m.error ? { error: m.content } : {}),
+        };
+      }),
+    [tabs.messages, tabs.activeTab?.backend],
+  );
   const [showConfig, setShowConfig] = useState(false);
   const [showProviders, setShowProviders] = useState(false);
 
@@ -98,8 +151,17 @@ const AiChatContent: React.FC = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // 切到普通模式时若正停在 CLI 标签，回到主对话（后台标签继续跑）
+  useEffect(() => {
+    if (isDev) return;
+    if (tabs.isCliTab) void tabs.activate('main');
+  }, [isDev, tabs.isCliTab, tabs]);
+
   const [settings, setSettings] = useState<SettingsSection | null>(null);
-  const openSettings = useCallback((sec: SettingsSection = 'general') => {
+  const openSettings = useCallback((raw: SettingsSection | string = 'general') => {
+    // 旧入口（providers / agents）折叠到「编程助手」；agents 落在「监视与会话」标签
+    const { section: sec, tab } = resolveSection(raw);
+    if (tab) setProviderEndpoint(tab);
     setShowKb(false);
     setShowMem(false);
     setShowSched(false);
@@ -126,10 +188,81 @@ const AiChatContent: React.FC = () => {
     actions.newConversation();
     focusInput();
   }, [actions, focusInput]);
+
+  const runForkSame = useCallback(
+    async (id: string) => {
+      const store = state.ipcClient.conversationStore?.();
+      if (!store) return;
+      try {
+        const r = await forkSameBackend(store, id);
+        if (r.backend !== 'nomi') setMode('dev');
+        if (r.tabId) await tabs.activate(r.tabId);
+        else {
+          if (tabs.available) await tabs.activate('main');
+          await actions.loadChatHistory();
+        }
+        setToast(t('已分叉为「{0}」', r.title));
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [state.ipcClient, setMode, tabs, actions],
+  );
+
+  const runForkCross = useCallback(
+    async (id: string, target: ConversationBackend, cwd?: string) => {
+      const store = state.ipcClient.conversationStore?.();
+      if (!store) return;
+      setForkCross(null);
+      try {
+        const r = await forkCrossBackend(store, id, target, { cwd });
+        if (r.backend !== 'nomi') setMode('dev');
+        if (r.tabId) await tabs.activate(r.tabId);
+        else {
+          if (tabs.available) await tabs.activate('main');
+          await actions.loadChatHistory();
+        }
+        setToast(t('已分叉到 {0}', r.title));
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [state.ipcClient, setMode, tabs, actions],
+  );
+
+  const onForkRequest = useCallback(
+    (id: string, mode: 'same' | 'cross') => {
+      const store = state.ipcClient.conversationStore?.();
+      const meta = store?.get(id);
+      if (!meta) return;
+      if (mode === 'same') void runForkSame(id);
+      else if (isDev) setForkCross({ id, backend: meta.backend }); // 普通模式不允许分叉到其他端
+    },
+    [state.ipcClient, runForkSame, isDev],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      if (!(isMac() ? e.metaKey : e.ctrlKey) || !e.shiftKey || e.altKey || e.code !== 'KeyF')
+        return;
+      const id = state.ipcClient.currentConversationId?.();
+      if (!id) return;
+      e.preventDefault();
+      void runForkSame(id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state.ipcClient, runForkSame]);
+
   const shortcutActions = useMemo<Partial<Record<ShortcutId, () => void>>>(
     () => ({
       palette: () => setPalette((v) => !v),
       newChat,
+      searchChats: () => {
+        setSidebarCollapsed(false);
+        window.dispatchEvent(new Event(SEARCH_CHATS_EVENT));
+      },
       focusInput,
       settings: () => setSettings((s) => (s ? null : 'general')),
       sidebar: () => setSidebarCollapsed((v) => !v),
@@ -139,14 +272,52 @@ const AiChatContent: React.FC = () => {
       ext: () => setShowExt((v) => !v),
       local: () => setShowLocal((v) => !v),
       screen: () => setShowScreen((v) => !v),
+      newTab: () => {
+        if (!isDev) return;
+        setTabNew((n) => n + 1);
+      },
+      closeTab: () => {
+        if (!isDev) return;
+        if (tabs.activeTab) void tabs.close(tabs.activeTab.id);
+      },
+      nextTab: () => {
+        if (!isDev) return;
+        tabs.cycle(1);
+      },
+      prevTab: () => {
+        if (!isDev) return;
+        tabs.cycle(-1);
+      },
+      renameTab: () => {
+        if (!isDev) return;
+        setTabRename((n) => n + 1);
+      },
     }),
-    [newChat, focusInput],
+    [newChat, focusInput, tabs, isDev],
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
       // 正在设置页里录制新快捷键时不触发
       if ((e.target as HTMLElement | null)?.closest?.('[data-shortcut-recording="true"]')) return;
+      // 标签：Ctrl+Tab / Ctrl+Shift+Tab（各平台都用 Ctrl）与 Mod+1…9
+      if (isDev && tabs.available && e.ctrlKey && e.key === 'Tab') {
+        e.preventDefault();
+        tabs.cycle(e.shiftKey ? -1 : 1);
+        return;
+      }
+      if (
+        isDev &&
+        tabs.available &&
+        (isMac() ? e.metaKey : e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        /^Digit[1-9]$/.test(e.code)
+      ) {
+        e.preventDefault();
+        tabs.selectIndex(Number(e.code.slice(5)) - 1);
+        return;
+      }
       for (const [id, run] of Object.entries(shortcutActions) as Array<[ShortcutId, () => void]>) {
         if (!matchShortcut(e, bindings[id])) continue;
         // 弹窗打开时只响应命令面板 / 面板开关，不在弹窗背后新建对话或抢焦点
@@ -160,7 +331,7 @@ const AiChatContent: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [bindings, shortcutActions]);
+  }, [bindings, shortcutActions, tabs, isDev]);
   // 快速视图：右侧抽屉 + 「在设置中打开」
   const drawerHost = useMemo(() => {
     const mk = (sec: SettingsSection): ModalHost => ({
@@ -227,6 +398,8 @@ const AiChatContent: React.FC = () => {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onNewChat={handleNewChat}
         onSettings={() => openSettings()}
+        onForkRequest={onForkRequest}
+        onNotice={setToast}
       />
 
       {/* 主内容区域 */}
@@ -254,9 +427,36 @@ const AiChatContent: React.FC = () => {
             </button>
           )}
         </ChatHeader>
+        {isDev && (
+          <ChatTabs
+            renameRequest={tabRename}
+            newTabRequest={tabNew}
+            mainLoading={state.isLoading}
+            onForkTab={(tabId, mode) => {
+              const meta = state.ipcClient.conversationStore?.()?.findByTabId(tabId);
+              if (meta) onForkRequest(meta.id, mode);
+            }}
+          />
+        )}
         {/* 对话区域 */}
         <main className="chat-container">
-          {state.messages.length === 0 ? (
+          {isDev && tabs.isCliTab ? (
+            <>
+              {cliMessages.length === 0 && !tabs.live[tabs.activeTab!.id] ? (
+                <div className="welcome-screen" data-testid="cli-tab-empty">
+                  <div className="welcome-content">
+                    <h2 className="welcome-title">{t('{0} · 新会话', tabs.activeTab!.title)}</h2>
+                    <p className="welcome-subtitle">
+                      {t('消息会转发给本机编程助手；多个标签可以同时运行。')}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <MessageList messages={cliMessages} />
+              )}
+              <CliTabLive />
+            </>
+          ) : state.messages.length === 0 ? (
             <div className="welcome-screen" data-testid="welcome-screen">
               <div className="welcome-content">
                 <h2 className="welcome-title">{t('今天想做点什么？')}</h2>
@@ -288,9 +488,20 @@ const AiChatContent: React.FC = () => {
         {/* 输入区域 */}
         <footer className="input-container">
           <MessageInput
+            {...(isDev && tabs.isCliTab
+              ? {
+                  onSend: (text: string) => void tabs.send(text),
+                  busyOverride:
+                    tabs.activeTab!.status === 'running' || tabs.activeTab!.status === 'queued',
+                  placeholder: cliTabPlaceholder(tabs.activeTab!),
+                }
+              : {})}
             onConfigClick={() => setShowConfig(true)}
             onProvidersClick={() => setShowProviders(true)}
-            onSettingsClick={(sec) => openSettings(sec as SettingsSection)}
+            onSettingsClick={(sec, endpoint) => {
+              if (isConversationBackend(endpoint)) setProviderEndpoint(endpoint);
+              openSettings(sec);
+            }}
             onDesktopClick={() => setShowDesktop(true)}
             onKnowledgeClick={() => setShowKb(true)}
             onMemoryClick={() => setShowMem(true)}
@@ -327,6 +538,33 @@ const AiChatContent: React.FC = () => {
       <ModalHostContext.Provider value={drawerHost.local}>
         <LocalPanel isVisible={showLocal} onClose={() => setShowLocal(false)} />
       </ModalHostContext.Provider>
+      <ForkTargetMenu
+        open={!!forkCross}
+        current={forkCross?.backend ?? 'nomi'}
+        onClose={() => setForkCross(null)}
+        onPick={(b, cwd) => forkCross && void runForkCross(forkCross.id, b, cwd)}
+      />
+      {toast && (
+        <div
+          role="status"
+          data-testid="fork-toast"
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 120,
+            padding: '8px 14px',
+            borderRadius: 10,
+            background: 'var(--cd-color-surface-raised, #121a2a)',
+            border: '1px solid var(--cd-color-border)',
+            boxShadow: '0 8px 24px rgba(0,0,0,.35)',
+            fontSize: 13,
+          }}
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 };
@@ -348,7 +586,9 @@ function App() {
   return (
     <ErrorBoundary>
       <AiChatContextProvider client={client}>
-        <AiChatContent />
+        <HarnessTabsProvider>
+          <AiChatContent />
+        </HarnessTabsProvider>
         {/* 首次启动引导（未完成时覆盖在对话窗口上；设置 → 通用 可重新打开） */}
         <OnboardingHost />
       </AiChatContextProvider>

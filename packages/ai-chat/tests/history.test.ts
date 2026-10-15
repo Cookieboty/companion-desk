@@ -45,7 +45,7 @@ describe('ConversationStore', () => {
   it('persists messages per conversation and supports switching / clearing', () => {
     const storage = createMemoryStorage();
     const s = mk(storage);
-    const first = s.currentId();
+    const first = s.ensureCurrent();
     s.append(msg('1', 'user', 'first question'));
     const second = s.create().id;
     s.append(msg('2', 'user', 'other'));
@@ -80,12 +80,123 @@ describe('ConversationStore', () => {
     expect(s.getMessages().map((m) => m.content)).toEqual(['reply', 'a', 'b']);
   });
 
-  it('delete removes the conversation and resets current', () => {
+  it('delete: removing the current conversation switches to the same-backend most recent one', () => {
     const s = mk();
-    const id = s.currentId();
+    const a = s.create({ name: 'A', backend: 'nomi' }).id;
+    const b = s.create({ name: 'B', backend: 'nomi' }).id;
+    s.create({ name: 'C', backend: 'codex' });
+    s.updateMeta(a, { updatedAt: 5000 });
+    s.updateMeta(b, { updatedAt: 9000 });
+    s.switchTo(a);
+    s.delete(a);
+    expect(s.currentId()).toBe(b);
+  });
+
+  it('delete: no same-backend conversation left leaves current empty instead of cross-backend jump', () => {
+    const s = mk();
+    const a = s.create({ name: 'A', backend: 'nomi' }).id;
+    s.create({ name: 'C', backend: 'codex' });
+    s.switchTo(a);
+    s.delete(a);
+    expect(s.currentId()).toBeUndefined();
+    expect(s.list()).toHaveLength(1);
+  });
+
+  it('delete: removing the last conversation leaves no current instead of creating one', () => {
+    const s = mk();
+    const id = s.ensureCurrent();
     s.delete(id);
     expect(s.list()).toEqual([]);
-    expect(s.currentId()).not.toBe(id);
+    expect(s.currentId()).toBeUndefined();
+    // 读取 / 清空不存在的当前会话是安全的空操作
+    expect(s.getMessages()).toEqual([]);
+    s.clear();
+    expect(s.list()).toEqual([]);
+  });
+
+  it('delete: removing a non-current conversation keeps the current one', () => {
+    const s = mk();
+    const a = s.ensureCurrent();
+    const b = s.create().id;
+    s.delete(b);
+    expect(s.currentId()).toBe(a);
+  });
+
+  it('append without a current conversation is a no-op until ensureCurrent', () => {
+    const s = mk();
+    s.append(msg('1', 'user', 'lost'));
+    expect(s.list()).toEqual([]);
+    const id = s.ensureCurrent();
+    s.append(msg('2', 'user', 'kept'), id);
+    expect(s.getMessages(id).map((m) => m.content)).toEqual(['kept']);
+  });
+
+  it('tags migrated rows without backend as nomi', () => {
+    const storage = createMemoryStorage();
+    storage.setItem(
+      'ai-chat:conversations',
+      JSON.stringify([
+        { id: 'old1', name: 'legacy', createdAt: 1, updatedAt: 2 },
+        {
+          id: 'old2',
+          name: 'claude one',
+          createdAt: 1,
+          updatedAt: 3,
+          backend: 'claude',
+          tabId: 't1',
+        },
+      ]),
+    );
+    storage.setItem('ai-chat:conversation:old1', JSON.stringify([msg('1', 'user', 'hi')]));
+    storage.setItem('ai-chat:conversation:old2', JSON.stringify([]));
+    const s = new ConversationStore({ storage });
+    expect(s.get('old1')!.backend).toBe('nomi');
+    expect(s.get('old2')!.backend).toBe('claude');
+    expect(s.get('old2')!.tabId).toBe('t1');
+    expect(s.listByBackend('nomi').map((c) => c.id)).toEqual(['old1']);
+  });
+
+  it('creates with backend, forks same-backend, and upserts CLI tabs', () => {
+    let n = 0;
+    const s = new ConversationStore({
+      storage: createMemoryStorage(),
+      now: () => 1000 + n,
+      newId: () => `c${++n}`,
+    });
+    const a = s.create({ name: 'Nomi A', backend: 'nomi' });
+    s.append(msg('1', 'user', 'hello'));
+    s.append(msg('2', 'assistant', 'hi there'));
+    const forked = s.fork(a.id);
+    expect(forked.id).not.toBe(a.id);
+    expect(forked.backend).toBe('nomi');
+    expect(forked.name).toContain('副本');
+    expect(s.getMessages(forked.id).map((m) => m.content)).toEqual(['hello', 'hi there']);
+    expect(s.getMessages(a.id)).toHaveLength(2);
+
+    const cross = s.fork(a.id, { backend: 'codex', name: 'A on Codex', messages: [] });
+    expect(cross.backend).toBe('codex');
+    expect(s.getMessages(cross.id)).toEqual([]);
+
+    const tabMeta = s.upsertFromTab({
+      id: 'tab-uuid',
+      title: 'Codex',
+      backend: 'codex',
+      createdAt: 10,
+      updatedAt: 20,
+    });
+    expect(tabMeta.tabId).toBe('tab-uuid');
+    expect(tabMeta.backend).toBe('codex');
+    const again = s.upsertFromTab({
+      id: 'tab-uuid',
+      title: 'Codex renamed',
+      backend: 'codex',
+      createdAt: 10,
+      updatedAt: 30,
+    });
+    expect(again.id).toBe(tabMeta.id);
+    expect(again.name).toBe('Codex renamed');
+    s.removeByTabId('tab-uuid');
+    expect(s.findByTabId('tab-uuid')).toBeUndefined();
   });
 });
 

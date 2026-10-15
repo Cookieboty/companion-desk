@@ -8,6 +8,7 @@ import { useMascot } from '@/contexts/MascotContext';
 import { mascotRegistry } from '@/mascot/MascotBackend';
 import { playMotionNow } from '@/mascot/mood';
 import { MOTION_LABELS } from '@/mascot/motion/library';
+import { ACTION_LABELS } from '@/mascot/rig/actions';
 
 /** 动作菜单：列出当前模型可播放的动作（工具栏右键 / 托盘同源）。 */
 export const MotionMenu: React.FC = () => {
@@ -37,7 +38,7 @@ export const MotionMenu: React.FC = () => {
                 close();
               }}
             >
-              {t(MOTION_LABELS[m] ?? m)}
+              {t(ACTION_LABELS[m] ?? MOTION_LABELS[m] ?? m)}
             </Button>
           ))}
         </div>

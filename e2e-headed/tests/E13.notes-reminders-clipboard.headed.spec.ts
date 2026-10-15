@@ -170,7 +170,7 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
 
   test('note create/search, reminder fires, clipboard consent, missed on relaunch', async () => {
     test.skip(!existsSync(mainJs) || !existsSync(aiChatBuild), '需要先 pnpm build');
-    test.setTimeout(240_000);
+    test.setTimeout(300_000);
     let main = await launch();
 
     const chatWindow = app!.waitForEvent('window', { timeout: 20_000 });
@@ -180,7 +180,11 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
       ).electronAPI.openAiChat(),
     );
     const chat: Page = await chatWindow;
-    await chat.waitForSelector('textarea', { timeout: 20_000 });
+    await chat.waitForLoadState('domcontentloaded').catch(() => undefined);
+    await chat
+      .locator('[data-testid="chat-input"], textarea')
+      .first()
+      .waitFor({ state: 'visible', timeout: 60_000 });
     const send = async (msg: string) => {
       await chat.fill('textarea', msg, { timeout: 60_000 });
       await chat.press('textarea', 'Enter');

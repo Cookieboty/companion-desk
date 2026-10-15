@@ -367,7 +367,7 @@ export class ScreenService {
         types: ['window'],
         thumbnailSize: { width: 0, height: 0 },
       });
-      const names = wins.map((w) => w.name).filter((n) => n && !/Nomi|Companion Desk/i.test(n));
+      const names = wins.map((w) => w.name).filter((n) => n && !/Nomi/i.test(n));
       const hit = matchExclusion(names, this.settings.exclusions);
       if (hit) return { saved: false, reason: `excluded:${hit}` };
       const img = await this.grab();

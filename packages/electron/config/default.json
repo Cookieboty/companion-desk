@@ -33,7 +33,6 @@
   "voice": {
     "enabled": true,
     "volume": 0.8,
-    "keyboardListening": true,
     "timeAnnouncement": true,
     "voicePackPath": "packages/renderer/public/assets/voice",
     "voiceMode": "fixed",

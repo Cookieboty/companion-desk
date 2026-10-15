@@ -6,9 +6,13 @@
  */
 import { useEffect, useState } from 'react';
 
+/** 快捷键触发「搜索对话」时在 window 上广播的事件（侧栏监听） */
+export const SEARCH_CHATS_EVENT = 'nomi:search-chats';
+
 export type ShortcutId =
   | 'palette'
   | 'newChat'
+  | 'searchChats'
   | 'focusInput'
   | 'settings'
   | 'sidebar'
@@ -20,7 +24,12 @@ export type ShortcutId =
   | 'schedule'
   | 'ext'
   | 'local'
-  | 'screen';
+  | 'screen'
+  | 'newTab'
+  | 'closeTab'
+  | 'nextTab'
+  | 'prevTab'
+  | 'renameTab';
 
 export interface ShortcutDef {
   id: ShortcutId;
@@ -32,6 +41,7 @@ export interface ShortcutDef {
 export const SHORTCUT_DEFS: ShortcutDef[] = [
   { id: 'palette', label: '命令面板', combo: 'Mod+K' },
   { id: 'newChat', label: '新对话', combo: 'Mod+N' },
+  { id: 'searchChats', label: '搜索对话', combo: 'Mod+F' },
   { id: 'focusInput', label: '聚焦输入框', combo: 'Mod+L' },
   { id: 'settings', label: '打开设置', combo: 'Mod+,' },
   { id: 'sidebar', label: '收起 / 展开侧栏', combo: 'Mod+B' },
@@ -40,10 +50,15 @@ export const SHORTCUT_DEFS: ShortcutDef[] = [
   { id: 'handsFree', label: '免按键对话开关', combo: 'Mod+Shift+H' },
   { id: 'memory', label: '记忆', combo: 'Mod+Shift+M' },
   { id: 'kb', label: '知识库', combo: 'Mod+Shift+L' },
-  { id: 'schedule', label: '日程 · 编程助手', combo: 'Mod+Shift+D' },
+  { id: 'schedule', label: '日程与提醒', combo: 'Mod+Shift+D' },
   { id: 'ext', label: '扩展 / MCP', combo: 'Mod+Shift+E' },
   { id: 'local', label: '本机管理', combo: 'Mod+Shift+J' },
   { id: 'screen', label: '屏幕记忆', combo: 'Mod+Shift+O' },
+  { id: 'newTab', label: '新建编程助手标签', combo: 'Mod+T' },
+  { id: 'closeTab', label: '关闭标签', combo: 'Mod+Shift+W' },
+  { id: 'nextTab', label: '下一个标签', combo: 'Ctrl+Tab' },
+  { id: 'prevTab', label: '上一个标签', combo: 'Ctrl+Shift+Tab' },
+  { id: 'renameTab', label: '重命名标签', combo: 'Mod+Shift+R' },
 ];
 
 /** 不可改绑、仅展示的按键 */
@@ -52,7 +67,10 @@ export const FIXED_SHORTCUTS: Array<[string, string]> = [
   ['Enter / Shift+Enter', '发送 / 换行'],
   ['↑（输入框为空时）', '找回上一条提问'],
   ['F2（按住）', '说话'],
+  ['Mod+Shift+F', '把当前对话分叉为新对话'],
   ['Esc', '关闭弹窗 / 菜单'],
+  ['↑ / ↓ / Enter（菜单里）', '在菜单项间移动 / 确认'],
+  ['Mod+1…9', '切换到第 n 个标签（9 = 最后一个）'],
 ];
 
 /** 系统 / 编辑常用组合：改绑到这些上会给出冲突提示 */
@@ -67,7 +85,6 @@ export const RESERVED: Record<string, string> = {
   'Mod+Q': '退出应用',
   'Mod+W': '关闭窗口',
   'Mod+R': '刷新',
-  'Mod+F': '查找',
   'Mod+Shift+I': '开发者工具',
 };
 

@@ -58,8 +58,8 @@
         295.2
       ],
       "ribbon": [
-        612.6,
-        189.6
+        626.0,
+        213.0
       ],
       "headTop": [
         474.0,
@@ -151,8 +151,8 @@
         0.66
       ],
       "ribbon": [
-        600.06,
-        179.04,
+        610.01,
+        203.22,
         0.66
       ],
       "mouth": [
@@ -174,6 +174,20 @@
         456.84,
         324.9,
         0.66
+      ],
+      "earring": [
+        584.09,
+        279.02,
+        0.66
+      ],
+      "clip": [
+        554.86,
+        163.27,
+        0.66
+      ],
+      "body-noarm": [
+        66,
+        291
       ]
     },
     "eyes": {
@@ -223,6 +237,118 @@
         598
       ]
     },
-    "dir": "layers/"
+    "dir": "layers/",
+    "hands": {
+      "wave": {
+        "file": "hands/hand-wave.png",
+        "w": 285,
+        "h": 675,
+        "ax": 155.0,
+        "ay": 675.0,
+        "sleeveW": 198.0,
+        "cuffY": 445.0
+      },
+      "fist": {
+        "file": "hands/hand-fist.png",
+        "w": 238,
+        "h": 487,
+        "ax": 113.5,
+        "ay": 487.0,
+        "sleeveW": 195.0,
+        "cuffY": 257.0
+      },
+      "thumbsup": {
+        "file": "hands/hand-thumbsup.png",
+        "w": 205,
+        "h": 480,
+        "ax": 99.5,
+        "ay": 480.0,
+        "sleeveW": 159.0,
+        "cuffY": 250.0
+      },
+      "point": {
+        "file": "hands/hand-point.png",
+        "w": 190,
+        "h": 583,
+        "ax": 91.5,
+        "ay": 583.0,
+        "sleeveW": 163.0,
+        "cuffY": 353.0
+      },
+      "rest": {
+        "file": "hands/hand-rest.png",
+        "w": 250,
+        "h": 574,
+        "ax": 101.0,
+        "ay": 574.0,
+        "sleeveW": 168.0,
+        "cuffY": 344.0
+      },
+      "peace": {
+        "file": "hands/hand-peace.png",
+        "w": 200,
+        "h": 558,
+        "ax": 87.0,
+        "ay": 558.0,
+        "sleeveW": 148.0,
+        "cuffY": 328.0
+      },
+      "prayer": {
+        "file": "hands/hand-prayer.png",
+        "w": 202,
+        "h": 539,
+        "ax": 100.5,
+        "ay": 539.0,
+        "sleeveW": 184.0,
+        "cuffY": 297.9,
+        "k": 1.2
+      },
+      "ok": {
+        "file": "hands/hand-ok.png",
+        "w": 342,
+        "h": 702,
+        "ax": 139.5,
+        "ay": 702.0,
+        "sleeveW": 184.0,
+        "cuffY": 460.0
+      },
+      "chest": {
+        "file": "hands/hand-chest.png",
+        "w": 242,
+        "h": 655,
+        "ax": 123.5,
+        "ay": 655.0,
+        "sleeveW": 184.0,
+        "cuffY": 413.1
+      }
+    },
+    "arms": {
+      "l": {
+        "layer": "arm-l",
+        "sgn": -1,
+        "theta": 0.17821,
+        "s0": [
+          189.61,
+          0.0
+        ],
+        "smin": -8.6,
+        "smax": 694.2,
+        "nmin": -79.9,
+        "nmax": 102.2
+      },
+      "r": {
+        "layer": "arm-r",
+        "sgn": 1,
+        "theta": 0.17853,
+        "s0": [
+          66.75,
+          0.0
+        ],
+        "smin": -8.7,
+        "smax": 694.1,
+        "nmin": -72.2,
+        "nmax": 85.9
+      }
+    }
   }
 }

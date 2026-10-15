@@ -14,7 +14,12 @@ import { BrowserWindow, ipcMain, screen } from 'electron';
 
 import { t as tr } from '../i18n';
 
-import { islandGeometry, type IslandGeometry } from './geometry';
+import {
+  clampIslandHeight,
+  islandGeometry,
+  islandWindowRect,
+  type IslandGeometry,
+} from './geometry';
 import { islandHtml } from './islandPage';
 
 export type IslandKind = 'message' | 'agent' | 'reminder' | 'info';
@@ -24,6 +29,10 @@ export interface IslandNotice {
   title: string;
   body?: string;
   durationMs?: number;
+  /** 编程助手端点（claude / codex / dsh / nomi …），岛上显示端点徽标 */
+  endpoint?: string;
+  /** 端点事件：完成 / 出错 / 需要注意 / 运行中 */
+  status?: 'done' | 'failed' | 'attention' | 'running';
 }
 
 export interface IslandSettings {
@@ -120,6 +129,8 @@ export class IslandService {
       title: String(n.title ?? '').slice(0, 80),
       body: String(n.body ?? '').slice(0, 160),
       durationMs: n.durationMs,
+      ...(n.endpoint ? { endpoint: String(n.endpoint).slice(0, 24) } : {}),
+      ...(n.status ? { status: n.status } : {}),
     };
     // 同样的内容排队中就不重复
     if (!this.queue.some((q) => q.title === clean.title && q.body === clean.body))
@@ -141,11 +152,9 @@ export class IslandService {
     if (this.win && !this.win.isDestroyed() && same && this.ready) return this.ready;
     this.destroy();
     this.geom = g;
+    const rect = islandWindowRect(g, g.height);
     const win = new BrowserWindow({
-      x: g.x,
-      y: g.y,
-      width: g.width,
-      height: g.height,
+      ...rect,
       frame: false,
       transparent: true,
       resizable: false,
@@ -167,12 +176,16 @@ export class IslandService {
         nodeIntegration: false,
         sandbox: true,
         javascript: true,
+        // 独立的内存会话：默认会话上的统一 CSP 响应头（script-src 'self'）会连带拦掉这个 data: 页面的
+        // 内联脚本，岛就只剩一个空黑块、永远不展开。页面自带更严的 meta CSP（default-src 'none'）。
+        partition: 'nomi-island',
       },
     });
     // 菜单栏之上（≈ NSStatusWindowLevel），全屏 App 与所有桌面空间都可见
     win.setAlwaysOnTop(true, this.platform === 'darwin' ? 'status' : 'screen-saver');
-    if (this.platform === 'darwin')
-      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // 必须 skipTransformProcessType：默认会把整个进程在 Foreground ↔ UIElement 间来回转换，
+    // macOS 会因此丢掉菜单栏 App 菜单 / 状态栏图标与 Dock（每次弹岛都发生）。见 docs 的托盘说明。
+    if (this.platform === 'darwin') applyIslandWorkspaceBehavior(win);
     win.webContents.on('did-navigate-in-page', (_e, url) => {
       if (/#open-/.test(url)) this.d.openChat?.();
     });
@@ -204,8 +217,16 @@ export class IslandService {
       await this.ensureWindow();
       const w = this.win;
       if (!w || w.isDestroyed()) throw new Error('island window gone');
+      // 先在隐藏状态下填充内容并量出内容高度 → 窗口高度 = 岛高度（不留空黑），再显示并播放展开动画
+      const measured = await w.webContents.executeJavaScript(
+        `window.__island.prepare(${JSON.stringify(next)})`,
+      );
+      const g = this.geom;
+      if (g) {
+        w.setBounds(islandWindowRect(g, clampIslandHeight(g, Number(measured))));
+      }
       w.showInactive();
-      await w.webContents.executeJavaScript(`window.__island.show(${JSON.stringify(next)})`);
+      await w.webContents.executeJavaScript(`window.__island.play(${JSON.stringify(next)})`);
     } catch (e) {
       this.showing = false;
       this.d.logger?.warn('island notify failed', String(e));
@@ -240,6 +261,19 @@ export class IslandService {
       ),
     );
   }
+}
+
+/** 岛窗口的「所有空间 + 全屏可见」设置；单独导出便于回归测试 */
+export function applyIslandWorkspaceBehavior(win: {
+  setVisibleOnAllWorkspaces(
+    visible: boolean,
+    options?: { visibleOnFullScreen?: boolean; skipTransformProcessType?: boolean },
+  ): void;
+}): void {
+  win.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  });
 }
 
 let inst: IslandService | null = null;

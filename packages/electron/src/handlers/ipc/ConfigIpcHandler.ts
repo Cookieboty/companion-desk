@@ -3,18 +3,24 @@
  * 处理应用配置、模型配置等相关的IPC通信
  */
 
-import fs from 'fs';
 import http from 'http';
 import https from 'https';
-import path from 'path';
 
-import { type TTSConfig, type TTSTestResult } from '@nomi-ai/types';
+import {
+  type SherpaModelStatus,
+  type TTSConfig,
+  type TTSSpeakRequest,
+  type TTSTestResult,
+} from '@nomi-ai/types';
 import { app } from 'electron';
 
 import { t } from '../../i18n';
 import { type IConfigService, type VoiceSettings } from '../../services/ConfigService';
 import { type ILoggerService } from '../../services/LoggerService';
-import { writePrivateFile } from '../../utils/privateFile';
+import { getFishTtsService } from '../../tts/fish';
+import { validateTtsConfig } from '../../tts/fish/validateTtsConfig';
+import { getSherpaTtsService } from '../../tts/sherpa';
+import { TtsRouter, applyTtsEnvOverride } from '../../tts/ttsRouter';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -258,19 +264,46 @@ export class ConfigIpcHandler extends BaseIpcHandler {
    * 初始化TTS配置相关IPC处理器
    */
   private initializeTTSHandlers(): void {
-    const ttsConfigPath = path.join(app.getPath('userData'), 'tts-config.json');
+    const fish = getFishTtsService();
+    const sherpa = getSherpaTtsService();
+    const router = new TtsRouter({
+      getConfig: () => applyTtsEnvOverride(fish.getConfig()),
+      sherpa,
+      fish,
+      onSherpaFailure: (error) => {
+        const code = (error as { code?: string } | null)?.code;
+        // downloading / superseded 属预期情形，由逐请求结果日志 + 服务内限频进度日志覆盖，避免刷屏
+        if (code === 'downloading' || code === 'superseded') return;
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('sherpa TTS 不可用，回退系统语音', { code, message });
+      },
+      // 每条 tts:speak 都必有一条结果日志：success / fallback / error + provider
+      onOutcome: (o) => {
+        const meta = {
+          provider: o.provider,
+          via: o.via,
+          ms: o.ms,
+          textLength: o.textLength,
+          code: o.code,
+          message: o.message,
+          audioBytes: o.audioBytes,
+        };
+        if (o.outcome === 'success') this.logger.info('tts:speak success', meta);
+        else if (o.outcome === 'fallback') this.logger.warn('tts:speak fallback', meta);
+        else this.logger.error('tts:speak error', meta);
+      },
+    });
 
-    // 获取TTS配置
+    // 获取TTS配置（无文件时返回内置 sherpa 离线默认，便于开箱走 sherpa 路径）
     this.registerHandler('getTTSConfig', async () => {
       try {
-        if (fs.existsSync(ttsConfigPath)) {
-          const configData = fs.readFileSync(ttsConfigPath, 'utf8');
-          const config = JSON.parse(configData) as TTSConfig;
-          this.logger.debug('获取TTS配置成功', { config });
-          return config;
-        }
-        this.logger.debug('TTS配置文件不存在');
-        return null;
+        const config = fish.getConfig();
+        this.logger.debug('获取TTS配置成功', {
+          provider: config.provider,
+          enabled: config.enabled,
+          hasApiKey: config.hasApiKey,
+        });
+        return config;
       } catch (error) {
         this.logger.error('获取TTS配置失败', {
           error: error instanceof Error ? error.message : String(error),
@@ -279,57 +312,49 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
-    // 保存TTS配置
+    // 保存TTS配置（云 Key 走 safeStorage）
     this.registerHandler('saveTTSConfig', async (_, config: TTSConfig) => {
       this.validateArgs([config], 1, ['object']);
 
       try {
-        // 验证配置格式
-        const validation = this.validateTTSConfig(config);
-        if (!validation.isValid) {
-          throw new Error(t('TTS配置验证失败: {0}', validation.errors.join(', ')));
-        }
-
-        // 添加时间戳
-        const configWithTimestamp = {
-          ...config,
-          lastModified: Date.now(),
-        };
-
-        // 保存到文件（可能含 TTS 服务凭据，收紧为仅当前用户可读写）
-        writePrivateFile(ttsConfigPath, JSON.stringify(configWithTimestamp, null, 2));
-
-        this.logger.info('TTS配置保存成功', { config: configWithTimestamp });
+        const saved = fish.saveConfig(config);
+        this.logger.info('TTS配置保存成功', {
+          provider: saved.provider,
+          enabled: saved.enabled,
+          hasApiKey: saved.hasApiKey,
+        });
         return this.createSuccessResponse();
       } catch (error) {
         this.logger.error('TTS配置保存失败', {
           error: error instanceof Error ? error.message : String(error),
-          config,
         });
         return this.createErrorResponse(error);
       }
     });
 
-    // 测试TTS连接
+    // 测试连接：sherpa → 模型就绪 + 引擎可加载；Fish → /v1/health；legacy → 原 POST 探测
     this.registerHandler('testTTSConnection', async (_, config: TTSConfig) => {
       this.validateArgs([config], 1, ['object']);
 
       try {
         const startTime = Date.now();
-        const result = await this.testTTSConnection(config);
-        const latency = Date.now() - startTime;
-
-        const testResult: TTSTestResult = {
-          ...result,
-          latency,
-        };
-
+        let result: TTSTestResult;
+        if (config.provider === 'sherpa-theresa') {
+          result = await this.checkSherpaHealth();
+        } else if (config.provider === 'fish-local' || config.provider === 'fish-cloud') {
+          result = await fish.checkHealth(config);
+        } else if (config.provider === 'system') {
+          result = { success: true, message: t('系统语音模式，无需连接 TTS 服务') };
+        } else {
+          result = await this.testLegacyTTSConnection(config);
+        }
+        const latency = result.latency ?? Date.now() - startTime;
+        const testResult: TTSTestResult = { ...result, latency };
         this.logger.info('TTS连接测试完成', { testResult });
         return testResult;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error('TTS连接测试失败', { error: errorMessage, config });
-
+        this.logger.error('TTS连接测试失败', { error: errorMessage });
         return {
           success: false,
           message: t('连接测试失败: {0}', errorMessage),
@@ -340,10 +365,8 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     // 重置TTS配置
     this.registerHandler('resetTTSConfig', async () => {
       try {
-        if (fs.existsSync(ttsConfigPath)) {
-          fs.unlinkSync(ttsConfigPath);
-          this.logger.info('TTS配置已重置');
-        }
+        fish.resetConfig();
+        this.logger.info('TTS配置已重置');
         return this.createSuccessResponse();
       } catch (error) {
         this.logger.error('重置TTS配置失败', {
@@ -353,32 +376,82 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
-    // 测试TTS语音播放
+    // 合成路由：sherpa（默认）/ Fish（可选）；渲染层播放，失败则回退系统语音
+    this.registerHandler('tts:speak', async (_, req: TTSSpeakRequest) => {
+      this.validateArgs([req], 1, ['object']);
+      try {
+        // 结果日志（success / fallback / error）由 router.onOutcome 统一输出，这里不重复
+        return await router.speak(req ?? { text: '' });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return {
+          success: false,
+          via: 'none',
+          fallbackToSystem: true,
+          message: errorMessage,
+        };
+      }
+    });
+
+    // sherpa 模型状态（bundled / env / 缺失）
+    this.registerHandler('tts:sherpa:status', async (): Promise<SherpaModelStatus> => {
+      return sherpa.getStatus();
+    });
+
+    this.registerHandler('tts:health', async (_, config?: Partial<TTSConfig>) => {
+      try {
+        if ((config?.provider ?? fish.getConfig().provider) === 'sherpa-theresa') {
+          return await this.checkSherpaHealth();
+        }
+        return await fish.checkHealth(config);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, message: errorMessage } as TTSTestResult;
+      }
+    });
+
+    // 遗留：测试 legacy 语音克隆播放
     this.registerHandler(
       'test-tts-voice',
       async (_, testConfig: TTSConfig & { testText: string }) => {
         this.validateArgs([testConfig], 1, ['object']);
 
         try {
-          // 验证配置
-          const validation = this.validateTTSConfig(testConfig);
+          if (
+            testConfig.provider === 'sherpa-theresa' ||
+            testConfig.provider === 'fish-local' ||
+            testConfig.provider === 'fish-cloud'
+          ) {
+            const spoken = await (testConfig.provider === 'sherpa-theresa' ? router : fish).speak({
+              text: testConfig.testText,
+              referenceId: testConfig.referenceId,
+            });
+            if (spoken.success) {
+              return {
+                success: true,
+                message: t('语音测试成功'),
+                audioBase64: spoken.audioBase64,
+                mimeType: spoken.mimeType,
+              };
+            }
+            throw new Error(spoken.message || t('TTS 合成失败'));
+          }
+
+          const validation = validateTtsConfig({
+            ...testConfig,
+            provider: testConfig.provider || 'legacy',
+          });
           if (!validation.isValid) {
             throw new Error(t('TTS配置验证失败: {0}', validation.errors.join(', ')));
           }
 
-          // 创建VoiceService实例进行测试
           const { VoiceService } = await import('../../tts/legacy/LegacyTtsPlayer');
           const voiceService = new VoiceService();
-
-          // 临时配置TTS设置用于测试
           const { MCPConfigManager } = await import('../../tts/legacy/LegacyVoiceConfig');
           const configManager = MCPConfigManager.getInstance();
-
-          // 备份当前配置
           const originalConfig = configManager.getVoiceConfig();
 
           try {
-            // 临时设置测试配置
             configManager.updateVoiceMode('tts');
             if (configManager.getVoiceConfig().ttsApiConfig) {
               configManager.updateTTSApiConfig({
@@ -389,7 +462,6 @@ export class ConfigIpcHandler extends BaseIpcHandler {
                 promptText: testConfig.promptText,
               });
             } else {
-              // 如果没有现有配置，需要设置完整配置
               const newConfig = { ...configManager.getVoiceConfig() };
               newConfig.ttsApiConfig = {
                 hostname: testConfig.hostname,
@@ -401,13 +473,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
               configManager.updateVoiceMode('tts');
             }
 
-            // 执行语音测试
             await voiceService.playTextToSpeech(testConfig.testText);
-
             this.logger.info('TTS语音测试成功', { testText: testConfig.testText });
             return { success: true, message: t('语音测试成功') };
           } finally {
-            // 恢复原始配置
             configManager.updateVoiceMode(originalConfig.voiceMode);
             if (originalConfig.ttsApiConfig) {
               configManager.updateTTSApiConfig(originalConfig.ttsApiConfig);
@@ -415,8 +484,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.error('TTS语音测试失败', { error: errorMessage, testConfig });
-
+          this.logger.error('TTS语音测试失败', { error: errorMessage });
           return {
             success: false,
             message: t('语音测试失败: {0}', errorMessage),
@@ -426,76 +494,51 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     );
   }
 
-  /**
-   * 验证TTS配置
-   */
-  private validateTTSConfig(config: TTSConfig): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    // 验证hostname
-    if (!config.hostname || typeof config.hostname !== 'string') {
-      errors.push(t('hostname是必需的且必须是字符串'));
-    } else if (config.hostname.trim().length === 0) {
-      errors.push(t('hostname不能为空'));
-    }
-
-    // 验证port
-    if (typeof config.port !== 'number') {
-      errors.push(t('port必须是数字'));
-    } else if (config.port < 1 || config.port > 65535) {
-      errors.push(t('port必须在1-65535范围内'));
-    }
-
-    // 验证path
-    if (!config.path || typeof config.path !== 'string') {
-      errors.push(t('path是必需的且必须是字符串'));
-    } else if (!config.path.startsWith('/')) {
-      errors.push(t('path必须以/开头'));
-    }
-
-    // 验证audioUrl
-    if (!config.audioUrl || typeof config.audioUrl !== 'string') {
-      errors.push(t('audioUrl是必需的且必须是字符串'));
-    } else {
-      try {
-        const url = new URL(config.audioUrl);
-        if (!['http:', 'https:'].includes(url.protocol)) {
-          errors.push(t('audioUrl必须是有效的HTTP或HTTPS URL'));
-        }
-      } catch {
-        errors.push(t('audioUrl格式无效'));
+  /** sherpa：缺模型时会先自动下载，再预热引擎（开发态常见；打包包内已有模型则跳过下载） */
+  private async checkSherpaHealth(): Promise<TTSTestResult> {
+    const sherpa = getSherpaTtsService();
+    try {
+      const ms = await sherpa.warmup();
+      const status = sherpa.getStatus();
+      return {
+        success: true,
+        message: t('离线语音引擎就绪（模型位置：{0}）', status.source ?? ''),
+        latency: ms,
+      };
+    } catch (error) {
+      const status = sherpa.getStatus();
+      const msg = error instanceof Error ? error.message : String(error);
+      if (status.state === 'missing' || status.state === 'error') {
+        return {
+          success: false,
+          message: status.message
+            ? t('离线语音模型不可用: {0}', status.message)
+            : t('离线语音模型缺失，当前使用系统语音'),
+        };
       }
+      return { success: false, message: t('离线语音引擎加载失败，将回退系统语音: {0}', msg) };
     }
-
-    // 验证promptText
-    if (!config.promptText || typeof config.promptText !== 'string') {
-      errors.push(t('promptText是必需的且必须是字符串'));
-    } else if (config.promptText.trim().length === 0) {
-      errors.push(t('promptText不能为空'));
-    } else if (config.promptText.length > 500) {
-      errors.push(t('promptText长度不能超过500字符'));
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
   }
 
   /**
-   * 测试TTS连接
+   * 验证TTS配置（委托纯函数，供遗留调用）
    */
-  private async testTTSConnection(config: TTSConfig): Promise<TTSTestResult> {
+  private validateTTSConfig(config: TTSConfig): { isValid: boolean; errors: string[] } {
+    return validateTtsConfig(config);
+  }
+
+  /**
+   * 遗留外部 TTS：POST 探测
+   */
+  private async testLegacyTTSConnection(config: TTSConfig): Promise<TTSTestResult> {
     return new Promise((resolve) => {
-      // 仅对精确的环回主机使用 http，避免 localhost.evil.com 之类的子串绕过
       const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
       const protocol = loopbackHosts.has(config.hostname.trim().toLowerCase()) ? http : https;
 
-      // 构建测试用的请求体
       const testData = JSON.stringify({
         text: t('TTS连接测试'),
         ref_audio_path: config.audioUrl,
-        prompt_text: config.promptText.substring(0, 100), // 截取前100个字符作为测试
+        prompt_text: (config.promptText || '').substring(0, 100),
       });
 
       const options = {
@@ -539,7 +582,6 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         });
       });
 
-      // 发送测试数据
       req.write(testData);
       req.end();
     });

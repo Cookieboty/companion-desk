@@ -18,3 +18,14 @@ The body parts (torso, sleeves, badge, strap) are split from the same body layer
 with scripts/brand/build-nomi-body-parts.py (hidden areas inpainted locally);
 the neck/collar join is then finished with scripts/brand/polish-nomi-neck.py.
 Same licence as above.
+
+Brand parts repainted from the official closeup (hairclips, orange bow, earring,
+choker charm) were cut from the official art itself with
+scripts/brand/fix-nomi-brand-parts.py (crops only, no generative redraw).
+Same licence as above.
+
+layers/hands/*.png are AI-generated, non-brand hand / forearm pieces, cut out
+and colour-matched to the master with scripts/brand/build-nomi-hands.py,
+scripts/brand/build-nomi-hands-extra.py (prayer / OK / chest) and
+scripts/brand/build-nomi-arm-parts.py. Licensed by the project owner under the
+repository's MIT license. They contain no brand-bearing detail.

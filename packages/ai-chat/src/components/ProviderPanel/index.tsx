@@ -1,11 +1,21 @@
 /**
- * ProviderPanel —— 供应商管理（cc-switch 语义）：
+ * ProviderPanel —— 供应商管理：
  *   列表（当前徽标 / 一键切换 / 编辑 / 测速 / 删除）→ 添加（搜索 + 分类预设）→ 编辑（通用三协议表单）；
  *   任务路由：chat / agent-tools / summary 从各供应商已启用（或已获取）的模型里选。
  * 明文 key 只单向提交给主进程；界面只显示掩码。
  */
 import { t } from '@nomi-ai/ui';
-import { Badge, Button, Card, EmptyState, Modal, Notice, Select, ToastProvider } from '@nomi-ai/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Modal,
+  ModalHostContext,
+  Notice,
+  Select,
+  ToastProvider,
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -228,15 +238,12 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
   if (!isVisible) return null;
   const locked = Boolean(state?.overrideId);
   const current = state?.effectiveProviderId;
-  const title =
-    view.kind === 'add' ? t('添加供应商') : view.kind === 'edit' ? t('供应商设置') : t('AI 供应商');
-
   return (
     <ToastProvider>
       <Modal
         open
         onClose={onClose}
-        title={title}
+        title={t('AI 供应商')}
         size="lg"
         data-testid="provider-panel"
         bodyClassName={styles.modalBody}
@@ -259,57 +266,14 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
               )}
             </Notice>
           )}
-          {locked && view.kind === 'list' && (
+          {locked && (
             <Notice tone="warning">
-              {t('环境变量 COMPANION_PROVIDER=')}
+              {t('环境变量 NOMI_PROVIDER=')}
               {state!.overrideId} {t('已锁定对话供应商，此处切换不会生效。')}
             </Notice>
           )}
 
-          {view.kind === 'add' && (
-            <>
-              <div className={styles.inline}>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  data-testid="add-back"
-                  onClick={() => setView({ kind: 'list' })}
-                >
-                  {t('‹ 返回')}
-                </Button>
-              </div>
-              <AddProvider
-                presets={presets}
-                onPick={(p) => setView({ kind: 'edit', target: { kind: 'new', preset: p } })}
-              />
-            </>
-          )}
-
-          {view.kind === 'edit' && (
-            <ProviderEditor
-              key={
-                view.target.kind === 'edit'
-                  ? view.target.provider.id
-                  : `new-${view.target.preset.id}`
-              }
-              target={view.target}
-              isActive={view.target.kind === 'edit' && view.target.provider.id === current}
-              onBack={() =>
-                setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
-              }
-              onSaved={(result) => {
-                setError(null);
-                if (result.pickModel) {
-                  setView({ kind: 'edit', target: { kind: 'edit', provider: result.provider } });
-                } else {
-                  setView({ kind: 'list' });
-                }
-              }}
-              onError={onError}
-            />
-          )}
-
-          {view.kind === 'list' && state && (
+          {state && (
             <>
               <div className={styles.inline}>
                 <span className="cd-muted">
@@ -393,7 +357,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 <RoutesTable state={state} onError={onError} />
                 <p className="cd-muted">
                   {t(
-                    '优先级：COMPANION_PROVIDER 环境变量 → 任务路由 → 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
+                    '优先级：NOMI_PROVIDER 环境变量 → 任务路由 → 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
                   )}
                 </p>
               </section>
@@ -401,6 +365,55 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           )}
         </div>
       </Modal>
+
+      {(view.kind === 'add' || view.kind === 'edit') && (
+        <ModalHostContext.Provider value={{ mode: 'drawer' }}>
+          <Modal
+            open
+            onClose={() => setView({ kind: 'list' })}
+            title={
+              view.kind === 'add'
+                ? t('添加供应商')
+                : view.target.kind === 'edit'
+                  ? t('供应商设置')
+                  : t('添加 {0}', view.target.preset.name)
+            }
+            size="lg"
+            data-testid="provider-drawer"
+            bodyClassName={styles.drawerBody}
+          >
+            {view.kind === 'add' && (
+              <AddProvider
+                presets={presets}
+                onPick={(p) => setView({ kind: 'edit', target: { kind: 'new', preset: p } })}
+              />
+            )}
+            {view.kind === 'edit' && (
+              <ProviderEditor
+                key={
+                  view.target.kind === 'edit'
+                    ? view.target.provider.id
+                    : `new-${view.target.preset.id}`
+                }
+                target={view.target}
+                isActive={view.target.kind === 'edit' && view.target.provider.id === current}
+                onBack={() =>
+                  setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
+                }
+                onSaved={(result) => {
+                  setError(null);
+                  if (result.pickModel) {
+                    setView({ kind: 'edit', target: { kind: 'edit', provider: result.provider } });
+                  } else {
+                    setView({ kind: 'list' });
+                  }
+                }}
+                onError={onError}
+              />
+            )}
+          </Modal>
+        </ModalHostContext.Provider>
+      )}
     </ToastProvider>
   );
 };

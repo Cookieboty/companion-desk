@@ -199,37 +199,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('save-voice-settings', settings);
   },
 
-  // 键盘监听API
-  startKeyboardListener: () => {
-    ipcRenderer.send('start-keyboard-listener');
-  },
-  stopKeyboardListener: () => {
-    ipcRenderer.send('stop-keyboard-listener');
-  },
-  onKeyboardEvent: (callback: (event: any) => void) => {
-    // 移除之前的监听器，避免重复注册
-    ipcRenderer.removeAllListeners('keyboard-event');
-
-    ipcRenderer.on('keyboard-event', (_, event) => {
-      try {
-        callback(event);
-      } catch (error) {
-        console.error('preload: 回调函数执行失败:', error);
-      }
-    });
-  },
-  onKeyboardListenerStarted: (callback: () => void) => {
-    ipcRenderer.on('keyboard-listener-started', callback);
-  },
-  onKeyboardListenerError: (callback: (error: string) => void) => {
-    ipcRenderer.on('keyboard-listener-error', (_, error) => callback(error));
-  },
-  removeKeyboardListeners: () => {
-    ipcRenderer.removeAllListeners('keyboard-event');
-    ipcRenderer.removeAllListeners('keyboard-listener-started');
-    ipcRenderer.removeAllListeners('keyboard-listener-error');
-  },
-
   // AI对话相关API
   openAiChat: async () => {
     return await ipcRenderer.invoke('open-ai-chat');
@@ -250,5 +219,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   resetTTSConfig: async () => {
     return await ipcRenderer.invoke('resetTTSConfig');
+  },
+  ttsSpeak: async (req: { text: string; referenceId?: string; volume?: number }) => {
+    return await ipcRenderer.invoke('tts:speak', req);
+  },
+  ttsHealth: async (config?: unknown) => {
+    return await ipcRenderer.invoke('tts:health', config);
+  },
+  ttsSherpaStatus: async () => {
+    return await ipcRenderer.invoke('tts:sherpa:status');
   },
 } as IpcApi);

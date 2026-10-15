@@ -1,5 +1,6 @@
 import type { RigManifest } from '../layeredRig';
-import type { MascotBackend, MascotCapabilities } from '../MascotBackend';
+import type { MascotBackend, MascotCapabilities, MotionOptions } from '../MascotBackend';
+import { ACTIONS } from '../rig/actions';
 
 export interface SpriteManifest {
   id: string;
@@ -44,9 +45,42 @@ export interface SpriteFrame {
   /** raw lip-sync level 0..1 */
   mouth: number;
   /** last body gesture request (rig only); `id` bumps on every trigger */
-  gesture: { name: string; id: number } | null;
+  gesture: {
+    name: string;
+    id: number;
+    priority?: 0 | 1 | 2 | 3;
+    hold?: boolean;
+    queue?: boolean;
+    release?: boolean;
+  } | null;
   /** AI is generating a reply (rig holds a thinking pose) */
   thinking: boolean;
+}
+
+/** Names of the keyframe actions of the 2D rig (see rig/actions.ts). */
+export const RIG_ACTION_IDS: readonly string[] = ACTIONS.map((a) => a.id);
+/** Legacy gesture curves that have no keyframe action. */
+const LEGACY_GESTURES = ['jump', 'stomp', 'shrug'];
+/** Older / shorter names → keyframe action id. */
+const MOTION_ALIAS: Record<string, string> = {
+  shake: 'shake_head',
+  flinch: 'surprise',
+  greet: 'hello',
+  interact: 'point',
+  point: 'explain',
+  celebrate: 'celebrate',
+  dance: 'hop',
+  poke: 'surprise',
+};
+const RANDOM_POOL = ACTIONS.filter((a) =>
+  ['greet', 'emotion', 'celebrate', 'agree'].includes(a.category),
+).map((a) => a.id);
+
+function resolveRigMotion(name: string): string | null {
+  if (name === 'random') return RANDOM_POOL[Math.floor(Math.random() * RANDOM_POOL.length)];
+  const id = MOTION_ALIAS[name] ?? name;
+  if (RIG_ACTION_IDS.includes(id) || LEGACY_GESTURES.includes(id)) return id;
+  return null;
 }
 
 function approach(current: number, target: number, rate: number, dt: number): number {
@@ -77,7 +111,7 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
   let lookGoalX = 0;
   let lookGoalY = 0;
   let talking = false;
-  let gesture: { name: string; id: number } | null = null;
+  let gesture: SpriteFrame['gesture'] = null;
   let gestureSeq = 0;
   let thinking = false;
   // the layered rig schedules its own (multi-frame, double, gaze-shift) blinks
@@ -112,34 +146,32 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
     blink() {
       blinkT = 0;
     },
-    playMotion(_name) {
+    playMotion(_name, opts?: MotionOptions) {
       if (manifest.rig) {
         if (_name === 'think-on' || _name === 'think-off') {
           thinking = _name === 'think-on';
+          gesture = {
+            name: 'think',
+            id: ++gestureSeq,
+            hold: true,
+            priority: 1,
+            release: _name === 'think-off',
+          };
           return true;
         }
-        const map: Record<string, string> = {
-          wave: 'wave',
-          greet: 'greet',
-          nod: 'nod',
-          bow: 'bow',
-          cheer: 'cheer',
-          celebrate: 'celebrate',
-          clap: 'clap',
-          hop: 'hop',
-          shake: 'jump',
-          flinch: 'jump',
-          jump: 'jump',
-          stomp: 'stomp',
-          think: 'think',
-          shrug: 'shrug',
-          look_around: 'look_around',
-          shy: 'shy',
-          point: 'point',
+        if (_name === 'release') {
+          gesture = { name: '*', id: ++gestureSeq, release: true };
+          return true;
+        }
+        const id = resolveRigMotion(_name);
+        if (!id) return false;
+        gesture = {
+          name: id,
+          id: ++gestureSeq,
+          priority: opts?.priority,
+          hold: opts?.hold,
+          queue: opts?.queue,
         };
-        const g = map[_name];
-        if (!g) return false;
-        gesture = { name: g, id: ++gestureSeq };
         return true;
       }
       // Sprites have no skeletal motions; treat as soft expression pulse
@@ -163,23 +195,7 @@ export function createSpriteBackend(manifest: SpriteManifest, baseUrl: string): 
         lookAt: true,
         blink: !!manifest.blink || !!manifest.rig,
         motions: manifest.rig
-          ? [
-              'wave',
-              'nod',
-              'cheer',
-              'clap',
-              'celebrate',
-              'shake',
-              'bow',
-              'think',
-              'jump',
-              'stomp',
-              'shrug',
-              'look_around',
-              'shy',
-              'point',
-              'greet',
-            ]
+          ? [...RIG_ACTION_IDS, ...LEGACY_GESTURES]
           : ['wave', 'cheer', 'clap', 'shake', 'bow', 'think'],
       };
     },

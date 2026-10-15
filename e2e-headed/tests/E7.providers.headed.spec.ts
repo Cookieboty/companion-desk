@@ -11,7 +11,7 @@ import { safeRm } from '../fixtures/fsutil';
 import { startMockLlm, type MockLlm, type MockProtocol } from '../fixtures/mockLlm';
 
 /**
- * E7 · 真实应用 · 供应商（cc-switch 语义，三种通用协议）
+ * E7 · 真实应用 · 供应商（三种通用协议）
  *
  * 三个本地 mock：OpenAI Chat Completions / OpenAI Responses / Anthropic Messages。
  * - userData 预置 v1 格式的 ai-providers.json（backend + chat 路由）→ 启动后迁移为 v2；
@@ -130,7 +130,7 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
     for (const k of Object.keys(env)) {
       if (
         /^(DEEPSEEK|OPENAI|ANTHROPIC|CLAUDE|GOOGLE_GENERATIVE_AI|GEMINI|OLLAMA)_/.test(k) ||
-        k === 'COMPANION_PROVIDER'
+        k === 'NOMI_PROVIDER'
       )
         delete env[k];
     }

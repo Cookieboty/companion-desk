@@ -154,14 +154,16 @@ test.describe('E11 · bubble security + toolbar', () => {
     await main.screenshot(shot('20-bubble-xss-as-text.png'));
 
     // ---- 2b. 真实 AI 回复（mock 模型返回 HTML）----
-    const chatWindow = app.waitForEvent('window', { timeout: 20_000 });
+    const chatWindow = app.waitForEvent('window', { timeout: 30_000 });
     await main.evaluate(() =>
       (
         window as unknown as { electronAPI: { openAiChat(): Promise<unknown> } }
       ).electronAPI.openAiChat(),
     );
     const chat = await chatWindow;
-    await chat.waitForSelector('textarea', { timeout: 20_000 });
+    // Windows runner 上对话窗冷启动可能很慢（swiftshader + 双渲染进程），给足时间
+    await chat.waitForLoadState('domcontentloaded').catch(() => undefined);
+    await chat.waitForSelector('textarea', { state: 'visible', timeout: 60_000 });
     // 对话窗经 file:// 加载（与打包一致）：响应头 CSP 不作用于 file://，必须有构建期 meta CSP
     const chatCsp = await chat.evaluate(async () => {
       let violations = 0;
@@ -196,7 +198,7 @@ test.describe('E11 · bubble security + toolbar', () => {
     expect(await chat.locator('img[src="x"]').count()).toBe(0);
     await chat.close().catch(() => undefined);
     // 对话回复也会进气泡（短版）；等它出现后清掉，避免和下面的摘要抢气泡
-    await expect(bubble).toContainText('XSSMARK', { timeout: 20_000 });
+    await expect(bubble).toContainText('XSSMARK', { timeout: 45_000 });
     expect(await bubble.locator('img, script, b').count()).toBe(0);
     await main.evaluate(() =>
       window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: '·', ms: 50 } })),
@@ -228,8 +230,8 @@ test.describe('E11 · bubble security + toolbar', () => {
         }),
       );
     });
-    await expect(bubble).toContainText('XSSMARK', { timeout: 20_000 });
-    await expect(bubble).toContainText('<script>');
+    // 一次断言同时匹配两段文本：慢机器上两次独立断言之间气泡可能已过期收起
+    await expect(bubble).toContainText(/XSSMARK[\s\S]*<script>/, { timeout: 30_000 });
     expect(await bubble.locator('img, script, b').count()).toBe(0);
     await main.waitForTimeout(400);
     expect(await pwned(main)).toBeNull();

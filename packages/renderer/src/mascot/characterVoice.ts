@@ -21,7 +21,9 @@ const OVERRIDE_KEY = 'mascot.characterVoice.v1';
 /** Built-in softer defaults by model id / tag family. */
 export const CHARACTER_VOICE_DEFAULTS: Record<string, ModelVoiceConfig> = {
   nomi: {
-    voiceHint: 'xiaoxiao',
+    /** Built-in Fish cute preset id (local references/nomi); system fallback still soft-picks. */
+    voiceHint: 'nomi',
+    fishReferenceId: 'nomi',
     rate: 0.92,
     pitch: 1.1,
   },
@@ -138,7 +140,30 @@ export function resolvePrefsForCharacter(
 
 export function speakForActiveCharacter(text: string, opts: SpeakSoftOptions = {}): boolean {
   const prefs = resolvePrefsForCharacter();
-  return speakSoft(text, { ...opts, prefs: opts.prefs ? { ...prefs, ...opts.prefs } : prefs });
+  const merged = opts.prefs ? { ...prefs, ...opts.prefs } : prefs;
+  const voice = resolveCharacterVoice(activeModelName, activeModelConfig);
+  // Only built-in Fish presets (e.g. nomi) map from voiceHint — not OS hints like xiaoxiao.
+  const fishPresets = new Set(['nomi']);
+  const referenceId =
+    voice.fishReferenceId ||
+    (voice.voiceHint && fishPresets.has(voice.voiceHint) ? voice.voiceHint : undefined);
+
+  // Built-in Fish path (no preview UI): async synthesize; fall back to Web Speech on failure.
+  void (async () => {
+    try {
+      const { speakWithFish } = await import('./tts/fishSpeak');
+      const ok = await speakWithFish(text, {
+        referenceId,
+        volume: merged.volume,
+        onEnd: opts.onEnd,
+      });
+      if (ok) return;
+    } catch {
+      /* fall through */
+    }
+    speakSoft(text, { ...opts, prefs: merged });
+  })();
+  return true;
 }
 
 /**

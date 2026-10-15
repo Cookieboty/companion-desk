@@ -139,6 +139,16 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             disabled={off}
           />
         </label>
+        <Switch
+          checked={settings.sfxEnabled !== false}
+          onChange={(v) => handleSettingChange('sfxEnabled', v)}
+          disabled={isLoading}
+          label={tr('动作音效')}
+          data-testid="sfx-enabled"
+        />
+        <p className={styles.help} style={{ paddingLeft: 0 }}>
+          {tr('点击、拖拽、任务完成等动作的短提示音（程序合成，可关）。')}
+        </p>
       </section>
 
       <section className={styles.group}>
@@ -250,17 +260,23 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
       <section className={styles.group}>
         <h4 className="cd-section-title">{tr('功能设置')}</h4>
         <Switch
-          checked={settings.keyboardListening}
-          onChange={(v) => handleSettingChange('keyboardListening', v)}
-          disabled={off}
-          label={tr('键盘监听（根据输入内容播放语音）')}
-        />
-        <Switch
           checked={settings.timeAnnouncement}
           onChange={(v) => handleSettingChange('timeAnnouncement', v)}
           disabled={off}
           label={tr('定时播报（根据时间播放问候语音）')}
         />
+      </section>
+
+      <section className={styles.group} data-testid="fish-voice-note">
+        <h4 className="cd-section-title">{tr('语音播报引擎')}</h4>
+        <p className="cd-muted" style={{ fontSize: 12 }}>
+          {tr(
+            '默认使用内置离线语音（sherpa-onnx，本机合成，随安装包分发）。模型缺失或合成失败时自动回退下方系统音色。Fish Audio 为可选高级引擎，不提供上传克隆。',
+          )}
+        </p>
+        <p className="cd-notice" style={{ fontSize: 12 }} data-testid="fish-attribution">
+          <strong>Built with Fish Audio</strong>
+        </p>
       </section>
 
       <section className={styles.group}>
@@ -275,7 +291,7 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             {tr('：覆盖写入 localStorage，并尽量写入模型 config.voice（用户导入模型）。')}
           </li>
           <li>
-            <strong>{tr('键盘 / 定时')}</strong>
+            <strong>{tr('定时播报')}</strong>
             {tr('：同样走当前角色的柔和朗读。')}
           </li>
         </ul>

@@ -13,9 +13,9 @@ describe('i18n', () => {
     expect(resolveLocale('system', ['zh-HK'])).toBe('zh-CN');
     expect(resolveLocale('system', ['de-DE'])).toBe('en');
     expect(getLocale()).toBe('zh-CN');
-    expect(t('开始新对话')).toBe('开始新对话');
+    expect(t('新对话')).toBe('新对话');
     applyLocale('en');
-    expect(t('开始新对话')).toBe('Start a new chat');
+    expect(t('新对话')).toBe('New chat');
     expect(t('{0} 分钟前', 5)).toBe('5 min ago');
     expect(t('不在词典里的文字')).toBe('不在词典里的文字');
     expect(t(undefined)).toBeUndefined();

@@ -3,13 +3,30 @@
  * 执行时通过 window 事件 `cd:cmd` 交给输入框（它持有各功能的实际动作）；「新对话」由 App 处理。
  */
 import { t } from '@nomi-ai/ui';
+import type { LucideIcon } from 'lucide-react';
+import {
+  BookOpen,
+  Brain,
+  CalendarDays,
+  FolderLock,
+  Headphones,
+  Home,
+  KeyRound,
+  Library,
+  Mic,
+  Monitor,
+  PenLine,
+  Puzzle,
+  Scissors,
+  Settings,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { formatCombo, getBindings, type ShortcutId } from './shortcuts';
 
 export interface PinDef {
   id: string;
-  icon: string;
+  icon: LucideIcon;
   label: string;
   /** 固定提示（如「F2 说话」） */
   shortcut?: string;
@@ -18,20 +35,20 @@ export interface PinDef {
 }
 
 export const PIN_POOL: PinDef[] = [
-  { id: 'newchat', icon: '✏️', label: '新对话', sc: 'newChat' },
-  { id: 'snip', icon: '✂️', label: '截图提问', sc: 'snip' },
-  { id: 'kb', icon: '📚', label: '知识库问答开关', sc: 'kbAsk' },
-  { id: 'handsfree', icon: '🎧', label: '免按键语音', sc: 'handsFree' },
-  { id: 'voice', icon: '🎙', label: '语音设置', shortcut: 'F2 说话' },
-  { id: 'model', icon: '🔑', label: '供应商与模型' },
-  { id: 'kbm', icon: '🗂', label: '知识库管理', sc: 'kb' },
-  { id: 'memory', icon: '🧠', label: '长期记忆', sc: 'memory' },
-  { id: 'schedule', icon: '🗓', label: '日程 · 编程助手', sc: 'schedule' },
-  { id: 'screen', icon: '🖥', label: '屏幕记忆', sc: 'screen' },
-  { id: 'ext', icon: '🧩', label: '扩展 / MCP', sc: 'ext' },
-  { id: 'desktop', icon: '📁', label: '桌面权限' },
-  { id: 'local', icon: '🏠', label: '本机管理', sc: 'local' },
-  { id: 'settings', icon: '⚙️', label: '设置', sc: 'settings' },
+  { id: 'newchat', icon: PenLine, label: '新对话', sc: 'newChat' },
+  { id: 'snip', icon: Scissors, label: '截图提问', sc: 'snip' },
+  { id: 'kb', icon: BookOpen, label: '知识库问答开关', sc: 'kbAsk' },
+  { id: 'handsfree', icon: Headphones, label: '免按键语音', sc: 'handsFree' },
+  { id: 'voice', icon: Mic, label: '语音设置', shortcut: 'F2 说话' },
+  { id: 'model', icon: KeyRound, label: '供应商与模型' },
+  { id: 'kbm', icon: Library, label: '知识库管理', sc: 'kb' },
+  { id: 'memory', icon: Brain, label: '长期记忆', sc: 'memory' },
+  { id: 'schedule', icon: CalendarDays, label: '日程与提醒', sc: 'schedule' },
+  { id: 'screen', icon: Monitor, label: '屏幕记忆', sc: 'screen' },
+  { id: 'ext', icon: Puzzle, label: '扩展 / MCP', sc: 'ext' },
+  { id: 'desktop', icon: FolderLock, label: '桌面权限' },
+  { id: 'local', icon: Home, label: '本机管理', sc: 'local' },
+  { id: 'settings', icon: Settings, label: '设置', sc: 'settings' },
 ];
 
 /**

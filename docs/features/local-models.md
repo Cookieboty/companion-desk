@@ -13,6 +13,8 @@
 
 如果你装了 Ollama，可以在这里列出、拉取（带进度）和删除本机模型。
 
+给编程助手（Claude Code / Codex 经本地路由）用 Ollama 时，请以足够大的上下文启动：`OLLAMA_CONTEXT_LENGTH=20480 ollama serve`。默认上下文太小，长提示会被截断，导致空回复。详见[编程助手接入](coding-agent-harness.md)。
+
 ## 离线模式
 
 开启后只使用本地模型：云端供应商和需要联网的工具会被拒绝；如果本地模型在运行，它会成为对话模型。

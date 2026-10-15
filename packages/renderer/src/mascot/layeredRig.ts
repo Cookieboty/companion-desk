@@ -7,6 +7,24 @@
  * into per-layer transforms; `drawRig` paints them with Canvas2D only.
  */
 
+import { ActionManager } from './rig/actionManager';
+import { ACTIONS } from './rig/actions';
+import { drawBrow, drawFx, drawMouth } from './rig/fx';
+import {
+  ARM_HAND_S,
+  armFrame,
+  bodyShoulderFill,
+  bodySideFill,
+  drawArmPieces,
+  drawHandPiece,
+  handScaleFor,
+  shoulderPlug,
+  type ArmGeom,
+  type HandPieceMeta,
+} from './rig/meshArm';
+import { HAND_NAMES, IDX, PARAM_DEFS, type ParamBag } from './rig/params';
+import type { RigImageSource } from './rig/rigTypes';
+
 export interface RigEyeMetrics {
   /** eye opening bbox in rig px */
   x0: number;
@@ -43,6 +61,10 @@ export interface RigManifest {
   layers: Record<string, [number, number] | [number, number, number]>;
   /** Folder (relative to manifest) holding the layer PNGs. */
   dir?: string;
+  /** Spine / bounds of the master arm layers, for the mesh-warped arms. */
+  arms?: { l?: ArmGeom; r?: ArmGeom };
+  /** Hand pieces (name → meta); images are keyed `hand-${name}`. */
+  hands?: Record<string, HandPieceMeta>;
 }
 
 export type EyeVariant = 'open' | 'happy';
@@ -52,6 +74,13 @@ export interface RigGesture {
   name: string;
   /** changes every time the gesture is (re)triggered */
   id: number;
+  /** action queue hints (see rig/actionManager) */
+  priority?: 0 | 1 | 2 | 3;
+  hold?: boolean;
+  queue?: boolean;
+  force?: boolean;
+  /** `release` ends a held action instead of starting one */
+  release?: boolean;
 }
 
 export interface RigInput {
@@ -68,6 +97,17 @@ export interface RigInput {
   gesture?: RigGesture | null;
   /** AI is generating: hold a thinking tilt */
   thinking?: boolean;
+}
+
+export interface EyeMix {
+  /** upper-lid descent 0 open … 1 closed (blink included) */
+  cl: number;
+  /** ^ ^ blend 0..1 */
+  happy: number;
+  /** >0 outer end lower (sad), <0 inner end lower (determined) */
+  slope: number;
+  scale: number;
+  lidAlpha: number;
 }
 
 export interface RigPose {
@@ -118,6 +158,17 @@ export interface RigPose {
   browRaise: number;
   /** cheek soft squash on smile (0..1) */
   cheekSquash: number;
+  /** per-eye state (lid closure, ^ ^ blend, slant, size) — action driven, smoothed */
+  eyeL?: EyeMix;
+  eyeR?: EyeMix;
+  /** eased brow stroke alpha (0 = none) and the brow shape code */
+  browAlpha?: number;
+  browKind?: number;
+  reduced?: boolean;
+  /** action parameters (arms, face states, effects) — see rig/params.ts */
+  ext?: ParamBag | null;
+  /** seconds (animation clock for vector effects) */
+  time?: number;
 }
 
 interface ExprStyle {
@@ -533,13 +584,13 @@ export class RigAnimator {
   private shiftS = new Spring(3.2, 1);
   private lean = new Spring(20, 0.92);
   private bobS = new Spring(110, 0.7);
-  private armL = new Spring(26, 0.32);
-  private armR = new Spring(24, 0.32);
-  private badge = new Spring(16, 0.16);
-  private strap = new Spring(22, 0.18);
-  private hairL = new Spring(36, 0.26);
-  private hairR = new Spring(32, 0.24);
-  private ribbon = new Spring(20, 0.2);
+  private armL = new Spring(32, 0.55);
+  private armR = new Spring(30, 0.55);
+  private badge = new Spring(22, 0.45);
+  private strap = new Spring(28, 0.5);
+  private hairL = new Spring(70, 0.85);
+  private hairR = new Spring(70, 0.85);
+  private ribbon = new Spring(70, 0.85);
   private browS = new Spring(18, 1);
   private cheekS = new Spring(14, 1);
   private nextHairFlick = 4;
@@ -548,6 +599,36 @@ export class RigAnimator {
   private gestureId = -1;
   private lastExpr = 'neutral';
   private started = false;
+  /** keyframe actions (arms, face states, effects) blended on top of the idle layer */
+  readonly actions = new ActionManager(ACTIONS);
+  /** follow-through: action parameters pass through springs so keyframes never read as robotic */
+  private sprung = (
+    [
+      ['headRot', 256, 0.55],
+      ['headNod', 324, 0.6],
+      ['headX', 196, 0.7],
+      ['torsoRot', 100, 0.6],
+      ['torsoX', 81, 0.7],
+      ['bodyY', 121, 0.6],
+      ['shoulder', 144, 0.6],
+      ['scale', 100, 0.7],
+      ['rA', 196, 0.5],
+      ['rE', 196, 0.5],
+      ['rW', 225, 0.45],
+      ['lA', 196, 0.5],
+      ['lE', 196, 0.5],
+      ['lW', 225, 0.45],
+    ] as const
+  ).map(([n, k, z]) => ({ idx: IDX[n], sp: new Spring(k, z) }));
+  private armPrev = { rA: 0, rE: 0, lA: 0, lE: 0 };
+  private foreS = { r: 0, l: 0 };
+  private lift = { r: 0, l: 0 };
+  private eyeMixL: EyeMix = { cl: 0, happy: 0, slope: 0, scale: 1, lidAlpha: 0 };
+  private eyeMixR: EyeMix = { cl: 0, happy: 0, slope: 0, scale: 1, lidAlpha: 0 };
+  // smoothed per-eye extras: closure, ^ ^, slope, scale
+  private eyeExtra = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1]);
+  private browA = 0;
+  private browK = 0;
 
   constructor(seed = 7) {
     this.rand = rng(seed);
@@ -571,6 +652,120 @@ export class RigAnimator {
     if (allowDouble && this.rand() < 0.16) this.blinkStarts.push(t + 0.24);
   }
 
+  private stepEye(o: number, code: number, dt: number) {
+    const ex = this.eyeExtra;
+    let tc = 0;
+    let th = 0;
+    let tsl = 0;
+    let tsc = 1;
+    switch (code) {
+      case 1:
+        tc = 0.45;
+        break;
+      case 2:
+        tc = 1;
+        break;
+      case 3:
+        th = 1;
+        break;
+      case 4:
+        tsc = 1.12;
+        break;
+      case 5:
+        tc = 0.22;
+        tsl = 1;
+        break;
+      case 6:
+        tc = 0.2;
+        tsl = -1;
+        break;
+      case 7:
+        tc = 0.62;
+        tsl = 0.3;
+        break;
+      default:
+    }
+    ex[o] = approach(ex[o], tc, 16, dt);
+    ex[o + 1] = approach(ex[o + 1], th, 14, dt);
+    ex[o + 2] = approach(ex[o + 2], tsl, 12, dt);
+    ex[o + 3] = approach(ex[o + 3], tsc, 12, dt);
+  }
+
+  private fillEye(m: EyeMix, o: number, lidClose: number, happy: number) {
+    const ex = this.eyeExtra;
+    m.cl = Math.max(lidClose, ex[o]);
+    m.happy = Math.max(happy, ex[o + 1]);
+    m.slope = ex[o + 2];
+    m.scale = this.s.eyeScale * ex[o + 3];
+    m.lidAlpha = smooth(0.6, 0.95, m.cl) * (1 - m.happy);
+  }
+
+  /**
+   * Overlapping action on top of the keyframes (never touches artwork, only parameters): springs
+   * give overshoot / settle, arms drift a little while held, the torso leans away from a raised
+   * arm and the shoulder lifts, and the forearm foreshortens while the arm swings.
+   */
+  private followThrough(pb: ParamBag, dt: number, t: number, rm: boolean): void {
+    const v = pb.v;
+    const busy = this.actions.busy();
+    if (!busy || rm) {
+      for (const e of this.sprung) e.sp.reset(v[e.idx]);
+      this.foreS.r = this.foreS.l = this.lift.r = this.lift.l = 0;
+      this.armPrev.rA = v[IDX.rA];
+      this.armPrev.rE = v[IDX.rE];
+      this.armPrev.lA = v[IDX.lA];
+      this.armPrev.lE = v[IDX.lE];
+      v[IDX.rF] = 0;
+      v[IDX.lF] = 0;
+      return;
+    }
+    for (const e of this.sprung) {
+      const d = PARAM_DEFS[e.idx];
+      v[e.idx] = Math.max(d.min, Math.min(d.max, e.sp.step(v[e.idx], dt)));
+    }
+    const inv = dt > 0 ? 1 / dt : 0;
+    for (const side of ['r', 'l'] as const) {
+      const on = v[IDX[`${side}On`]];
+      const ia = IDX[`${side}A`];
+      const ie = IDX[`${side}E`];
+      const prevA = this.armPrev[`${side}A`];
+      const prevE = this.armPrev[`${side}E`];
+      const speed = (Math.abs(v[ie] - prevE) + 0.5 * Math.abs(v[ia] - prevA)) * inv;
+      this.armPrev[`${side}A`] = v[ia];
+      this.armPrev[`${side}E`] = v[ie];
+      const speedFore = Math.max(0, Math.min(1, (speed - 40) / 300));
+      // held raised poses also foreshorten so the cuff stays on-canvas
+      const raiseFore = Math.max(
+        Math.min(1, Math.abs(v[ia]) / 40),
+        Math.min(1, Math.abs(v[ie]) / 110) * 0.5,
+      );
+      const target = Math.max(speedFore, raiseFore * 0.9) * (on > 0.01 ? 1 : 0);
+      this.foreS[side] = approach(this.foreS[side], target, target > this.foreS[side] ? 28 : 9, dt);
+      v[IDX[`${side}F`]] = this.foreS[side];
+      // a held arm is never perfectly still
+      const drift = on > 0.5 ? on : 0;
+      if (drift) {
+        const sd = side === 'r' ? 0 : 7;
+        // tiny alive tremor only — large drift made sleeves look like paper flaps
+        v[ia] += fbm(t * 0.45, 31 + sd) * 0.9 * drift;
+        v[ie] += fbm(t * 0.55, 32 + sd) * 1.2 * drift;
+        v[IDX[`${side}W`]] += fbm(t * 0.7, 33 + sd) * 1.6 * drift;
+      }
+      const raised = on * Math.max(0, Math.min(1, v[ia] / 45));
+      this.lift[side] = approach(this.lift[side], raised, 6, dt);
+    }
+    // weight shifts away from the raised arm; the head tilts toward it
+    const lr = this.lift.r;
+    const ll = this.lift.l;
+    v[IDX.torsoRot] += -1.3 * lr + 1.3 * ll;
+    v[IDX.headRot] += 1.6 * lr - 1.6 * ll;
+    v[IDX.bodyY] += -1.5 * Math.max(lr, ll);
+    for (const n of ['rA', 'rE', 'rW', 'lA', 'lE', 'lW', 'torsoRot', 'headRot', 'bodyY']) {
+      const d = PARAM_DEFS[IDX[n]];
+      v[IDX[n]] = Math.max(d.min, Math.min(d.max, v[IDX[n]]));
+    }
+  }
+
   step(dt: number, t: number, input: RigInput): RigPose {
     const st = expressionStyle(input.expression);
     const rm = !!input.reducedMotion;
@@ -590,10 +785,24 @@ export class RigAnimator {
       if (st.gesture) this.trigger(st.gesture, t);
       this.lastExpr = input.expression;
     }
+    this.actions.reducedMotion = rm;
     if (input.gesture && input.gesture.id !== this.gestureId) {
       this.gestureId = input.gesture.id;
-      this.trigger(input.gesture.name, t);
+      const ge = input.gesture;
+      if (ge.release) this.actions.release(ge.name === '*' ? undefined : ge.name);
+      else if (this.actions.has(ge.name))
+        this.actions.play(ge.name, {
+          priority: ge.priority,
+          hold: ge.hold,
+          queue: ge.queue,
+          force: ge.force ?? true,
+        });
+      else this.trigger(ge.name, t);
     }
+    const pb = this.actions.update(dt);
+    const av = pb.v;
+    const actionOn = this.actions.busy();
+    this.followThrough(pb, dt, t, rm);
     const g = (this.gesture && gestureCurve(this.gesture.name, t - this.gesture.t0)) || ZERO_G;
     if (this.gesture && g === ZERO_G) this.gesture = null;
 
@@ -615,8 +824,8 @@ export class RigAnimator {
 
     // --- gaze: saccadic eyes lead, head follows on a no-overshoot spring
     const thinkLook = s.think;
-    const goalX = input.lookX * (1 - thinkLook) - 0.45 * thinkLook;
-    const goalY = input.lookY * (1 - thinkLook) + 0.55 * thinkLook;
+    const goalX = input.lookX * (1 - thinkLook) - 0.45 * thinkLook + av[IDX.gazeX];
+    const goalY = input.lookY * (1 - thinkLook) + 0.55 * thinkLook + av[IDX.gazeY];
     const jump = Math.hypot(goalX - this.eyeGoalX, goalY - this.eyeGoalY);
     if (jump > 0.12) {
       if (jump > 0.55 && this.rand() < 0.6) this.startBlink(t, false);
@@ -685,9 +894,11 @@ export class RigAnimator {
       (s.tilt + nRot + nTilt + lookX * 3.6 * (1 - thinkLook) - 6 * s.think + nTalk - shift * 1.0) *
         DEG +
       g.headRot * m +
+      av[IDX.headRot] * DEG +
       lookX * 0.8 * DEG * talkLean;
-    const intentX = lookX * 12 + nX + shift * 2.0 + lookX * 2.5 * talkLean;
-    const intentY = s.headY - lookY * 5.5 + nY + bob + slump * 3 + (g.headY + g.nodHead) * m;
+    const intentX = lookX * 12 + nX + shift * 2.0 + lookX * 2.5 * talkLean + av[IDX.headX];
+    const intentY =
+      s.headY - lookY * 5.5 + nY + bob + slump * 3 + (g.headY + g.nodHead) * m + av[IDX.headNod];
 
     // Slow idle sway through soft lean spring; intent torso share is higher for body-led lean
     const torsoIdle =
@@ -702,11 +913,14 @@ export class RigAnimator {
       intentRot * 0.44 * m +
       this.lean.step(torsoIdle, dt) +
       g.torsoRot * m +
+      av[IDX.torsoRot] * DEG +
       lookX * 0.6 * DEG * talkLean;
     const torsoX =
       (intentX * 0.52 + shift * 4.2 + fbm(t * 0.18, 17) * 1.7 + g.torsoX + lookX * 1.8 * talkLean) *
-      m;
-    const bodyY = (g.bodyY + slump * 3 + Math.max(-7, Math.min(7, intentY * 0.48))) * m;
+        m +
+      av[IDX.torsoX];
+    const bodyY =
+      (g.bodyY + slump * 3 + Math.max(-7, Math.min(7, intentY * 0.48))) * m + av[IDX.bodyY];
     // richer breath: chest scale + head lift + shoulders
     const bodyScaleY = 1 + breath * 0.0072;
     const headRot = intentRot * 0.56;
@@ -714,9 +928,9 @@ export class RigAnimator {
     const headY = intentY * 0.58 - breath * 1.35;
     const tiltSh = (torsoRot / DEG) * 1.85;
     const talkBob = talkLean * (1.8 + 1.2 * Math.abs(Math.sin(t * 9)));
-    const sh = (-breath * 2.6 + g.shoulder + slump * 5 - talkBob) * m;
-    const shL = sh - tiltSh * m;
-    const shR = sh + tiltSh * m;
+    const sh = (-breath * 2.6 + g.shoulder + slump * 5 - talkBob) * m + av[IDX.shoulder];
+    const shL = sh - tiltSh * m - 7 * this.lift.l * m;
+    const shR = sh + tiltSh * m - 7 * this.lift.r * m;
 
     // brow micro-raise (expression + idle noise) — drives bangs lift only
     const browTarget =
@@ -738,35 +952,31 @@ export class RigAnimator {
     const aY = (vY - this.prev.vY) * inv;
     this.prev = { headRot, headX, headY, torsoX, bodyY: bodyY + headY * 0.3, vX, vY };
 
-    const hairDrive = (-vHeadRot * 0.11 - vHeadX * 0.0018) * m;
-    const hairRotL = this.hairL.step(
-      hairDrive + flick * 0.7 + fbm(t * 0.55, 10) * 1.35 * DEG * m,
-      dt,
-    );
-    const hairRotR = this.hairR.step(
-      hairDrive + flick + fbm(t * 0.52 + 2, 11) * 1.35 * DEG * m,
-      dt,
-    );
-    const ribbonRot = this.ribbon.step(
-      hairDrive * 1.6 + (fbm(t * 0.75, 12) * 3.2 - vY * 0.025) * DEG * m,
-      dt,
-    );
+    // One shared hair angle (L/R/ribbon) so layers never peel into stacked cutouts.
+    // Tiny static asymmetry only — no independent noise per piece.
+    const hairDrive = (-vHeadRot * 0.045 - vHeadX * 0.0006) * m + flick * 0.12;
+    const hairNoise = fbm(t * 0.28, 10) * 0.12 * DEG * m; // shared whisper
+    const hairTarget = hairDrive + hairNoise;
     const lim = (v: number, l: number) => Math.max(-l, Math.min(l, v));
+    // keep secondary hair angles tiny so layers stay a single silhouette
+    const hairRotL = lim(this.hairL.step(hairTarget, dt), 2.5 * DEG);
+    const hairRotR = lim(this.hairR.step(hairTarget + 0.15 * DEG * m, dt), 2.5 * DEG);
+    const ribbonRot = lim(this.ribbon.step(hairTarget + 0.2 * DEG * m, dt), 3.5 * DEG);
     // Art-safe arm range (~5° idle; gestures up to ~8°)
     const armDrive = -aX * 0.00005 - torsoRot * 0.55;
     const armRotL = lim(
       this.armL.step(
-        (armDrive + g.armOut + fbm(t * 0.38, 13) * 0.4 * DEG + slump * 0.55 * DEG) * m,
+        (armDrive + g.armOut + fbm(t * 0.32, 13) * 0.18 * DEG + slump * 0.4 * DEG) * m,
         dt,
       ),
-      5.5 * DEG,
+      4.5 * DEG,
     );
     const armRotR = lim(
       this.armR.step(
-        (armDrive - g.armOut + g.armR + fbm(t * 0.4, 14) * 0.4 * DEG - slump * 0.55 * DEG) * m,
+        (armDrive - g.armOut + g.armR + fbm(t * 0.34, 14) * 0.18 * DEG - slump * 0.4 * DEG) * m,
         dt,
       ),
-      5.5 * DEG,
+      4.5 * DEG,
     );
     const hang = -torsoRot - aX * 0.0003 + aY * 0.00012;
     const badgeRot = lim(
@@ -783,6 +993,15 @@ export class RigAnimator {
     const eyeOpen = Math.max(0.02, 1 - lidClose);
     const lidAlpha = smooth(0.6, 0.95, lidClose) * (1 - happy);
 
+    // --- action driven per-eye states (smoothed); automatic eyes keep the idle layer untouched
+    this.stepEye(0, av[IDX.eyeL] | 0, dt);
+    this.stepEye(4, av[IDX.eyeR] | 0, dt);
+    this.fillEye(this.eyeMixL, 0, lidClose, happy);
+    this.fillEye(this.eyeMixR, 4, lidClose, happy);
+    const bCode = av[IDX.brow] | 0;
+    if (bCode > 0) this.browK = bCode;
+    this.browA = approach(this.browA, bCode > 0 ? 0.62 : 0, bCode > 0 ? 14 : 9, dt);
+
     let mouthVariant: MouthVariant = 'closed';
     if (s.mouth > 0.06) mouthVariant = st.mouth === 'o' ? 'o' : 'open';
     else if (st.mouth === 'frown') mouthVariant = 'frown';
@@ -792,7 +1011,7 @@ export class RigAnimator {
       bodyScaleY,
       torsoX,
       torsoRot,
-      figureScale: 1 + g.scale * m,
+      figureScale: 1 + g.scale * m + av[IDX.scale],
       shoulderL: shL,
       shoulderR: shR,
       armRotL,
@@ -819,7 +1038,14 @@ export class RigAnimator {
       mouthVariant,
       mouthOpen: Math.min(1, s.mouth),
       mouthWidth,
-      blush: s.blush,
+      blush: Math.min(1, s.blush + av[IDX.blush] * 0.7),
+      eyeL: this.eyeMixL,
+      eyeR: this.eyeMixR,
+      browAlpha: this.browA,
+      browKind: this.browK,
+      reduced: rm,
+      time: t,
+      ext: actionOn ? pb : null,
       tint: { r: s.tr, g: s.tg, b: s.tb, a: s.ta },
       angerMark: s.anger,
       sweat: s.sweat,
@@ -835,6 +1061,7 @@ export type RigImages = Map<string, CanvasImageSource & { width: number; height:
 /** Layers a rig needs for the full feature set (missing ones are skipped). */
 export const RIG_LAYERS = [
   'body',
+  'body-noarm',
   'arm-l',
   'arm-r',
   'strap-r',
@@ -865,6 +1092,8 @@ export const RIG_LAYERS = [
   'hair-side-r',
   'ribbon',
   'bangs',
+  'clip',
+  'earring',
 ] as const;
 
 const scratches: (HTMLCanvasElement | OffscreenCanvas | undefined)[] = [];
@@ -1138,16 +1367,24 @@ export function drawRig(
     const cy = (m.top + m.bottom) / 2;
     const irisC = (side === 'l' ? A.irisL : A.irisR) ?? [cx, cy];
     const closeY = m.top + h * 0.66;
-    const cl = clamp01(pose.lidClose);
-    const happyA = smooth(0.2, 0.8, pose.happy);
+    const em = side === 'l' ? pose.eyeL : pose.eyeR;
+    const cl = clamp01(em ? em.cl : pose.lidClose);
+    const happyA = smooth(0.2, 0.8, em ? em.happy : pose.happy);
     const openA = 1 - happyA;
+    const slope = em ? em.slope : 0;
+    const eScale = em ? em.scale : pose.eyeScale;
+    const lidAlphaV = em ? em.lidAlpha : pose.lidAlpha;
     const x0 = m.x0 - w * 0.25;
     const x1 = m.x1 + w * 0.25;
     const edge = m.top - 2 + (closeY - m.top + 2) * cl;
     const edgeAt = (x: number) => {
       const t = clamp01((x - m.x0) / w);
+      const outerT = side === 'r' ? t : 1 - t;
       return (
-        edge - h * 0.2 * (1 - cl) * Math.sin(Math.PI * t) + h * 0.12 * cl * Math.sin(Math.PI * t)
+        edge -
+        h * 0.2 * (1 - cl) * Math.sin(Math.PI * t) +
+        h * 0.12 * cl * Math.sin(Math.PI * t) +
+        slope * h * 0.7 * (outerT - 0.5)
       );
     };
     const edgePath = () => {
@@ -1228,12 +1465,12 @@ export function drawRig(
           ctx.ellipse(cx, m.top + h * 0.18, w * 0.55, h * 0.28, 0, 0, Math.PI * 2);
           ctx.fill();
         }
-        lidStroke(ctx, m, side, closeY, 'closed', color, pose.lidAlpha * openA);
+        lidStroke(ctx, m, side, closeY, 'closed', color, lidAlphaV * openA);
         lidStroke(ctx, m, side, m.top + h * 0.58, 'happy', color, happyA);
       },
       0,
-      pose.eyeScale,
-      pose.eyeScale,
+      eScale,
+      eScale,
     );
   };
 
@@ -1246,19 +1483,174 @@ export function drawRig(
   ctx.translate(-W / 2 + pose.torsoX, -H + pose.bodyY);
 
   // torso breathes from the bottom edge; arms ride the shoulders; badge / strap swing
-  pivot([W / 2, H], () => layer('body'), 0, 1, pose.bodyScaleY);
-  const part = (name: string, rot: number, lift = 0) => {
+  const ex = pose.ext?.v;
+  const rOn = ex ? ex[IDX.rOn] : 0;
+  const lOn = ex ? ex[IDX.lOn] : 0;
+  const warp = (rOn > 0.001 || lOn > 0.001) && imgs.has('body-noarm');
+  pivot([W / 2, H], () => layer(warp ? 'body-noarm' : 'body'), 0, 1, pose.bodyScaleY);
+  const part = (name: string, rot: number, lift = 0, alpha = 1) => {
     const pv = P[name];
     if (!pv || !imgs.has(name)) return;
     ctx.save();
     ctx.translate(0, lift);
-    pivot(pv, () => layer(name), rot);
+    pivot(pv, () => layer(name, alpha), rot);
     ctx.restore();
   };
-  part('arm-l', pose.armRotL, pose.shoulderL);
-  part('arm-r', pose.armRotR, pose.shoulderR);
-  part('strap-r', pose.strapRot, pose.shoulderR * 0.5);
+  /** one arm: rest-arm stump seals body-noarm; mesh strip + hand while posed */
+  // both hands are the prayer shape: one joined piece at the chest centre, two sleeves converge
+  const prayerPair =
+    !!ex &&
+    (ex[IDX.lHand] | 0) === (ex[IDX.rHand] | 0) &&
+    HAND_NAMES[ex[IDX.rHand] | 0] === 'prayer' &&
+    ex[IDX.lOn] > 0.5 &&
+    ex[IDX.rOn] > 0.5;
+  const jointArms: {
+    fx: number;
+    fy: number;
+    fpsi: number;
+    himg: RigImageSource;
+    meta: HandPieceMeta;
+    sgn: number;
+    hs: number;
+  }[] = [];
+  const drawArm = (side: 'l' | 'r') => {
+    const name = side === 'l' ? 'arm-l' : 'arm-r';
+    const on = side === 'l' ? lOn : rOn;
+    const rot = side === 'l' ? pose.armRotL : pose.armRotR;
+    const lift = side === 'l' ? pose.shoulderL : pose.shoulderR;
+    const geom = rig.arms?.[side];
+    const img = imgs.get(name);
+    const pv = P[name];
+    const off = L[name];
+    if (on <= 0.001 || !ex || !geom || !img || !pv || !off) {
+      // While the other arm is posed the torso is the sleeve-free body: keep the idle arm
+      // exactly seated on it (no sway/lift) so no background sliver opens at the shoulder seam.
+      if (warp) {
+        const bImg = imgs.get('body');
+        const nImg = imgs.get('body-noarm');
+        const bOff = L['body'] ?? L['body-noarm'];
+        const fillSide = bImg && nImg && bOff ? bodySideFill(bImg, nImg, side) : null;
+        if (fillSide && bOff) ctx.drawImage(fillSide, bOff[0], bOff[1]);
+        part(name, 0, 0);
+      } else part(name, rot, lift);
+      return;
+    }
+    const sgn = geom.sgn;
+    const hand = ex[side === 'l' ? IDX.lHand : IDX.rHand] | 0;
+    const hn = HAND_NAMES[hand];
+    const joint = hn === 'prayer' && prayerPair;
+    const meta = hn ? rig.hands?.[hn] : undefined;
+    const himg = hn ? imgs.get(`hand-${hn}`) : undefined;
+    const ia = side === 'l' ? IDX.lA : IDX.rA;
+    // Full rest arm with distal fade — seals the entire body-noarm hole without a
+    // second hanging sleeve (fade kills the cuff). Mesh draws the posed limb on top.
+    {
+      // seal the upper-arm void between the stump and the sleeve-free torso (no see-through seam)
+      const bImg = imgs.get('body');
+      const nImg = imgs.get('body-noarm');
+      const bOff = L['body'] ?? L['body-noarm'];
+      if (bImg && nImg && bOff) {
+        // a strongly swung arm leaves only the shoulder cap behind (no ghost of the rest sleeve)
+        const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.35) / 0.5));
+        const fillR = Math.round((240 - 130 * swing) / 20) * 20;
+        const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
+        if (f) {
+          ctx.save();
+          ctx.translate(0, lift * 0.5);
+          ctx.drawImage(f, bOff[0], bOff[1]);
+          ctx.restore();
+        }
+      }
+    }
+    const stump = shoulderPlug(img, geom);
+    if (stump) {
+      ctx.save();
+      ctx.translate(0, lift);
+      ctx.drawImage(stump as CanvasImageSource, off[0], off[1]);
+      ctx.restore();
+    } else {
+      part(name, rot, lift);
+    }
+    // Wrist gently follows elbow so flaps read as a forearm, not a hinged PNG.
+    const elbow = ex[ia + 1] * DEG;
+    const wrist = ex[ia + 2] * DEG + elbow * 0.12;
+    const hasHand = !!(meta && himg);
+    const cuffW = Math.abs(geom.nmax - geom.nmin);
+    const hs = hasHand ? handScaleFor(meta!, cuffW) : 0;
+    const armP = {
+      a: ex[ia] * DEG - sgn * rot,
+      e: elbow,
+      w: wrist,
+      lift,
+      handAlpha: 1,
+      fore: hn === 'prayer' ? -1 : ex[side === 'l' ? IDX.lF : IDX.rF],
+      // taper the sleeve to the hand piece's sleeve and fold the wrist into the forearm so
+      // sleeve + cuff are one continuous cloth (no overhanging faded stub)
+      endW: hasHand ? hs * meta!.sleeveW * (joint ? 0.95 : 1.12) : undefined,
+      mergeMax: joint ? 1.3 : undefined,
+      hardEnd: joint,
+    };
+    const geomArgs = [img, geom, pv, off as [number, number]] as const;
+    if (hasHand && joint) {
+      // bilateral prayer: both sleeves rise to the chest centre; the single prayer piece is
+      // drawn once at their joint after both arms (see armsPass)
+      drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
+      jointArms.push({
+        fx: armFrame.hx,
+        fy: armFrame.hy,
+        fpsi: armFrame.hPsi,
+        himg: himg!,
+        meta: meta!,
+        sgn,
+        hs,
+      });
+    } else if (hasHand) {
+      // mesh, then the hand piece on top of it, then the sleeve end re-drawn over the piece's
+      // sleeve stub: it tapers to the stub's width and dissolves into it (cloth over cloth, no
+      // semi-transparent edge ever meets the background)
+      drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
+      drawHandPiece(ctx, himg!, meta!, sgn, 1, hs);
+      drawArmPieces(ctx, ...geomArgs, { ...armP, fromS: ARM_HAND_S - 60 }, ARM_HAND_S + 4);
+    } else {
+      drawArmPieces(ctx, ...geomArgs, armP, 1e9);
+    }
+  };
+  const armsPass = () => {
+    // Fill the armpit notch that neither arm layer covers (body opaque ∩ body-noarm empty).
+    if (warp && imgs.has('body') && imgs.has('body-noarm')) {
+      const bodyImg = imgs.get('body');
+      const noarmImg = imgs.get('body-noarm');
+      const bodyOff = L['body'] ?? L['body-noarm'];
+      const shoulder = P['arm-r'] ?? P['arm-l'];
+      if (bodyImg && noarmImg && bodyOff && shoulder) {
+        const fill = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], shoulder);
+        if (fill) {
+          ctx.save();
+          ctx.drawImage(fill as CanvasImageSource, bodyOff[0], bodyOff[1]);
+          ctx.restore();
+        }
+      }
+    }
+    jointArms.length = 0;
+    drawArm('l');
+    drawArm('r');
+    if (jointArms.length === 2) {
+      const [a, b] = jointArms;
+      const saved = { hx: armFrame.hx, hy: armFrame.hy, hPsi: armFrame.hPsi };
+      armFrame.hx = (a.fx + b.fx) / 2;
+      armFrame.hy = (a.fy + b.fy) / 2;
+      const wrap = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
+      armFrame.hPsi = (wrap(a.fpsi) + wrap(b.fpsi)) / 2;
+      drawHandPiece(ctx, a.himg, a.meta, 1, 1, (a.hs + b.hs) / 2, 40);
+      armFrame.hx = saved.hx;
+      armFrame.hy = saved.hy;
+      armFrame.hPsi = saved.hPsi;
+    }
+  };
   part('badge', pose.badgeRot);
+  const armFront = !!ex && ex[IDX.armFront] > 0.5 && warp;
+  if (!armFront) armsPass();
+  part('strap-r', pose.strapRot, pose.shoulderR * 0.5, 1 - smooth(0, 0.4, rOn));
 
   const neckLift = (H - neck[1]) * (pose.bodyScaleY - 1);
   ctx.save();
@@ -1312,8 +1704,25 @@ export function drawRig(
       layer('lid-r', pose.lidAlpha);
     } else layer('eyes-closed', pose.lidAlpha);
   }
-  if (pose.mouthVariant === 'closed' || pose.mouthVariant === 'frown') {
-    layer(pose.mouthVariant === 'frown' ? 'mouth-frown' : 'mouth');
+  const mCode = ex && pose.mouthVariant === 'closed' ? ex[IDX.mouth] | 0 : 0;
+  if (mCode >= 6 || mCode === 2 || (mCode === 3 && pose.mouthOpen < 0.06)) {
+    // action mouths: strokes in the artwork's mouth colour, or the master 'open' plate for 3
+    if (mCode === 3) {
+      pivot(A.mouth, () => layer('mouth-open'), 0, 1, 0.9);
+    } else if (mCode === 2) {
+      pivot(A.mouth, () => layer('mouth'), 0, 1.14, 1.15);
+    } else {
+      drawMouth(ctx, mCode, A.mouth[0], A.mouth[1], 0.6);
+    }
+  } else if (mCode === 4 && pose.mouthOpen < 0.06) {
+    pivot(A.mouth, () => layer('mouth-o'), 0, 0.8, 0.8);
+  } else if (
+    pose.mouthVariant === 'closed' ||
+    pose.mouthVariant === 'frown' ||
+    mCode === 5 ||
+    mCode === 1
+  ) {
+    layer(pose.mouthVariant === 'frown' || mCode === 5 ? 'mouth-frown' : 'mouth');
   } else {
     const name = pose.mouthVariant === 'o' ? 'mouth-o' : 'mouth-open';
     const open = 0.35 + 0.65 * pose.mouthOpen;
@@ -1328,16 +1737,47 @@ export function drawRig(
   }
   ctx.restore();
 
-  // fringe sits above the eyes; micro brow-raise lifts bangs slightly (no second brow)
+  // fringe stays rigid with the head (brand-lock); micro brow-raise only. Side/ribbon share
+  // one spring so the silhouette still reads as one continuous head of hair.
   ctx.save();
-  ctx.translate(0, -2.2 * (pose.browRaise ?? 0));
+  ctx.translate(0, -1.0 * (pose.browRaise ?? 0));
   tintedLayer('bangs', 4);
   ctx.restore();
+  // brow strokes (only while an action asks for them) read through the fringe
+  if ((pose.browAlpha ?? 0) > 0.02 && rig.eyes?.l && rig.eyes?.r) {
+    ctx.save();
+    ctx.translate(pose.featX, pose.featY);
+    drawBrow(
+      ctx,
+      pose.browKind ?? 0,
+      rig.eyes.l.x0,
+      rig.eyes.l.x1,
+      rig.eyes.l.top,
+      1,
+      pose.browAlpha ?? 0,
+    );
+    drawBrow(
+      ctx,
+      pose.browKind ?? 0,
+      rig.eyes.r.x0,
+      rig.eyes.r.x1,
+      rig.eyes.r.top,
+      -1,
+      pose.browAlpha ?? 0,
+    );
+    ctx.restore();
+  }
+  // official N hair clip rides on top of the fringe (brand part, never deformed)
+  layer('clip');
   // secondary motion layers (hang from their roots)
   if (A.hairL) pivot(A.hairL, () => layer('hair-side-l'), pose.hairRotL);
   if (A.hairR) pivot(A.hairR, () => layer('hair-side-r'), pose.hairRotR);
   if (A.ribbon) pivot(A.ribbon, () => layer('ribbon'), pose.ribbonRot);
+  layer('earring');
 
+  if (ex && A.headTop && A.eyeL && A.eyeR && A.cheekL && A.cheekR) {
+    drawFx(ctx, A.headTop, A.eyeL, A.eyeR, A.cheekL, A.cheekR, ex, pose.time ?? 0, !!pose.reduced);
+  }
   // little manga marks
   if (pose.angerMark > 0.05 && A.headTop) {
     const [x, y] = [A.headTop[0] + 120, A.headTop[1] + 40];
@@ -1375,6 +1815,7 @@ export function drawRig(
     ctx.restore();
   }
   ctx.restore();
+  if (armFront) armsPass();
   ctx.restore();
 }
 

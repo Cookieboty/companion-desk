@@ -126,7 +126,7 @@ test.describe('E8 · model store + local import', () => {
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
-      COMPANION_MODEL_CATALOG_URL: `${base}/catalog.json`,
+      NOMI_MODEL_CATALOG_URL: `${base}/catalog.json`,
       IG_MODEL_STORE_ALLOW_LOOPBACK: '1',
     };
     delete env.NODE_ENV;

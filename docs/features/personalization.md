@@ -12,22 +12,23 @@
 
 设置 →「快捷键」列出全部快捷键：点「修改」后按下新的组合键（需包含 `Ctrl/⌘` 或 `Alt`，或使用 F1–F12），冲突时会提示；`Esc` 取消。
 
-| 默认             | 作用            |
-| ---------------- | --------------- |
-| `Ctrl/⌘+K`       | 命令面板        |
-| `Ctrl/⌘+N`       | 新对话          |
-| `Ctrl/⌘+L`       | 聚焦输入框      |
-| `Ctrl/⌘+,`       | 打开设置        |
-| `Ctrl/⌘+B`       | 收起 / 展开侧栏 |
-| `Ctrl/⌘+Shift+K` | 知识库问答开关  |
-| `Ctrl/⌘+Shift+S` | 截图提问        |
-| `Ctrl/⌘+Shift+H` | 免按键对话开关  |
-| `Ctrl/⌘+Shift+M` | 记忆            |
-| `Ctrl/⌘+Shift+L` | 知识库          |
-| `Ctrl/⌘+Shift+D` | 日程 · 编程助手 |
-| `Ctrl/⌘+Shift+E` | 扩展 / MCP      |
-| `Ctrl/⌘+Shift+J` | 本机管理        |
-| `Ctrl/⌘+Shift+O` | 屏幕记忆        |
+| 默认             | 作用             |
+| ---------------- | ---------------- |
+| `Ctrl/⌘+K`       | 命令面板         |
+| `Ctrl/⌘+N`       | 新对话           |
+| `Ctrl/⌘+L`       | 聚焦输入框       |
+| `Ctrl/⌘+F`       | 搜索对话（侧栏） |
+| `Ctrl/⌘+,`       | 打开设置         |
+| `Ctrl/⌘+B`       | 收起 / 展开侧栏  |
+| `Ctrl/⌘+Shift+K` | 知识库问答开关   |
+| `Ctrl/⌘+Shift+S` | 截图提问         |
+| `Ctrl/⌘+Shift+H` | 免按键对话开关   |
+| `Ctrl/⌘+Shift+M` | 记忆             |
+| `Ctrl/⌘+Shift+L` | 知识库           |
+| `Ctrl/⌘+Shift+D` | 日程与提醒       |
+| `Ctrl/⌘+Shift+E` | 扩展 / MCP       |
+| `Ctrl/⌘+Shift+J` | 本机管理         |
+| `Ctrl/⌘+Shift+O` | 屏幕记忆         |
 
 固定快捷键：输入框里 `/` 打开命令，`Enter` 发送、`Shift+Enter` 换行，按住 `F2` 说话。全局快捷键 `Ctrl/⌘+Alt+A` 截图提问。
 

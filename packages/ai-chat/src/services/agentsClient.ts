@@ -1,6 +1,7 @@
 import { t } from '@nomi-ai/ui';
 /** 编程助手进度客户端：`ai:agents:*` IPC（经 preload 的 window.aiIPC） */
-export type AgentKind = 'codex' | 'claude' | 'aider' | 'cline' | 'continue' | 'cursor' | 'gemini';
+export type AgentKind =
+  'codex' | 'claude' | 'dsh' | 'aider' | 'cline' | 'continue' | 'cursor' | 'gemini';
 export type AgentStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'stalled' | 'idle';
 
 export interface AgentWatchSettings {
@@ -13,7 +14,11 @@ export interface AgentWatchSettings {
 
 export interface AgentSessionView {
   id: string;
-  kind: AgentKind;
+  kind: AgentKind | 'nomi';
+  /** file = 本机会话文件；tab = Nomi 对话标签 */
+  source?: 'file' | 'tab';
+  tabId?: string;
+  unread?: number;
   label: string;
   project?: string;
   cwd?: string;
@@ -34,8 +39,9 @@ export interface AgentWatchState {
 }
 
 export const AGENT_LABEL: Record<AgentKind, string> = {
-  codex: 'Codex CLI',
+  codex: 'Codex',
   claude: 'Claude Code',
+  dsh: 'dsh',
   aider: 'Aider',
   cline: 'Cline',
   continue: 'Continue',
@@ -84,3 +90,24 @@ export const agentsClient = {
   scan: () => call<AgentWatchState>('scan'),
   onChanged: (fn: () => void) => on('ai:agents:changed', () => fn()),
 };
+
+/** 监视视图按端点过滤：全部 / 各 CLI / Nomi 标签 */
+export type EndpointFilter = 'all' | 'tabs' | AgentKind;
+
+export function filterSessions(list: AgentSessionView[], f: EndpointFilter): AgentSessionView[] {
+  if (f === 'all') return list;
+  if (f === 'tabs') return list.filter((s) => s.source === 'tab');
+  return list.filter((s) => s.kind === f);
+}
+
+/** 各端点的会话数（只列出现过的端点） */
+export function endpointCounts(list: AgentSessionView[]): Array<[EndpointFilter, number]> {
+  const out = new Map<EndpointFilter, number>([['all', list.length]]);
+  const tabs = list.filter((s) => s.source === 'tab').length;
+  if (tabs) out.set('tabs', tabs);
+  for (const s of list) {
+    if (s.kind === 'nomi') continue;
+    out.set(s.kind, (out.get(s.kind) ?? 0) + 1);
+  }
+  return [...out.entries()];
+}

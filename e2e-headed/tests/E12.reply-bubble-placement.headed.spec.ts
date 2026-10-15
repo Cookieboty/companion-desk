@@ -111,32 +111,36 @@ test.describe('E12 · reply bubble + face-safe placement', () => {
     });
     const main = await app.firstWindow({ timeout: 20_000 });
     await main.waitForFunction(() => 'electronAPI' in window, undefined, { timeout: 20_000 });
-    const vrm = await main
-      .waitForFunction(() => document.documentElement.dataset.mascotBackend === 'vrm', undefined, {
-        timeout: 60_000,
-      })
-      .then(() => true)
-      .catch(() => false);
     const bubble = main.locator('[data-testid="mascot-bubble"]');
 
-    // ---- 1. 对话回复 → 气泡（前两句 + 查看全文）----
-    const chatWindow = app.waitForEvent('window', { timeout: 20_000 });
+    // ---- 1. 先开对话窗（Windows 上等 VRM 再开窗易拖垮/拖慢渲染进程）----
+    const chatWindow = app.waitForEvent('window', { timeout: 30_000 });
     await main.evaluate(() =>
       (
         window as unknown as { electronAPI: { openAiChat(): Promise<unknown> } }
       ).electronAPI.openAiChat(),
     );
     const chat = await chatWindow;
-    await chat.waitForSelector('textarea', { timeout: 20_000 });
-    await chat.fill('textarea', 'hello');
-    await chat.press('textarea', 'Enter');
+    await chat.waitForLoadState('domcontentloaded').catch(() => undefined);
+    const input = chat.locator('[data-testid="chat-input"], textarea').first();
+    await input.waitFor({ state: 'visible', timeout: 60_000 });
+    // VRM 与对话并行就绪；脸部避让断言需要它
+    const vrm = await main
+      .waitForFunction(() => document.documentElement.dataset.mascotBackend === 'vrm', undefined, {
+        timeout: 60_000,
+      })
+      .then(() => true)
+      .catch(() => false);
+    await input.fill('hello');
+    await input.press('Enter');
     await expect(chat.locator('body')).toContainText('剩下的去对话窗口看全文吧', {
       timeout: 30_000,
     });
-    await expect(bubble).toContainText('第一句话在这里。第二句也很短。', { timeout: 15_000 });
+    // ai:event 经主进程广播到看板娘窗口；慢机器（Windows runner）上可能迟到，给足时间
+    await expect(bubble).toContainText('第一句话在这里。第二句也很短。', { timeout: 45_000 });
     await expect(bubble).not.toContainText('第三句');
     const more = main.locator('[data-testid="bubble-see-more"]');
-    await expect(more).toBeVisible();
+    await expect(more).toBeVisible({ timeout: 15_000 });
     await main.waitForTimeout(600);
     if (vrm) {
       const o = await overlap(main);
@@ -163,8 +167,8 @@ test.describe('E12 · reply bubble + face-safe placement', () => {
     if ((await toggle.getAttribute('aria-checked')) === 'true') await toggle.click();
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await main.keyboard.press('Escape');
-    await chat.fill('textarea', 'again');
-    await chat.press('textarea', 'Enter');
+    await input.fill('again');
+    await input.press('Enter');
     await expect(chat.locator('body')).toContainText('again', { timeout: 10_000 });
     await chat.waitForTimeout(3000);
     await expect(bubble).not.toContainText('第一句话在这里');

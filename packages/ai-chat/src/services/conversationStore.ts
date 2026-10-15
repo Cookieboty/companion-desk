@@ -6,12 +6,14 @@
  *   ai-chat:conversation:<id>      → 该会话的 ChatMessage[]
  *   ai-chat:currentConversation    → 当前会话 id
  * 旧版单会话 `ai-chat:history` 在首次访问时迁移为一个会话。
+ * 无 backend 字段的旧行迁移为 nomi。
  * 无 localStorage（测试 / 非浏览器）时退化为内存存储。
  */
 
 import { t } from '@nomi-ai/ui';
 
-import type { ChatMessage, ChatSession } from '../types/chat';
+import type { ChatMessage, ChatSession, ConversationBackend } from '../types/chat';
+import { isConversationBackend } from '../types/chat';
 
 export interface KeyValueStorage {
   getItem(key: string): string | null;
@@ -52,6 +54,23 @@ export interface ConversationStoreOptions {
   newId?: () => string;
 }
 
+export interface CreateConversationOpts {
+  name?: string;
+  backend?: ConversationBackend;
+  tabId?: string;
+  /** 创建后是否设为当前会话，默认 true */
+  activate?: boolean;
+}
+
+export interface ForkConversationOpts {
+  /** 目标后端；默认与源相同 */
+  backend?: ConversationBackend;
+  tabId?: string;
+  name?: string;
+  /** 覆盖要复制的消息；默认复制源会话全部消息 */
+  messages?: ChatMessage[];
+}
+
 export class ConversationStore {
   private readonly storage: KeyValueStorage;
   private readonly now: () => number;
@@ -66,30 +85,54 @@ export class ConversationStore {
       opts.newId ??
       (() => `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`);
     this.migrateLegacy();
+    this.migrateBackends();
   }
 
   list(): ConversationMeta[] {
     return this.read<ConversationMeta[]>(INDEX_KEY) ?? [];
   }
 
-  /** 当前会话 id；不存在时自动创建一个 */
-  currentId(): string {
-    const id = this.read<string>(CURRENT_KEY);
-    if (id && this.list().some((c) => c.id === id)) return id;
-    return this.create().id;
+  listByBackend(backend: ConversationBackend): ConversationMeta[] {
+    return this.list().filter((c) => c.backend === backend);
   }
 
-  create(name?: string): ConversationMeta {
+  /** 当前会话 id；不存在时返回 undefined（不隐式创建） */
+  currentId(): string | undefined {
+    const id = this.read<string>(CURRENT_KEY);
+    if (id && this.list().some((c) => c.id === id)) return id;
+    return undefined;
+  }
+
+  /** 取当前会话 id，没有则新建一个 Nomi 会话 */
+  ensureCurrent(): string {
+    return this.currentId() ?? this.create().id;
+  }
+
+  get(id: string): ConversationMeta | undefined {
+    return this.list().find((c) => c.id === id);
+  }
+
+  findByTabId(tabId: string): ConversationMeta | undefined {
+    return this.list().find((c) => c.tabId === tabId);
+  }
+
+  create(nameOrOpts?: string | CreateConversationOpts): ConversationMeta {
+    const opts: CreateConversationOpts =
+      typeof nameOrOpts === 'string' || nameOrOpts === undefined
+        ? { name: nameOrOpts }
+        : nameOrOpts;
     const ts = this.now();
     const meta: ConversationMeta = {
       id: this.newId(),
-      name: name ?? t('新对话'),
+      name: opts.name ?? t('新对话'),
       createdAt: ts,
       updatedAt: ts,
+      backend: opts.backend ?? 'nomi',
+      ...(opts.tabId ? { tabId: opts.tabId } : {}),
     };
     this.write(INDEX_KEY, [...this.list(), meta]);
     this.write(messagesKey(meta.id), []);
-    this.write(CURRENT_KEY, meta.id);
+    if (opts.activate !== false) this.write(CURRENT_KEY, meta.id);
     return meta;
   }
 
@@ -98,29 +141,139 @@ export class ConversationStore {
     this.write(CURRENT_KEY, id);
   }
 
-  getMessages(id: string = this.currentId()): ChatMessage[] {
+  getMessages(id: string | undefined = this.currentId()): ChatMessage[] {
+    if (!id) return [];
     return this.read<ChatMessage[]>(messagesKey(id)) ?? [];
   }
 
-  append(message: ChatMessage, id: string = this.currentId()): void {
+  setMessages(id: string, messages: ChatMessage[]): void {
+    this.write(messagesKey(id), messages.slice(-this.maxMessages));
+    this.touch(id);
+  }
+
+  append(message: ChatMessage, id: string | undefined = this.currentId()): void {
+    if (!id) return;
     const next = [...this.getMessages(id), message];
     this.write(messagesKey(id), next.slice(-this.maxMessages));
     this.touch(id, message);
   }
 
   /** 清空会话消息（会话本身保留） */
-  clear(id: string = this.currentId()): void {
+  clear(id: string | undefined = this.currentId()): void {
+    if (!id) return;
     this.write(messagesKey(id), []);
     this.touch(id);
   }
 
-  delete(id: string): void {
+  updateMeta(
+    id: string,
+    patch: Partial<Omit<ConversationMeta, 'id' | 'createdAt'>>,
+  ): ConversationMeta {
+    let updated: ConversationMeta | undefined;
     this.write(
       INDEX_KEY,
-      this.list().filter((c) => c.id !== id),
+      this.list().map((c) => {
+        if (c.id !== id) return c;
+        updated = {
+          ...c,
+          ...patch,
+          id: c.id,
+          createdAt: c.createdAt,
+          updatedAt: patch.updatedAt ?? this.now(),
+        };
+        return updated;
+      }),
     );
+    if (!updated) throw new Error(`unknown conversation: ${id}`);
+    return updated;
+  }
+
+  /**
+   * 同步 CLI 标签到侧栏元信息：已有则更新标题 / 时间 / 后端；没有则新建。
+   * 返回会话元信息。
+   */
+  upsertFromTab(tab: {
+    id: string;
+    title: string;
+    backend: ConversationBackend;
+    createdAt: number;
+    updatedAt: number;
+  }): ConversationMeta {
+    if (tab.backend === 'nomi') {
+      throw new Error('CLI tab sync requires a non-nomi backend');
+    }
+    const existing = this.findByTabId(tab.id);
+    if (existing) {
+      return this.updateMeta(existing.id, {
+        name: tab.title,
+        backend: tab.backend,
+        tabId: tab.id,
+        updatedAt: tab.updatedAt,
+      });
+    }
+    const ts = this.now();
+    const meta: ConversationMeta = {
+      id: this.newId(),
+      name: tab.title,
+      createdAt: tab.createdAt || ts,
+      updatedAt: tab.updatedAt || ts,
+      backend: tab.backend,
+      tabId: tab.id,
+    };
+    this.write(INDEX_KEY, [...this.list(), meta]);
+    this.write(messagesKey(meta.id), []);
+    return meta;
+  }
+
+  /** 删除与某 CLI 标签绑定的侧栏项（不关标签本身） */
+  removeByTabId(tabId: string): void {
+    const hit = this.findByTabId(tabId);
+    if (hit) this.delete(hit.id);
+  }
+
+  /**
+   * 分叉：复制源会话消息到新会话（可换后端 / 绑定新 tabId）。
+   * 不销毁源。CLI 目标若消息应写入 harness，调用方自行 seed，并把 messages 传空数组。
+   */
+  fork(sourceId: string, opts: ForkConversationOpts = {}): ConversationMeta {
+    const src = this.get(sourceId);
+    if (!src) throw new Error(`unknown conversation: ${sourceId}`);
+    const msgs = opts.messages ?? this.getMessages(sourceId);
+    const name = opts.name ?? t('{0} (副本)', src.name);
+    const meta = this.create({
+      name,
+      backend: opts.backend ?? src.backend,
+      tabId: opts.tabId,
+      activate: true,
+    });
+    if (msgs.length) {
+      // 新 id，避免与源冲突
+      const copied = msgs.map((m, i) => ({
+        ...m,
+        id: `${meta.id}_${i}_${m.id}`,
+      }));
+      this.write(messagesKey(meta.id), copied.slice(-this.maxMessages));
+      this.touch(meta.id);
+    }
+    return this.get(meta.id)!;
+  }
+
+  delete(id: string): void {
+    const removed = this.list().find((c) => c.id === id);
+    const remaining = this.list().filter((c) => c.id !== id);
+    this.write(INDEX_KEY, remaining);
     this.storage.removeItem(messagesKey(id));
-    if (this.read<string>(CURRENT_KEY) === id) this.storage.removeItem(CURRENT_KEY);
+    if (this.read<string>(CURRENT_KEY) !== id) return;
+    // 当前会话被删：优先切到同后端最近更新的会话；没有则留空（不隐式新建 / 不跨端跳）
+    const sameBackend = removed
+      ? remaining.filter((c) => c.backend === removed.backend)
+      : remaining;
+    const next = sameBackend.reduce<ConversationMeta | undefined>(
+      (acc, c) => (!acc || c.updatedAt > acc.updatedAt ? c : acc),
+      undefined,
+    );
+    if (next) this.write(CURRENT_KEY, next.id);
+    else this.storage.removeItem(CURRENT_KEY);
   }
 
   private touch(id: string, message?: ChatMessage): void {
@@ -129,12 +282,25 @@ export class ConversationStore {
       this.list().map((c) => {
         if (c.id !== id) return c;
         const named =
-          message && message.role === 'user' && c.name === '新对话'
+          message && message.role === 'user' && (c.name === '新对话' || c.name === t('新对话'))
             ? message.content.slice(0, 30)
             : c.name;
         return { ...c, name: named, updatedAt: this.now(), modelId: message?.modelId ?? c.modelId };
       }),
     );
+  }
+
+  /** 旧版无 backend 的行 → nomi；非法 backend 也回退 nomi */
+  private migrateBackends(): void {
+    const list = this.read<Array<Partial<ConversationMeta> & { id: string }>>(INDEX_KEY);
+    if (!list || list.length === 0) return;
+    let changed = false;
+    const next = list.map((c) => {
+      if (isConversationBackend(c.backend)) return c as ConversationMeta;
+      changed = true;
+      return { ...c, backend: 'nomi' as const } as ConversationMeta;
+    });
+    if (changed) this.write(INDEX_KEY, next);
   }
 
   private migrateLegacy(): void {

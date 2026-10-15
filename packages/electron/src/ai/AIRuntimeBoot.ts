@@ -27,6 +27,7 @@ import {
   createAiSdkBooter,
   createSafeStorageCipher,
   llmProvidersFromEnv,
+  providerOverrideFromEnv,
   createElectronIpcAdapter,
   createGuardedIpcAdapter,
   createElectronLifecycle,
@@ -164,7 +165,7 @@ export async function startAIRuntime(
     store: providerStore,
     envEntries: llmProvidersFromEnv(process.env),
     getRegistry: () => registry,
-    overrideId: process.env.COMPANION_PROVIDER?.trim() || undefined,
+    overrideId: providerOverrideFromEnv(process.env),
   });
 
   const booter =

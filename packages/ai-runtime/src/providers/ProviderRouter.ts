@@ -3,7 +3,7 @@
  * 并提供 `resolve(role)` 做 active provider / 按角色路由。
  *
  * 选择优先级（ChatFacade 未显式指定 provider 时）：
- *   1. `COMPANION_PROVIDER` 环境变量（强制覆盖，调试 / 托管部署用）
+ *   1. `NOMI_PROVIDER` 环境变量（强制覆盖，调试 / 托管部署用）
  *   2. 面板里为该角色（chat / agent-tools / summary）绑定的 provider + 模型
  *   3. 面板里的「当前 provider」
  *   4. 环境变量 providers（已配 key 的云端 → ollama → 未配 key 的）
@@ -198,7 +198,7 @@ export interface RoutedRegistryOptions {
   /** 环境变量 providers（静态） */
   envProviders?: LLMProvider[];
   factory?: ProviderFactory;
-  /** `COMPANION_PROVIDER` 覆盖 */
+  /** `NOMI_PROVIDER` 覆盖 */
   overrideId?: string;
   onError?: (msg: string, err: unknown) => void;
 }

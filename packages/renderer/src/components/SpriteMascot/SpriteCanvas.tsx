@@ -18,6 +18,7 @@ import {
   type RigManifest,
 } from '../../mascot/layeredRig';
 import { mascotRegistry } from '../../mascot/MascotBackend';
+import { IdleBehavior } from '../../mascot/rig/idleBehavior';
 import { characterBox } from '../../mascot/spriteLayout';
 
 import MascotInteractionLayerLite, { type SpriteGeometry } from './InteractionLite';
@@ -85,18 +86,21 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
             };
           }
           const dir = rig.dir ?? 'layers/';
-          const rigLoads = RIG_LAYERS.filter((n) => rig.layers[n]).map(
-            (n) =>
-              new Promise<void>((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                  rigImgs.current.set(n, img);
-                  resolve();
-                };
-                img.onerror = () => resolve();
-                img.src = `${baseUrl}${dir}${n}.png`;
-              }),
-          );
+          const load = (key: string, file: string) =>
+            new Promise<void>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                rigImgs.current.set(key, img);
+                resolve();
+              };
+              img.onerror = () => resolve();
+              img.src = `${baseUrl}${dir}${file}`;
+            });
+          const rigLoads = [
+            ...RIG_LAYERS.filter((n) => rig.layers[n]).map((n) => load(n, `${n}.png`)),
+            // hand pieces of the mesh-warped arms (non-brand art, see docs/BRAND.md)
+            ...Object.entries(rig.hands ?? {}).map(([n, h]) => load(`hand-${n}`, h.file)),
+          ];
           return Promise.all(rigLoads).then(() => {
             if (cancelled) return;
             if (!rigImgs.current.has('body') || !rigImgs.current.has('head')) {
@@ -149,6 +153,13 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
     let last = performance.now();
     let activeAt = last;
     let lastSig = '';
+    let lastUserSig = '';
+    let userAt = last;
+    const idleBehavior = new IdleBehavior();
+    // e2e / perf probes: current action id + smoothed frame cost (ms), published every ~30 frames
+    let probeAction = '';
+    let frameMs = 0;
+    let frameN = 0;
     const tick = (now: number) => {
       // pause entirely while the window is hidden / minimised (resumed by visibilitychange)
       if (document.hidden) {
@@ -169,7 +180,12 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       if (!backend || !canvas) return;
       backend.update(dt, now / 1000);
       const frame = backend.snapshot();
-      const sig = `${frame.talking}|${frame.expression}|${frame.gesture?.id}|${frame.thinking}|${frame.lookX.toFixed(2)}|${frame.lookY.toFixed(2)}`;
+      const userSig = `${frame.talking}|${frame.expression}|${frame.thinking}|${frame.lookX.toFixed(2)}|${frame.lookY.toFixed(2)}`;
+      if (userSig !== lastUserSig || frame.mouth > 0.02) {
+        lastUserSig = userSig;
+        userAt = now;
+      }
+      const sig = `${userSig}|${frame.gesture?.id}`;
       if (sig !== lastSig || frame.mouth > 0.02) {
         lastSig = sig;
         activeAt = now;
@@ -188,6 +204,14 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       const rig = rigRef.current;
       const anim = animRef.current;
       if (rig && anim) {
+        // random idle behaviours (look around, hum, yawn, stretch …) — never while busy / reduced
+        const pick = idleBehavior.update(now, {
+          idleMs: now - userAt,
+          busy: anim.actions.busy() || frame.talking || frame.thinking,
+          hour: new Date().getHours(),
+          reduced,
+        });
+        if (pick) backend.playMotion(pick, { priority: 0 });
         const pose = anim.step(dt, now / 1000, {
           expression: frame.expression,
           mouth: frame.mouth,
@@ -200,7 +224,16 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           thinking: frame.thinking,
         });
         const box = characterBox(w, h);
+        const t0 = performance.now();
         paintRigFrame(ctx, rig, rigImgs.current, pose, w, h, box);
+        frameMs += (performance.now() - t0 - frameMs) * 0.1;
+        const cur = anim.actions.current() ?? '';
+        if (cur !== probeAction || ++frameN % 30 === 0) {
+          probeAction = cur;
+          const ds = document.documentElement.dataset;
+          ds.mascotAction = cur;
+          ds.mascotPaintMs = frameMs.toFixed(2);
+        }
         const view = rigTransform(rig, w, h, box);
         const r = canvas.getBoundingClientRect();
         const shift = (b: { left: number; right: number; top: number; bottom: number } | null) =>

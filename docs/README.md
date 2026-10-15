@@ -1,12 +1,18 @@
-# Nomi 文档
+# Nomi 文档 / Nomi Docs
 
-Nomi·诺米 是运行在你电脑上的桌面 AI 伙伴。这里按功能模块介绍怎么用，每篇末尾附少量技术说明。
+<p align="left"><a href="#中文">中文</a> · <a href="#english">English</a></p>
 
-## 开始
+---
+
+## 中文
+
+Nomi·诺米 是运行在你电脑上的桌面 AI 伙伴（**你的桌面 AI 伙伴** —— 住在桌面，懂你所想，帮你做到。）。这里按功能模块介绍怎么用，每篇末尾附少量技术说明。
+
+### 开始
 
 - [快速上手](getting-started.md)：安装、首次引导、添加模型、常用快捷键
 
-## 功能
+### 功能
 
 | 模块                                                       | 说明                                               |
 | ---------------------------------------------------------- | -------------------------------------------------- |
@@ -28,10 +34,50 @@ Nomi·诺米 是运行在你电脑上的桌面 AI 伙伴。这里按功能模块
 | [自动更新](features/auto-update.md)                        | 后台检查与确认安装                                 |
 | [隐私与安全](features/privacy-security.md)                 | 数据保存位置、仅本地模式、权限确认、数据导出       |
 
-## 开发
+### 开发
 
 - [架构概览](development/architecture.md)
 - [构建与运行](development/building.md)
 - [测试](development/testing.md)
 - [发布](RELEASE.md)：打包、签名与公证（含 CI secret 名称）
 - [品牌规范](BRAND.md)：素材在 [`brand/`](brand/)，截图在 [`screenshots/`](screenshots/)
+
+---
+
+## English
+
+Nomi is your desktop AI companion (**Your desktop AI companion** — lives on your desktop, gets what you mean, and gets it done.). These pages explain how to use each feature module; each article ends with a short technical note.
+
+### Getting started
+
+- [Getting started](getting-started.md): install, first-run onboarding, add a model, common shortcuts
+
+### Features
+
+| Module                                                            | About                                                                |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Desktop companion Nomi](features/mascot.md)                      | Character, expressions & interaction; model store & import VRM       |
+| [AI chat](features/chat.md)                                       | Chat window, image & screenshot Q&A, command palette                 |
+| [Providers & tokens](features/providers.md)                       | Presets, one-click switch, fetch models, latency, multi-key, routing |
+| [Knowledge base](features/knowledge-base.md)                      | Answer from your folders & notes with citations                      |
+| [Long-term memory](features/memory.md)                            | Chat memories, About me, user profile                                |
+| [Schedule & calendar](features/scheduling-calendar.md)            | Reminders, jobs, proactive chat, DND, system calendar                |
+| [Screen Q&A](features/screen-qa.md)                               | Screenshot ask, image attachments, screen memory                     |
+| [MCP & skills](features/mcp-skills.md)                            | MCP server management, SKILL.md packs                                |
+| [Local models](features/local-models.md)                          | One-click small models, Ollama management, offline mode              |
+| [Automation & desktop caps](features/automation.md)               | Files, notes, reminders, clipboard, controlled browser, sandbox      |
+| [Voice](features/voice.md)                                        | STT, hands-free, wake word, TTS & custom voice                       |
+| [Coding-agent monitor](features/agent-monitor.md)                 | Progress bubbles for Claude Code, Codex, Cursor, and more            |
+| [Coding-agent harness (design)](features/coding-agent-harness.md) | Session takeover, CLI provider switch, updates (draft)               |
+| [Dynamic Island](features/dynamic-island.md)                      | Notch-style notifications on macOS                                   |
+| [Personalization](features/personalization.md)                    | Themes, app icons, shortcuts, language, accessibility                |
+| [Auto-update](features/auto-update.md)                            | Background check and confirm-to-install                              |
+| [Privacy & security](features/privacy-security.md)                | Data location, local-only mode, permission prompts, export           |
+
+### Development
+
+- [Architecture](development/architecture.md)
+- [Building](development/building.md)
+- [Testing](development/testing.md)
+- [Release](RELEASE.md): packaging, signing & notarization (incl. CI secret names)
+- [Brand guidelines](BRAND.md): assets in [`brand/`](brand/), screenshots in [`screenshots/`](screenshots/)

@@ -4,15 +4,20 @@
 
 export type ModelOrigin = 'bundled' | 'remote' | 'user';
 
-/** Per-character soft TTS binding (Web Speech voiceURI + rate/pitch). */
+/** Per-character soft TTS binding (Web Speech + Fish reference preference). */
 export interface ModelVoiceConfig {
-  /** speechSynthesis.voiceURI or empty for auto soft pick */
+  /** speechSynthesis.voiceURI or empty for auto soft pick (system fallback) */
   voiceURI?: string;
-  /** Name substring hint when URI differs across OS (e.g. xiaoxiao, meijia, yaoyao) */
+  /**
+   * Name substring hint for system voices, and/or Fish built-in referenceId
+   * (e.g. `nomi` → fish reference_id `nomi`).
+   */
   voiceHint?: string;
-  /** Speech rate 0.5..1.5 */
+  /** Explicit Fish built-in reference preset id when different from voiceHint */
+  fishReferenceId?: string;
+  /** Speech rate 0.5..1.5 (system fallback) */
   rate?: number;
-  /** Pitch 0..2 */
+  /** Pitch 0..2 (system fallback) */
   pitch?: number;
 }
 
@@ -35,11 +40,9 @@ export interface ModelConfig {
 }
 
 export const MODEL_CONFIG_SCHEMA = 'nomi/model-config@1';
-/** 旧品牌（Companion Desk）导出的配置文件仍可导入 */
-export const LEGACY_MODEL_CONFIG_SCHEMAS = ['companion-desk/model-config@1'] as const;
 
 export interface ModelConfigFile {
-  schema: typeof MODEL_CONFIG_SCHEMA | (typeof LEGACY_MODEL_CONFIG_SCHEMAS)[number];
+  schema: typeof MODEL_CONFIG_SCHEMA;
   modelName?: string;
   config: ModelConfig;
 }

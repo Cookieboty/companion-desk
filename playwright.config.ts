@@ -6,6 +6,9 @@ import { TEST_AVATAR_CACHE } from './e2e-headed/fixtures/testAvatar';
 process.env.CD_LOCALE ||= 'zh-CN';
 // 首次启动引导默认不弹出（引导自己的用例里显式开启）
 process.env.CD_ONBOARDING ||= 'off';
+// 不在 e2e 里跑离线 sherpa 合成（4 线程 ONNX + 模型自动下载解压）：Windows runner 只有 4 vCPU，
+// 与 swiftshader 渲染抢 CPU 会让气泡事件迟到、对话窗渲染进程 crash（E11 / E12 / E10 / E18）。
+process.env.CD_TTS ||= 'off';
 // 应用只内置 2D Nomi；3D 用例改用「用户导入」的测试夹具（CC0，不提交到仓库、不随应用打包）。
 // globalSetup 下载并缓存到 e2e-headed/.cache/，再通过 CD_SEED_USER_VRM 让主进程在未打包运行时
 // 按正常导入流程把它导入为固定 id 的用户模型。

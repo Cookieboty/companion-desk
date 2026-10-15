@@ -23,6 +23,20 @@ export interface ChatMessage {
   images?: Array<{ thumb: string; width: number; height: number; source?: string }>;
 }
 
+/** 对话所属后端：与 harness 后端一致；侧栏列表按此后端隔离 */
+export type ConversationBackend = 'nomi' | 'claude' | 'codex' | 'dsh';
+
+export const CONVERSATION_BACKENDS: readonly ConversationBackend[] = [
+  'nomi',
+  'claude',
+  'codex',
+  'dsh',
+] as const;
+
+export function isConversationBackend(v: unknown): v is ConversationBackend {
+  return typeof v === 'string' && (CONVERSATION_BACKENDS as readonly string[]).includes(v);
+}
+
 export interface ChatSession {
   id: string;
   name: string;
@@ -30,6 +44,10 @@ export interface ChatSession {
   createdAt: number;
   updatedAt: number;
   modelId?: string;
+  /** 该会话归属的后端；缺省迁移为 nomi */
+  backend: ConversationBackend;
+  /** CLI 标签 id：有值时消息在 harness，侧栏只存元信息 */
+  tabId?: string;
 }
 
 export interface StreamResponse {

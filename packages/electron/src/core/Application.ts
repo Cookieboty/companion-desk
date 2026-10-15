@@ -12,6 +12,11 @@ import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
 import { ClipboardGateway } from '../ai/ClipboardGateway';
 import { ScreenCapture } from '../ai/ScreenCapture';
 import { TtsElectronNativeProvider } from '../ai/TtsElectronNativeProvider';
+import { initCliHarnessService } from '../cli/CliHarnessService';
+import { initCliProviderBridge, getCliProviderBridge } from '../cli/CliProviderBridge';
+import { initCliUpdateService } from '../cli/CliUpdateService';
+import { initCliRouteService } from '../cli/routing/CliRouteService';
+import { initSessionHistoryService } from '../cli/SessionHistoryService';
 import { getDesktopService } from '../desktop/DesktopService';
 import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
@@ -323,6 +328,44 @@ export class Application implements IApplication {
       agents.registerIpc();
       if (agents.state().settings.enabled) agents.start();
 
+      // 编程助手 CLI 接入 P0：版本更新 / 供应商桥 / 对话后端接管
+      const cliUpdate = initCliUpdateService({
+        root: path.join(app.getPath('userData'), 'cli-update'),
+        logger: this.logger as never,
+      });
+      cliUpdate.registerIpc();
+      const cliProviders = initCliProviderBridge({
+        root: path.join(app.getPath('userData'), 'cli-providers'),
+        logger: this.logger as never,
+      });
+      const cliRoute = initCliRouteService({
+        root: path.join(app.getPath('userData'), 'cli-providers'),
+        logger: this.logger as never,
+        resolveUpstream: (kind) => getCliProviderBridge()?.resolveUpstream(kind) ?? null,
+      });
+      cliProviders.registerIpc();
+      cliRoute.registerIpc();
+      if (cliRoute.getSettings().enabled) void cliRoute.start().catch(() => undefined);
+      const harness = initCliHarnessService({
+        root: path.join(app.getPath('userData'), 'harness'),
+        logger: this.logger as never,
+        defaultCwd: app.getPath('documents'),
+        dshEnv: () => getCliProviderBridge()?.dshEnv() ?? {},
+      });
+      harness.registerIpc();
+      initSessionHistoryService({
+        logger: this.logger as never,
+        openKeys: () => harness.openSessionKeys(),
+        openTab: (o) => harness.openHistorySession(o),
+      }).registerIpc();
+      // 监视器汇总 Nomi 标签；任一标签一轮结束 → 看板娘 / 灵动岛
+      agents.attachHarness({
+        tabs: () => harness.listTabs().tabs,
+        onTabs: (fn) => harness.events.on('tabs', fn),
+        onFinished: (fn) => harness.events.on('tab-finished', fn),
+        onPermission: (fn) => harness.events.on('permission-needed', fn),
+      });
+
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）
       await this.startAIRuntime();
       if (this.aiRuntime) {
@@ -449,6 +492,10 @@ export class Application implements IApplication {
         : undefined,
     });
     this.trayManager.start();
+    // 兜底：应用被激活 / 窗口获得焦点时，如果托盘已被销毁就重建
+    const heal = () => this.trayManager?.ensureAlive();
+    app.on('activate', heal);
+    app.on('browser-window-focus', heal);
   }
 
   /**

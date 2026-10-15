@@ -1,18 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- legacy untyped window.electronAPI bridge */
-import {
-  type VoiceConfig,
-  type VoiceSettings,
-  type KeyboardEvent,
-  type VoiceContribute,
-} from '@nomi-ai/types';
+import { type VoiceConfig, type VoiceSettings, type VoiceContribute } from '@nomi-ai/types';
 import { t } from '@nomi-ai/ui';
 
-import { HOURLY_LINES, KEYWORD_LINES } from '../mascot/tips';
+import { HOURLY_LINES } from '../mascot/tips';
 import { toFileUrl } from '../utils/fileUrl';
 
 /**
  * 语音服务类
- * 负责管理语音播放、键盘监听和定时播报功能
+ * 负责管理语音播放与定时播报（按键序列彩蛋已移除）。
  */
 const TIME_KEYWORDS: Array<[string, number]> = [
   ['$time_morning', 7],
@@ -40,8 +35,6 @@ export class VoiceService {
 
   private voiceConfig: VoiceConfig | null = null;
   private voiceSettings: VoiceSettings | null = null;
-  private keyBuffer: string[] = [];
-  private keyBufferTimeout: NodeJS.Timeout | null = null;
   private timeAnnouncementInterval: NodeJS.Timeout | null = null;
   private lastAnnouncementTime: number = 0;
   private audioContext: AudioContext | null = null;
@@ -77,22 +70,16 @@ export class VoiceService {
       // 0. 等待electronAPI准备就绪
       await this.waitForElectronAPI();
 
-      // 1. 首先设置键盘监听器（只设置事件监听器，不启动）
-      this.setupKeyboardListener();
-
-      // 2. 设置音频播放监听
+      // 1. 设置音频播放监听
       this.setupAudioListener();
 
-      // 3. 加载语音配置
+      // 2. 加载语音配置
       await this.loadVoiceConfig();
 
-      // 4. 加载语音设置
+      // 3. 加载语音设置
       await this.loadVoiceSettings();
 
-      // 5. 在设置加载完成后启动键盘监听
-      this.startKeyboardListener();
-
-      // 6. 启动定时播报
+      // 4. 启动定时播报
       this.startTimeAnnouncement();
 
       this.isInitialized = true;
@@ -133,11 +120,9 @@ export class VoiceService {
    * （旧版的第三方 mp3 语音包许可不明，已移除）
    */
   private async loadVoiceConfig() {
+    // 仅保留定时播报台词；按键关键词彩蛋已移除
     this.voiceConfig = {
-      contributes: [
-        ...KEYWORD_LINES.map((k) => ({ keywords: k.keywords, voices: k.lines })),
-        ...TIME_KEYWORD_LINES,
-      ],
+      contributes: [...TIME_KEYWORD_LINES],
     };
   }
 
@@ -158,72 +143,6 @@ export class VoiceService {
   }
 
   /**
-   * 设置键盘监听
-   */
-  private setupKeyboardListener() {
-    const electronAPI = (window as any).electronAPI;
-    if (!electronAPI) {
-      console.error('VoiceService: electronAPI 不可用，无法设置键盘监听');
-      return;
-    }
-
-    // 立即注册键盘事件监听器
-    try {
-      electronAPI.onKeyboardEvent((event: KeyboardEvent) => {
-        // 简化条件检查
-        if (event.type === 'keydown' && event.key && event.key !== 'undefined') {
-          this.handleKeyboardInput(event.key);
-        }
-      });
-    } catch (error) {
-      console.error('VoiceService: 注册键盘事件监听器失败:', error);
-    }
-
-    // 监听键盘监听器错误事件
-    electronAPI.onKeyboardListenerError((error: string) => {
-      console.error('VoiceService: 键盘监听器启动失败:', error);
-    });
-  }
-
-  /**
-   * 启动键盘监听
-   */
-  private startKeyboardListener() {
-    const electronAPI = (window as any).electronAPI;
-    if (!electronAPI) {
-      console.error('VoiceService: electronAPI 不可用，无法启动键盘监听');
-      return;
-    }
-
-    // 添加延迟，确保主进程完全启动
-    setTimeout(() => {
-      electronAPI.startKeyboardListener();
-    }, 1000);
-
-    // 添加智能重试机制
-    let retryCount = 0;
-    const maxRetries = 3;
-    const retryDelay = 3000; // 增加重试间隔
-
-    const retryStart = () => {
-      retryCount++;
-      if (retryCount <= maxRetries) {
-        setTimeout(() => {
-          electronAPI.startKeyboardListener();
-          if (retryCount < maxRetries) {
-            setTimeout(retryStart, retryDelay);
-          }
-        }, retryDelay);
-      } else {
-        console.error('VoiceService: 键盘监听启动重试次数已达上限');
-      }
-    };
-
-    // 启动重试序列
-    setTimeout(retryStart, retryDelay);
-  }
-
-  /**
    * 设置音频播放监听
    */
   private setupAudioListener() {
@@ -234,54 +153,6 @@ export class VoiceService {
     // electronAPI.onPlayAudioFile((filePath: string, volume: number) => {
     //   this.playAudioFile(filePath, volume);
     // });
-  }
-
-  /**
-   * 处理键盘输入
-   */
-  private handleKeyboardInput(key: string) {
-    // 将按键添加到缓冲区
-    this.keyBuffer.push(key.toLowerCase());
-
-    // 限制缓冲区大小
-    if (this.keyBuffer.length > 50) {
-      this.keyBuffer.shift();
-    }
-
-    // 清除之前的超时
-    if (this.keyBufferTimeout) {
-      clearTimeout(this.keyBufferTimeout);
-    }
-
-    // 设置新的超时，在停止输入后分析按键序列
-    this.keyBufferTimeout = setTimeout(() => {
-      this.analyzeKeySequence();
-      this.keyBuffer = [];
-    }, 1000); // 1秒后分析
-  }
-
-  /**
-   * 分析按键序列并触发相应语音
-   */
-  private analyzeKeySequence() {
-    if (!this.voiceConfig || !this.voiceSettings?.enabled) {
-      return;
-    }
-
-    const keySequence = this.keyBuffer.join('');
-
-    // 检查是否匹配任何关键词
-    for (const contribute of this.voiceConfig.contributes) {
-      for (const keyword of contribute.keywords) {
-        // 跳过时间相关的关键词（这些由定时播报处理）
-        if (keyword.startsWith('$time_')) continue;
-
-        if (keySequence.includes(keyword.toLowerCase())) {
-          this.playRandomVoice(contribute.voices);
-          return; // 找到匹配后立即返回，避免重复播放
-        }
-      }
-    }
   }
 
   /**
@@ -565,15 +436,9 @@ export class VoiceService {
 
       // 保存设置
       electronAPI.saveVoiceSettings(this.voiceSettings);
-
-      // 重新启动相关服务
-      if (newSettings.keyboardListening !== undefined) {
-        if (newSettings.keyboardListening) {
-          electronAPI.startKeyboardListener();
-        } else {
-          electronAPI.stopKeyboardListener();
-        }
-      }
+      window.dispatchEvent(
+        new CustomEvent('mascot:voice-settings', { detail: { ...this.voiceSettings } }),
+      );
 
       if (newSettings.timeAnnouncement !== undefined) {
         if (this.timeAnnouncementInterval) {
@@ -603,16 +468,8 @@ export class VoiceService {
   public destroy() {
     const electronAPI = (window as any).electronAPI;
 
-    // 停止键盘监听
     if (electronAPI) {
-      electronAPI.stopKeyboardListener();
-      electronAPI.removeKeyboardListeners();
-      electronAPI.removeAudioListeners();
-    }
-
-    // 清理定时器
-    if (this.keyBufferTimeout) {
-      clearTimeout(this.keyBufferTimeout);
+      electronAPI.removeAudioListeners?.();
     }
 
     if (this.timeAnnouncementInterval) {

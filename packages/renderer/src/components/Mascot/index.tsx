@@ -7,6 +7,7 @@ import { CanvasBoundary } from './CanvasBoundary';
 import { Credits } from './Credits';
 import { DesktopConfirm } from './DesktopConfirm';
 import { InteractionSettings } from './InteractionSettings';
+import { MascotAiCueBridge, MascotAudioBridge } from './MascotAudioBridge';
 import { ModelPicker } from './ModelPicker';
 import { MotionMenu } from './MotionMenu';
 import { ReminderCard } from './ReminderCard';
@@ -52,6 +53,12 @@ export const MascotHost: React.FC = () => {
         </Suspense>
       )}
       <MascotDriver />
+      <MascotAudioBridge />
+      {aiReady && (
+        <Suspense fallback={null}>
+          <MascotAiCueBridge />
+        </Suspense>
+      )}
       <WaifuMascotSceneReporter />
       <MessageBubble />
       <ToolBar />

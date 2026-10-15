@@ -8,7 +8,9 @@ import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
+import { cliProviderClient } from '../../services/cliProviderClient';
 import { providerClientAvailable } from '../../services/providerClient';
+import { AppIcon } from '../AppIcons';
 import {
   ConfigPanel,
   DesktopPanel,
@@ -16,11 +18,11 @@ import {
   KnowledgePanel,
   LocalPanel,
   MemoryPanel,
-  ProviderPanel,
   SchedulePanel,
   ScreenPanel,
 } from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
+import { ProvidersPage } from '../ProvidersPage';
 
 import { AppIconSettings } from './AppIconSettings';
 import { CalendarSettings } from './CalendarSettings';
@@ -98,11 +100,11 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         );
       case 'shortcuts':
         return <ShortcutSettings />;
-      case 'providers':
-        return providerClientAvailable() ? (
-          <ProviderPanel isVisible onClose={noop} />
+      case 'coding':
+        return providerClientAvailable() || cliProviderClient.available() ? (
+          <ProvidersPage onOpenedTab={onClose} onOpenNotify={() => onSection('notify')} />
         ) : (
-          <p className={styles.note}>{t('供应商管理仅在桌面应用中可用；模型配置见「通用」。')}</p>
+          <p className={styles.note}>{t('编程助手设置仅在桌面应用中可用；模型配置见「通用」。')}</p>
         );
       case 'voice':
         return <VoiceSection />;
@@ -116,8 +118,6 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return <IslandSettings />;
       case 'calendar':
         return <CalendarSettings />;
-      case 'agents':
-        return <SchedulePanel key="a" isVisible onClose={noop} initialTab="agents" />;
       case 'screen':
         return <ScreenPanel isVisible onClose={noop} />;
       case 'ext':
@@ -219,7 +219,9 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             }}
             data-testid={`settings-nav-${s.id}`}
           >
-            <span className={styles.navIcon}>{s.icon}</span>
+            <span className={styles.navIcon}>
+              <AppIcon icon={s.icon} size={16} />
+            </span>
             {t(s.label)}
           </button>
         ))}

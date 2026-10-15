@@ -18,7 +18,8 @@
  * - Cursor       cursor-agent CLI：~/.cursor/chats/<hash>/<id>/（SQLite store.db，无公开格式）
  *                ——只用 mtime + 进程存活判断，不解析内容。
  */
-export type AgentKind = 'codex' | 'claude' | 'aider' | 'cline' | 'continue' | 'cursor' | 'gemini';
+export type AgentKind =
+  'codex' | 'claude' | 'dsh' | 'aider' | 'cline' | 'continue' | 'cursor' | 'gemini';
 
 /**
  * running   正在干活（模型在输出或工具在跑）
@@ -453,4 +454,35 @@ export function decideStatus(i: StatusInput): AgentStatus {
   // unknown
   if (alive === undefined) return ageMs < 60_000 ? 'running' : 'idle';
   return ageMs < 60_000 ? 'running' : 'waiting';
+}
+
+/**
+ * dsh 会话索引：$DSH_HOME/storages/session_projcache/sessions/<id>.json
+ * （会话正文 session.v4.jsonl.zstd 为压缩格式，只读这份明文索引）。
+ * 运行状态由会话目录下 session.lock 是否被 flock 持有决定，这里只给标题 / cwd。
+ */
+export function parseDshProjcache(raw: string): Omit<SessionInfo, 'phase'> {
+  try {
+    const j = JSON.parse(raw) as {
+      record?: {
+        identity?: { cwd?: unknown; createdAt?: unknown };
+        rows?: {
+          title?: { val?: unknown };
+          titleInput?: { val?: { first?: { text?: unknown } } };
+        };
+      };
+    };
+    const rows = j.record?.rows;
+    const title =
+      (typeof rows?.title?.val === 'string' && rows.title.val) ||
+      (typeof rows?.titleInput?.val?.first?.text === 'string' && rows.titleInput.val.first.text) ||
+      undefined;
+    const cwd = j.record?.identity?.cwd;
+    return {
+      cwd: typeof cwd === 'string' ? cwd : undefined,
+      title: title ? title.slice(0, 80) : undefined,
+    };
+  } catch {
+    return {};
+  }
 }

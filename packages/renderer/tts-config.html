@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TTS语音配置</title>
+    <title>TTS 语音配置</title>
     <link rel="icon" type="image/png" href="./favicon.png" />
     <script type="module" src="./src/tts-config/main.ts"></script>
   </head>
@@ -11,353 +11,368 @@
     <main class="container cd-card" data-testid="tts-config">
       <header class="header">
         <h1>TTS 语音配置</h1>
-        <p>配置文本转语音服务参数（支持语音克隆）。留空则使用系统语音。</p>
+        <p>
+          默认使用内置<strong>离线语音</strong>（sherpa-onnx，本机合成，模型随安装包分发，无需联网/外部服务）。
+          模型缺失或合成失败时自动回退系统语音。
+          Fish Audio 为可选高级引擎；不提供用户上传/克隆任意音色；仍可自行接入外部 TTS（legacy）。
+        </p>
+        <p class="cd-notice" data-testid="fish-attribution" style="margin-top: 8px">
+          <strong>Built with Fish Audio</strong> —
+          研究/非商用免费；年营收 &lt; USD 500k 可社区商用；Hosted Service（对外自助 TTS/克隆 API）需另签；
+          不可未经同意克隆真人；不可用输出训练其他基础 TTS 模型。详见仓库 NOTICE / THIRD_PARTY_NOTICES。
+        </p>
       </header>
 
       <div id="status-indicator" class="status-indicator none">
         <span class="status-dot" aria-hidden="true"></span>
-        <span id="status-text">未配置TTS服务，将使用系统语音</span>
+        <span id="status-text">加载中…</span>
       </div>
 
-      <div class="editor-section cd-field">
-        <label class="cd-field__label" for="config-editor">配置 JSON</label>
-        <textarea
-          id="config-editor"
-          class="json-editor cd-textarea"
-          spellcheck="false"
-          placeholder="请输入TTS配置的JSON格式..."
-        ></textarea>
+      <section class="editor-section cd-field" data-testid="fish-section">
+        <h2 class="cd-section-title">语音引擎</h2>
+        <label class="cd-field__label">
+          <input type="checkbox" id="enabled" /> 启用高质量播报（关闭则仅用系统语音）
+        </label>
+
+        <label class="cd-field__label" for="provider">提供方</label>
+        <select id="provider" class="cd-textarea" style="min-height: auto; height: 36px">
+          <option value="sherpa-theresa">内置离线语音（sherpa-onnx，默认）</option>
+          <option value="fish-local">高级：Fish 本地（fish-speech）</option>
+          <option value="fish-cloud">高级：Fish 云 API（自备 Key）</option>
+          <option value="legacy">自行接入外部 TTS（legacy，自建克隆服务）</option>
+          <option value="system">仅系统语音（Web Speech）</option>
+        </select>
+
+        <div id="sherpa-fields" data-testid="sherpa-section">
+          <p class="cd-muted" style="font-size: 12px; margin: 4px 0 8px">
+            声线 sid 0，语速 1.0（固定默认，不加速）。模型约 133 MB，随安装包分发到
+            <code>resources/tts-models/</code>。开发态可用环境变量
+            <code>NOMI_SHERPA_TTS_MODEL_DIR</code>，或仓库同级 <code>../models/vits-zh-hf-theresa</code>。
+          </p>
+          <p id="sherpa-model-text" class="cd-muted">模型状态：检测中…</p>
+        </div>
+
+        <div id="fish-fields">
+          <label class="cd-field__label" for="baseUrl">服务地址</label>
+          <input id="baseUrl" class="cd-textarea" style="min-height: auto; height: 36px" placeholder="http://127.0.0.1:8080" />
+
+          <label class="cd-field__label" for="referenceId">内置声线预设</label>
+          <select id="referenceId" class="cd-textarea" style="min-height: auto; height: 36px">
+            <option value="nomi">Nomi（可爱）</option>
+          </select>
+          <p class="cd-muted" style="font-size: 12px; margin: 4px 0 8px">
+            应用已内置 Nomi 可爱种子，合成时自动以 <code>reference_audio</code> 发给本地 Fish，无需手动拷贝。
+            不提供「上传我的音色」入口。
+          </p>
+
+          <label class="cd-field__label" for="format">音频格式</label>
+          <select id="format" class="cd-textarea" style="min-height: auto; height: 36px">
+            <option value="mp3">mp3</option>
+            <option value="wav">wav</option>
+            <option value="opus">opus</option>
+          </select>
+
+          <div id="cloud-fields" style="display: none">
+            <label class="cd-field__label" for="apiKey">Fish 云 API Key（仅存主进程，safeStorage）</label>
+            <input id="apiKey" type="password" class="cd-textarea" style="min-height: auto; height: 36px" placeholder="留空则保留已保存的 Key" autocomplete="off" />
+            <label class="cd-field__label" style="margin-top: 6px">
+              <input type="checkbox" id="clearApiKey" /> 清除已保存的 Key
+            </label>
+            <p id="hasApiKeyHint" class="cd-muted" style="font-size: 12px"></p>
+          </div>
+        </div>
+
+        <div id="legacy-fields" style="display: none">
+          <p class="cd-muted" style="font-size: 12px">外部自建 TTS（hostname / port / path / audioUrl / promptText）。JSON 高级编辑见下方。</p>
+          <label class="cd-field__label" for="hostname">hostname</label>
+          <input id="hostname" class="cd-textarea" style="min-height: auto; height: 36px" />
+          <label class="cd-field__label" for="port">port</label>
+          <input id="port" type="number" class="cd-textarea" style="min-height: auto; height: 36px" />
+          <label class="cd-field__label" for="path">path</label>
+          <input id="path" class="cd-textarea" style="min-height: auto; height: 36px" />
+          <label class="cd-field__label" for="audioUrl">audioUrl（服务侧参考音频 URL，非本机上传）</label>
+          <input id="audioUrl" class="cd-textarea" style="min-height: auto; height: 36px" />
+          <label class="cd-field__label" for="promptText">promptText</label>
+          <input id="promptText" class="cd-textarea" style="min-height: auto; height: 36px" />
+        </div>
+      </section>
+
+      <details class="editor-section cd-field" style="margin-top: 12px">
+        <summary class="cd-field__label">高级：原始 JSON</summary>
+        <textarea id="config-editor" class="json-editor cd-textarea" spellcheck="false" rows="10"></textarea>
         <div id="error-message" class="error-message" style="display: none"></div>
-      </div>
+      </details>
 
       <div class="buttons">
-        <button id="load-btn" class="cd-btn">
-          <span>加载配置</span>
+        <button id="load-btn" class="cd-btn" type="button"><span>加载配置</span></button>
+        <button id="health-btn" class="cd-btn" type="button">
+          <span id="health-icon">🔗</span>
+          <span id="health-text">检测连接</span>
         </button>
-        <button id="test-btn" class="cd-btn" disabled>
-          <span id="test-icon">🔗</span>
-          <span id="test-text">测试连接</span>
-        </button>
-        <button id="save-btn" class="cd-btn cd-btn--primary btn-wide" disabled>
-          <span>保存配置</span>
-        </button>
-        <button id="reset-btn" class="cd-btn cd-btn--danger btn-wide">
-          <span>重置配置</span>
-        </button>
+        <button id="save-btn" class="cd-btn cd-btn--primary btn-wide" type="button"><span>保存配置</span></button>
+        <button id="reset-btn" class="cd-btn cd-btn--danger btn-wide" type="button"><span>重置为内置默认</span></button>
       </div>
 
       <div id="result-message" style="display: none"></div>
 
       <div class="help-text cd-notice">
-        <strong>配置说明</strong><br />
-        • <code>enabled</code>：是否启用 TTS 服务 (true/false)<br />
-        • <code>hostname</code>：TTS 服务器地址<br />
-        • <code>port</code>：TTS 服务器端口<br />
-        • <code>path</code>：API 请求路径<br />
-        • <code>audioUrl</code>：用于语音克隆的参考音频 URL<br />
-        • <code>promptText</code>：提示文本内容
+        <strong>怎么用</strong><br />
+        1. 默认「内置离线语音」：模型随安装包分发，完全本机合成，无需联网。<br />
+        2. 模型缺失 / 合成出错时，看板娘自动回退系统语音，无需试听步骤。<br />
+        3. 高级：Fish 本地（Docker / uv 启动 fish-speech，监听 <code>127.0.0.1:8080</code>）或 Fish 云（自备 API Key，
+        不捆绑 Research-only 权重）。<br />
+        4. 需要对接其它克隆 API 时，选择「自行接入外部 TTS（legacy）」。
       </div>
     </main>
 
     <script>
-      // 获取DOM元素
-      const configEditor = document.getElementById('config-editor');
-      const statusIndicator = document.getElementById('status-indicator');
-      const statusText = document.getElementById('status-text');
-      const errorMessage = document.getElementById('error-message');
-      const resultMessage = document.getElementById('result-message');
-
-      const loadBtn = document.getElementById('load-btn');
-      const testBtn = document.getElementById('test-btn');
-      const testIcon = document.getElementById('test-icon');
-      const testText = document.getElementById('test-text');
-      const saveBtn = document.getElementById('save-btn');
-      const resetBtn = document.getElementById('reset-btn');
-
-      // 默认配置模板
+      const $ = (id) => document.getElementById(id);
       const defaultConfig = {
         enabled: true,
-        hostname: 'example.com',
-        port: 8443,
-        path: '/voice_clone_direct',
-        audioUrl: 'https://example.com/audio.wav',
-        promptText: '这是TTS语音测试文本，用于验证语音克隆功能是否正常工作。',
+        provider: 'sherpa-theresa',
+        sherpaSid: 0,
+        sherpaSpeed: 1.0,
+        baseUrl: 'http://127.0.0.1:8080',
+        referenceId: 'nomi',
+        format: 'mp3',
+        timeoutMs: 30000,
+        cloudModel: 's2.1-pro-free',
+        hostname: '127.0.0.1',
+        port: 8080,
+        path: '/v1/tts',
+        audioUrl: '',
+        promptText: '',
       };
 
-      // 当前配置和状态
       let currentConfig = null;
       let isLoading = false;
 
-      // 初始化
-      document.addEventListener('DOMContentLoaded', () => {
-        console.log('TTS配置页面已加载');
-        console.log('ElectronAPI状态:', !!window.electronAPI);
-
-        if (window.electronAPI) {
-          console.log('ElectronAPI可用方法:', Object.keys(window.electronAPI));
-        } else {
-          console.warn('ElectronAPI不可用，将使用默认配置');
-          showResult('ElectronAPI不可用，部分功能将不可使用', false);
-        }
-
-        loadCurrentConfig();
-
-        // 监听JSON编辑器变化
-        configEditor.addEventListener('input', handleEditorChange);
-
-        // 按钮事件
-        loadBtn.addEventListener('click', loadCurrentConfig);
-        testBtn.addEventListener('click', testConnection);
-        saveBtn.addEventListener('click', saveConfig);
-        resetBtn.addEventListener('click', resetConfig);
-      });
-
-      // 处理编辑器内容变化
-      function handleEditorChange() {
-        const text = configEditor.value.trim();
-
-        if (!text) {
-          updateStatus('none', '未配置TTS服务，将使用系统语音');
-          updateButtons(false, false);
-          hideError();
-          return;
-        }
-
-        try {
-          const config = JSON.parse(text);
-          const validation = validateConfig(config);
-
-          if (validation.isValid) {
-            updateStatus('valid', '配置格式正确');
-            updateButtons(true, true);
-            hideError();
-          } else {
-            updateStatus('invalid', '配置格式有误');
-            updateButtons(false, true);
-            showError(validation.errors.join('\\n'));
-          }
-        } catch (error) {
-          updateStatus('invalid', 'JSON格式错误');
-          updateButtons(false, true);
-          showError('JSON格式错误: ' + error.message);
-        }
-      }
-
-      // 验证配置
-      function validateConfig(config) {
-        const errors = [];
-
-        if (typeof config.enabled !== 'boolean') {
-          errors.push('enabled 必须是 true 或 false');
-        }
-
-        if (!config.hostname || typeof config.hostname !== 'string') {
-          errors.push('hostname 是必需的字符串');
-        }
-
-        if (typeof config.port !== 'number' || config.port < 1 || config.port > 65535) {
-          errors.push('port 必须是 1-65535 范围内的数字');
-        }
-
-        if (!config.path || typeof config.path !== 'string' || !config.path.startsWith('/')) {
-          errors.push('path 必须是以 / 开头的字符串');
-        }
-
-        if (!config.audioUrl || typeof config.audioUrl !== 'string') {
-          errors.push('audioUrl 是必需的字符串');
-        } else {
-          try {
-            new URL(config.audioUrl);
-          } catch {
-            errors.push('audioUrl 必须是有效的URL');
-          }
-        }
-
-        if (!config.promptText || typeof config.promptText !== 'string') {
-          errors.push('promptText 是必需的字符串');
-        }
-
-        return {
-          isValid: errors.length === 0,
-          errors,
+      function formToConfig() {
+        const provider = $('provider').value;
+        const cfg = {
+          ...(currentConfig || defaultConfig),
+          enabled: $('enabled').checked,
+          provider,
+          baseUrl: $('baseUrl').value.trim() || defaultConfig.baseUrl,
+          referenceId: $('referenceId').value || 'nomi',
+          format: $('format').value || 'mp3',
+          hostname: $('hostname').value.trim(),
+          port: Number($('port').value) || 8080,
+          path: $('path').value.trim() || '/v1/tts',
+          audioUrl: $('audioUrl').value.trim(),
+          promptText: $('promptText').value.trim(),
+          lastModified: Date.now(),
         };
+        const key = $('apiKey').value;
+        if (key) cfg.apiKey = key;
+        if ($('clearApiKey').checked) cfg.clearApiKey = true;
+        return cfg;
       }
 
-      // 更新状态指示器
+      function configToForm(cfg) {
+        const c = { ...defaultConfig, ...(cfg || {}) };
+        $('enabled').checked = c.enabled !== false;
+        $('provider').value = c.provider || 'sherpa-theresa';
+        $('baseUrl').value = c.baseUrl || defaultConfig.baseUrl;
+        $('referenceId').value = c.referenceId || 'nomi';
+        $('format').value = c.format || 'mp3';
+        $('hostname').value = c.hostname || '';
+        $('port').value = c.port || 8080;
+        $('path').value = c.path || '/v1/tts';
+        $('audioUrl').value = c.audioUrl || '';
+        $('promptText').value = c.promptText || '';
+        $('apiKey').value = '';
+        $('clearApiKey').checked = false;
+        $('hasApiKeyHint').textContent = c.hasApiKey ? '已保存云端 Key' : '尚未保存云端 Key';
+        $('config-editor').value = JSON.stringify({ ...c, apiKey: undefined }, null, 2);
+        syncVisibility();
+        updateStatusFromConfig(c);
+      }
+
+      function syncVisibility() {
+        const p = $('provider').value;
+        const fish = p === 'fish-local' || p === 'fish-cloud';
+        $('sherpa-fields').style.display = p === 'sherpa-theresa' ? '' : 'none';
+        if (p === 'sherpa-theresa') refreshSherpaStatus();
+        $('fish-fields').style.display = fish ? '' : 'none';
+        $('cloud-fields').style.display = p === 'fish-cloud' ? '' : 'none';
+        $('legacy-fields').style.display = p === 'legacy' ? '' : 'none';
+        if (p === 'fish-cloud' && !$('baseUrl').value.includes('fish.audio')) {
+          $('baseUrl').placeholder = 'https://api.fish.audio';
+        }
+        if (p === 'fish-local') $('baseUrl').placeholder = 'http://127.0.0.1:8080';
+      }
+
       function updateStatus(type, text) {
-        statusIndicator.className = `status-indicator ${type}`;
-        statusText.textContent = text;
+        $('status-indicator').className = 'status-indicator ' + type;
+        $('status-text').textContent = text;
       }
 
-      // 更新按钮状态
-      function updateButtons(testEnabled, saveEnabled) {
-        testBtn.disabled = !testEnabled || isLoading;
-        saveBtn.disabled = !saveEnabled || isLoading;
+      function updateStatusFromConfig(c) {
+        if (!c || c.enabled === false || c.provider === 'system') {
+          updateStatus('none', '使用系统语音（Web Speech）');
+        } else if (c.provider === 'sherpa-theresa') {
+          updateStatus('valid', '内置离线语音（sherpa-onnx）· 模型未就绪则回退系统语音');
+        } else if (c.provider === 'fish-local') {
+          updateStatus('valid', 'Fish 本地（高级） · 预设 ' + (c.referenceId || 'nomi') + '（未就绪则回退系统语音）');
+        } else if (c.provider === 'fish-cloud') {
+          updateStatus('valid', 'Fish 云 · ' + (c.hasApiKey ? '已配置 Key' : '需填写 API Key'));
+        } else {
+          updateStatus('valid', '外部 legacy TTS');
+        }
       }
 
-      // 显示错误信息
-      function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-        configEditor.classList.add('error');
+      // ---- sherpa 离线模型状态（bundled，无下载） ----
+      function renderSherpaStatus(st) {
+        const text = $('sherpa-model-text');
+        if (st.state === 'ready') {
+          const where =
+            st.source === 'dev' ? '（开发目录）' :
+            st.source === 'env' ? '（环境变量目录）' :
+            st.source === 'resources' ? '（安装包）' : '';
+          text.textContent = '模型已就绪' + where;
+        } else if (st.state === 'error') {
+          text.textContent = '模型不可用：' + (st.message || '未知错误') + '（当前使用系统语音）';
+        } else {
+          text.textContent = '模型缺失（当前使用系统语音）';
+        }
       }
 
-      // 隐藏错误信息
+      async function refreshSherpaStatus() {
+        if (!window.electronAPI || !window.electronAPI.ttsSherpaStatus) return;
+        try {
+          renderSherpaStatus(await window.electronAPI.ttsSherpaStatus());
+        } catch (e) {
+          $('sherpa-model-text').textContent = '无法获取模型状态：' + e.message;
+        }
+      }
+
+      function showResult(message, ok) {
+        const el = $('result-message');
+        el.textContent = message;
+        el.className = 'result-message cd-notice ' + (ok ? 'cd-notice--success' : 'cd-notice--danger');
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+      }
+
+      function showError(msg) {
+        $('error-message').textContent = msg;
+        $('error-message').style.display = 'block';
+      }
       function hideError() {
-        errorMessage.style.display = 'none';
-        configEditor.classList.remove('error');
+        $('error-message').style.display = 'none';
       }
 
-      // 显示结果消息
-      function showResult(message, isSuccess) {
-        resultMessage.textContent = message;
-        resultMessage.className = `result-message cd-notice ${isSuccess ? 'cd-notice--success' : 'cd-notice--danger'}`;
-        resultMessage.style.display = 'block';
-
-        setTimeout(() => {
-          resultMessage.style.display = 'none';
-        }, 5000);
-      }
-
-      // 加载当前配置
       async function loadCurrentConfig() {
         if (!window.electronAPI) {
-          configEditor.value = JSON.stringify(defaultConfig, null, 2);
-          handleEditorChange();
+          configToForm(defaultConfig);
+          showResult('ElectronAPI 不可用，显示默认配置', false);
           return;
         }
-
         try {
-          setLoading(true);
+          isLoading = true;
           const config = await window.electronAPI.getTTSConfig();
-
-          if (config) {
-            configEditor.value = JSON.stringify(config, null, 2);
-            currentConfig = config;
-          } else {
-            configEditor.value = JSON.stringify(defaultConfig, null, 2);
-            currentConfig = null;
-          }
-
-          handleEditorChange();
+          currentConfig = config || defaultConfig;
+          configToForm(currentConfig);
           showResult('配置加载成功', true);
-        } catch (error) {
-          console.error('加载配置失败:', error);
-          showResult('加载配置失败: ' + error.message, false);
-          configEditor.value = JSON.stringify(defaultConfig, null, 2);
-          handleEditorChange();
+        } catch (e) {
+          configToForm(defaultConfig);
+          showResult('加载失败: ' + e.message, false);
         } finally {
-          setLoading(false);
+          isLoading = false;
         }
       }
 
-      // 测试连接
-      async function testConnection() {
+      async function checkHealth() {
         if (!window.electronAPI) {
-          showResult('需要在Electron环境中运行', false);
+          showResult('需要在 Electron 中运行', false);
           return;
         }
-
+        const cfg = formToConfig();
         try {
-          const config = JSON.parse(configEditor.value);
-
-          setLoading(true, 'test');
-          const result = await window.electronAPI.testTTSConnection(config);
-
+          $('health-text').textContent = '检测中…';
+          const result = await window.electronAPI.testTTSConnection(cfg);
           if (result.success) {
-            showResult(
-              `测试成功: ${result.message}${result.latency ? ` (延迟: ${result.latency}ms)` : ''}`,
-              true,
-            );
+            updateStatus('valid', result.message + (result.latency != null ? ' · ' + result.latency + 'ms' : ''));
+            showResult(result.message, true);
           } else {
-            showResult(`测试失败: ${result.message}`, false);
+            updateStatus('invalid', result.message || '不可达，将回退系统语音');
+            showResult(result.message || '检测失败', false);
           }
-        } catch (error) {
-          console.error('测试连接失败:', error);
-          showResult('测试失败: ' + error.message, false);
+        } catch (e) {
+          showResult('检测失败: ' + e.message, false);
         } finally {
-          setLoading(false, 'test');
+          $('health-text').textContent = '检测连接';
         }
       }
 
-      // 保存配置
       async function saveConfig() {
         if (!window.electronAPI) {
-          showResult('需要在Electron环境中运行', false);
+          showResult('需要在 Electron 中运行', false);
           return;
         }
-
         try {
-          const config = JSON.parse(configEditor.value);
-          config.lastModified = Date.now();
-
-          setLoading(true);
-          await window.electronAPI.saveTTSConfig(config);
-
-          currentConfig = config;
-          showResult('配置保存成功！', true);
-        } catch (error) {
-          console.error('保存配置失败:', error);
-          showResult('保存失败: ' + error.message, false);
-        } finally {
-          setLoading(false);
+          const cfg = formToConfig();
+          await window.electronAPI.saveTTSConfig(cfg);
+          currentConfig = await window.electronAPI.getTTSConfig();
+          configToForm(currentConfig);
+          showResult('配置已保存', true);
+        } catch (e) {
+          showResult('保存失败: ' + e.message, false);
         }
       }
 
-      // 重置配置
       async function resetConfig() {
-        if (!confirm('确定要重置TTS配置吗？这将删除所有已保存的配置。')) {
-          return;
-        }
-
+        if (!confirm('重置为内置 Fish 默认（可爱 Nomi 预设）？将清除已保存配置与云 Key。')) return;
         if (!window.electronAPI) {
-          configEditor.value = '';
-          handleEditorChange();
-          showResult('配置已重置（本地）', true);
+          configToForm(defaultConfig);
           return;
         }
-
         try {
-          setLoading(true);
           await window.electronAPI.resetTTSConfig();
-
-          configEditor.value = '';
-          currentConfig = null;
-          handleEditorChange();
-          showResult('配置已重置！现在将使用系统语音。', true);
-        } catch (error) {
-          console.error('重置配置失败:', error);
-          showResult('重置失败: ' + error.message, false);
-        } finally {
-          setLoading(false);
+          currentConfig = await window.electronAPI.getTTSConfig();
+          configToForm(currentConfig || defaultConfig);
+          showResult('已重置为内置默认', true);
+        } catch (e) {
+          showResult('重置失败: ' + e.message, false);
         }
       }
 
-      // 设置加载状态
-      function setLoading(loading, type = 'general') {
-        isLoading = loading;
-
-        if (type === 'test') {
-          if (loading) {
-            testIcon.innerHTML = '<span class="loading"></span>';
-            testText.textContent = '测试中...';
-            testBtn.disabled = true;
-          } else {
-            testIcon.textContent = '🔗';
-            testText.textContent = '测试连接';
-            testBtn.disabled =
-              !configEditor.value.trim() ||
-              !validateConfig(JSON.parse(configEditor.value || '{}')).isValid;
-          }
-        } else {
-          loadBtn.disabled = loading;
-          saveBtn.disabled =
-            loading ||
-            !configEditor.value.trim() ||
-            !validateConfig(JSON.parse(configEditor.value || '{}')).isValid;
-          resetBtn.disabled = loading;
+      function syncEditorFromForm() {
+        try {
+          const cfg = formToConfig();
+          delete cfg.apiKey;
+          delete cfg.clearApiKey;
+          $('config-editor').value = JSON.stringify(cfg, null, 2);
+          hideError();
+        } catch (e) {
+          showError(String(e.message || e));
         }
       }
+
+      function applyEditorToForm() {
+        try {
+          const cfg = JSON.parse($('config-editor').value || '{}');
+          configToForm({ ...currentConfig, ...cfg });
+          hideError();
+        } catch (e) {
+          showError('JSON 格式错误: ' + e.message);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadCurrentConfig();
+        ['enabled', 'provider', 'baseUrl', 'referenceId', 'format', 'hostname', 'port', 'path', 'audioUrl', 'promptText'].forEach((id) => {
+          $(id).addEventListener('change', () => { syncVisibility(); syncEditorFromForm(); updateStatusFromConfig(formToConfig()); });
+          $(id).addEventListener('input', () => { syncEditorFromForm(); });
+        });
+        $('provider').addEventListener('change', syncVisibility);
+        $('config-editor').addEventListener('change', applyEditorToForm);
+        $('load-btn').addEventListener('click', loadCurrentConfig);
+        $('health-btn').addEventListener('click', checkHealth);
+        $('save-btn').addEventListener('click', saveConfig);
+        $('reset-btn').addEventListener('click', resetConfig);
+      });
     </script>
   </body>
 </html>
