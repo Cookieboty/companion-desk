@@ -411,7 +411,7 @@
   "置顶：召回时优先": "Pin: prioritized when recalling",
   "置顶": "Pin",
   "已删除这条记忆": "Memory deleted",
-  "确认删除": "Confirm delete",
+  "确认删除": "Delete?",
   "Ctrl/⌘ + Enter 保存 · Esc 取消": "Ctrl/⌘ + Enter to save · Esc to cancel",
   "手动": "Manual",
   "已忘记这条": "Forgotten",
@@ -1642,5 +1642,7 @@
   "正在搜索…": "Searching…",
   "没有匹配的会话": "No matching conversations",
   "搜索更早的历史": "Search older history",
-  "正在索引历史会话…": "Indexing history…"
+  "正在索引历史会话…": "Indexing history…",
+  "更多操作": "More actions",
+  "在标签中打开": "Open in a tab"
 }

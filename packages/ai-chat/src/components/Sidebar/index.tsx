@@ -117,6 +117,133 @@ const SearchIcon = () => (
   </svg>
 );
 
+/** 行内操作的图标（描边，随文字色） */
+const PenIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" strokeLinejoin="round" />
+    <path d="m13.5 6.5 4 4" />
+  </svg>
+);
+const TrashIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+  >
+    <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" strokeLinejoin="round" strokeLinecap="round" />
+  </svg>
+);
+const MoreIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="5" cy="12" r="1.8" />
+    <circle cx="12" cy="12" r="1.8" />
+    <circle cx="19" cy="12" r="1.8" />
+  </svg>
+);
+
+export interface RowActionHandlers {
+  onRename?: () => void;
+  /** Nomi 对话：删除（两步确认）；CLI 标签：关闭标签 */
+  onDelete?: () => void;
+  onCancelDelete?: () => void;
+  onMore: (anchor: DOMRect) => void;
+}
+
+/**
+ * 行尾三个图标按钮：重命名 / 删除（或关闭标签）/ 更多。悬浮、行内键盘焦点、选中行时显示；
+ * 「更多」只触发父级按需渲染的菜单（与右键菜单共用 ConversationMenu），行内不常驻挂载菜单。
+ */
+const RowActions: React.FC<
+  RowActionHandlers & { kind: 'conv' | 'tab' | 'hist'; confirming?: boolean }
+> = ({ kind, confirming, onRename, onDelete, onCancelDelete, onMore }) => {
+  const delLabel = kind === 'tab' ? t('关闭标签') : t('删除对话');
+  return (
+    <div
+      className={styles.rowActions}
+      role="group"
+      aria-label={t('对话操作')}
+      data-testid="row-actions"
+      data-confirming={confirming || undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && confirming) {
+          e.stopPropagation();
+          onCancelDelete?.();
+        }
+      }}
+    >
+      {confirming ? (
+        <>
+          <button
+            type="button"
+            className={`${styles.rowBtn} ${styles.rowBtnDanger} ${styles.rowBtnText}`}
+            onClick={onDelete}
+            data-testid="row-delete-confirm"
+            autoFocus
+          >
+            {t('确认删除')}
+          </button>
+          <button
+            type="button"
+            className={`${styles.rowBtn} ${styles.rowBtnText}`}
+            onClick={onCancelDelete}
+            data-testid="row-delete-cancel"
+          >
+            {t('取消')}
+          </button>
+        </>
+      ) : (
+        <>
+          {onRename && (
+            <button
+              type="button"
+              className={styles.rowBtn}
+              title={t('重命名')}
+              aria-label={t('重命名')}
+              onClick={onRename}
+              data-testid="row-rename"
+            >
+              <PenIcon />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className={`${styles.rowBtn} ${styles.rowBtnDanger}`}
+              title={delLabel}
+              aria-label={delLabel}
+              onClick={onDelete}
+              data-testid="row-delete"
+            >
+              <TrashIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className={styles.rowBtn}
+            title={t('更多操作')}
+            aria-label={t('更多操作')}
+            aria-haspopup="menu"
+            onClick={(e) => onMore(e.currentTarget.getBoundingClientRect())}
+            data-testid="row-more"
+          >
+            <MoreIcon />
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+
 const ThreadItem: React.FC<{
   c: Meta;
   active: boolean;
@@ -125,8 +252,27 @@ const ThreadItem: React.FC<{
   onCtx: (id: string, e: React.MouseEvent) => void;
   renaming?: boolean;
   onRename?: (id: string, name: string | null) => void;
+  confirming?: boolean;
+  onRenameStart?: (id: string) => void;
+  onDeleteRequest?: (id: string) => void;
+  onDeleteCancel?: () => void;
+  onMore?: (id: string, anchor: DOMRect) => void;
   style?: React.CSSProperties;
-}> = ({ c, active, tab, onOpen, onCtx, renaming, onRename, style }) => {
+}> = ({
+  c,
+  active,
+  tab,
+  onOpen,
+  onCtx,
+  renaming,
+  onRename,
+  confirming,
+  onRenameStart,
+  onDeleteRequest,
+  onDeleteCancel,
+  onMore,
+  style,
+}) => {
   const cls = `${styles.thread} ${active ? styles.threadActive : ''}`;
   const lead = (
     <>
@@ -157,20 +303,37 @@ const ThreadItem: React.FC<{
     );
   }
   return (
-    <button
-      className={cls}
+    <div
+      className={styles.row}
       style={style}
-      onClick={() => void onOpen(c.id)}
-      onContextMenu={(e) => onCtx(c.id, e)}
-      title={t(c.name)}
-      data-testid="history-item"
-      data-backend={c.backend}
-      data-conversation-id={c.id}
+      data-active={active || undefined}
+      data-confirming={confirming || undefined}
+      data-testid="conversation-row"
     >
-      {lead}
-      <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
-      <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
-    </button>
+      <button
+        className={cls}
+        onClick={() => void onOpen(c.id)}
+        onContextMenu={(e) => onCtx(c.id, e)}
+        title={t(c.name)}
+        data-testid="history-item"
+        data-backend={c.backend}
+        data-conversation-id={c.id}
+      >
+        {lead}
+        <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
+        <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
+      </button>
+      {onMore && (
+        <RowActions
+          kind={c.tabId ? 'tab' : 'conv'}
+          confirming={confirming}
+          onRename={() => onRenameStart?.(c.id)}
+          onDelete={() => onDeleteRequest?.(c.id)}
+          onCancelDelete={onDeleteCancel}
+          onMore={(r) => onMore(c.id, r)}
+        />
+      )}
+    </div>
   );
 };
 
@@ -182,6 +345,11 @@ type VirtualProps = {
   onCtx: (id: string, e: React.MouseEvent) => void;
   renamingId: string | null;
   onRename: (id: string, name: string | null) => void;
+  confirmId: string | null;
+  onRenameStart: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
+  onDeleteCancel: () => void;
+  onMore: (id: string, anchor: DOMRect) => void;
 };
 
 const VirtualRow = ({
@@ -194,6 +362,11 @@ const VirtualRow = ({
   onCtx,
   renamingId,
   onRename,
+  confirmId,
+  onRenameStart,
+  onDeleteRequest,
+  onDeleteCancel,
+  onMore,
   ariaAttributes,
 }: RowComponentProps<VirtualProps>) => {
   const c = items[index]!;
@@ -207,6 +380,11 @@ const VirtualRow = ({
         onCtx={onCtx}
         renaming={renamingId === c.id}
         onRename={onRename}
+        confirming={confirmId === c.id}
+        onRenameStart={onRenameStart}
+        onDeleteRequest={onDeleteRequest}
+        onDeleteCancel={onDeleteCancel}
+        onMore={onMore}
       />
     </div>
   );
@@ -240,6 +418,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [newMenu, setNewMenu] = useState(false);
   const [ctx, setCtx] = useState<{ id: string; x: number; y: number } | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  // 行内删除的二次确认（只对 Nomi 对话；CLI 标签是「关闭」，运行中才确认）
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [histMenu, setHistMenu] = useState<{ h: HistorySession; x: number; y: number } | null>(
+    null,
+  );
   const ws = useNewWorkspace();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -369,7 +552,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setCtx(null);
     const meta = list.find((x) => x.id === id);
     if (!meta || !ipc) return;
+    setConfirmId(null);
     if (meta.tabId) {
+      const st = tabById.get(meta.tabId)?.status;
+      if (
+        (st === 'running' || st === 'queued') &&
+        !window.confirm(t('该标签仍在运行，关闭会中止它。确定关闭？'))
+      )
+        return;
       await tabs.close(meta.tabId);
     } else {
       await ipc.deleteConversation?.(id);
@@ -393,6 +583,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     [ipc, list, tabs, refresh],
   );
+
+  const requestDelete = (id: string) => {
+    const meta = list.find((x) => x.id === id);
+    if (!meta) return;
+    // CLI 标签：关闭标签（可从历史重新打开），运行中沿用关闭确认；Nomi 对话：永久删除，先二次确认
+    if (meta.tabId || confirmId === id) void removeItem(id);
+    else setConfirmId(id);
+  };
+  const cancelDelete = useCallback(() => setConfirmId(null), []);
+  useEffect(() => {
+    if (!confirmId) return;
+    const timer = window.setTimeout(() => setConfirmId(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [confirmId]);
+
+  /** 行内「更多」：与右键共用同一个 ConversationMenu，只是锚在按钮下方 */
+  const openMore = useCallback((id: string, a: DOMRect) => {
+    setNewMenu(false);
+    setHistMenu(null);
+    setCtx({ id, x: a.right - 184, y: a.bottom + 2 });
+  }, []);
 
   const onCtx = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -866,6 +1077,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onCtx={onCtx}
                 renaming={renamingId === c.id}
                 onRename={commitRename}
+                confirming={confirmId === c.id}
+                onRenameStart={setRenamingId}
+                onDeleteRequest={requestDelete}
+                onDeleteCancel={cancelDelete}
+                onMore={openMore}
               />
             ))}
           {!searching && visible.length > 100 && (
@@ -882,6 +1098,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onCtx,
                   renamingId,
                   onRename: commitRename,
+                  confirmId,
+                  onRenameStart: setRenamingId,
+                  onDeleteRequest: requestDelete,
+                  onDeleteCancel: cancelDelete,
+                  onMore: openMore,
                 }}
                 style={{ height: '100%', width: '100%' }}
               />
@@ -912,25 +1133,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className={styles.empty}>{t('正在扫描历史会话…')}</div>
               )}
               {histItems.map((h) => (
-                <button
+                <div
                   key={h.key}
-                  type="button"
-                  className={`${styles.thread} ${styles.histRow}`}
-                  data-testid="history-session-item"
-                  data-backend={h.backend}
-                  data-session-id={h.sessionId}
-                  data-cwd-missing={h.cwdMissing || undefined}
-                  aria-busy={openingKey === h.key}
-                  title={[h.title, h.cwd, h.cwdMissing ? t('原目录已不存在') : '']
-                    .filter(Boolean)
-                    .join('\n')}
-                  onClick={() => void openHistory(h)}
+                  className={`${styles.row} ${styles.histRow}`}
+                  data-testid="history-session-row"
                 >
-                  <span className={styles.dot} aria-hidden />
-                  <EndpointIcon backend={h.backend} size={14} />
-                  <span className={styles.threadName}>{h.title}</span>
-                  <span className={styles.threadTime}>{rel(h.updatedAt)}</span>
-                </button>
+                  <button
+                    type="button"
+                    className={styles.thread}
+                    data-testid="history-session-item"
+                    data-backend={h.backend}
+                    data-session-id={h.sessionId}
+                    data-cwd-missing={h.cwdMissing || undefined}
+                    aria-busy={openingKey === h.key}
+                    title={[h.title, h.cwd, h.cwdMissing ? t('原目录已不存在') : '']
+                      .filter(Boolean)
+                      .join('\n')}
+                    onClick={() => void openHistory(h)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setNewMenu(false);
+                      setCtx(null);
+                      setHistMenu({ h, x: e.clientX, y: e.clientY });
+                    }}
+                  >
+                    <span className={styles.dot} aria-hidden />
+                    <EndpointIcon backend={h.backend} size={14} />
+                    <span className={styles.threadName}>{h.title}</span>
+                    <span className={styles.threadTime}>{rel(h.updatedAt)}</span>
+                  </button>
+                  {/* 磁盘历史是只读的：没有重命名 / 删除，「更多」里只有「在标签中打开」 */}
+                  <RowActions
+                    kind="hist"
+                    onMore={(a) => {
+                      setCtx(null);
+                      setHistMenu({ h, x: a.right - 184, y: a.bottom + 2 });
+                    }}
+                  />
+                </div>
               ))}
               {history.hasMore(histScope) && (
                 <button
@@ -965,6 +1205,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           );
         })()}
+
+      {histMenu && (
+        <ConversationMenu
+          x={histMenu.x}
+          y={histMenu.y}
+          isTab={false}
+          onDismiss={() => setHistMenu(null)}
+          onOpen={() => void openHistory(histMenu.h)}
+        />
+      )}
 
       {onSettings && (
         <button

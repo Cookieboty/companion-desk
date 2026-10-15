@@ -15,9 +15,11 @@ export interface ConversationMenuProps {
   y: number;
   /** 该对话是否对应一个 CLI 标签 */
   isTab: boolean;
-  onRename: () => void;
-  onFork: () => void;
-  onForkCross: () => void;
+  /** 磁盘历史会话（只读）没有重命名 / 分叉 / 删除，只给 onOpen */
+  onOpen?: () => void;
+  onRename?: () => void;
+  onFork?: () => void;
+  onForkCross?: () => void;
   onClose?: () => void;
   onDelete?: () => void;
   onDismiss: () => void;
@@ -27,6 +29,7 @@ export const ConversationMenu: React.FC<ConversationMenuProps> = ({
   x,
   y,
   isTab,
+  onOpen,
   onRename,
   onFork,
   onForkCross,
@@ -85,34 +88,51 @@ export const ConversationMenu: React.FC<ConversationMenuProps> = ({
       data-testid="conversation-context-menu"
       onKeyDown={onKey}
     >
-      <button
-        type="button"
-        role="menuitem"
-        className={styles.item}
-        onClick={act(onRename)}
-        data-testid="conversation-rename"
-      >
-        {t('重命名')}
-        {isTab && <span className={styles.key}>{formatCombo(bindings.renameTab)}</span>}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={styles.item}
-        onClick={act(onFork)}
-        data-testid="fork-same"
-      >
-        {t('分叉为新对话')}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className={styles.item}
-        onClick={act(onForkCross)}
-        data-testid="fork-cross"
-      >
-        {t('分叉到其他端')}
-      </button>
+      {onOpen && (
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.item}
+          onClick={act(onOpen)}
+          data-testid="conversation-open"
+        >
+          {t('在标签中打开')}
+        </button>
+      )}
+      {onRename && (
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.item}
+          onClick={act(onRename)}
+          data-testid="conversation-rename"
+        >
+          {t('重命名')}
+          {isTab && <span className={styles.key}>{formatCombo(bindings.renameTab)}</span>}
+        </button>
+      )}
+      {onFork && (
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.item}
+          onClick={act(onFork)}
+          data-testid="fork-same"
+        >
+          {t('分叉为新对话')}
+        </button>
+      )}
+      {onForkCross && (
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.item}
+          onClick={act(onForkCross)}
+          data-testid="fork-cross"
+        >
+          {t('分叉到其他端')}
+        </button>
+      )}
       {(onClose || onDelete) && <div className={styles.sep} role="separator" />}
       {onClose && (
         <button

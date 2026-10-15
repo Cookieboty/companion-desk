@@ -237,6 +237,47 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await expect(sq).toHaveCount(0);
     await expect(rows.first()).toBeVisible();
 
+    // 行尾操作：悬浮 / 键盘焦点 / 选中行显示；磁盘历史只读，只有「更多」
+    const histRow = chat.locator('[data-testid="history-session-row"]').first();
+    const histActions = histRow.locator('[data-testid="row-actions"]');
+    await expect(histActions).toHaveCSS('opacity', '0');
+    await histRow.hover();
+    await expect(histActions).toHaveCSS('opacity', '1');
+    await expect(histRow.locator('[data-testid="row-rename"]')).toHaveCount(0);
+    await expect(histRow.locator('[data-testid="row-delete"]')).toHaveCount(0);
+    await shot(chat, '02d-row-actions-hover');
+    await histRow.locator('[data-testid="row-more"]').click();
+    const hmenu = chat.locator('[data-testid="conversation-context-menu"]');
+    await expect(hmenu.locator('[data-testid="conversation-open"]')).toBeVisible();
+    await expect(hmenu.locator('[data-testid="conversation-rename"]')).toHaveCount(0);
+    await shot(chat, '02e-row-more-menu-history');
+    await chat.keyboard.press('Escape');
+    // 键盘焦点（focus-within）也会显示
+    await chat.mouse.move(5, 5);
+    await histRow.locator('[data-testid="history-session-item"]').focus();
+    await expect(histActions).toHaveCSS('opacity', '1');
+    await chat.locator('[data-testid="sidebar-settings"]').focus();
+    // 选中的 Nomi 对话常显三个图标；改名 Enter 确认 / Esc 取消
+    const nomiRow = chat.locator('[data-testid="conversation-row"][data-active]').first();
+    await expect(nomiRow.locator('[data-testid="row-actions"]')).toHaveCSS('opacity', '1');
+    await nomiRow.locator('[data-testid="row-rename"]').click();
+    const rn = chat.locator('[data-testid="conversation-rename-input"]');
+    await rn.fill('改名测试');
+    await rn.press('Escape');
+    await expect(rn).toHaveCount(0);
+    await nomiRow.locator('[data-testid="row-more"]').click();
+    await expect(
+      chat.locator('[data-testid="conversation-context-menu"] [data-testid="fork-same"]'),
+    ).toBeVisible();
+    await shot(chat, '02f-row-more-menu-conversation');
+    await chat.keyboard.press('Escape');
+    // 删除要二次确认；取消后对话仍在
+    await nomiRow.locator('[data-testid="row-delete"]').click();
+    await expect(nomiRow.locator('[data-testid="row-delete-confirm"]')).toBeVisible();
+    await shot(chat, '02g-row-delete-confirm');
+    await nomiRow.locator('[data-testid="row-delete-cancel"]').click();
+    await expect(nomiRow.locator('[data-testid="row-delete-confirm"]')).toHaveCount(0);
+
     // 点击 Claude 历史 → 新标签，转录预填，续接后 Mock 回显 --resume 的 id
     await rows.first().click();
     const tabs = chat.locator('[role="tab"]');
