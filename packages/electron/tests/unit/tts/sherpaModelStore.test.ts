@@ -7,8 +7,17 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { ModelManifest } from '../../../src/tts/sherpa/manifest';
-import { SHERPA_MANIFEST } from '../../../src/tts/sherpa/manifest';
-import { installModel, locateModel, verifyModelDir } from '../../../src/tts/sherpa/modelStore';
+import {
+  SHERPA_MANIFEST,
+  SHERPA_MODEL_URL_ENV,
+  resolveModelUrls,
+} from '../../../src/tts/sherpa/manifest';
+import {
+  SherpaInstallError,
+  installModel,
+  locateModel,
+  verifyModelDir,
+} from '../../../src/tts/sherpa/modelStore';
 
 // 213 字节的 tar.bz2：tiny-model/model.onnx(8B)、tiny-model/dict/words.txt(3B)、
 // 以及一个 zip-slip 条目 tiny-model/../../escape.txt（必须被丢弃）
@@ -145,6 +154,100 @@ describe('installModel', () => {
       }),
     ).rejects.toThrow(/404/);
     expect(fs.existsSync(path.join(installRoot, 'tiny'))).toBe(false);
+  });
+
+  it('retries a flaky download, then succeeds; logs each failure', async () => {
+    const installRoot = tmp();
+    let calls = 0;
+    const events: string[] = [];
+    const dir = await installModel({
+      installRoot,
+      manifest,
+      retryDelayMs: 1,
+      sleep: async () => undefined,
+      onEvent: (m) => events.push(m),
+      fetchImpl: async (...a) => {
+        if (++calls < 3) throw new Error('read ECONNRESET');
+        void a;
+        return okFetch(FIXTURE)();
+      },
+    });
+    expect(calls).toBe(3);
+    expect(fs.existsSync(path.join(dir, 'model.onnx'))).toBe(true);
+    expect(events.filter((e) => /download failed/.test(e))).toHaveLength(2);
+  });
+
+  it('falls through mirrors: 404 mirror skipped without retries, next url used', async () => {
+    const installRoot = tmp();
+    const seen: string[] = [];
+    await installModel({
+      installRoot,
+      manifest,
+      urls: ['https://mirror.invalid/a', 'https://mirror2.invalid/b'],
+      sleep: async () => undefined,
+      fetchImpl: async (url) => {
+        seen.push(url);
+        return url.includes('mirror.invalid')
+          ? new Response('nf', { status: 404 })
+          : okFetch(FIXTURE)();
+      },
+    });
+    expect(seen).toEqual(['https://mirror.invalid/a', 'https://mirror2.invalid/b']);
+  });
+
+  it('all urls failing → SherpaInstallError(download) with mirror hint, no residue', async () => {
+    const installRoot = tmp();
+    const err = await installModel({
+      installRoot,
+      manifest,
+      attempts: 2,
+      sleep: async () => undefined,
+      fetchImpl: async () => {
+        throw new Error('connect ETIMEDOUT');
+      },
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(SherpaInstallError);
+    expect(err.phase).toBe('download');
+    expect(err.message).toMatch(/ETIMEDOUT/);
+    expect(err.message).toMatch(/NOMI_SHERPA_TTS_MODEL_URL/);
+    expect(fs.existsSync(path.join(installRoot, 'tiny'))).toBe(false);
+  });
+
+  it('stalled download times out (idle) instead of hanging forever', async () => {
+    const installRoot = tmp();
+    const err = await installModel({
+      installRoot,
+      manifest,
+      attempts: 1,
+      idleTimeoutMs: 50,
+      fetchImpl: (_u, init) =>
+        new Promise<Response>((_res, rej) => {
+          init.signal?.addEventListener('abort', () => rej(new Error('aborted')));
+        }),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(SherpaInstallError);
+    expect(err.message).toMatch(/stalled|timeout/i);
+  });
+
+  it('unwritable install root → prepare error up-front (no download attempted)', async () => {
+    const f = path.join(tmp(), 'afile');
+    fs.writeFileSync(f, 'x');
+    const download = jest.fn();
+    const err = await installModel({ installRoot: path.join(f, 'sub'), manifest, download }).catch(
+      (e) => e,
+    );
+    expect(err).toBeInstanceOf(SherpaInstallError);
+    expect(err.phase).toBe('prepare');
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it('resolveModelUrls: env mirrors first (comma/space/semicolon), official last, http(s) only', () => {
+    expect(resolveModelUrls(manifest, {})).toEqual([manifest.url]);
+    expect(
+      resolveModelUrls(manifest, {
+        [SHERPA_MODEL_URL_ENV]: 'https://m1/a.tar.bz2, http://m2/b.tar.bz2;ftp://bad  file:///c',
+      }),
+    ).toEqual(['https://m1/a.tar.bz2', 'http://m2/b.tar.bz2', manifest.url]);
   });
 
   it('sanity: fixture sha constant matches the embedded bytes', () => {

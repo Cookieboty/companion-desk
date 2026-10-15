@@ -23,6 +23,8 @@
     "package:publish:mac": "electron-builder build --mac --publish always",
     "package:publish:win": "electron-builder build --win --publish always",
     "package:publish:linux": "electron-builder build --linux --publish always",
+    "postinstall": "node scripts/ensure-tts-model.mjs --postinstall",
+    "ensure-tts-model": "node scripts/ensure-tts-model.mjs",
     "sync-tts-model": "node scripts/sync-tts-model.mjs",
     "prepackage": "node scripts/sync-tts-model.mjs",
     "prepackage:prod": "node scripts/sync-tts-model.mjs",

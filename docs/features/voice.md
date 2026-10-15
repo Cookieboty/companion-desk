@@ -41,15 +41,41 @@ Nomi 默认使用**内置离线语音**（[sherpa-onnx](https://github.com/k2-fs
 1. 打包前 `pnpm --filter @nomi-ai/electron sync-tts-model`（各 `package:*` 的 `prepackage*` 会自动调用）把源目录同步到 `packages/electron/resources/tts-models/`（已 gitignore）。若本地没有源目录，脚本会从 k2-fsa/sherpa-onnx `tts-models` release 自动下载到仓库同级 `../models/<id>` 再同步。
 2. 源目录解析顺序：`NOMI_SHERPA_TTS_MODEL_DIR` → 仓库同级 `../models/<id>` → 仓库内 `models/<id>`。文件清单、归档 URL / sha256 与字节数钉死在 `packages/electron/src/tts/sherpa/manifest.ts`（与 sync 脚本一致）。
 3. 运行时定位顺序：环境变量 → `process.resourcesPath/tts-models/<id>`（打包）→ 开发态上述目录 → `userData/tts-models/<id>`。
-4. **开发启动缺模型**：主进程 `SherpaTtsService` 在预热 / 首次合成时自动下载到 `../models/`（日志打进度；无安装器 UI）。生产包已带 model 则不会下载。
-5. IPC：`tts:sherpa:status`（ready / missing / error）；设置页只展示状态，无下载进度条。
+4. **`pnpm i` / `pnpm dev` 自动准备**：`packages/electron/scripts/ensure-tts-model.mjs`（纯 Node、跨平台）在 electron 包 `postinstall` 时下载并解压模型到 `<repo>/../models/vits-zh-hf-theresa`（Windows 例：`D:\self_git\models\vits-zh-hf-theresa`）；`pnpm dev` 启动前再校验一遍兜底。幂等（清单逐文件字节校验，完整则毫秒级跳过）；带空闲超时（30 s）/ 重试（每地址 3 次）/ 多镜像回退 / sha256 校验 / 进度输出；自动清理 0KB `.part`、残留 `.download`、`.partial`；**失败只报错、退出码 0**，不阻塞 `pnpm i` 与 dev（`--strict` 才非 0）。手动执行：`pnpm --filter @nomi-ai/electron ensure-tts-model`（`--check` 只校验，`--force` 重装）。
+5. **运行时后台下载（兜底）**：若启动后模型仍缺失，`SherpaTtsService` 在**后台**异步下载（单飞，并发请求不会重复下载）；下载 / 解压期间每条 `tts:speak` 立即回退系统语音，并限频（5 s）打印「模型下载中 x%」；下载完成后下一条自动走 sherpa。下载失败 120 s 内不重试（回退并带上次错误），之后自动重试。
+6. IPC：`tts:sherpa:status`（ready / missing / error，下载中时 message 带进度）；设置页只展示状态，无下载进度条。
+
+#### 环境变量
+
+| 变量                                                           | 作用                                                                                                                                                        |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NOMI_SKIP_TTS_MODEL=1`                                        | 跳过 postinstall / dev 的模型准备（CI）                                                                                                                     |
+| `NOMI_SHERPA_TTS_MODEL_URL`                                    | 镜像地址（同一个 `vits-zh-hf-theresa.tar.bz2`，sha256 仍按清单校验）；可多个，逗号 / 分号 / 空白分隔，按序尝试，最后兜底官方 GitHub。脚本与运行时下载都生效 |
+| `NOMI_SHERPA_TTS_MODEL_DIR`                                    | 指向已手动解压的模型目录（完整则不再下载）                                                                                                                  |
+| `NOMI_SHERPA_TTS_ATTEMPTS` / `NOMI_SHERPA_TTS_IDLE_TIMEOUT_MS` | 脚本每地址重试次数（默认 3）/ 空闲超时毫秒（默认 30000）                                                                                                    |
+| `HTTPS_PROXY` / `HTTP_PROXY`                                   | Node 内置 fetch 默认不走代理；脚本会尽力启用（Node ≥ 22.21 / 24.5），运行时下载（Electron）请用系统代理或镜像                                               |
+
+#### 手动下载（国内网络 / GitHub 不通 / 公司代理）
+
+1. 浏览器或下载器获取 `https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-zh-hf-theresa.tar.bz2`（约 115 MB，sha256 `f337638c…1d9e92`）。
+2. 解压（Windows 可用 7-Zip / `tar -xjf`），得到 `vits-zh-hf-theresa/` 目录，放到 `<repo>/../models/vits-zh-hf-theresa`（例如 `D:\self_git\models\vits-zh-hf-theresa`，内含 `theresa.onnx`、`lexicon.txt`、`tokens.txt`、`*.fst`、`dict/`），或放任意位置并设置 `NOMI_SHERPA_TTS_MODEL_DIR`。
+3. `pnpm --filter @nomi-ai/electron ensure-tts-model --check` 校验；通过后重启 `pnpm dev`，下一条语音即用 sherpa。
+
+#### 常见失败排查
+
+- 日志 `model install FAILED [download]`：网络 / 超时 → 设镜像 `NOMI_SHERPA_TTS_MODEL_URL` 或手动下载。
+- `[prepare]` 目录不可写（盘符不存在 / 权限）：运行时会自动回退 `userData/tts-models`；脚本请换权限正常的位置或手动解压。
+- `[extract]` / `[finalize]`：磁盘空间不足、杀毒软件 / 资源管理器占用目录（已自动重试 rename）。
+- `engine load FAILED` + `sherpa-onnx 原生库加载失败`：见下方 Windows 说明，错误信息里带真实 dlopen 原因。
 
 ### 实现与平台
 
 - 原生 addon：`sherpa-onnx-node@1.13.8`（N-API，Electron 可直接加载，无需 electron-rebuild）。预编译包为 optionalDependencies：`darwin-arm64` / `darwin-x64` / `linux-x64` / `linux-arm64` / `win-x64` / `win-ia32`。
 - `electron-builder.yml` 的 `asarUnpack` 已包含 `sherpa-onnx-*`（`.node` 与 `libonnxruntime` / `libsherpa-onnx-c-api` 动态库必须在磁盘上）。
+- **Windows x64 原生库**：需要平台包 `sherpa-onnx-win-x64`（`sherpa-onnx-node` 的 optionalDependency，须在 Windows 本机 `pnpm install` 安装，不要拷贝 Linux 的 node_modules）及其 `onnxruntime.dll` / `sherpa-onnx-c-api.dll`。加载前代码会把平台包目录加入 `PATH`；`sherpa-onnx-node` 自带 loader 会吞掉真实 dlopen 错误，`nativeAddon.ts` 失败后会诊断（平台包缺失 / DLL 缺失 / 真实 dlopen 错误）并给出提示：未装 **VC++ 2015-2022 x64 运行库**（<https://aka.ms/vs/17/release/vc_redist.x64.exe>）、`System32` 下旧版 `onnxruntime.dll` 抢先加载、杀毒软件拦截。
 - 懒加载 + 单例：首次合成时才 `require` addon 并加载模型（约 0.7–1.5 s）；推理用 `createAsync` / `generateAsync`，不阻塞主进程事件循环；同一时刻只跑一个合成，新请求会让旧请求在句间退出（对应打断）。
 - 参考参数（同 `/workspace/tts-samples/gen.py`）：`numThreads=4`、`provider=cpu`、`maxNumSentences=1`、`ruleFsts=phone/date/number/new_heteronym`、`dictDir=dict/`。CPU 实时率约 0.15–0.2。
+- 每条 `tts:speak` 都有一条结果日志：`tts:speak success|fallback|error`（含 provider / via / 耗时 / code / message）；单次请求 90 s 总超时，超时回退系统语音，IPC 不会永久挂起。
 - 单次文本上限 1500 字符（超出回退系统语音）；引擎加载失败后 60 s 内不重试，直接回退。
 
 ### 本地验证

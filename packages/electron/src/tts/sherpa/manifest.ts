@@ -17,6 +17,9 @@ export interface ModelManifest {
   files: Readonly<Record<string, number>>;
 }
 
+/** 环境变量：覆盖 / 追加归档下载地址（镜像），多个用逗号 / 分号 / 空白分隔，按顺序尝试，最后兜底官方地址 */
+export const SHERPA_MODEL_URL_ENV = 'NOMI_SHERPA_TTS_MODEL_URL';
+
 export const SHERPA_MODEL_ID = 'vits-zh-hf-theresa';
 
 export const SHERPA_MODEL_URL =
@@ -61,3 +64,20 @@ export const SHERPA_DEFAULT_SPEED = 1.0;
 export const SHERPA_NUM_THREADS = 4;
 export const SHERPA_MAX_NUM_SENTENCES = 1;
 export const SHERPA_RULE_FSTS = ['phone.fst', 'date.fst', 'number.fst', 'new_heteronym.fst'];
+
+/**
+ * 解析下载地址列表：`NOMI_SHERPA_TTS_MODEL_URL`（可多个，镜像优先）→ 清单默认 URL（官方 GitHub）。
+ * 只接受 http(s)；归档内容仍按清单 sha256 校验，镜像必须提供同一个 .tar.bz2。
+ */
+export function resolveModelUrls(
+  manifest: ModelManifest,
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  const raw = env[SHERPA_MODEL_URL_ENV] ?? '';
+  const urls = raw
+    .split(/[\s,;]+/)
+    .map((u) => u.trim())
+    .filter((u) => /^https?:\/\//i.test(u));
+  if (!urls.includes(manifest.url)) urls.push(manifest.url);
+  return urls;
+}

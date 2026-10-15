@@ -26,6 +26,13 @@ export class ChecksumError extends Error {
 
 export type FetchLike = (url: string, init: { signal?: AbortSignal }) => Promise<Response>;
 
+export class DownloadTimeoutError extends Error {
+  constructor(readonly idleMs: number) {
+    super(`download stalled: no data for ${Math.round(idleMs / 1000)}s (timeout)`);
+    this.name = 'DownloadTimeoutError';
+  }
+}
+
 export async function downloadVerified(opts: {
   url: string;
   sha256: string;
@@ -34,40 +41,116 @@ export async function downloadVerified(opts: {
   signal?: AbortSignal;
   onProgress?: (p: DownloadProgress) => void;
   fetchImpl?: FetchLike;
+  /**
+   * 空闲超时（毫秒）：建立连接 / 收到响应头 / 两个数据块之间超过该时长无数据则中止并抛
+   * DownloadTimeoutError。未设置则不限（保持旧调用方行为）。
+   */
+  idleTimeoutMs?: number;
 }): Promise<void> {
   const f = opts.fetchImpl ?? ((u, i) => fetch(u, { ...i, redirect: 'follow' }));
-  const res = await f(opts.url, { signal: opts.signal });
-  if (!res.ok || !res.body) throw new Error(t('下载失败：HTTP {0}', res.status));
-  const total = Number(res.headers.get('content-length')) || opts.expectedBytes || 0;
-  fs.mkdirSync(path.dirname(opts.dest), { recursive: true });
+  const ctl = new AbortController();
+  const onOuterAbort = () => ctl.abort();
+  if (opts.signal?.aborted) ctl.abort();
+  else opts.signal?.addEventListener('abort', onOuterAbort, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  let rejectIdle: ((e: Error) => void) | undefined;
+  const idle = new Promise<never>((_, j) => {
+    rejectIdle = j;
+  });
+  idle.catch(() => undefined);
+  const arm = () => {
+    if (!opts.idleTimeoutMs) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timedOut = true;
+      const err = new DownloadTimeoutError(opts.idleTimeoutMs!);
+      rejectIdle?.(err);
+      ctl.abort();
+    }, opts.idleTimeoutMs);
+  };
+  const cleanupTimer = () => {
+    if (timer) clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', onOuterAbort);
+  };
+  const guard = <T>(p: Promise<T>): Promise<T> =>
+    opts.idleTimeoutMs ? Promise.race([p, idle]) : p;
+
+  let out: fs.WriteStream | undefined;
   const tmp = `${opts.dest}.part`;
-  const out = fs.createWriteStream(tmp);
-  const hash = createHash('sha256');
-  let received = 0;
-  let lastEmit = 0;
   try {
+    arm();
+    const res = await guard(f(opts.url, { signal: ctl.signal }));
+    if (!res.ok || !res.body) {
+      throw Object.assign(new Error(t('下载失败：HTTP {0}', res.status)), { status: res.status });
+    }
+    const total = Number(res.headers.get('content-length')) || opts.expectedBytes || 0;
+    fs.mkdirSync(path.dirname(opts.dest), { recursive: true });
+    // Windows：上次失败遗留的 .part 可能被杀软短暂占用，先尽力清理（带重试）
+    fs.rmSync(tmp, { force: true, maxRetries: 5, retryDelay: 200 });
+    out = fs.createWriteStream(tmp);
+    const outStream = out;
+    outStream.on('error', () => undefined); // 错误在 write/end 的 await 里统一抛出
+    const hash = createHash('sha256');
+    let received = 0;
+    let lastEmit = 0;
     const reader = res.body.getReader();
     for (;;) {
-      const { done, value } = await reader.read();
+      const { done, value } = await guard(reader.read());
       if (done) break;
+      arm();
       hash.update(value);
       received += value.byteLength;
-      if (!out.write(value)) await new Promise<void>((r) => out.once('drain', () => r()));
+      if (!outStream.write(value)) {
+        await guard(
+          new Promise<void>((r, j) => {
+            outStream.once('drain', () => r());
+            outStream.once('error', j);
+          }),
+        );
+      }
       const now = Date.now();
       if (now - lastEmit > 150) {
         lastEmit = now;
         opts.onProgress?.({ received, total });
       }
     }
-    await new Promise<void>((r, j) => out.end((e?: Error | null) => (e ? j(e) : r())));
+    await new Promise<void>((r, j) => outStream.end((e?: Error | null) => (e ? j(e) : r())));
     opts.onProgress?.({ received, total: total || received });
     const actual = hash.digest('hex');
     if (actual !== opts.sha256.toLowerCase()) throw new ChecksumError(opts.sha256, actual);
-    fs.renameSync(tmp, opts.dest);
+    // Windows：目标/临时文件可能被杀软扫描占用，rename 偶发 EPERM/EBUSY → 重试
+    await renameWithRetry(tmp, opts.dest);
   } catch (e) {
-    out.destroy();
-    fs.rmSync(tmp, { force: true });
+    out?.destroy();
+    fs.rmSync(tmp, { force: true, maxRetries: 5, retryDelay: 200 });
+    if (timedOut && !(e instanceof DownloadTimeoutError)) {
+      throw new DownloadTimeoutError(opts.idleTimeoutMs!);
+    }
     throw e;
+  } finally {
+    cleanupTimer();
+  }
+}
+
+/** rename 带重试：Windows 上 antivirus / indexer 持有句柄时会短暂 EPERM / EBUSY / EACCES。 */
+export async function renameWithRetry(
+  from: string,
+  to: string,
+  attempts = 8,
+  delayMs = 150,
+): Promise<void> {
+  for (let i = 0; ; i++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (i >= attempts - 1 || !['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(code ?? '')) {
+        throw e;
+      }
+      await new Promise((r) => setTimeout(r, delayMs * (i + 1)));
+    }
   }
 }
 

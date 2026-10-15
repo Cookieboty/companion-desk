@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { ModelManifest } from '../../../src/tts/sherpa/manifest';
+import { SherpaAddonLoadError } from '../../../src/tts/sherpa/nativeAddon';
 import {
   SherpaTtsError,
   SherpaTtsService,
@@ -128,35 +129,134 @@ describe('SherpaTtsService', () => {
     expect(svc.getStatus()).toMatchObject({ state: 'missing', modelId: 'tiny' });
   });
 
-  it('missing model with installRoot → auto-downloads then synthesizes', async () => {
-    const { addon, createAsync, generate } = fakeAddon();
-    const loadAddon = jest.fn(() => addon);
-    const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-install-'));
-    const install = jest.fn(async () => {
-      const dir = path.join(installRoot, 'tiny');
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'model.onnx'), 'x');
-      return dir;
+  describe('missing model with installRoot → background download', () => {
+    function setup() {
+      const { addon, createAsync, generate } = fakeAddon();
+      const loadAddon = jest.fn(() => addon);
+      const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-install-'));
+      let release!: () => void;
+      let fail!: (e: Error) => void;
+      const gate = new Promise<void>((res, rej) => {
+        release = res;
+        fail = rej;
+      });
+      let onProgress:
+        | ((phase: 'download' | 'extract', p: { received: number; total: number }) => void)
+        | undefined;
+      const install = jest.fn(
+        async (o: { installRoot: string; onProgress?: typeof onProgress }) => {
+          onProgress = o.onProgress;
+          await gate;
+          const dir = path.join(o.installRoot, 'tiny');
+          fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(path.join(dir, 'model.onnx'), 'x');
+          return dir;
+        },
+      );
+      let now = 1_000_000;
+      const logs: string[] = [];
+      const svc = new SherpaTtsService({
+        resourcesRoot: () => fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-empty-')),
+        installRoot: () => installRoot,
+        userRoot: () => installRoot,
+        loadAddon,
+        install: install as never,
+        manifest,
+        now: () => now,
+        log: (m: string) => logs.push(m),
+      });
+      return {
+        svc,
+        install,
+        loadAddon,
+        createAsync,
+        generate,
+        logs,
+        release,
+        fail,
+        progress: (pct: number) => onProgress?.('download', { received: pct, total: 100 }),
+        advance: (ms: number) => {
+          now += ms;
+        },
+      };
+    }
+
+    it('never awaits the download: request rejects immediately with downloading; single-flight; then auto-uses sherpa', async () => {
+      const t = setup();
+      expect(t.svc.getStatus().state).toBe('missing');
+      // 下载挂起期间：多条并发请求都立刻返回 downloading，只启动一次下载
+      const rs = await Promise.allSettled([
+        t.svc.synthesize('你好'),
+        t.svc.synthesize('世界'),
+        t.svc.synthesize('再见'),
+      ]);
+      for (const r of rs) {
+        expect(r.status).toBe('rejected');
+        expect((r as PromiseRejectedResult).reason).toMatchObject({ code: 'downloading' });
+      }
+      expect(t.install).toHaveBeenCalledTimes(1);
+      expect(t.loadAddon).not.toHaveBeenCalled();
+      t.progress(42);
+      await expect(t.svc.synthesize('x')).rejects.toThrow(/42%/);
+      expect(t.svc.getStatus()).toMatchObject({ state: 'missing' });
+      expect(t.svc.getStatus().message).toMatch(/下载中/);
+
+      // 下载完成 → 下一条请求自动用 sherpa
+      t.release();
+      await new Promise((r) => setTimeout(r, 20));
+      const r = await t.svc.synthesize('你好');
+      expect(r.sentences).toBe(1);
+      expect(t.install).toHaveBeenCalledTimes(1);
+      expect(t.createAsync).toHaveBeenCalledTimes(1);
+      expect(t.svc.getStatus()).toMatchObject({ state: 'ready' });
     });
+
+    it('rate-limits the "模型下载中 x%" log', async () => {
+      const t = setup();
+      await t.svc.synthesize('a').catch(() => undefined);
+      t.progress(10);
+      for (let i = 0; i < 5; i++) await t.svc.synthesize('b').catch(() => undefined);
+      const lines = () => t.logs.filter((l) => /模型下载中/.test(l));
+      expect(lines()).toHaveLength(1);
+      t.advance(6000);
+      await t.svc.synthesize('c').catch(() => undefined);
+      expect(lines()).toHaveLength(2);
+      t.release();
+    });
+
+    it('download failure → logged, falls back with the error, cooldown then retries', async () => {
+      const t = setup();
+      await t.svc.synthesize('a').catch(() => undefined);
+      t.fail(new Error('connect ETIMEDOUT github.com'));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(t.logs.some((l) => /install FAILED/.test(l) && /ETIMEDOUT/.test(l))).toBe(true);
+      expect(t.svc.getStatus()).toMatchObject({ state: 'error' });
+      await expect(t.svc.synthesize('b')).rejects.toMatchObject({
+        code: 'not_ready',
+        message: expect.stringMatching(/ETIMEDOUT.*自动重试/),
+      });
+      expect(t.install).toHaveBeenCalledTimes(1);
+      t.advance(121_000);
+      await expect(t.svc.synthesize('c')).rejects.toMatchObject({ code: 'downloading' });
+      expect(t.install).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('addon native-load error is surfaced verbatim (engine_failed) and logged', async () => {
     const logs: string[] = [];
     const svc = new SherpaTtsService({
-      resourcesRoot: () => fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-empty-')),
-      installRoot: () => installRoot,
-      userRoot: () => installRoot,
-      loadAddon,
-      install,
+      resourcesRoot: () => modelRoot(),
+      loadAddon: () => {
+        throw new SherpaAddonLoadError('缺少 VC++ 运行库 VCRUNTIME140_1.dll');
+      },
       manifest,
       log: (m: string) => logs.push(m),
     });
-    expect(svc.getStatus().state).toBe('missing');
-    const r = await svc.synthesize('你好');
-    expect(r.sentences).toBe(1);
-    expect(install).toHaveBeenCalledTimes(1);
-    expect(loadAddon).toHaveBeenCalledTimes(1);
-    expect(createAsync).toHaveBeenCalledTimes(1);
-    expect(generate).toHaveBeenCalled();
-    expect(svc.getStatus()).toMatchObject({ state: 'ready', source: 'userData' });
-    expect(logs.some((l) => /download/i.test(l) || /missing/i.test(l))).toBe(true);
+    await expect(svc.synthesize('你好')).rejects.toMatchObject({
+      code: 'engine_failed',
+      message: expect.stringContaining('VCRUNTIME140_1'),
+    });
+    expect(logs.some((l) => /engine load FAILED/.test(l))).toBe(true);
   });
 
   it('addon load failure → engine_failed, then cooldown avoids retrying immediately', async () => {

@@ -133,4 +133,65 @@ describe('TtsRouter.speak', () => {
     expect((await router.speak({ text: '   ' })).fallbackToSystem).toBe(true);
     expect(sherpa.synthesize).not.toHaveBeenCalled();
   });
+
+  describe('per-request outcome log + timeout', () => {
+    it('reports success / fallback(downloading) / error with provider, exactly once each', async () => {
+      const onOutcome = jest.fn();
+      const sherpa = { synthesize: jest.fn() };
+      const fish = { speak: jest.fn() };
+      const router = new TtsRouter({ getConfig: () => cfg(), sherpa, fish, onOutcome });
+      sherpa.synthesize.mockResolvedValueOnce({ wav: Buffer.from('RIFFwav') });
+      await router.speak({ text: '你好' });
+      sherpa.synthesize.mockRejectedValueOnce(new SherpaTtsError('downloading', '模型下载中 37%'));
+      const r = await router.speak({ text: '你好' });
+      expect(r).toMatchObject({ success: false, fallbackToSystem: true, via: 'none' });
+      await router.speak({ text: '  ' });
+      expect(onOutcome).toHaveBeenCalledTimes(3);
+      expect(onOutcome.mock.calls[0]![0]).toMatchObject({
+        outcome: 'success',
+        provider: 'sherpa-theresa',
+        via: 'sherpa',
+      });
+      expect(onOutcome.mock.calls[1]![0]).toMatchObject({
+        outcome: 'fallback',
+        provider: 'sherpa-theresa',
+        code: 'downloading',
+        message: '模型下载中 37%',
+      });
+      expect(onOutcome.mock.calls[2]![0]).toMatchObject({ outcome: 'fallback' });
+    });
+
+    it('a hung synthesize cannot hang the IPC: times out → system fallback + logged', async () => {
+      const onOutcome = jest.fn();
+      const sherpa = { synthesize: jest.fn(() => new Promise<never>(() => undefined)) };
+      const router = new TtsRouter({
+        getConfig: () => cfg(),
+        sherpa,
+        fish: { speak: jest.fn() },
+        onOutcome,
+        speakTimeoutMs: 30,
+      });
+      const r = await router.speak({ text: '你好' });
+      expect(r).toMatchObject({ success: false, fallbackToSystem: true });
+      expect(onOutcome).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'fallback', code: 'timeout' }),
+      );
+    });
+
+    it('thrown errors are reported as error and rethrown', async () => {
+      const onOutcome = jest.fn();
+      const router = new TtsRouter({
+        getConfig: () => {
+          throw new Error('cfg boom');
+        },
+        sherpa: { synthesize: jest.fn() },
+        fish: { speak: jest.fn() },
+        onOutcome,
+      });
+      await expect(router.speak({ text: 'x' })).rejects.toThrow('cfg boom');
+      expect(onOutcome).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'error', message: 'cfg boom' }),
+      );
+    });
+  });
 });

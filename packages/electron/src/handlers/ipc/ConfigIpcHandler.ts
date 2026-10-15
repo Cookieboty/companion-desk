@@ -271,8 +271,26 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       sherpa,
       fish,
       onSherpaFailure: (error) => {
+        const code = (error as { code?: string } | null)?.code;
+        // downloading / superseded 属预期情形，由逐请求结果日志 + 服务内限频进度日志覆盖，避免刷屏
+        if (code === 'downloading' || code === 'superseded') return;
         const message = error instanceof Error ? error.message : String(error);
-        this.logger.warn('sherpa TTS 不可用，回退系统语音', { message });
+        this.logger.warn('sherpa TTS 不可用，回退系统语音', { code, message });
+      },
+      // 每条 tts:speak 都必有一条结果日志：success / fallback / error + provider
+      onOutcome: (o) => {
+        const meta = {
+          provider: o.provider,
+          via: o.via,
+          ms: o.ms,
+          textLength: o.textLength,
+          code: o.code,
+          message: o.message,
+          audioBytes: o.audioBytes,
+        };
+        if (o.outcome === 'success') this.logger.info('tts:speak success', meta);
+        else if (o.outcome === 'fallback') this.logger.warn('tts:speak fallback', meta);
+        else this.logger.error('tts:speak error', meta);
       },
     });
 
@@ -362,24 +380,10 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     this.registerHandler('tts:speak', async (_, req: TTSSpeakRequest) => {
       this.validateArgs([req], 1, ['object']);
       try {
-        const result = await router.speak(req ?? { text: '' });
-        if (result.success) {
-          this.logger.info('tts:speak ok', {
-            via: result.via,
-            mimeType: result.mimeType,
-            audioBytes: result.audioBase64 ? Math.floor((result.audioBase64.length * 3) / 4) : 0,
-          });
-        } else {
-          this.logger.warn('tts:speak fallback', {
-            via: result.via,
-            fallbackToSystem: result.fallbackToSystem,
-            message: result.message,
-          });
-        }
-        return result;
+        // 结果日志（success / fallback / error）由 router.onOutcome 统一输出，这里不重复
+        return await router.speak(req ?? { text: '' });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error('tts:speak 失败', { error: errorMessage });
         return {
           success: false,
           via: 'none',
