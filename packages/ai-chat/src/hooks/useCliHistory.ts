@@ -69,9 +69,9 @@ export function useCliHistory(
             const page = await historyClient.list(b, { force });
             if (my !== seq.current) return;
             patch(b, {
-              items: page.items,
-              nextOffset: page.nextOffset,
-              hasMore: page.hasMore,
+              items: page?.items ?? [],
+              nextOffset: page?.nextOffset ?? null,
+              hasMore: !!page?.hasMore,
               loading: false,
             });
           } catch {
@@ -112,10 +112,10 @@ export function useCliHistory(
               [ep]: {
                 items: [
                   ...s[ep].items,
-                  ...page.items.filter((x) => !s[ep].items.some((y) => y.key === x.key)),
+                  ...(page?.items ?? []).filter((x) => !s[ep].items.some((y) => y.key === x.key)),
                 ],
-                nextOffset: page.nextOffset,
-                hasMore: page.hasMore,
+                nextOffset: page?.nextOffset ?? null,
+                hasMore: !!page?.hasMore,
                 loading: false,
               },
             })),

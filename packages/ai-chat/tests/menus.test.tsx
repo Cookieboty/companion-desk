@@ -63,6 +63,7 @@ function mockIpc() {
     if (ch === 'ai:harness:recent-cwds') return [];
     if (ch === 'ai:harness:tab-rename') return tab({ title: '新名字' });
     if (ch === 'ai:harness:tab-close') return tabsState;
+    if (ch === 'ai:history:list') return { items: [], nextOffset: null, hasMore: false };
     return {};
   });
   (window as unknown as { aiIPC: unknown }).aiIPC = { invoke, on: () => () => undefined };
