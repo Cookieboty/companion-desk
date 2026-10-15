@@ -45,8 +45,8 @@ async function openIsland(simulateNotch: boolean) {
   const userData = mkdtempSync(join(tmpdir(), 'e21-ud-'));
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
-    HOME: home,
-    USERPROFILE: home,
+    // Windows 的 appData 取自 APPDATA / USERPROFILE，改了 Electron 起不来；只在 POSIX 隔离 HOME
+    ...(process.platform === 'win32' ? {} : { HOME: home, USERPROFILE: home }),
     CD_LOCALE: 'zh',
     CD_ONBOARDING: 'off',
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
