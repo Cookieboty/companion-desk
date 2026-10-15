@@ -5,7 +5,7 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
-import { ChatTabs, CliTabInfo, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
+import { ChatTabs, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ForkTargetMenu } from './components/ForkMenu';
@@ -190,12 +190,12 @@ const AiChatContent: React.FC = () => {
   );
 
   const runForkCross = useCallback(
-    async (id: string, target: ConversationBackend) => {
+    async (id: string, target: ConversationBackend, cwd?: string) => {
       const store = state.ipcClient.conversationStore?.();
       if (!store) return;
       setForkCross(null);
       try {
-        const r = await forkCrossBackend(store, id, target);
+        const r = await forkCrossBackend(store, id, target, { cwd });
         if (r.backend !== 'nomi') setMode('dev');
         if (r.tabId) await tabs.activate(r.tabId);
         else {
@@ -409,7 +409,6 @@ const AiChatContent: React.FC = () => {
             mainLoading={state.isLoading}
           />
         )}
-        {isDev && <CliTabInfo />}
         {/* 对话区域 */}
         <main className="chat-container">
           {isDev && tabs.isCliTab ? (
@@ -514,7 +513,7 @@ const AiChatContent: React.FC = () => {
         open={!!forkCross}
         current={forkCross?.backend ?? 'nomi'}
         onClose={() => setForkCross(null)}
-        onPick={(b) => forkCross && void runForkCross(forkCross.id, b)}
+        onPick={(b, cwd) => forkCross && void runForkCross(forkCross.id, b, cwd)}
       />
       {toast && (
         <div

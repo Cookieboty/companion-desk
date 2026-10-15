@@ -6,6 +6,7 @@ import { t } from '@nomi-ai/ui';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useHarnessTabs } from '../../contexts/HarnessTabsContext';
+import { useNewWorkspace } from '../../hooks/useNewWorkspace';
 import {
   MAIN_TAB_ID,
   harnessClient,
@@ -15,12 +16,25 @@ import {
 import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
 import { ENDPOINT_NAME } from '../../utils/endpointBadge';
 import { EndpointIcon } from '../EndpointIcon';
+import { WorkspacePicker } from '../WorkspacePicker';
 
 import styles from './index.module.css';
 
 const KIND_LABEL = ENDPOINT_NAME;
 
 const CLI_BACKENDS: HarnessBackend[] = ['claude', 'codex', 'dsh'];
+
+/** 标签悬停提示：标题 · 端点 · 状态，其后依次是工作目录、会话、最近错误 */
+function tabTooltip(tab: HarnessTabMeta, status: string): string {
+  return [
+    [tab.title, KIND_LABEL[tab.backend], status].join(' · '),
+    tab.cwd,
+    tab.cliSessionId ? t('会话 {0}', tab.cliSessionId.slice(0, 18)) : '',
+    tab.lastError ?? '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
 
 export function tabDotStatus(tab: HarnessTabMeta, mainLoading = false): string {
   if (tab.id === MAIN_TAB_ID && mainLoading) return 'running';
@@ -52,6 +66,7 @@ export const ChatTabs: React.FC<{
   const [draft, setDraft] = useState('');
   const [menu, setMenu] = useState(false);
   const [bins, setBins] = useState<Record<string, string | null>>({});
+  const ws = useNewWorkspace();
   const menuRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -130,9 +145,7 @@ export const ChatTabs: React.FC<{
               data-tab-id={tab.id}
               data-status={dot}
               className={`${styles.tab} ${active ? styles.active : ''}`}
-              title={`${tab.title} · ${KIND_LABEL[tab.backend]} · ${statusLabel(dot)}\n${tab.cwd}${
-                tab.lastError ? `\n${tab.lastError}` : ''
-              }`}
+              title={tabTooltip(tab, statusLabel(dot))}
               onClick={() => !active && void tabs.activate(tab.id)}
               onDoubleClick={() => {
                 setEditing(tab.id);
@@ -222,7 +235,7 @@ export const ChatTabs: React.FC<{
                 disabled={bins[b] === null}
                 onClick={() => {
                   setMenu(false);
-                  void tabs.create(b).catch(() => undefined);
+                  void tabs.create(b, ws.chosen).catch(() => undefined);
                 }}
               >
                 <span className={styles.menuName}>
@@ -234,30 +247,17 @@ export const ChatTabs: React.FC<{
                 </span>
               </button>
             ))}
+            <div className={styles.menuWs}>
+              <WorkspacePicker
+                value={ws.cwd}
+                onChange={ws.set}
+                testId="new-tab-workspace"
+                label={t('目录')}
+              />
+            </div>
           </div>
         )}
       </div>
-    </div>
-  );
-};
-
-/** CLI 标签顶部：工作目录 + 会话 */
-export const CliTabInfo: React.FC = () => {
-  const { activeTab } = useHarnessTabs();
-  if (!activeTab || activeTab.id === MAIN_TAB_ID) return null;
-  return (
-    <div className={styles.cwdBar} data-testid="cli-tab-info">
-      <button
-        type="button"
-        className={styles.cwd}
-        title={t('更换工作目录（会开启新会话）')}
-        onClick={() => void harnessClient.pickTabCwd(activeTab.id).catch(() => undefined)}
-      >
-        {activeTab.cwd}
-      </button>
-      <span>
-        {activeTab.cliSessionId ? t('会话 {0}', activeTab.cliSessionId.slice(0, 18)) : t('新会话')}
-      </span>
     </div>
   );
 };

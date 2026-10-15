@@ -427,6 +427,7 @@
 }
 .composerBar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-height: 32px;
@@ -437,6 +438,8 @@
 .composerBar .modelStatus {
   margin: 0;
   min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .composerBar .currentModel {
   font-size: 12px;

@@ -166,4 +166,33 @@ describe('CliHarnessService tabs', () => {
     h.seedTabMessages(tab.id, [{ id: '3', role: 'user', content: 'only', timestamp: 3 }]);
     expect(h.tabMessages(tab.id).map((m) => m.content)).toEqual(['only']);
   });
+
+  it('remembers recent workspaces (deduped, newest first, existing only) and resets the session on cwd change', () => {
+    const h = mk();
+    const a = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-a-'));
+    const b = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-b-'));
+    const tab = h.createTab({ backend: 'codex', cwd: a });
+    expect(h.recentCwds()).toEqual([a]);
+    h.setTabCwd(tab.id, b);
+    h.setTabCwd(tab.id, a);
+    expect(h.recentCwds()).toEqual([a, b]);
+    // 重启后仍在；已删除的目录被过滤
+    fs.rmSync(b, { recursive: true });
+    const h2 = mk();
+    expect(h2.recentCwds()).toEqual([a]);
+    // Nomi 主标签不记录工作目录
+    const h3 = mk();
+    h3.setTabCwd(MAIN_TAB_ID, os.tmpdir());
+    expect(h3.recentCwds()).toEqual([a]);
+  });
+
+  it('cwd change on a tab with a CLI session drops the session id (new CLI session)', async () => {
+    const h = mk();
+    const a = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-a-'));
+    const tab = h.createTab({ backend: 'claude' });
+    await h.sendTab(tab.id, 'hello');
+    expect(h.listTabs().tabs.find((x) => x.id === tab.id)!.cliSessionId).toBeTruthy();
+    h.setTabCwd(tab.id, a);
+    expect(h.listTabs().tabs.find((x) => x.id === tab.id)!.cliSessionId).toBeNull();
+  });
 });

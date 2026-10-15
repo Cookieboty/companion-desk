@@ -225,27 +225,6 @@
   white-space: nowrap;
 }
 
-.cwdBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px var(--cd-space-4);
-  font-size: 12px;
-  color: var(--cd-color-text-muted);
-}
-.cwd {
-  border: 1px solid var(--cd-color-border);
-  border-radius: 6px;
-  padding: 2px 8px;
-  background: transparent;
-  color: inherit;
-  font-family: var(--cd-font-mono, monospace);
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
 .live {
   display: flex;
   flex-direction: column;
@@ -262,4 +241,10 @@
 .liveTool {
   font-size: 11px;
   color: var(--cd-color-text-subtle);
+}
+
+.menuWs {
+  margin-top: 4px;
+  padding: 6px 4px 2px;
+  border-top: 1px solid var(--cd-color-border);
 }

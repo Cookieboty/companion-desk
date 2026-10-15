@@ -100,6 +100,10 @@ export const harnessClient = {
   renameTab: (id: string, title: string) => call<HarnessTabMeta>('tab-rename', id, title),
   activateTab: (id: string) => call<HarnessTabsState>('tab-activate', id),
   setTabBackend: (id: string, b: HarnessBackend) => call<HarnessTabMeta>('tab-backend', id, b),
+  setTabCwd: (id: string, cwd: string) => call<HarnessTabMeta>('tab-cwd', id, cwd),
+  /** 原生文件夹选择器（不绑定标签）；取消返回 null */
+  pickDir: (defaultPath?: string) => call<string | null>('pick-dir', defaultPath),
+  recentCwds: () => call<string[]>('recent-cwds'),
   pickTabCwd: (id: string) => call<HarnessTabMeta>('tab-pick-cwd', id),
   tabMessages: (id: string) => call<HarnessTabMessage[]>('tab-messages', id),
   sendTab: (id: string, prompt: string) => call<HarnessSendResult>('tab-send', id, prompt),

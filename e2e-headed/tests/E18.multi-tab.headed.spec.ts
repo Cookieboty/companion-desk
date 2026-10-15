@@ -195,7 +195,13 @@ test.describe('E18 · concurrent chat tabs · mock CLI', () => {
     await expect(tabs2.nth(2)).toContainText('Tests');
     await tabs2.nth(1).click();
     await expect(chat.locator('.ai-chat-app')).toContainText('refactor the parser');
-    await expect(chat.locator('[data-testid="cli-tab-info"]')).toContainText('mock-claude');
+    // 工作目录在输入栏（缩短显示、完整路径在提示里）；会话 id 在标签提示里
+    await expect(chat.locator('[data-testid="cli-workspace"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="cli-workspace-button"]')).toHaveAttribute(
+      'title',
+      /\//,
+    );
+    await expect(tabs2.nth(1)).toHaveAttribute('title', /mock-claude/);
     await shot(chat, '08-restored-after-restart');
   });
 });

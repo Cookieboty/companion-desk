@@ -120,18 +120,6 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
             };
           })}
       />
-      {!tab && state.backend !== 'nomi' && (
-        <button
-          type="button"
-          data-testid="harness-pick-cwd"
-          className="cd-btn cd-btn-ghost"
-          style={{ fontSize: 12 }}
-          onClick={() => void harnessClient.pickCwd().then(setState)}
-          title={state.cwd}
-        >
-          {t('目录')}
-        </button>
-      )}
       {(tab || state.toolsDisabled) && (
         <span data-testid="harness-tools-off" style={{ fontSize: 11, opacity: 0.75 }}>
           {t('Nomi 工具已关闭')}

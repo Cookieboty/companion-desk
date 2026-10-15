@@ -7,11 +7,13 @@ import { useHarnessTabs } from '../../contexts/HarnessTabsContext';
 import { useChatMode } from '../../hooks/useChatMode';
 import { useCliTabSync } from '../../hooks/useCliTabSync';
 import { useConversationListView } from '../../hooks/useConversationListView';
+import { useNewWorkspace } from '../../hooks/useNewWorkspace';
 import { MAIN_TAB_ID, harnessClient, type HarnessTabMeta } from '../../services/harnessClient';
 import type { ConversationBackend, ChatSession } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
 import { ENDPOINT_FULL } from '../../utils/endpointBadge';
 import { EndpointIcon } from '../EndpointIcon';
+import { WorkspacePicker } from '../WorkspacePicker';
 
 import styles from './index.module.css';
 
@@ -115,6 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [bins, setBins] = useState<Record<string, string | null>>({});
   const [newMenu, setNewMenu] = useState(false);
   const [ctx, setCtx] = useState<{ id: string; x: number; y: number } | null>(null);
+  const ws = useNewWorkspace();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
@@ -218,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     if (!isDev) setMode('dev');
     if (!tabs.available) return;
-    await tabs.create(backend);
+    await tabs.create(backend, ws.chosen);
     refresh();
   };
 
@@ -322,6 +325,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {cliMissing(b) && <span className={styles.newMenuMiss}>{t('未安装')}</span>}
               </button>
             ))}
+            <div className={styles.newMenuWs}>
+              <WorkspacePicker
+                value={ws.cwd}
+                onChange={ws.set}
+                testId="new-chat-workspace"
+                label={t('目录')}
+              />
+            </div>
           </div>
         )}
       </div>

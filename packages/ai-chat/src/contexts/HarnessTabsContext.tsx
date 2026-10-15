@@ -27,7 +27,7 @@ interface HarnessTabsValue {
   isCliTab: boolean;
   messages: HarnessTabMessage[];
   live: Record<string, TabLive>;
-  create: (backend: HarnessBackend) => Promise<void>;
+  create: (backend: HarnessBackend, cwd?: string) => Promise<void>;
   close: (id: string) => Promise<void>;
   rename: (id: string, title: string) => Promise<void>;
   activate: (id: string) => Promise<void>;
@@ -111,8 +111,8 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
       .catch(() => undefined);
   }, [available, isCliTab, activeId, cache]);
 
-  const create = useCallback(async (backend: HarnessBackend) => {
-    const tab = await harnessClient.createTab({ backend });
+  const create = useCallback(async (backend: HarnessBackend, cwd?: string) => {
+    const tab = await harnessClient.createTab(cwd ? { backend, cwd } : { backend });
     setCache((cur) => ({ ...cur, [tab.id]: [] }));
     setLastBackend(backend);
     try {

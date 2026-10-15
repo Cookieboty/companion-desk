@@ -4,21 +4,25 @@
 import { t } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
+import { useNewWorkspace } from '../../hooks/useNewWorkspace';
 import { harnessClient } from '../../services/harnessClient';
 import type { ConversationBackend } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
 import { ENDPOINT_FULL } from '../../utils/endpointBadge';
 import { EndpointIcon } from '../EndpointIcon';
+import { WorkspacePicker } from '../WorkspacePicker';
 
 import styles from './index.module.css';
 
 export const ForkTargetMenu: React.FC<{
   open: boolean;
   current: ConversationBackend;
-  onPick: (b: ConversationBackend) => void;
+  /** cwd：用户为 CLI 目标选的工作目录（未选为 undefined） */
+  onPick: (b: ConversationBackend, cwd?: string) => void;
   onClose: () => void;
 }> = ({ open, current, onPick, onClose }) => {
   const [bins, setBins] = useState<Record<string, string | null>>({});
+  const ws = useNewWorkspace();
   useEffect(() => {
     if (!open) return;
     void harnessClient
@@ -55,7 +59,7 @@ export const ForkTargetMenu: React.FC<{
                 className={styles.item}
                 disabled={missing}
                 data-testid={`fork-target-${b}`}
-                onClick={() => onPick(b)}
+                onClick={() => onPick(b, b === 'nomi' ? undefined : ws.chosen)}
               >
                 <EndpointIcon backend={b} size={18} decorative />
                 <span>{ENDPOINT_FULL[b]()}</span>
@@ -63,6 +67,10 @@ export const ForkTargetMenu: React.FC<{
               </button>
             );
           })}
+        </div>
+        <div className={styles.ws}>
+          <span className={styles.wsLabel}>{t('目标为编程助手时的工作目录')}</span>
+          <WorkspacePicker value={ws.cwd} onChange={ws.set} testId="fork-workspace" />
         </div>
         <button type="button" className={styles.cancel} onClick={onClose}>
           {t('取消')}

@@ -71,3 +71,17 @@
   background: var(--cd-color-hover);
   color: var(--cd-color-text);
 }
+
+.ws {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cd-color-border);
+}
+.wsLabel {
+  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+}

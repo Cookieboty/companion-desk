@@ -55,15 +55,23 @@ function toTabMessages(messages: ChatMessage[]): HarnessTabMessage[] {
 export async function forkSameBackend(
   store: ConversationStore,
   sourceId: string,
+  opts: { cwd?: string } = {},
 ): Promise<ForkResult> {
   const { meta, messages } = await loadSourceMessages(store, sourceId);
   const title = t('{0} (副本)', meta.name);
 
   if (isCliBackend(meta.backend)) {
+    // 副本默认沿用源标签的工作目录
+    let cwd = opts.cwd;
+    if (!cwd && meta.tabId) {
+      const st = await harnessClient.tabs().catch(() => null);
+      cwd = st?.tabs.find((x) => x.id === meta.tabId)?.cwd;
+    }
     const tab = await harnessClient.createTab({
       backend: meta.backend as Exclude<HarnessBackend, 'nomi'>,
       title,
       messages: toTabMessages(messages),
+      ...(cwd ? { cwd } : {}),
     });
     const created = store.upsertFromTab({
       id: tab.id,
@@ -102,9 +110,10 @@ export async function forkCrossBackend(
   store: ConversationStore,
   sourceId: string,
   target: ConversationBackend,
+  opts: { cwd?: string } = {},
 ): Promise<ForkResult> {
   const { meta, messages } = await loadSourceMessages(store, sourceId);
-  if (target === meta.backend) return forkSameBackend(store, sourceId);
+  if (target === meta.backend) return forkSameBackend(store, sourceId, opts);
   const title = `${meta.name} → ${ENDPOINT_FULL[target]()}`;
   const compact = compactTranscript(messages);
 
@@ -124,6 +133,7 @@ export async function forkCrossBackend(
       backend: target as Exclude<HarnessBackend, 'nomi'>,
       title: title.slice(0, 60),
       messages: seeded,
+      ...(opts.cwd ? { cwd: opts.cwd } : {}),
     });
     const created = store.upsertFromTab({
       id: tab.id,

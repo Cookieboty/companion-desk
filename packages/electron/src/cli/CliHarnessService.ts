@@ -38,6 +38,7 @@ type CliBackend = Exclude<HarnessBackend, 'nomi'>;
 export const MAIN_TAB_ID = 'main';
 export const DEFAULT_MAX_CONCURRENT = 3;
 const MAX_TAB_MESSAGES = 300;
+const MAX_RECENT_CWDS = 8;
 
 const BACKENDS: readonly HarnessBackend[] = ['nomi', 'claude', 'codex', 'dsh'];
 
@@ -99,6 +100,8 @@ export class CliHarnessService {
   private readonly statePath: string;
   private readonly tabsPath: string;
   private readonly tabsDir: string;
+  private readonly recentPath: string;
+  private recent: string[] = [];
   readonly events = new EventEmitter();
 
   constructor(
@@ -115,6 +118,7 @@ export class CliHarnessService {
     this.statePath = path.join(d.root, 'session.json');
     this.tabsPath = path.join(d.root, 'tabs.json');
     this.tabsDir = path.join(d.root, 'tabs');
+    this.recentPath = path.join(d.root, 'recent-cwds.json');
     fs.mkdirSync(this.tabsDir, { recursive: true });
     const now = Date.now();
     this.tabs.set(MAIN_TAB_ID, {
@@ -129,6 +133,45 @@ export class CliHarnessService {
       updatedAt: now,
     });
     this.load();
+    try {
+      const r = JSON.parse(fs.readFileSync(this.recentPath, 'utf8')) as unknown;
+      if (Array.isArray(r)) this.recent = r.filter((x): x is string => typeof x === 'string');
+    } catch {
+      /* 首次运行 */
+    }
+  }
+
+  // ───────────────────────── 最近使用的工作目录 ─────────────────────────
+
+  /** 最近用过的工作目录（只返回仍存在的目录） */
+  recentCwds(): string[] {
+    return this.recent.filter((p) => {
+      try {
+        return fs.statSync(p).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  private rememberCwd(abs: string) {
+    this.recent = [abs, ...this.recent.filter((p) => p !== abs)].slice(0, MAX_RECENT_CWDS);
+    try {
+      fs.writeFileSync(this.recentPath, JSON.stringify(this.recent), 'utf8');
+    } catch (e) {
+      this.d.logger.warn('harness recent cwd write failed', e);
+    }
+  }
+
+  /** 原生文件夹选择器（不绑定到任何标签），取消返回 null */
+  async pickDirectory(defaultPath?: string): Promise<string | null> {
+    const r = await dialog.showOpenDialog({
+      title: t('选择编程助手工作目录'),
+      properties: ['openDirectory', 'createDirectory'],
+      ...(defaultPath ? { defaultPath } : {}),
+    });
+    if (r.canceled || !r.filePaths[0]) return null;
+    return r.filePaths[0];
   }
 
   // ───────────────────────── 持久化 ─────────────────────────
@@ -305,6 +348,7 @@ export class CliHarnessService {
       throw new Error(t('新标签只能绑定编程助手后端'));
     }
     const cwd = opts.cwd ? validDir(opts.cwd) : this.tabs.get(this.activeTabId)!.cwd;
+    if (opts.cwd) this.rememberCwd(cwd);
     const now = Date.now();
     const sameKind = [...this.tabs.values()].filter((x) => x.backend === backend).length;
     const tab: HarnessTabMeta = {
@@ -439,6 +483,7 @@ export class CliHarnessService {
     // dsh / Codex 的续接与 cwd 绑定：换目录即开新会话
     if (abs !== tab.cwd) tab.cliSessionId = null;
     tab.cwd = abs;
+    if (tab.backend !== 'nomi') this.rememberCwd(abs);
     this.changed();
     return { ...tab };
   }
@@ -793,6 +838,8 @@ export class CliHarnessService {
     );
     handle('ai:harness:tab-cwd', (id, c) => this.setTabCwd(String(id), String(c)));
     handle('ai:harness:tab-pick-cwd', (id) => this.pickTabCwd(String(id)));
+    handle('ai:harness:pick-dir', (p) => this.pickDirectory(p ? String(p) : undefined));
+    handle('ai:harness:recent-cwds', () => this.recentCwds());
     handle('ai:harness:tab-messages', (id) => this.tabMessages(String(id)));
     handle('ai:harness:tab-send', (id, p) => this.sendTab(String(id), String(p ?? '')));
     handle('ai:harness:tab-cancel', (id) => this.cancelTab(String(id)));
