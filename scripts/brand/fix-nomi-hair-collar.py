@@ -19,7 +19,7 @@ BO = (66, 291)  # body layer origin in rig space
 ref = Image.open(REF).convert('RGB').crop((400, 0, 880, 560)).resize((960, 1120), Image.LANCZOS)
 ref = np.array(ref).astype(np.float32)
 
-Y0, Y1 = 345, 432                      # band (rig space); arm footprints start at y = 429
+Y0, Y1 = 330, 432                      # band (rig space); arm footprints start at y = 429
 ZONES = [(240, 436), (518, 712)]       # left / right of the neck skin
 
 
@@ -38,7 +38,9 @@ def patch(name, y1):
         sl = (slice(Y0, y1), slice(x0, x1))
         e = ref[sl]
         white = e.min(axis=2)
-        a = 1 - smooth(white, 232, 250)           # background white -> transparent
+        a = 1 - smooth(white, 226, 246)           # background white -> transparent
+        # un-mix the white background from partly transparent pixels (no grey fringe)
+        e = np.clip((e - 255.0 * (1 - a)[..., None]) / np.maximum(a, 0.08)[..., None], 0, 255)
         # soft feather at the zone borders and the bottom
         m = np.ones(a.shape, np.float32)
         fx = 6
@@ -46,7 +48,7 @@ def patch(name, y1):
         m[:, -fx:] *= np.linspace(1, 0, fx)[None, :] if x1 != 712 else 1
         fb = 8
         m[-fb:, :] *= np.linspace(1, 0, fb)[:, None]
-        m[:12, :] *= np.linspace(0, 1, 12)[:, None]
+        m[:30, :] *= np.linspace(0, 1, 30)[:, None] ** 2
         # keep opaque pixels of the original where the art keyed to transparent but the body had
         # real (non-collar) content: jacket outline at the bottom band
         old = full[sl]
@@ -56,7 +58,14 @@ def patch(name, y1):
         na = np.maximum(a, keep_old)
         newrgb = np.where((a > 0.02)[..., None], e, old[..., :3])
         res = np.concatenate([newrgb, (na * 255)[..., None]], axis=2)
-        out[sl] = old * (1 - m[..., None]) + res * m[..., None]
+        # blend in premultiplied space (straight-alpha mixing with transparent black leaves grey fringes)
+        pa_old = old[..., 3:4] / 255.0
+        pa_new = res[..., 3:4] / 255.0
+        mm = m[..., None]
+        pm = old[..., :3] * pa_old * (1 - mm) + res[..., :3] * pa_new * mm
+        aa = pa_old * (1 - mm) + pa_new * mm
+        rgb = np.where(aa > 1e-4, pm / np.maximum(aa, 1e-4), 0)
+        out[sl] = np.concatenate([np.clip(rgb, 0, 255), aa * 255], axis=2)
     sub = out[BO[1]:BO[1] + h, BO[0]:BO[0] + w]
     Image.fromarray(np.clip(sub + 0.5, 0, 255).astype(np.uint8), 'RGBA').save(LAY + name, optimize=True)
 
