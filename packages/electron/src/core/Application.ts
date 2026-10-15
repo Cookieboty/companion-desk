@@ -491,6 +491,10 @@ export class Application implements IApplication {
         : undefined,
     });
     this.trayManager.start();
+    // 兜底：应用被激活 / 窗口获得焦点时，如果托盘已被销毁就重建
+    const heal = () => this.trayManager?.ensureAlive();
+    app.on('activate', heal);
+    app.on('browser-window-focus', heal);
   }
 
   /**

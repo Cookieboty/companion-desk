@@ -7,7 +7,13 @@
 import * as path from 'path';
 
 import type { ProviderService, ProviderState } from '@nomi-ai/ai-runtime';
-import { Menu, Tray, nativeImage, type MenuItemConstructorOptions } from 'electron';
+import {
+  Menu,
+  Tray,
+  nativeImage,
+  type MenuItemConstructorOptions,
+  type NativeImage,
+} from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import { APP_DISPLAY_NAME } from '../brand';
@@ -98,6 +104,12 @@ export const TRAY_MOTIONS: Array<[string, string]> = [
   ['dance', '跳舞'],
 ];
 
+/**
+ * 托盘的强引用（模块级）：即使 TrayManager 实例被意外丢弃，Tray 也不会被 GC，
+ * 否则 macOS 菜单栏图标会在一次 GC 后凭空消失。
+ */
+const liveTrays = new Set<Tray>();
+
 export class TrayManager {
   private tray: Tray | null = null;
   private unsubscribe?: () => void;
@@ -118,17 +130,39 @@ export class TrayManager {
     ];
   }
 
+  /** 取一张一定非空的托盘图：macOS 单色 Template，其余彩色；读不到就退回应用图标 */
+  private trayImage(): NativeImage {
+    const mac = process.platform === 'darwin';
+    let icon = mac
+      ? nativeImage.createFromPath(path.join(assetsDir(), 'trayTemplate.png'))
+      : iconImage('tray');
+    if (icon.isEmpty()) icon = iconImage('tray');
+    if (icon.isEmpty()) icon = iconImage('window').resize({ width: 18, height: 18 });
+    if (mac && !icon.isEmpty()) icon.setTemplateImage(true);
+    return icon;
+  }
+
+  /** 托盘被销毁（外部 destroy / 系统回收）时重建；在应用被激活等时机调用，幂等 */
+  ensureAlive(): boolean {
+    if (process.env.IG_DISABLE_TRAY === '1') return false;
+    if (this.tray && !this.tray.isDestroyed()) return false;
+    if (this.tray) liveTrays.delete(this.tray);
+    this.tray = null;
+    this.teardownSubscriptions();
+    this.start();
+    this.opts.logger.warn('托盘已被销毁，已重建');
+    return true;
+  }
+
   start(): void {
     if (process.env.IG_DISABLE_TRAY === '1' || this.tray) return;
     try {
-      // macOS 用单色 Template 图（随菜单栏明暗自动反色），其余平台用彩色 Nomi 标
-      const mac = process.platform === 'darwin';
-      const icon = mac
-        ? nativeImage.createFromPath(path.join(assetsDir(), 'trayTemplate.png'))
-        : iconImage('tray');
-      if (mac) icon.setTemplateImage(true);
-      this.tray = new Tray(icon);
-      this.unsubscribeIcon = onTrayIcon((img) => this.tray?.setImage(img));
+      this.tray = new Tray(this.trayImage());
+      liveTrays.add(this.tray);
+      // 非 macOS 跟随图标变体；永远不把空图设给托盘（空图 = 图标消失）
+      this.unsubscribeIcon = onTrayIcon((img) => {
+        if (!img.isEmpty() && this.tray && !this.tray.isDestroyed()) this.tray.setImage(img);
+      });
       this.tray.setToolTip(APP_DISPLAY_NAME);
       this.rebuild();
       this.unsubscribe = this.opts.providers.onChange(() => this.rebuild());
@@ -159,8 +193,13 @@ export class TrayManager {
     this.rebuild();
   }
 
+  /** 仅测试用：当前是否持有存活的托盘 */
+  isAlive(): boolean {
+    return !!this.tray && !this.tray.isDestroyed();
+  }
+
   rebuild(): void {
-    if (!this.tray) return;
+    if (!this.tray || this.tray.isDestroyed()) return;
     const state = this.opts.providers.state();
     const providerItems: MenuItemConstructorOptions[] = providerMenuEntries(state).map((e) => ({
       label: e.label,
@@ -222,13 +261,22 @@ export class TrayManager {
     this.tray.setContextMenu(Menu.buildFromTemplate(template));
   }
 
-  dispose(): void {
+  private teardownSubscriptions(): void {
     this.unsubscribeLocale?.();
     this.unsubscribeIcon?.();
     this.unsubscribe?.();
     this.unsubscribeScreen?.();
     this.unsubscribeModels?.();
-    this.tray?.destroy();
+    this.unsubscribeLocale = this.unsubscribeIcon = this.unsubscribe = undefined;
+    this.unsubscribeScreen = this.unsubscribeModels = undefined;
+  }
+
+  dispose(): void {
+    this.teardownSubscriptions();
+    if (this.tray) {
+      liveTrays.delete(this.tray);
+      if (!this.tray.isDestroyed()) this.tray.destroy();
+    }
     this.tray = null;
   }
 }

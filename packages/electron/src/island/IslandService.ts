@@ -177,8 +177,9 @@ export class IslandService {
     });
     // 菜单栏之上（≈ NSStatusWindowLevel），全屏 App 与所有桌面空间都可见
     win.setAlwaysOnTop(true, this.platform === 'darwin' ? 'status' : 'screen-saver');
-    if (this.platform === 'darwin')
-      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // 必须 skipTransformProcessType：默认会把整个进程在 Foreground ↔ UIElement 间来回转换，
+    // macOS 会因此丢掉菜单栏 App 菜单 / 状态栏图标与 Dock（每次弹岛都发生）。见 docs 的托盘说明。
+    if (this.platform === 'darwin') applyIslandWorkspaceBehavior(win);
     win.webContents.on('did-navigate-in-page', (_e, url) => {
       if (/#open-/.test(url)) this.d.openChat?.();
     });
@@ -246,6 +247,19 @@ export class IslandService {
       ),
     );
   }
+}
+
+/** 岛窗口的「所有空间 + 全屏可见」设置；单独导出便于回归测试 */
+export function applyIslandWorkspaceBehavior(win: {
+  setVisibleOnAllWorkspaces(
+    visible: boolean,
+    options?: { visibleOnFullScreen?: boolean; skipTransformProcessType?: boolean },
+  ): void;
+}): void {
+  win.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  });
 }
 
 let inst: IslandService | null = null;
