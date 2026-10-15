@@ -54,7 +54,7 @@ export interface ArmDrawParams {
 export const ARM_ELBOW_S = 335;
 export const ARM_BEND_LEN = 120;
 export const ARM_HAND_S = 470;
-export const HAND_SCALE = 0.6;
+export const HAND_SCALE = 0.42;
 
 const MAX_ROWS = 40;
 const COLS = 6;
@@ -325,8 +325,9 @@ export function drawArmStrip(
 /** Draw a hand piece at the attach frame (call right after drawArmStrip). */
 /** Scale a hand piece so its authored sleeve width matches the live cuff. */
 export function handScaleFor(meta: HandPieceMeta, cuffWidth: number): number {
+  // Hands read oversized vs head/torso on Windows; bias small vs cuff width.
   const sw = Math.max(40, meta.sleeveW || 160);
-  return Math.max(0.4, Math.min(0.75, (cuffWidth * 0.78) / sw));
+  return Math.max(0.28, Math.min(0.48, (cuffWidth * 0.5) / sw));
 }
 
 export function drawHandPiece(
@@ -345,7 +346,7 @@ export function drawHandPiece(
   ctx.rotate(armFrame.hPsi);
   ctx.scale(sgn * scale, scale);
   // Nudge up the sleeve so cuffY sits on the mesh cuff (hand arts include a sleeve stub)
-  const cuffLift = Math.max(0, (meta.ay - (meta.cuffY || meta.ay * 0.6)) * 0.12);
+  const cuffLift = Math.max(0, (meta.ay - (meta.cuffY || meta.ay * 0.6)) * 0.2);
   ctx.translate(0, cuffLift);
   ctx.drawImage(img, -meta.ax, -meta.ay);
   ctx.restore();

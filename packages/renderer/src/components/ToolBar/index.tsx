@@ -603,8 +603,8 @@ export const ToolBar: React.FC = () => {
             }
           : undefined;
 
-  // tooltip stays on the outside of the bar so it never covers the mascot's face
-  const tipSide = place?.side === 'left' ? 'left' : 'right';
+  // Tooltips open toward the mascot (left of the vertical bar when bar is on the right).
+  const tipSide = place?.side === 'left' ? 'right' : 'left';
 
   const iconButton = (toolId: string) => {
     if (toolId === 'voice-input')
