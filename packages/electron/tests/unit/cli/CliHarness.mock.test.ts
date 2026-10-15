@@ -80,6 +80,60 @@ describe('CliHarnessService mock CLI', () => {
     }
   }, 10_000);
 
+  it('forwards Claude permission allow via control_response on stdin', async () => {
+    const prevAsk = process.env.NOMI_MOCK_ASK_PERMISSION;
+    process.env.NOMI_MOCK_ASK_PERMISSION = '1';
+    process.env.NOMI_MOCK_PERMISSION_ID = 'perm-test-1';
+    try {
+      const h = new CliHarnessService({
+        root: path.join(os.tmpdir(), `harness-perm-${Date.now()}`),
+        logger: { info() {}, warn() {} },
+        defaultCwd: process.cwd(),
+      });
+      h.setBackend('claude');
+      const seen: string[] = [];
+      h.events.on('event', (p: { tabId: string; event: { type: string; id?: string } }) => {
+        if (p.event.type === 'permission') {
+          seen.push(p.event.id || '');
+          expect(h.replyPermission(p.tabId, p.event.id!, true)).toBe(true);
+        }
+      });
+      const r = await h.send('hello');
+      expect(seen).toContain('perm-test-1');
+      expect(r.text).toContain('Mock Claude');
+      expect(r.text).not.toContain('权限被拒绝');
+    } finally {
+      if (prevAsk === undefined) delete process.env.NOMI_MOCK_ASK_PERMISSION;
+      else process.env.NOMI_MOCK_ASK_PERMISSION = prevAsk;
+      delete process.env.NOMI_MOCK_PERMISSION_ID;
+    }
+  }, 15_000);
+
+  it('Claude permission deny returns denied message', async () => {
+    const prevAsk = process.env.NOMI_MOCK_ASK_PERMISSION;
+    process.env.NOMI_MOCK_ASK_PERMISSION = '1';
+    process.env.NOMI_MOCK_PERMISSION_ID = 'perm-deny-1';
+    try {
+      const h = new CliHarnessService({
+        root: path.join(os.tmpdir(), `harness-perm-deny-${Date.now()}`),
+        logger: { info() {}, warn() {} },
+        defaultCwd: process.cwd(),
+      });
+      h.setBackend('claude');
+      h.events.on('event', (p: { tabId: string; event: { type: string; id?: string } }) => {
+        if (p.event.type === 'permission') {
+          h.replyPermission(p.tabId, p.event.id!, false);
+        }
+      });
+      const r = await h.send('hello');
+      expect(r.text).toContain('权限被拒绝');
+    } finally {
+      if (prevAsk === undefined) delete process.env.NOMI_MOCK_ASK_PERMISSION;
+      else process.env.NOMI_MOCK_ASK_PERMISSION = prevAsk;
+      delete process.env.NOMI_MOCK_PERMISSION_ID;
+    }
+  }, 15_000);
+
   it('defaults to nomi with tools enabled', () => {
     const h = new CliHarnessService({
       root: path.join(os.tmpdir(), `harness-${Date.now()}-n`),

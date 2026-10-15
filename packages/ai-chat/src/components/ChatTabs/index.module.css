@@ -206,3 +206,39 @@
   font-size: 11px;
   color: var(--cd-color-text-subtle);
 }
+
+.perm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-bg);
+}
+.permTitle {
+  font-size: 12px;
+  font-weight: 600;
+}
+.permSummary {
+  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+  word-break: break-all;
+}
+.permActions {
+  display: flex;
+  gap: 8px;
+}
+.permActions button {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--cd-color-border);
+  background: var(--cd-color-bg-subtle);
+  cursor: pointer;
+}
+.permActions button:first-child {
+  background: var(--cd-color-accent, #3b82f6);
+  color: #fff;
+  border-color: transparent;
+}

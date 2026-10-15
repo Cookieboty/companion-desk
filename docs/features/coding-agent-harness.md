@@ -150,7 +150,7 @@ Aggregation（多上游合并）仍为 **P2**。
 | Codex       | 每用户消息一次 `exec`（或 resume）；P1 可升 app-server | argv / stdin prompt    | stdout NDJSON      |
 | Nomi        | 无外部进程                                             | —                      | AIClient 事件      |
 
-**权限桥：** CLI 若发出「需确认」事件 → IPC → 对话区卡片 + 可选看板娘气泡 → 用户允许/拒绝 → 写回 CLI stdin / 专用 flag。超时与桌面能力一致（默认 120s 拒绝）。
+**权限桥：** Claude Code 使用 `--permission-prompt-tool stdio`：`control_request`（`can_use_tool`）→ IPC → 对话区允许/拒绝卡片 → `control_response` 写回 stdin；120s 无操作自动拒绝。Codex / dsh 暂无交互式权限回传（exec/headless 自行决策）。看板娘气泡提醒仍走监视器完成/失败通道。
 
 **安全：**
 

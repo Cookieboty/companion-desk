@@ -39,6 +39,8 @@ export const MAIN_TAB_ID = 'main';
 export const DEFAULT_MAX_CONCURRENT = 3;
 const MAX_TAB_MESSAGES = 300;
 const MAX_RECENT_CWDS = 8;
+/** 权限卡超时：与桌面能力一致，默认拒绝 */
+const PERMISSION_TIMEOUT_MS = 120_000;
 
 const BACKENDS: readonly HarnessBackend[] = ['nomi', 'claude', 'codex', 'dsh'];
 
@@ -92,6 +94,11 @@ export class CliHarnessService {
   private readonly tabs = new Map<string, HarnessTabMeta>();
   private readonly messages = new Map<string, HarnessTabMessage[]>();
   private readonly children = new Map<string, ChildProcessWithoutNullStreams>();
+  /** tabId → requestId → timer；超时自动拒绝 */
+  private readonly pendingPermissions = new Map<
+    string,
+    Map<string, ReturnType<typeof setTimeout>>
+  >();
   private readonly waiters: Array<() => void> = [];
   private running = 0;
   private activeTabId = MAIN_TAB_ID;
@@ -665,6 +672,7 @@ export class CliHarnessService {
     const bin = resolveHarnessBin('claude');
     if (!bin) return Promise.reject(new Error(t('未找到 Claude Code（可设 NOMI_USE_MOCK_CLI=1）')));
     const useNode = isScript(bin);
+    // 真实 CLI：stdio 权限通道（control_request ↔ control_response）；Mock 同样保留 stdin 以便测权限回传。
     const argv = useNode
       ? [bin, '-p', prompt, '--output-format', 'stream-json', '--verbose']
       : [
@@ -672,9 +680,11 @@ export class CliHarnessService {
           prompt,
           '--output-format',
           'stream-json',
+          '--input-format',
+          'stream-json',
           '--verbose',
-          '--permission-prompts',
-          'none',
+          '--permission-prompt-tool',
+          'stdio',
         ];
     // Mock（.mjs）也收到续接参数，便于测试「打开历史会话」
     if (tab.cliSessionId) argv.push('--resume', tab.cliSessionId);
@@ -683,6 +693,7 @@ export class CliHarnessService {
       argv,
       parseLine: parseClaudeLine,
       kind: 'claude',
+      keepStdin: true,
     });
   }
 
@@ -741,6 +752,8 @@ export class CliHarnessService {
       parseLine: (line: string) => HarnessEvent[];
       kind: CliBackend;
       env?: Record<string, string>;
+      /** Claude 权限通道需要保持 stdin 打开以回写 control_response；Codex/dsh 必须立刻 EOF */
+      keepStdin?: boolean;
     },
   ): Promise<HarnessSendResult> {
     return new Promise((resolve, reject) => {
@@ -757,18 +770,27 @@ export class CliHarnessService {
       });
       this.children.set(tab.id, child);
 
-      // 真实 CLI 在 stdin 为管道时会等待 EOF 读取附加输入（codex exec 会一直挂起）
-      child.stdin.end();
+      // Codex/dsh：stdin 管道不 EOF 会挂起；Claude 权限回传需要保持打开
+      if (!opts.keepStdin) child.stdin.end();
 
       const take = (line: string, live: boolean) => {
         for (const ev of opts.parseLine(line)) {
           events.push(ev);
           if (live) this.emitEvent(tab.id, ev);
+          if (ev.type === 'permission') this.armPermissionTimeout(tab.id, ev.id);
           if (ev.type === 'text-delta' || ev.type === 'text') text += ev.text;
           if (ev.type === 'error') lastError = ev.message;
           if (ev.type === 'done') {
             if (ev.text) text = ev.text;
             if (ev.sessionId) sessionId = ev.sessionId;
+            // 一轮结束：若仍开着 stdin，补 EOF，避免 CLI 空等
+            if (opts.keepStdin && child.stdin.writable) {
+              try {
+                child.stdin.end();
+              } catch {
+                /* */
+              }
+            }
           }
         }
       };
@@ -783,10 +805,12 @@ export class CliHarnessService {
       });
       child.on('error', (e) => {
         this.children.delete(tab.id);
+        this.clearPermissionTimeouts(tab.id);
         reject(e);
       });
       child.on('close', (code, signal) => {
         this.children.delete(tab.id);
+        this.clearPermissionTimeouts(tab.id);
         if (buf.trim()) take(buf, false);
         if (signal && !text) {
           reject(new Error(t('已中止')));
@@ -839,6 +863,61 @@ export class CliHarnessService {
     this.events.emit('tabs', tabs);
   }
 
+  /** 用户允许/拒绝 Claude 工具权限请求；写回 CLI stdin 的 control_response */
+  replyPermission(tabId: string, requestId: string, allow: boolean): boolean {
+    const child = this.children.get(tabId);
+    if (!child || !requestId || child.stdin.destroyed || !child.stdin.writable) return false;
+    this.clearOnePermissionTimeout(tabId, requestId);
+    const payload = {
+      type: 'control_response',
+      response: {
+        subtype: 'success',
+        request_id: requestId,
+        response: allow
+          ? { behavior: 'allow' }
+          : { behavior: 'deny', message: t('用户没有允许这次调用') },
+      },
+    };
+    try {
+      child.stdin.write(`${JSON.stringify(payload)}\n`);
+      return true;
+    } catch (e) {
+      this.d.logger.warn('harness permission reply failed', e);
+      return false;
+    }
+  }
+
+  private armPermissionTimeout(tabId: string, requestId: string) {
+    let m = this.pendingPermissions.get(tabId);
+    if (!m) {
+      m = new Map();
+      this.pendingPermissions.set(tabId, m);
+    }
+    const prev = m.get(requestId);
+    if (prev) clearTimeout(prev);
+    m.set(
+      requestId,
+      setTimeout(() => {
+        this.replyPermission(tabId, requestId, false);
+      }, PERMISSION_TIMEOUT_MS),
+    );
+  }
+
+  private clearOnePermissionTimeout(tabId: string, requestId: string) {
+    const m = this.pendingPermissions.get(tabId);
+    const tmr = m?.get(requestId);
+    if (tmr) clearTimeout(tmr);
+    m?.delete(requestId);
+    if (m && m.size === 0) this.pendingPermissions.delete(tabId);
+  }
+
+  private clearPermissionTimeouts(tabId: string) {
+    const m = this.pendingPermissions.get(tabId);
+    if (!m) return;
+    for (const tmr of m.values()) clearTimeout(tmr);
+    this.pendingPermissions.delete(tabId);
+  }
+
   registerIpc(): void {
     const handle = (ch: string, fn: (...a: unknown[]) => unknown) => {
       ipcMain.removeHandler(ch);
@@ -883,6 +962,9 @@ export class CliHarnessService {
     handle('ai:harness:tab-send', (id, p) => this.sendTab(String(id), String(p ?? '')));
     handle('ai:harness:tab-cancel', (id) => this.cancelTab(String(id)));
     handle('ai:harness:set-max-concurrent', (n) => this.setMaxConcurrent(Number(n)));
+    handle('ai:harness:reply-permission', (tabId, requestId, allow) =>
+      this.replyPermission(String(tabId), String(requestId), Boolean(allow)),
+    );
   }
 }
 

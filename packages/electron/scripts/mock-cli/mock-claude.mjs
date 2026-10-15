@@ -34,8 +34,52 @@ function emit(obj) {
   process.stdout.write(`${JSON.stringify(obj)}\n`);
 }
 
-function runOnce(prompt) {
+function readStdinLine() {
+  return new Promise((resolve) => {
+    const onData = (chunk) => {
+      const s = String(chunk);
+      const nl = s.indexOf('\n');
+      if (nl >= 0) {
+        process.stdin.off('data', onData);
+        resolve(s.slice(0, nl));
+      }
+    };
+    process.stdin.on('data', onData);
+  });
+}
+
+async function runOnce(prompt) {
   emit({ type: 'system', subtype: 'init', session_id: sessionId, model: 'mock-claude' });
+  // NOMI_MOCK_ASK_PERMISSION=1：发一条 can_use_tool，等 harness 回 control_response
+  if (process.env.NOMI_MOCK_ASK_PERMISSION === '1') {
+    const reqId = process.env.NOMI_MOCK_PERMISSION_ID || 'mock-perm-1';
+    emit({
+      type: 'control_request',
+      request_id: reqId,
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Bash',
+        input: { command: 'echo mock-permission' },
+      },
+    });
+    const line = await readStdinLine();
+    let allowed = false;
+    try {
+      const j = JSON.parse(line);
+      allowed = j?.response?.response?.behavior === 'allow';
+    } catch {
+      /* deny */
+    }
+    if (!allowed) {
+      emit({
+        type: 'result',
+        session_id: sessionId,
+        result: '【Mock Claude】权限被拒绝',
+        subtype: 'success',
+      });
+      return;
+    }
+  }
   const chunks = reply.match(/.{1,8}/gs) || [reply];
   for (const c of chunks) {
     emit({
@@ -73,9 +117,8 @@ if (streamIn) {
     } catch {
       msg = line;
     }
-    if (msg.trim()) runOnce(msg);
+    if (msg.trim()) void runOnce(msg);
   });
 } else {
-  runOnce(inline || '');
-  process.exit(0);
+  void runOnce(inline || '').then(() => process.exit(0));
 }

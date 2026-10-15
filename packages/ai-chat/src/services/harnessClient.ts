@@ -109,6 +109,9 @@ export const harnessClient = {
   sendTab: (id: string, prompt: string) => call<HarnessSendResult>('tab-send', id, prompt),
   cancelTab: (id: string) => call<boolean>('tab-cancel', id),
   setMaxConcurrent: (n: number) => call<HarnessTabsState>('set-max-concurrent', n),
+  /** 允许/拒绝 Claude 工具权限请求 */
+  replyPermission: (tabId: string, requestId: string, allow: boolean) =>
+    call<boolean>('reply-permission', tabId, requestId, allow),
   onTabs: (fn: (s: HarnessTabsState) => void) =>
     bridge()?.on('ai:harness:tabs', (p) => fn(p as HarnessTabsState)) ?? (() => undefined),
   onTabMessage: (fn: (e: { tabId: string; message: HarnessTabMessage }) => void) =>

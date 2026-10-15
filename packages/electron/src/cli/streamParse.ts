@@ -29,6 +29,25 @@ export function parseClaudeLine(line: string): HarnessEvent[] {
     out.push({ type: 'done', text, sessionId: sid });
   } else if (type === 'error' || (type === 'system' && j.subtype === 'error')) {
     out.push({ type: 'error', message: String(j.error ?? j.message ?? t('Claude 错误')) });
+  } else if (type === 'control_request') {
+    const reqId = typeof j.request_id === 'string' ? j.request_id : '';
+    const req = (j.request ?? {}) as Record<string, unknown>;
+    if (reqId && req.subtype === 'can_use_tool') {
+      const tool = String(req.tool_name ?? 'tool');
+      const input = req.input;
+      let detail = '';
+      if (input && typeof input === 'object') {
+        const o = input as Record<string, unknown>;
+        detail = String(o.command ?? o.file_path ?? o.path ?? '').slice(0, 120);
+      } else if (typeof input === 'string') {
+        detail = input.slice(0, 120);
+      }
+      out.push({
+        type: 'permission',
+        id: reqId,
+        summary: detail ? `${tool}: ${detail}` : tool,
+      });
+    }
   }
   // tool_use blocks
   if (type === 'assistant') {

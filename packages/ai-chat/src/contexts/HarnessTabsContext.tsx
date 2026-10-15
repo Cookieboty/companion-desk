@@ -17,6 +17,8 @@ import {
 export interface TabLive {
   text: string;
   tool?: string;
+  /** Claude can_use_tool 待确认 */
+  permission?: { id: string; summary: string };
 }
 
 interface HarnessTabsValue {
@@ -35,6 +37,7 @@ interface HarnessTabsValue {
   selectIndex: (i: number) => void;
   send: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
+  replyPermission: (requestId: string, allow: boolean) => Promise<void>;
   /** 最近使用的编程助手后端（新建标签默认） */
   lastBackend: HarnessBackend;
 }
@@ -88,6 +91,15 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
         if (e.type === 'text') return { ...cur, [e.tabId]: { ...prev, text: e.text } };
         if (e.type === 'tool' && e.status === 'start')
           return { ...cur, [e.tabId]: { ...prev, tool: e.name } };
+        if (e.type === 'permission')
+          return {
+            ...cur,
+            [e.tabId]: { ...prev, permission: { id: e.id, summary: e.summary } },
+          };
+        if (e.type === 'done' || e.type === 'error') {
+          const { permission: _p, ...rest } = prev;
+          return { ...cur, [e.tabId]: rest };
+        }
         return cur;
       });
     });
@@ -164,6 +176,19 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
   const cancel = useCallback(async () => {
     if (isCliTab) await harnessClient.cancelTab(activeId);
   }, [isCliTab, activeId]);
+  const replyPermission = useCallback(
+    async (requestId: string, allow: boolean) => {
+      if (!isCliTab) return;
+      await harnessClient.replyPermission(activeId, requestId, allow).catch(() => undefined);
+      setLive((cur) => {
+        const prev = cur[activeId];
+        if (!prev?.permission || prev.permission.id !== requestId) return cur;
+        const { permission: _p, ...rest } = prev;
+        return { ...cur, [activeId]: rest };
+      });
+    },
+    [isCliTab, activeId],
+  );
 
   const value: HarnessTabsValue = {
     available,
@@ -180,6 +205,7 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
     selectIndex,
     send,
     cancel,
+    replyPermission,
     lastBackend,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -200,6 +226,7 @@ const EMPTY: HarnessTabsValue = {
   selectIndex: () => undefined,
   send: async () => undefined,
   cancel: async () => undefined,
+  replyPermission: async () => undefined,
   lastBackend: 'claude',
 };
 

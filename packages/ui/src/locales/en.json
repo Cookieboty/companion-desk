@@ -1678,5 +1678,7 @@
   "打哈欠": "Yawn",
   "晚安": "Good night",
   "倾听": "Listen",
-  "哼歌": "Humming"
+  "哼歌": "Humming",
+  "需要确认工具权限": "Tool permission required",
+  "等待你的确认…": "Waiting for your confirmation…"
 }

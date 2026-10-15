@@ -20,6 +20,30 @@ describe('streamParse', () => {
     expect(done[0]).toMatchObject({ type: 'done', sessionId: 's1', text: '完' });
   });
 
+  it('parses claude control_request can_use_tool as permission', () => {
+    const ev = parseClaudeLine(
+      JSON.stringify({
+        type: 'control_request',
+        request_id: 'req-1',
+        request: {
+          subtype: 'can_use_tool',
+          tool_name: 'Bash',
+          input: { command: 'ls -la' },
+        },
+      }),
+    );
+    expect(ev[0]).toEqual({ type: 'permission', id: 'req-1', summary: 'Bash: ls -la' });
+    expect(
+      parseClaudeLine(
+        JSON.stringify({
+          type: 'control_request',
+          request_id: 'x',
+          request: { subtype: 'initialize' },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
   it('parses codex agent_message', () => {
     const ev = parseCodexLine(
       JSON.stringify({

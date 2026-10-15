@@ -277,9 +277,9 @@ export const ChatTabs: React.FC<{
   );
 };
 
-/** 运行中的实时进度气泡 */
+/** 运行中的实时进度气泡（含 Claude 权限确认卡） */
 export const CliTabLive: React.FC = () => {
-  const { activeTab, live } = useHarnessTabs();
+  const { activeTab, live, replyPermission } = useHarnessTabs();
   if (!activeTab || activeTab.id === MAIN_TAB_ID) return null;
   if (activeTab.status !== 'running' && activeTab.status !== 'queued') return null;
   const l = live[activeTab.id];
@@ -289,8 +289,30 @@ export const CliTabLive: React.FC = () => {
         <span>{t('排队中：等待其它标签完成…')}</span>
       ) : (
         <>
+          {l?.permission && (
+            <div className={styles.perm} data-testid="cli-permission-card">
+              <span className={styles.permTitle}>{t('需要确认工具权限')}</span>
+              <span className={styles.permSummary}>{l.permission.summary}</span>
+              <div className={styles.permActions}>
+                <button
+                  type="button"
+                  data-testid="cli-permission-allow"
+                  onClick={() => void replyPermission(l.permission!.id, true)}
+                >
+                  {t('允许')}
+                </button>
+                <button
+                  type="button"
+                  data-testid="cli-permission-deny"
+                  onClick={() => void replyPermission(l.permission!.id, false)}
+                >
+                  {t('拒绝')}
+                </button>
+              </div>
+            </div>
+          )}
           {l?.tool && <span className={styles.liveTool}>{t('正在使用工具：{0}', l.tool)}</span>}
-          <span>{l?.text || t('思考中…')}</span>
+          <span>{l?.text || (l?.permission ? t('等待你的确认…') : t('思考中…'))}</span>
         </>
       )}
     </div>
