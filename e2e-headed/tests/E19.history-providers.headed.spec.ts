@@ -31,7 +31,11 @@ async function launch(
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
     HOME: home,
-    USERPROFILE: home, // Windows 的 os.homedir() 读它
+    // Windows 的 os.homedir() 读 USERPROFILE；Electron 的 appData 读 APPDATA / LOCALAPPDATA，
+    // 它们必须一起指向（已创建的）临时目录，否则 app.getPath('appData') 失败
+    USERPROFILE: home,
+    APPDATA: join(home, 'AppData', 'Roaming'),
+    LOCALAPPDATA: join(home, 'AppData', 'Local'),
     CD_LOCALE: 'zh',
     CD_ONBOARDING: 'off',
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
@@ -39,6 +43,8 @@ async function launch(
   };
   delete env.NODE_ENV;
   delete env.DSH_HOME;
+  mkdirSync(env.APPDATA!, { recursive: true });
+  mkdirSync(env.LOCALAPPDATA!, { recursive: true });
   const app = await electron.launch({
     executablePath: resolveElectronExecutable(),
     args: [electronPkgDir, `--user-data-dir=${userData}`, '--enable-unsafe-swiftshader'],
