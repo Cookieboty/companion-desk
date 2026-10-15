@@ -158,6 +158,15 @@ export interface EndpointFinished {
   background: boolean;
 }
 
+/** Claude 工具权限待确认（由 harness 推送） */
+export interface EndpointPermissionNeeded {
+  tabId: string;
+  title: string;
+  backend: WatchedTab['backend'];
+  summary: string;
+  background: boolean;
+}
+
 const LABEL: Record<AgentKind, string> = {
   codex: 'Codex',
   claude: 'Claude Code',
@@ -713,10 +722,12 @@ export class AgentProgressService {
     tabs: () => WatchedTab[];
     onTabs: (fn: () => void) => void;
     onFinished: (fn: (e: EndpointFinished) => void) => void;
+    onPermission?: (fn: (e: EndpointPermissionNeeded) => void) => void;
   }): void {
     this.tabs = h.tabs;
     h.onTabs(() => this.broadcast());
     h.onFinished((e) => this.onEndpointFinished(e));
+    h.onPermission?.((e) => this.onPermissionNeeded(e));
   }
 
   private safeTabs(): WatchedTab[] {
@@ -725,6 +736,35 @@ export class AgentProgressService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Claude 工具权限待确认：看板娘说话 + 思考动作 + 灵动岛 attention。
+   * 前台也提醒（对话区已有卡片，气泡/岛作二次提示）；后台额外可走系统通知。
+   */
+  onPermissionNeeded(e: EndpointPermissionNeeded): void {
+    if (!this.settings.enabled) return;
+    if (e.backend !== 'nomi' && !this.settings.tools[e.backend as AgentKind]) return;
+    const label = ENDPOINT_LABEL[e.backend];
+    const who = `${label}（${e.title}）`;
+    const brief = (e.summary || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const text = tr('{0} 需要确认工具权限：{1}', who, brief || tr('请到对话里允许或拒绝'));
+    this.d.desktop.say(text.slice(0, 140));
+    notifyIsland({
+      kind: 'agent',
+      endpoint: e.backend,
+      status: 'attention',
+      title: who,
+      body: brief || tr('需要确认工具权限'),
+    });
+    broadcastMascotCommand({ type: 'motion', name: 'think' });
+    if (e.background && this.settings.osNotify) this.notify(label, text);
+    this.lastRemindAt = this.now();
+    this.d.logger.info('agent-progress permission needed', {
+      backend: e.backend,
+      background: e.background,
+    });
+    this.broadcast();
   }
 
   /** 端点一轮结束：前台正看着这个标签就不打扰 */

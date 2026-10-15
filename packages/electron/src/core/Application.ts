@@ -363,6 +363,7 @@ export class Application implements IApplication {
         tabs: () => harness.listTabs().tabs,
         onTabs: (fn) => harness.events.on('tabs', fn),
         onFinished: (fn) => harness.events.on('tab-finished', fn),
+        onPermission: (fn) => harness.events.on('permission-needed', fn),
       });
 
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）

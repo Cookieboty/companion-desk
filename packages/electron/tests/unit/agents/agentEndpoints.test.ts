@@ -142,14 +142,27 @@ describe('Nomi tabs in the aggregated monitor', () => {
       lockedInodes: () => new Set(),
     });
     let finished: (e: EndpointFinished) => void = () => undefined;
+    let permission: (
+      e: import('../../../src/agents/AgentProgressService').EndpointPermissionNeeded,
+    ) => void = () => undefined;
     svc.attachHarness({
       tabs: () => tabs,
       onTabs: () => undefined,
       onFinished: (fn) => {
         finished = fn;
       },
+      onPermission: (fn) => {
+        permission = fn;
+      },
     });
-    return { svc, say, home, finish: (e: EndpointFinished) => finished(e) };
+    return {
+      svc,
+      say,
+      home,
+      finish: (e: EndpointFinished) => finished(e),
+      needPerm: (e: import('../../../src/agents/AgentProgressService').EndpointPermissionNeeded) =>
+        permission(e),
+    };
   };
 
   beforeEach(() => {
@@ -186,6 +199,26 @@ describe('Nomi tabs in the aggregated monitor', () => {
     fs.writeFileSync(path.join(dir, 'session.lock'), '');
     svc.tick();
     expect(svc.state().sessions.map((s) => s.id)).toEqual(['tab:a']);
+  });
+
+  it('mascot + island react when Claude needs tool permission', () => {
+    const { say, needPerm } = setup([]);
+    needPerm({
+      tabId: 'a',
+      title: 'Refactor',
+      backend: 'claude',
+      summary: 'Bash: ls -la',
+      background: true,
+    });
+    expect(say).toHaveBeenCalledWith(expect.stringContaining('工具权限'));
+    expect(island).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'agent',
+        endpoint: 'claude',
+        status: 'attention',
+      }),
+    );
+    expect(mascot).toHaveBeenCalledWith({ type: 'motion', name: 'think' });
   });
 
   it('mascot + island react to a background endpoint finishing', () => {

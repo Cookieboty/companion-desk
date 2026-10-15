@@ -777,7 +777,16 @@ export class CliHarnessService {
         for (const ev of opts.parseLine(line)) {
           events.push(ev);
           if (live) this.emitEvent(tab.id, ev);
-          if (ev.type === 'permission') this.armPermissionTimeout(tab.id, ev.id);
+          if (ev.type === 'permission') {
+            this.armPermissionTimeout(tab.id, ev.id);
+            this.events.emit('permission-needed', {
+              tabId: tab.id,
+              title: tab.title,
+              backend: tab.backend,
+              summary: ev.summary,
+              background: this.activeTabId !== tab.id || !anyWindowFocused(),
+            });
+          }
           if (ev.type === 'text-delta' || ev.type === 'text') text += ev.text;
           if (ev.type === 'error') lastError = ev.message;
           if (ev.type === 'done') {
