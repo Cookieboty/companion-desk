@@ -12,8 +12,8 @@
       <header class="header">
         <h1>TTS 语音配置</h1>
         <p>
-          默认使用内置<strong>离线语音</strong>（sherpa-onnx，本机合成，无需联网/外部服务）。
-          首次使用需下载一次模型；未就绪或合成失败时自动回退系统语音。
+          默认使用内置<strong>离线语音</strong>（sherpa-onnx，本机合成，模型随安装包分发，无需联网/外部服务）。
+          模型缺失或合成失败时自动回退系统语音。
           Fish Audio 为可选高级引擎；不提供用户上传/克隆任意音色；仍可自行接入外部 TTS（legacy）。
         </p>
         <p class="cd-notice" data-testid="fish-attribution" style="margin-top: 8px">
@@ -45,16 +45,11 @@
 
         <div id="sherpa-fields" data-testid="sherpa-section">
           <p class="cd-muted" style="font-size: 12px; margin: 4px 0 8px">
-            声线 sid 0，语速 1.0（固定默认，不加速）。模型约 115 MB（解压后约 133 MB），保存在应用数据目录
-            <code>tts-models/</code>，下载后校验 sha256。开发态也可用环境变量
-            <code>NOMI_SHERPA_TTS_MODEL_DIR</code> 指向已解压目录。
+            声线 sid 0，语速 1.0（固定默认，不加速）。模型约 133 MB，随安装包分发到
+            <code>resources/tts-models/</code>。开发态可用环境变量
+            <code>NOMI_SHERPA_TTS_MODEL_DIR</code>，或仓库同级 <code>../models/vits-zh-hf-theresa</code>。
           </p>
-          <div id="sherpa-model-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
-            <span id="sherpa-model-text" class="cd-muted">模型状态：检测中…</span>
-            <button id="sherpa-download-btn" class="cd-btn cd-btn--primary" type="button">下载离线语音模型</button>
-            <button id="sherpa-cancel-btn" class="cd-btn" type="button" style="display: none">取消下载</button>
-          </div>
-          <progress id="sherpa-progress" max="100" value="0" style="width: 100%; margin-top: 6px; display: none"></progress>
+          <p id="sherpa-model-text" class="cd-muted">模型状态：检测中…</p>
         </div>
 
         <div id="fish-fields">
@@ -122,8 +117,8 @@
 
       <div class="help-text cd-notice">
         <strong>怎么用</strong><br />
-        1. 默认「内置离线语音」：首次点「下载离线语音模型」（一次性，带进度），之后完全本机合成，无需联网。<br />
-        2. 模型未下载 / 下载失败 / 合成出错时，看板娘自动回退系统语音，无需试听步骤。<br />
+        1. 默认「内置离线语音」：模型随安装包分发，完全本机合成，无需联网。<br />
+        2. 模型缺失 / 合成出错时，看板娘自动回退系统语音，无需试听步骤。<br />
         3. 高级：Fish 本地（Docker / uv 启动 fish-speech，监听 <code>127.0.0.1:8080</code>）或 Fish 云（自备 API Key，
         不捆绑 Research-only 权重）。<br />
         4. 需要对接其它克隆 API 时，选择「自行接入外部 TTS（legacy）」。
@@ -227,38 +222,19 @@
         }
       }
 
-      // ---- sherpa 离线模型：状态 / 下载进度（轮询主进程） ----
-      let sherpaTimer = null;
-      const fmtMB = (n) => (n / 1048576).toFixed(1) + ' MB';
-
+      // ---- sherpa 离线模型状态（bundled，无下载） ----
       function renderSherpaStatus(st) {
-        const bar = $('sherpa-progress');
         const text = $('sherpa-model-text');
-        const dl = $('sherpa-download-btn');
-        const cancel = $('sherpa-cancel-btn');
-        const busy = st.state === 'downloading' || st.state === 'extracting';
-        bar.style.display = busy ? '' : 'none';
-        cancel.style.display = busy ? '' : 'none';
-        dl.style.display = st.state === 'ready' || busy ? 'none' : '';
-        if (st.state === 'downloading') {
-          const pct = st.totalBytes ? Math.min(100, (st.receivedBytes / st.totalBytes) * 100) : 0;
-          bar.value = pct;
-          text.textContent = '下载中 ' + fmtMB(st.receivedBytes) + ' / ' + fmtMB(st.totalBytes) + '（' + pct.toFixed(0) + '%）';
-        } else if (st.state === 'extracting') {
-          bar.removeAttribute('value');
-          text.textContent = '解压 / 校验中…（约十几秒）';
-        } else if (st.state === 'ready') {
-          text.textContent = '模型已就绪' + (st.source === 'dev' ? '（开发目录）' : st.source === 'env' ? '（环境变量目录）' : '');
+        if (st.state === 'ready') {
+          const where =
+            st.source === 'dev' ? '（开发目录）' :
+            st.source === 'env' ? '（环境变量目录）' :
+            st.source === 'resources' ? '（安装包）' : '';
+          text.textContent = '模型已就绪' + where;
         } else if (st.state === 'error') {
-          text.textContent = '下载失败：' + (st.message || '未知错误') + '（当前使用系统语音，可重试）';
-          dl.textContent = '重试下载';
+          text.textContent = '模型不可用：' + (st.message || '未知错误') + '（当前使用系统语音）';
         } else {
-          text.textContent = '模型未下载（当前使用系统语音）';
-          dl.textContent = '下载离线语音模型';
-        }
-        if (busy) {
-          clearTimeout(sherpaTimer);
-          sherpaTimer = setTimeout(refreshSherpaStatus, 600);
+          text.textContent = '模型缺失（当前使用系统语音）';
         }
       }
 
@@ -269,16 +245,6 @@
         } catch (e) {
           $('sherpa-model-text').textContent = '无法获取模型状态：' + e.message;
         }
-      }
-
-      async function startSherpaDownload() {
-        if (!window.electronAPI || !window.electronAPI.ttsSherpaDownload) return;
-        renderSherpaStatus(await window.electronAPI.ttsSherpaDownload());
-      }
-
-      async function cancelSherpaDownload() {
-        if (!window.electronAPI || !window.electronAPI.ttsSherpaCancel) return;
-        renderSherpaStatus(await window.electronAPI.ttsSherpaCancel());
       }
 
       function showResult(message, ok) {
@@ -406,8 +372,6 @@
         $('health-btn').addEventListener('click', checkHealth);
         $('save-btn').addEventListener('click', saveConfig);
         $('reset-btn').addEventListener('click', resetConfig);
-        $('sherpa-download-btn').addEventListener('click', startSherpaDownload);
-        $('sherpa-cancel-btn').addEventListener('click', cancelSherpaDownload);
       });
     </script>
   </body>

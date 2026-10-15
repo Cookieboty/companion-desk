@@ -29,20 +29,18 @@ Nomi 默认使用**内置离线语音**（[sherpa-onnx](https://github.com/k2-fs
 
 - 没有保存过配置时默认就是 `sherpa-theresa`；已保存过其它提供方的用户保持原选择。
 - 路由（`packages/electron/src/tts/ttsRouter.ts`）：`sherpa-theresa` → sherpa；`fish-*` → Fish；`legacy` → 遗留播放器；`system` / 关闭 → 系统语音。
-- **回退**：sherpa 模型未下载 / 下载失败 / 原生库加载失败 / 合成出错，一律**回退系统语音**（Web Speech），不会自动改走 Fish；无需先打开设置试听。
+- **回退**：sherpa 模型缺失 / 原生库加载失败 / 合成出错，一律**回退系统语音**（Web Speech），不会自动改走 Fish；无需先打开设置试听。
 - 角色说话时主进程分句合成并拼接成一段 WAV（`audio/wav`，22.05 kHz mono），经 IPC `tts:speak` 以 base64 返回；渲染层沿用原有播放 / 口型 / 打断逻辑。
 - **不提供**「上传我的音色 / 任意参考音频克隆」入口。产品内角色自己说话 ≠ Hosted Service；不要把本应用做成对外自助 TTS 平台。
 
-### 首次使用：模型下载
+### 模型分发
 
-模型约 115 MB（解压后约 133 MB），**不随安装包 / git 分发**，也不打进 `extraResources`（避免安装包膨胀 ~120 MB 且每次升级重复下载）。
+模型约 133 MB（解压目录），**随安装包 `extraResources` 分发**到 `resources/tts-models/<id>/`，不进 git。
 
-1. 打开「TTS 语音配置」，选择「内置离线语音」，点「下载离线语音模型」（带进度，可取消）。
-2. 主进程流式下载归档 → **校验 sha256** → 流式解压 `.tar.bz2`（JS 实现：`unbzip2-stream` + `tar-stream`）到 `userData/tts-models/<id>.partial` → **逐文件校验字节数** → 原子改名为 `userData/tts-models/<id>`。任一步失败都会清理临时文件，应用继续使用系统语音。
-3. 归档 URL / sha256 / 文件清单钉死在 `packages/electron/src/tts/sherpa/manifest.ts`。
-4. 开发态：设置环境变量 `NOMI_SHERPA_TTS_MODEL_DIR=<已解压目录>`，或把解压好的目录放在仓库同级 `../models/<id>/`（仅未打包时探测），即可跳过下载。
-
-IPC：`tts:sherpa:status`（含进度）/ `tts:sherpa:download` / `tts:sherpa:cancel`；设置页轮询 status 显示进度条。
+1. 打包前 `pnpm --filter @nomi-ai/electron sync-tts-model`（各 `package:*` 的 `prepackage*` 会自动调用）把源目录同步到 `packages/electron/resources/tts-models/`（已 gitignore）。
+2. 源目录解析顺序：`NOMI_SHERPA_TTS_MODEL_DIR` → 仓库同级 `../models/<id>` → 仓库内 `models/<id>`。文件清单与字节数钉死在 `packages/electron/src/tts/sherpa/manifest.ts`（与 sync 脚本一致）。
+3. 运行时定位顺序：环境变量 → `process.resourcesPath/tts-models/<id>`（打包）→ 开发态上述目录。缺失或大小不符时回退系统语音。
+4. IPC：`tts:sherpa:status`（ready / missing / error）；设置页只展示状态，无下载进度条。
 
 ### 实现与平台
 
@@ -55,7 +53,7 @@ IPC：`tts:sherpa:status`（含进度）/ `tts:sherpa:download` / `tts:sherpa:ca
 ### 本地验证
 
 ```bash
-# 单元测试（路由 / 回退 / 下载校验 / 分句 / WAV）
+# 单元测试（路由 / 回退 / 模型定位 / 分句 / WAV）
 pnpm --filter @nomi-ai/electron exec jest --watchman=false --coverage=false tests/unit/tts
 
 # 用已有模型目录跑通真实合成（开发态）
@@ -65,7 +63,7 @@ NOMI_SHERPA_TTS_MODEL_DIR=/path/to/extracted-model pnpm dev
 
 ### 设置页
 
-- 「TTS 语音配置」：默认「内置离线语音」；模型状态 / 下载进度；高级可切换 Fish 本地 / 云、legacy、系统；检测连接；**Built with Fish Audio** 标注（仅选用 Fish 时适用，文案保留）。
+- 「TTS 语音配置」：默认「内置离线语音」；模型状态；高级可切换 Fish 本地 / 云、legacy、系统；检测连接；**Built with Fish Audio** 标注（仅选用 Fish 时适用，文案保留）。
 - 「语音设置」：系统回退音色、语速/音高、音量；说明引擎优先级。
 
 ## 高级：Fish Audio（可选，Built with Fish Audio）

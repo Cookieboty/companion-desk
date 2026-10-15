@@ -24,11 +24,8 @@ export interface IpcApi {
   /** Main-process Fish synthesize; on failure renderer falls back to Web Speech */
   ttsSpeak?: (req: TTSSpeakRequest) => Promise<TTSSpeakResult>;
   ttsHealth?: (config?: Partial<TTSConfig>) => Promise<TTSTestResult>;
-  /** sherpa 离线 TTS 模型状态（含下载进度） */
+  /** sherpa 离线 TTS 模型状态（bundled / env / 缺失） */
   ttsSherpaStatus?: () => Promise<SherpaModelStatus>;
-  /** 开始首次下载模型（幂等；已在下载则返回当前状态） */
-  ttsSherpaDownload?: () => Promise<SherpaModelStatus>;
-  ttsSherpaCancel?: () => Promise<SherpaModelStatus>;
 
   // AI对话相关API
   openAiChat: () => Promise<{ success: boolean; error?: string }>;
@@ -183,14 +180,11 @@ export interface TTSTestResult {
 
 export * from './models';
 
-/** sherpa-onnx offline TTS model lifecycle (first-use download into userData/tts-models). */
+/** sherpa-onnx offline TTS model status (bundled via extraResources; no first-use download). */
 export interface SherpaModelStatus {
-  state: 'ready' | 'missing' | 'downloading' | 'extracting' | 'error';
-  /** where the model was found (dev: repo-side models dir) */
-  source?: 'dev' | 'userData' | 'env';
+  state: 'ready' | 'missing' | 'error';
+  /** where the model was found */
+  source?: 'env' | 'resources' | 'dev';
   modelId: string;
-  /** Approximate download size in bytes (archive). */
-  totalBytes: number;
-  receivedBytes: number;
   message?: string;
 }

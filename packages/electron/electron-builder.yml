@@ -59,6 +59,9 @@ extraResources:
     to: ai-chat
   - from: assets
     to: assets
+  # 离线 TTS 模型（~133MB）：由 scripts/sync-tts-model.mjs 在 package 前同步到 resources/，不进 git
+  - from: resources/tts-models
+    to: tts-models
 
 directories:
   buildResources: assets

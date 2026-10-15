@@ -2,7 +2,8 @@
  * sherpa-onnx 本地离线 TTS（主进程）。
  * - 原生 addon（sherpa-onnx-node，N-API）懒加载；模型懒加载；单例；推理走 *Async（不阻塞主进程事件循环）。
  * - 分句合成后拼接成一段 16-bit mono WAV，交给渲染进程 <audio> 播放（沿用 tts:speak 的 base64 协议）。
- * - 模型首次使用时下载（见 modelStore）；任何失败都抛 SherpaTtsError，上层路由回退系统语音。
+ * - 模型随安装包 extraResources 分发；任何失败都抛 SherpaTtsError，上层路由回退系统语音。
+ * - Electron 下必须 enableExternalBuffer:false，否则 V8 内存笼会拒绝 external ArrayBuffer。
  */
 import path from 'node:path';
 
@@ -17,7 +18,7 @@ import {
   SHERPA_RULE_FSTS,
   type ModelManifest,
 } from './manifest';
-import { installModel, locateModel, type ModelSource } from './modelStore';
+import { locateModel, type ModelSource } from './modelStore';
 import { splitSentences } from './sentences';
 import { concatSamples, encodeWavPcm16 } from './wav';
 
@@ -40,7 +41,12 @@ export interface SherpaGenerated {
 
 export interface SherpaHandle {
   sampleRate: number;
-  generateAsync(req: { text: string; sid: number; speed: number }): Promise<SherpaGenerated>;
+  generateAsync(req: {
+    text: string;
+    sid: number;
+    speed: number;
+    enableExternalBuffer: boolean;
+  }): Promise<SherpaGenerated>;
 }
 
 export interface SherpaAddon {
@@ -48,13 +54,12 @@ export interface SherpaAddon {
 }
 
 export interface SherpaServiceDeps {
-  /** userData/tts-models */
-  userRoot: () => string;
+  /** 打包后：process.resourcesPath/tts-models */
+  resourcesRoot?: () => string | undefined;
   /** 开发态（未打包）模型目录候选 */
   devDirs?: () => string[];
   envDir?: () => string | undefined;
   loadAddon?: () => SherpaAddon;
-  install?: typeof installModel;
   manifest?: ModelManifest;
   now?: () => number;
 }
@@ -82,13 +87,6 @@ export class SherpaTtsService {
   private engine: Promise<{ handle: SherpaHandle; modelDir: string }> | null = null;
   private engineFailedAt = 0;
   private lastError: string | undefined;
-  private install: {
-    ctrl: AbortController;
-    phase: 'download' | 'extract';
-    received: number;
-    total: number;
-  } | null = null;
-  private installPromise: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   private seq = 0;
 
@@ -101,76 +99,23 @@ export class SherpaTtsService {
   }
 
   private locate(): { dir: string; source: ModelSource } | null {
+    const resourcesRoot = this.deps.resourcesRoot?.();
     return locateModel({
       envDir: this.deps.envDir?.(),
+      resourcesDir: resourcesRoot ? path.join(resourcesRoot, this.manifest.id) : undefined,
       devDirs: this.deps.devDirs?.(),
-      userRoot: this.deps.userRoot(),
       manifest: this.manifest,
     });
   }
 
   getStatus(): SherpaModelStatus {
-    const base = { modelId: this.manifest.id, totalBytes: this.manifest.bytes };
-    if (this.install) {
-      const i = this.install;
-      return {
-        ...base,
-        state: i.phase === 'download' ? 'downloading' : 'extracting',
-        receivedBytes: i.received,
-        totalBytes: i.total || this.manifest.bytes,
-      };
-    }
+    const base = { modelId: this.manifest.id };
     const found = this.locate();
-    if (found) return { ...base, state: 'ready', source: found.source, receivedBytes: 0 };
+    if (found) return { ...base, state: 'ready', source: found.source };
     if (this.lastError) {
-      return { ...base, state: 'error', receivedBytes: 0, message: this.lastError };
+      return { ...base, state: 'error', message: this.lastError };
     }
-    return { ...base, state: 'missing', receivedBytes: 0 };
-  }
-
-  /** 首次使用下载（幂等；已就绪 / 已在下载直接返回当前状态）。不抛错：失败记入 status.error。 */
-  startDownload(): SherpaModelStatus {
-    if (this.install || this.locate()) return this.getStatus();
-    const ctrl = new AbortController();
-    this.install = { ctrl, phase: 'download', received: 0, total: this.manifest.bytes };
-    this.lastError = undefined;
-    const run = this.deps.install ?? installModel;
-    this.installPromise = run({
-      userRoot: this.deps.userRoot(),
-      manifest: this.manifest,
-      signal: ctrl.signal,
-      onProgress: (phase, p) => {
-        if (!this.install) return;
-        this.install.phase = phase;
-        this.install.received = p.received;
-        this.install.total = p.total || this.manifest.bytes;
-      },
-    })
-      .then(() => {
-        this.engineFailedAt = 0;
-      })
-      .catch((e: unknown) => {
-        this.lastError = ctrl.signal.aborted
-          ? undefined
-          : e instanceof Error
-            ? e.message
-            : String(e);
-      })
-      .finally(() => {
-        this.install = null;
-        this.installPromise = null;
-      });
-    return this.getStatus();
-  }
-
-  cancelDownload(): SherpaModelStatus {
-    this.install?.ctrl.abort();
-    return this.getStatus();
-  }
-
-  /** 等待当前下载结束（测试 / 关闭流程用） */
-  async whenInstalled(): Promise<void> {
-    await this.installPromise;
+    return { ...base, state: 'missing' };
   }
 
   private ensureEngine(): Promise<{ handle: SherpaHandle; modelDir: string }> {
@@ -182,7 +127,7 @@ export class SherpaTtsService {
     }
     const found = this.locate();
     if (!found) {
-      return Promise.reject(new SherpaTtsError('not_ready', 'sherpa model not downloaded'));
+      return Promise.reject(new SherpaTtsError('not_ready', 'sherpa model not found'));
     }
     const dir = found.dir;
     const p = (async () => {
@@ -250,7 +195,13 @@ export class SherpaTtsService {
           throw new SherpaTtsError('superseded', 'superseded by a newer request');
         let audio: SherpaGenerated;
         try {
-          audio = await handle.generateAsync({ text: s, sid, speed });
+          // Electron 的 V8 内存笼不允许 external ArrayBuffer
+          audio = await handle.generateAsync({
+            text: s,
+            sid,
+            speed,
+            enableExternalBuffer: false,
+          });
         } catch (e) {
           throw new SherpaTtsError('engine_failed', e instanceof Error ? e.message : String(e));
         }

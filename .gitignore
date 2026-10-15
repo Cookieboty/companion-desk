@@ -70,3 +70,8 @@ task
 
 # e2e downloaded fixtures (see e2e-headed/fixtures/models/README.md)
 e2e-headed/.cache/
+
+# Bundled offline TTS model staged for electron-builder extraResources (~133MB).
+# Source of truth for packaging: NOMI_SHERPA_TTS_MODEL_DIR or ../../models/<id>
+# (relative to packages/electron). Do not commit these weights.
+packages/electron/resources/tts-models/

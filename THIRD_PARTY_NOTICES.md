@@ -50,12 +50,11 @@ openWakeWord pretrained models (CC BY-NC-SA 4.0) are **not** used.
 
 ## Speech output (offline, default)
 
-The speech model is **not bundled**: it is downloaded on first use from the pinned URL in `packages/electron/src/tts/sherpa/manifest.ts` and verified by SHA-256 plus per-file size checks.
+The speech model (~133 MB) is shipped as an Electron `extraResource` (`resources/tts-models/`, staged at package time by `scripts/sync-tts-model.mjs`, not committed to git). Per-file sizes are checked against `packages/electron/src/tts/sherpa/manifest.ts`.
 
 | Component                                                                                                                    | Licence    | Notes                                                                                                                                             |
 | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sherpa-onnx-node` 1.13.8 + platform packages `sherpa-onnx-{darwin-arm64,darwin-x64,linux-x64,linux-arm64,win-x64,win-ia32}` | Apache-2.0 | © k2-fsa / sherpa-onnx contributors — https://github.com/k2-fsa/sherpa-onnx. Native N-API addon and bundled ONNX Runtime, unpacked from the asar. |
-| `unbzip2-stream` 1.4.3, `tar-stream` 3.2.2                                                                                   | MIT        | Stream-extract the downloaded `.tar.bz2` model archive                                                                                            |
 
 ## Speech output (optional advanced: Fish Audio / fish-speech)
 

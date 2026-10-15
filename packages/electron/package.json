@@ -22,7 +22,17 @@
     "lint:fix": "eslint src tests --fix",
     "package:publish:mac": "electron-builder build --mac --publish always",
     "package:publish:win": "electron-builder build --win --publish always",
-    "package:publish:linux": "electron-builder build --linux --publish always"
+    "package:publish:linux": "electron-builder build --linux --publish always",
+    "sync-tts-model": "node scripts/sync-tts-model.mjs",
+    "prepackage": "node scripts/sync-tts-model.mjs",
+    "prepackage:prod": "node scripts/sync-tts-model.mjs",
+    "prepackage:prod:mac": "node scripts/sync-tts-model.mjs",
+    "prepackage:prod:win": "node scripts/sync-tts-model.mjs",
+    "prepackage:prod:linux": "node scripts/sync-tts-model.mjs",
+    "prepackage:debug": "node scripts/sync-tts-model.mjs",
+    "prepackage:publish:mac": "node scripts/sync-tts-model.mjs",
+    "prepackage:publish:win": "node scripts/sync-tts-model.mjs",
+    "prepackage:publish:linux": "node scripts/sync-tts-model.mjs"
   },
   "author": "Cookieboty",
   "license": "MIT",
@@ -43,14 +53,11 @@
     "fflate": "^0.8.3",
     "onnxruntime-web": "1.30.0",
     "sherpa-onnx-node": "1.13.8",
-    "tar-stream": "3.2.2",
     "tesseract.js": "7.0.0",
-    "unbzip2-stream": "1.4.3",
     "unpdf": "^1.8.1"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/tar-stream": "3.1.5",
     "cross-env": "^10.1.0",
     "electron": "44.7.0",
     "electron-builder": "^26.17.0",

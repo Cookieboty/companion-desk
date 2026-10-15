@@ -375,16 +375,9 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
-    // sherpa 模型状态 / 首次使用下载（进度由渲染进程轮询 status）
+    // sherpa 模型状态（bundled / env / 缺失）
     this.registerHandler('tts:sherpa:status', async (): Promise<SherpaModelStatus> => {
       return sherpa.getStatus();
-    });
-    this.registerHandler('tts:sherpa:download', async (): Promise<SherpaModelStatus> => {
-      this.logger.info('sherpa TTS 模型开始下载');
-      return sherpa.startDownload();
-    });
-    this.registerHandler('tts:sherpa:cancel', async (): Promise<SherpaModelStatus> => {
-      return sherpa.cancelDownload();
     });
 
     this.registerHandler('tts:health', async (_, config?: Partial<TTSConfig>) => {
@@ -487,16 +480,13 @@ export class ConfigIpcHandler extends BaseIpcHandler {
   private async checkSherpaHealth(): Promise<TTSTestResult> {
     const sherpa = getSherpaTtsService();
     const status = sherpa.getStatus();
-    if (status.state === 'downloading' || status.state === 'extracting') {
-      return { success: false, message: t('离线语音模型正在下载，完成后自动可用') };
-    }
     if (status.state !== 'ready') {
       return {
         success: false,
         message:
           status.state === 'error' && status.message
-            ? t('离线语音模型下载失败: {0}', status.message)
-            : t('离线语音模型尚未下载，当前使用系统语音；可在此页点击「下载离线语音模型」'),
+            ? t('离线语音模型不可用: {0}', status.message)
+            : t('离线语音模型缺失，当前使用系统语音'),
       };
     }
     try {
