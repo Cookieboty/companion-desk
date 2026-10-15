@@ -20,6 +20,8 @@ export interface VoiceSettings {
   timeAnnouncement: boolean;
   voicePackPath: string;
   voiceMode: 'fixed' | 'tts' | 'mixed';
+  /** 看板娘动作音效，默认 true */
+  sfxEnabled?: boolean;
 }
 
 export interface WindowSettings {
@@ -73,6 +75,7 @@ export class ConfigService implements IConfigService {
         timeAnnouncement: true,
         voicePackPath: 'packages/renderer/public/assets/voice',
         voiceMode: 'fixed',
+        sfxEnabled: true,
       },
       window: {
         position: { x: 0, y: 0 },

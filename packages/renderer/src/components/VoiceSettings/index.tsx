@@ -139,6 +139,16 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             disabled={off}
           />
         </label>
+        <Switch
+          checked={settings.sfxEnabled !== false}
+          onChange={(v) => handleSettingChange('sfxEnabled', v)}
+          disabled={isLoading}
+          label={tr('动作音效')}
+          data-testid="sfx-enabled"
+        />
+        <p className={styles.help} style={{ paddingLeft: 0 }}>
+          {tr('点击、拖拽、任务完成等动作的短提示音（程序合成，可关）。')}
+        </p>
       </section>
 
       <section className={styles.group}>

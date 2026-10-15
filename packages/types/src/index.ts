@@ -65,6 +65,8 @@ export interface VoiceSettings {
   timeAnnouncement: boolean;
   voicePackPath: string;
   voiceMode: 'fixed' | 'tts' | 'mixed';
+  /** 看板娘动作音效（程序合成），默认开 */
+  sfxEnabled?: boolean;
 }
 
 /**

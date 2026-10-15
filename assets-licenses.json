@@ -165,6 +165,13 @@
       "license": "MIT",
       "author": "Nomi-ai project owner (Cookieboty) — ink app icon rendered by scripts/brand/build-app-icon.py",
       "source": "docs/brand/icon-variants"
+    },
+    {
+      "pattern": "packages/renderer/public/assets/sfx/**",
+      "license": "MIT",
+      "author": "Nomi contributors",
+      "source": "this repository (procedural WebAudio; optional CC0 wav)",
+      "notes": "Default SFX are synthesized in code; README only in this folder for now."
     }
   ],
   "firstPartyLicense": "LicenseRef-FirstParty"

@@ -436,6 +436,9 @@ export class VoiceService {
 
       // 保存设置
       electronAPI.saveVoiceSettings(this.voiceSettings);
+      window.dispatchEvent(
+        new CustomEvent('mascot:voice-settings', { detail: { ...this.voiceSettings } }),
+      );
 
       if (newSettings.timeAnnouncement !== undefined) {
         if (this.timeAnnouncementInterval) {
