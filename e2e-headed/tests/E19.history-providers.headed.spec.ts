@@ -376,8 +376,14 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await shot(chat, '11-providers-claude-active');
 
     // 版本卡片：点「更新」先弹确认框，展示完整命令，取消则什么都不执行
+    // Windows 上探测 npm / 版本较慢：等按钮可点，对话框给足时间
+    await expect(chat.locator('[data-testid="cli-version-action-claude"]')).toBeEnabled({
+      timeout: 30_000,
+    });
     await chat.click('[data-testid="cli-version-action-claude"]');
-    await expect(chat.locator('[data-testid="cli-version-dialog-claude"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="cli-version-dialog-claude"]')).toBeVisible({
+      timeout: 40_000,
+    });
     await expect(chat.locator('[data-testid="cli-version-command"]')).not.toBeEmpty();
     await shot(chat, '11b-claude-update-confirm');
     await chat.click('[data-testid="cli-version-cancel"]');
