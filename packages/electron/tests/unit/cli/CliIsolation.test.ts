@@ -35,7 +35,7 @@ describe('buildCliEnv', () => {
       NOMI_USE_MOCK_CLI: '1',
       NOMI_DSH_API_KEY: 'leak',
       NOMI_MOCK_DELAY_MS: '5',
-      COMPANION_PROVIDER: 'amux',
+      NOMI_PROVIDER: 'amux',
       IG_AI_PROFILE: 'waifu',
       CD_LOCALE: 'zh',
       MCP_SERVERS: '[]',
@@ -45,7 +45,7 @@ describe('buildCliEnv', () => {
     expect(env.NOMI_MOCK_DELAY_MS).toBe('5');
     expect(env.NOMI_USE_MOCK_CLI).toBeUndefined();
     expect(env.NOMI_DSH_API_KEY).toBeUndefined();
-    expect(env.COMPANION_PROVIDER).toBeUndefined();
+    expect(env.NOMI_PROVIDER).toBeUndefined();
     expect(env.IG_AI_PROFILE).toBeUndefined();
     expect(env.CD_LOCALE).toBeUndefined();
     expect(env.MCP_SERVERS).toBeUndefined();
@@ -94,7 +94,6 @@ describe('provider isolation: Nomi key never reaches CLI launches', () => {
     const saved = { ...process.env };
     process.env.NOMI_CODEX_BIN = bin;
     process.env.NOMI_PROVIDER_KEY = NOMI_KEY;
-    process.env.COMPANION_PROVIDER = 'amux';
     process.env.NOMI_USE_MOCK_CLI = '0';
     try {
       const h = new CliHarnessService({
@@ -107,7 +106,7 @@ describe('provider isolation: Nomi key never reaches CLI launches', () => {
       const r = await h.send('hi');
       const seen = JSON.parse(r.text) as Record<string, string>;
       expect(JSON.stringify(seen)).not.toContain(NOMI_KEY);
-      expect(seen.COMPANION_PROVIDER).toBeUndefined();
+      expect(seen.NOMI_USE_MOCK_CLI).toBeUndefined();
       expect(seen.NOMI_PROVIDER_KEY).toBeUndefined();
       expect(fs.existsSync(codexConfigPath(home))).toBe(false);
       expect(fs.existsSync(codexAuthPath(home))).toBe(false);

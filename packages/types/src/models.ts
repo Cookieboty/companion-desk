@@ -40,11 +40,9 @@ export interface ModelConfig {
 }
 
 export const MODEL_CONFIG_SCHEMA = 'nomi/model-config@1';
-/** 旧品牌（Companion Desk）导出的配置文件仍可导入 */
-export const LEGACY_MODEL_CONFIG_SCHEMAS = ['companion-desk/model-config@1'] as const;
 
 export interface ModelConfigFile {
-  schema: typeof MODEL_CONFIG_SCHEMA | (typeof LEGACY_MODEL_CONFIG_SCHEMAS)[number];
+  schema: typeof MODEL_CONFIG_SCHEMA;
   modelName?: string;
   config: ModelConfig;
 }

@@ -51,7 +51,7 @@ export const ProviderSwitcher: React.FC<{ onManage: () => void; className?: stri
         aria-label={t('供应商')}
         value={current ?? ''}
         disabled={Boolean(state.overrideId)}
-        title={state.overrideId ? t('已被 COMPANION_PROVIDER 锁定') : t('切换供应商（立即生效）')}
+        title={state.overrideId ? t('已被 NOMI_PROVIDER 锁定') : t('切换供应商（立即生效）')}
         onChange={(e) =>
           void providerClient.setActive(e.target.value || null).catch(() => undefined)
         }

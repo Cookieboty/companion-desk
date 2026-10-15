@@ -7,7 +7,7 @@ import {
   type LicenseConditions,
 } from './licenses';
 
-/** 远程模型目录（companion-desk-models/catalog.json，schemaVersion 1） */
+/** 远程模型目录（GitHub Cookieboty/companion-desk-models catalog.json，schemaVersion 1） */
 export interface CatalogFile {
   urls: string[];
   sha256: string;

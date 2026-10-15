@@ -9,11 +9,7 @@ import { app, BrowserWindow } from 'electron';
 
 import { Application } from './core/Application';
 import { registerModelSchemePrivileges } from './models/ModelService';
-import {
-  LEGACY_DEV_NAMES,
-  LEGACY_PRODUCT_NAMES,
-  migrateLegacyUserData,
-} from './utils/legacyUserData';
+import { LEGACY_DEV_NAMES, migrateLegacyUserData } from './utils/legacyUserData';
 import { createMainLogger } from './utils/log';
 import { perfMark } from './utils/perfMarks';
 
@@ -65,23 +61,20 @@ if (!isPrimaryInstance) {
   });
 }
 
-// 品牌更名后沿用旧 userData（需在 ready 之前）。仅当 userData 是默认目录时迁移
-// （测试 / --user-data-dir 指定的目录不动）。第二实例跳过，避免与正在运行的实例争用目录。
-if (isPrimaryInstance) {
+// 开发态包名变更后沿用旧 userData（需在 ready 之前）。打包产物不迁移旧品牌目录。
+// 仅当 userData 是默认目录时迁移（测试 / --user-data-dir 指定的目录不动）。
+// 第二实例跳过，避免与正在运行的实例争用目录。
+if (isPrimaryInstance && !app.isPackaged) {
   const appData = app.getPath('appData');
   const userData = app.getPath('userData');
   try {
     const isDefault = path.resolve(userData) === path.resolve(appData, app.getName());
     const res = isDefault
-      ? migrateLegacyUserData(
-          appData,
-          userData,
-          app.isPackaged ? LEGACY_PRODUCT_NAMES : LEGACY_DEV_NAMES,
-        )
+      ? migrateLegacyUserData(appData, userData, LEGACY_DEV_NAMES)
       : { migrated: false as const, from: '', to: userData };
-    if (res.migrated) log.info(`📦 已迁移旧版用户数据: ${res.from} → ${res.to}`);
+    if (res.migrated) log.info(`📦 已迁移开发态用户数据: ${res.from} → ${res.to}`);
   } catch (error) {
-    console.warn('旧版用户数据迁移失败:', error);
+    console.warn('开发态用户数据迁移失败:', error);
   }
 }
 

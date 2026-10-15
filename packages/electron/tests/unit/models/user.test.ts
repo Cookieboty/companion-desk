@@ -129,6 +129,17 @@ describe('model config JSON', () => {
     expect(() => parseConfigFile('nope')).toThrow();
   });
 
+  it('rejects obsolete companion-desk model-config schema', () => {
+    expect(() =>
+      parseConfigFile(
+        JSON.stringify({
+          schema: 'companion-desk/model-config@1',
+          config: { scale: 1 },
+        }),
+      ),
+    ).toThrow(/schema/);
+  });
+
   it('sanitizes bad values', () => {
     expect(
       sanitizeModelConfig({

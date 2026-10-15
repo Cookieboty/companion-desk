@@ -1,9 +1,4 @@
-import {
-  LEGACY_MODEL_CONFIG_SCHEMAS,
-  MODEL_CONFIG_SCHEMA,
-  type ModelConfig,
-  type ModelConfigFile,
-} from '@nomi-ai/types';
+import { MODEL_CONFIG_SCHEMA, type ModelConfig, type ModelConfigFile } from '@nomi-ai/types';
 
 import { t } from '../i18n';
 
@@ -73,8 +68,7 @@ export function parseConfigFile(text: string): ModelConfig {
     throw new Error(t('配置文件不是合法 JSON'));
   }
   const f = data as Partial<ModelConfigFile>;
-  const known: readonly string[] = [MODEL_CONFIG_SCHEMA, ...LEGACY_MODEL_CONFIG_SCHEMAS];
-  if (!f?.schema || !known.includes(f.schema) || typeof f.config !== 'object') {
+  if (f?.schema !== MODEL_CONFIG_SCHEMA || typeof f.config !== 'object') {
     throw new Error(t('不是 Nomi 模型配置（需要 schema: {0}）', MODEL_CONFIG_SCHEMA));
   }
   return sanitizeModelConfig(f.config);

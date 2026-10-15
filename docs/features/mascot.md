@@ -125,5 +125,5 @@ Nomi 有 **43 个命名动作**（`packages/renderer/src/mascot/rig/actions.ts`�
 
 - Nomi 由透明 PNG 图层在 Canvas2D 上合成（`packages/renderer/src/mascot/layeredRig.ts`），不依赖 WebGL；动作系统见上文「动作」；3D 角色使用 three.js + @pixiv/three-vrm，只在切换到 VRM 时才加载。
 - 3D 角色的身体动作由 Quaternius Universal Animation Library（CC0）的片段和原创程序化手势（挥手、点头、思考、拍手、鞠躬、欢呼、张望等）组成。
-- 模型文件只做静态解析（GLB + VRM meta），从不执行；渲染进程经只读的 `cdmodel://` 协议加载。商店目录地址可用 `COMPANION_MODEL_CATALOG_URL` 覆盖。
+- 模型文件只做静态解析（GLB + VRM meta），从不执行；渲染进程经只读的 `cdmodel://` 协议加载。商店目录地址可用 `NOMI_MODEL_CATALOG_URL` 覆盖。
 - Linux 的点击穿透用窗口形状实现；Wayland 下全局光标位置不可用。

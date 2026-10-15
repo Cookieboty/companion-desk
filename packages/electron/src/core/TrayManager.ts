@@ -231,7 +231,7 @@ export class TrayManager {
       { label: t('打开 AI 对话'), click: () => this.opts.openChat() },
       { type: 'separator' },
       {
-        label: state.overrideId ? t('AI Provider（已被 COMPANION_PROVIDER 锁定）') : 'AI Provider',
+        label: state.overrideId ? t('AI Provider（已被 NOMI_PROVIDER 锁定）') : 'AI Provider',
         enabled: false,
       },
       ...providerItems,

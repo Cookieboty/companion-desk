@@ -63,7 +63,7 @@ export class ModelService {
 
   constructor(private readonly logger: Logger) {
     this.root = path.join(app.getPath('userData'), 'models');
-    const env = process.env.COMPANION_MODEL_CATALOG_URL?.trim();
+    const env = process.env.NOMI_MODEL_CATALOG_URL?.trim();
     this.store = new ModelStore({
       root: this.root,
       catalogUrls: env

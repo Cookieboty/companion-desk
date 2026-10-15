@@ -32,8 +32,8 @@
 
 ## 技术说明
 
-- 也可以用环境变量提供供应商（如 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GEMINI_API_KEY`、`OLLAMA_BASE_URL`），它们在面板里只读显示；`COMPANION_PROVIDER=<id>` 可强制指定供应商。
-- 选择顺序：`COMPANION_PROVIDER` → 任务路由 → 当前供应商 → 环境变量供应商。
+- 也可以用环境变量提供供应商（如 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`ANTHROPIC_API_KEY`、`GEMINI_API_KEY`、`OLLAMA_BASE_URL`），它们在面板里只读显示；`NOMI_PROVIDER=<id>` 可强制指定供应商。
+- 选择顺序：`NOMI_PROVIDER` → 任务路由 → 当前供应商 → 环境变量供应商。
 - 服务商图标来自 `@lobehub/icons-static-svg`（MIT），仅用于标识对应服务；没有图标时显示首字母头像。
 
 ## Claude Code / Codex / dsh 的供应商

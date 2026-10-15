@@ -130,7 +130,7 @@ test.describe('E7 · real app · providers (3 protocols)', () => {
     for (const k of Object.keys(env)) {
       if (
         /^(DEEPSEEK|OPENAI|ANTHROPIC|CLAUDE|GOOGLE_GENERATIVE_AI|GEMINI|OLLAMA)_/.test(k) ||
-        k === 'COMPANION_PROVIDER'
+        k === 'NOMI_PROVIDER'
       )
         delete env[k];
     }

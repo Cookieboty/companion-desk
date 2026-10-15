@@ -268,7 +268,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           )}
           {locked && (
             <Notice tone="warning">
-              {t('环境变量 COMPANION_PROVIDER=')}
+              {t('环境变量 NOMI_PROVIDER=')}
               {state!.overrideId} {t('已锁定对话供应商，此处切换不会生效。')}
             </Notice>
           )}
@@ -357,7 +357,7 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 <RoutesTable state={state} onError={onError} />
                 <p className="cd-muted">
                   {t(
-                    '优先级：COMPANION_PROVIDER 环境变量 → 任务路由 → 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
+                    '优先级：NOMI_PROVIDER 环境变量 → 任务路由 → 当前供应商。工具栏 / 托盘一键切换会让「对话」立即改用所选供应商。',
                   )}
                 </p>
               </section>

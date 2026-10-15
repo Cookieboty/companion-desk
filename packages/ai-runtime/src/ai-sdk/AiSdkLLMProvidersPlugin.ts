@@ -21,7 +21,7 @@ import { createAiSdkProviderFromEntry } from './AiSdkLlmProvider';
 export interface AiSdkLLMProvidersConfig {
   providers: LLMProviderEntry[];
   store?: ProviderStore;
-  /** `COMPANION_PROVIDER`：强制使用的 provider id */
+  /** `NOMI_PROVIDER`：强制使用的 provider id */
   overrideId?: string;
   factory?: ProviderFactory;
   /** 拿到 registry 的回调（IPC 层用来校验 / 列出 env providers） */
