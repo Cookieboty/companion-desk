@@ -280,7 +280,7 @@ describe('ActionManager', () => {
     am.play('wave');
     run(am, 1.0);
     const pose = am.out.v[IDX.rA];
-    expect(pose).toBeGreaterThan(20);
+    expect(pose).toBeGreaterThan(8);
     am.stop();
     run(am, 0.1);
     // still raised (not swinging down), while its weight (rOn) is already falling
@@ -323,8 +323,8 @@ describe('RigAnimator + actions', () => {
       lean = Math.min(lean, pose.ext.v[IDX.torsoRot]);
       if (i === Math.round((dur - 0.05) * 60)) atEnd = pose.ext.v[IDX.rA];
     }
-    expect(maxFore).toBeGreaterThan(0.3); // visible foreshortening during the swing
-    expect(peakA).toBeGreaterThan(30);
+    expect(maxFore).toBeGreaterThan(0.15); // foreshortening during the swing (mild on-canvas poses)
+    expect(peakA).toBeGreaterThan(10);
     expect(lean).toBeLessThan(-0.4); // torso leans away from the raised arm
     expect(atEnd).toBeLessThan(peakA * 0.35); // the arm is lowered before the action ends
   });

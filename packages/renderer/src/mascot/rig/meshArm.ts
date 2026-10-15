@@ -1,12 +1,11 @@
 /**
- * Posed arm for the Nomi 2D rig (Canvas2D only).
+ * Mesh-warped arm for the Nomi 2D rig (Canvas2D only).
  *
- * The master arm layer (the sleeve cut from the approved artwork) is split once into three softly
- * masked, overlapping pieces: shoulder seam, upper arm and forearm. The upper arm and forearm
- * both end in a round cap centred on the elbow, so a bent elbow keeps a smooth sleeve outline, and
- * the pocket / strap on the upper arm stay rigid. A hand piece is attached to the forearm. Nothing
- * here generates art: every pixel comes from the master sleeve or the hand pieces. When no
- * gesture is active the animator draws the untouched master arm layer instead.
+ * The master arm layer (the sleeve cut from the approved artwork) is re-drawn as a strip of
+ * triangles that follow a bendable spine: the shoulder rotates the whole strip, the elbow bends it
+ * smoothly (inner side folds, outer side stretches). A hand piece is attached at the strip end with a
+ * feathered seam. Nothing here generates art: every pixel comes from the master sleeve or the hand
+ * pieces. When no gesture is active the animator draws the untouched master arm layer instead.
  */
 
 import type { RigImageSource } from './rigTypes';
@@ -47,18 +46,27 @@ export interface ArmDrawParams {
   lift: number;
   /** hand piece alpha 0..1 */
   handAlpha: number;
-  /** forearm foreshortening while the arm swings (0..1; 1 = shortened by FORE_MAX) */
-  fore: number;
+  /** ignored (compat) */
+  fore?: number;
 }
 
-/** Spine arc-length of the elbow joint and of the point where the hand piece attaches. */
+/** Spine arc-length of the shoulder joint, the elbow, and where the hand piece attaches. */
 export const ARM_ELBOW_S = 335;
+export const ARM_BEND_LEN = 120;
 export const ARM_HAND_S = 470;
 export const HAND_SCALE = 0.6;
-/** the shoulder seam / drop-shoulder flap follows the raised arm only this much (stays on the torso) */
-export const SHOULDER_FOLLOW = 1;
-/** the forearm and hand are drawn this much shorter at full swing speed (it moves toward the camera) */
-export const FORE_MAX = 0.6;
+
+const MAX_ROWS = 40;
+const COLS = 6;
+const rowS = new Float64Array(MAX_ROWS);
+const rowPx = new Float64Array(MAX_ROWS);
+const rowPy = new Float64Array(MAX_ROWS);
+const rowPhi = new Float64Array(MAX_ROWS);
+const rowK = new Float64Array(MAX_ROWS);
+const dstX = new Float64Array(MAX_ROWS * (COLS + 1));
+const dstY = new Float64Array(MAX_ROWS * (COLS + 1));
+const srcX = new Float64Array(MAX_ROWS * (COLS + 1));
+const srcY = new Float64Array(MAX_ROWS * (COLS + 1));
 
 const smooth01 = (x: number) => {
   const c = x < 0 ? 0 : x > 1 ? 1 : x;
@@ -66,111 +74,73 @@ const smooth01 = (x: number) => {
 };
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-type Src = RigImageSource | CanvasImageSource;
 
-interface ArmTex {
-  /** shoulder seam piece (fades out below the shoulder) */
-  shoulder: Src;
-  /** upper arm incl. a round elbow cap (fades in below the shoulder seam) */
-  upper: Src;
-  /** forearm from the elbow, with its own round cap */
-  fore: Src;
-  /** elbow joint in layer px */
-  jx: number;
-  jy: number;
+/** Draw one source triangle mapped onto a destination triangle (affine), slightly expanded to hide seams. */
+function tri(
+  ctx: Ctx,
+  img: RigImageSource,
+  sx0: number,
+  sy0: number,
+  sx1: number,
+  sy1: number,
+  sx2: number,
+  sy2: number,
+  dx0: number,
+  dy0: number,
+  dx1: number,
+  dy1: number,
+  dx2: number,
+  dy2: number,
+): void {
+  const det = (sx1 - sx0) * (sy2 - sy0) - (sx2 - sx0) * (sy1 - sy0);
+  if (Math.abs(det) < 1e-6) return;
+  const a = ((dx1 - dx0) * (sy2 - sy0) - (dx2 - dx0) * (sy1 - sy0)) / det;
+  const b = ((dy1 - dy0) * (sy2 - sy0) - (dy2 - dy0) * (sy1 - sy0)) / det;
+  const c = ((dx2 - dx0) * (sx1 - sx0) - (dx1 - dx0) * (sx2 - sx0)) / det;
+  const d = ((dy2 - dy0) * (sx1 - sx0) - (dy1 - dy0) * (sx2 - sx0)) / det;
+  const e = dx0 - a * sx0 - c * sy0;
+  const f = dy0 - b * sx0 - d * sy0;
+  // expand the clip triangle ~0.6px from its centroid so neighbours overlap (no hairline gaps)
+  const cx = (dx0 + dx1 + dx2) / 3;
+  const cy = (dy0 + dy1 + dy2) / 3;
+  const ex = (x: number, y: number, out: number[]) => {
+    const vx = x - cx;
+    const vy = y - cy;
+    const l = Math.hypot(vx, vy) || 1;
+    out[0] = x + (vx / l) * 0.7;
+    out[1] = y + (vy / l) * 0.7;
+  };
+  ex(dx0, dy0, T0);
+  ex(dx1, dy1, T1);
+  ex(dx2, dy2, T2);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(T0[0], T0[1]);
+  ctx.lineTo(T1[0], T1[1]);
+  ctx.lineTo(T2[0], T2[1]);
+  ctx.closePath();
+  ctx.clip();
+  ctx.transform(a, b, c, d, e, f);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
 }
-
-const texCache = new WeakMap<object, ArmTex | null>();
-
-function makeCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElement {
-  return typeof OffscreenCanvas !== 'undefined'
-    ? new OffscreenCanvas(w, h)
-    : Object.assign(document.createElement('canvas'), { width: w, height: h });
-}
-
-/**
- * The master sleeve is cut into three overlapping pieces once (alpha masks only, every colour
- * stays the master's): shoulder seam, upper arm and forearm. The upper arm and the forearm end in
- * round caps centred on the elbow joint, so the bent elbow keeps a smooth sleeve outline and the
- * pocket / strap on the upper arm stay rigid instead of being stretched by a bend.
- */
-function buildTex(img: RigImageSource, g: ArmGeom, sEnd: number): ArmTex | null {
-  try {
-    const iw = (img as { width: number }).width;
-    const ih = (img as { height: number }).height;
-    const c0 = makeCanvas(iw, ih);
-    const x0 = c0.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
-    x0.drawImage(img as CanvasImageSource, 0, 0);
-    const src = x0.getImageData(0, 0, iw, ih);
-    if (!src || !src.data || src.data.length !== iw * ih * 4) return null;
-    const sinT = Math.sin(g.theta);
-    const cosT = Math.cos(g.theta);
-    const ux = g.sgn * sinT;
-    const uy = cosT;
-    const wx = cosT;
-    const wy = -g.sgn * sinT;
-    const J = ARM_ELBOW_S;
-    const sOf = (x: number, y: number) => (x - g.s0[0]) * ux + (y - g.s0[1]) * uy;
-    const nOf = (x: number, y: number) => (x - g.s0[0]) * wx + (y - g.s0[1]) * wy;
-    // sleeve extent at the elbow
-    let nLo = 1e9;
-    let nHi = -1e9;
-    for (let y = 0; y < ih; y += 1)
-      for (let x = 0; x < iw; x += 1) {
-        if (src.data[(y * iw + x) * 4 + 3] < 128) continue;
-        if (Math.abs(sOf(x, y) - J) > 5) continue;
-        const n = nOf(x, y);
-        if (n < nLo) nLo = n;
-        if (n > nHi) nHi = n;
-      }
-    if (nLo > nHi) return null;
-    const nC = (nLo + nHi) / 2;
-    const R = (nHi - nLo) / 2 + 3;
-    const mk = (f: (s: number, n: number) => number) => {
-      const out = new Uint8ClampedArray(src.data);
-      for (let y = 0; y < ih; y++)
-        for (let x = 0; x < iw; x++) {
-          const k = (y * iw + x) * 4 + 3;
-          if (!out[k]) continue;
-          out[k] = Math.round(out[k] * f(sOf(x, y), nOf(x, y)));
-        }
-      const c = makeCanvas(iw, ih);
-      const cx = c.getContext('2d') as CanvasRenderingContext2D;
-      cx.putImageData(new ImageData(out, iw, ih), 0, 0);
-      return c as unknown as Src;
-    };
-    const cap = (s: number, n: number) =>
-      Math.max(0, Math.min(1, (R - Math.hypot(s - J, n - nC)) / 10));
-    return {
-      shoulder: mk((s) => 1 - smooth01((s - 110) / 130)),
-      upper: mk(
-        (s, n) => (SHOULDER_FOLLOW >= 1 ? 1 : smooth01((s - 20) / 130)) * (s <= J ? 1 : cap(s, n)),
-      ),
-      fore: mk((s, n) => (s >= J ? 1 - smooth01((s - (sEnd - 26)) / 26) : cap(s, n))),
-      jx: g.s0[0] + J * ux + nC * wx,
-      jy: g.s0[1] + J * uy + nC * wy,
-    };
-  } catch {
-    return null;
-  }
-}
+const T0 = [0, 0];
+const T1 = [0, 0];
+const T2 = [0, 0];
 
 export interface ArmFrame {
   /** hand attach point (rig px), direction of the forearm (rad, canvas rotation from straight down) */
   hx: number;
   hy: number;
   hPsi: number;
-  /** forearm length factor (1 = full) */
-  fore: number;
 }
-export const armFrame: ArmFrame = { hx: 0, hy: 0, hPsi: 0, fore: 1 };
+export const armFrame: ArmFrame & { fore: number } = { hx: 0, hy: 0, hPsi: 0, fore: 1 };
 
 /**
- * Draw one posed arm as three rigid, softly masked pieces of the master sleeve (see buildTex).
- * `pivot` is the shoulder pivot and `off` the layer offset, both in rig px. The hand frame is
- * returned through the shared `armFrame` object.
+ * Build rows + draw the strip. `pivot` is the shoulder pivot and `off` the layer offset, both in rig px.
+ * Returns the hand frame via the shared `armFrame` object.
  */
-export function drawArmPieces(
+export function drawArmStrip(
   ctx: Ctx,
   img: RigImageSource,
   g: ArmGeom,
@@ -179,65 +149,171 @@ export function drawArmPieces(
   p: ArmDrawParams,
   sEnd: number,
 ): void {
-  let tex = texCache.get(img as object);
-  if (tex === undefined) {
-    tex = buildTex(img, g, sEnd);
-    texCache.set(img as object, tex);
-  }
   const sgn = g.sgn;
-  const rotSign = -sgn;
-  const phiU = rotSign * p.a;
-  const phiS = phiU * SHOULDER_FOLLOW;
-  const phiF = rotSign * (p.a + p.e);
-  const px = pivot[0];
-  const py = pivot[1] + p.lift;
   const sinT = Math.sin(g.theta);
   const cosT = Math.cos(g.theta);
-  const ux = sgn * sinT;
-  const uy = cosT;
-  const base = img as unknown as CanvasImageSource;
-  const piece = (im: Src, phi: number) => {
-    ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(phi);
-    ctx.translate(-pivot[0], -pivot[1]);
-    ctx.drawImage(im as CanvasImageSource, off[0], off[1]);
-    ctx.restore();
+  const u0x = sgn * sinT;
+  const u0y = cosT;
+  const w0x = cosT;
+  const w0y = -sgn * sinT;
+  // pivot in (s, n)
+  const plx = pivot[0] - off[0] - g.s0[0];
+  const ply = pivot[1] - off[1] - g.s0[1];
+  const sp = plx * u0x + ply * u0y;
+  const np = plx * w0x + ply * w0y;
+
+  // rows
+  let n = 0;
+  const smin = g.smin;
+  const se = Math.min(sEnd, g.smax);
+  const b0 = ARM_ELBOW_S - ARM_BEND_LEN / 2;
+  const b1 = ARM_ELBOW_S + ARM_BEND_LEN / 2;
+  const push = (s: number) => {
+    if (n < MAX_ROWS && s > (n ? rowS[n - 1] + 1 : -1e9) && s <= se + 0.001) rowS[n++] = s;
   };
-  // elbow joint (layer px → rig px, unrotated) and its position after the upper arm rotates
-  const jx = off[0] + (tex ? tex.jx : g.s0[0] + ARM_ELBOW_S * ux);
-  const jy = off[1] + (tex ? tex.jy : g.s0[1] + ARM_ELBOW_S * uy);
-  const cu = Math.cos(phiU);
-  const su = Math.sin(phiU);
-  const jrx = px + (jx - pivot[0]) * cu - (jy - pivot[1]) * su;
-  const jry = py + (jx - pivot[0]) * su + (jy - pivot[1]) * cu;
-  if (tex && SHOULDER_FOLLOW < 1) piece(tex.shoulder, phiS);
-  piece(tex ? tex.upper : base, phiU);
-  // forearm: rotate about the elbow, foreshortened along its own axis while the arm swings
-  const ff = 1 - FORE_MAX * Math.max(0, Math.min(1, p.fore));
-  const ax = ff - 1;
-  // matrix I + (ff-1)·u·uᵀ in the sleeve's own frame (u = spine direction)
-  const m00 = 1 + ax * ux * ux;
-  const m01 = ax * ux * uy;
-  const m11 = 1 + ax * uy * uy;
-  ctx.save();
-  ctx.translate(jrx, jry);
-  ctx.rotate(phiF);
-  ctx.transform(m00, m01, m01, m11, 0, 0);
-  ctx.translate(-jx, -jy);
-  ctx.drawImage((tex ? tex.fore : base) as CanvasImageSource, off[0], off[1]);
-  ctx.restore();
-  // hand frame: the point of the spine at ARM_HAND_S, carried by the forearm
-  const dx = off[0] + g.s0[0] + ARM_HAND_S * ux - jx;
-  const dy = off[1] + g.s0[1] + ARM_HAND_S * uy - jy;
-  const hx0 = m00 * dx + m01 * dy;
-  const hy0 = m01 * dx + m11 * dy;
-  const cf = Math.cos(phiF);
-  const sf = Math.sin(phiF);
-  armFrame.hx = jrx + hx0 * cf - hy0 * sf;
-  armFrame.hy = jry + hx0 * sf + hy0 * cf;
-  armFrame.hPsi = phiF - sgn * g.theta + Math.PI + rotSign * p.w;
-  armFrame.fore = ff;
+  push(smin);
+  for (const s of [60, 120, 180, 230]) if (s > smin && s < b0) push(s);
+  for (let s = b0; s <= b1 + 0.1; s += ARM_BEND_LEN / 8) push(s);
+  for (let s = b1 + 55; s < se; s += 55) push(s);
+  push(se);
+
+  const bend = Math.max(-1.55, Math.min(1.55, p.e)); // ~89° — solid strip, more reach
+  const absBend = Math.abs(bend);
+  const innerSign = sgn * (bend >= 0 ? 1 : -1);
+  const sgnRot = -sgn;
+  // Raise-driven foreshortening: compress distal length so a lifted cuff stays on-canvas
+  // without scaling the shoulder away from the body-noarm hole.
+  const raise = Math.max(
+    Math.min(1, Math.abs(p.a) / 0.55),
+    Math.min(1, absBend / 1.4) * 0.55,
+    Math.min(1, p.fore ?? 0),
+  );
+  const lenAt = (s: number) => {
+    if (s <= b0) return 1;
+    const t = smooth01((s - b0) / Math.max(60, ARM_HAND_S - b0));
+    return 1 - raise * 0.75 * t;
+  };
+  // Keep the proximal stump locked to the body-noarm hole; blend shoulder angle in
+  // before the elbow so a raise does not open a green wedge at the jacket seam.
+  const stump = Math.max(smin + 20, 90);
+  const shoulderBlendOf = (s: number) => smooth01((s - stump) / Math.max(40, b0 - stump));
+  const phiOf = (s: number) =>
+    sgnRot * (p.a * shoulderBlendOf(s) + bend * smooth01((s - b0) / ARM_BEND_LEN));
+  // spine integration from the pivot
+  const phiP = phiOf(sp);
+  const wx = w0x * Math.cos(phiP) - w0y * Math.sin(phiP);
+  const wy = w0x * Math.sin(phiP) + w0y * Math.cos(phiP);
+  const pxP = pivot[0] - np * wx;
+  const pyP = pivot[1] + p.lift - np * wy;
+  // find row nearest to sp to anchor; integrate outward in both directions
+  const ux = (phi: number) => u0x * Math.cos(phi) - u0y * Math.sin(phi);
+  const uy = (phi: number) => u0x * Math.sin(phi) + u0y * Math.cos(phi);
+  // integrate with fine steps; distal steps shrink with raise (foreshorten)
+  const pos = (s: number, out: number[]) => {
+    let x = pxP;
+    let y = pyP;
+    const dir = s >= sp ? 1 : -1;
+    const steps = Math.max(1, Math.ceil(Math.abs(s - sp) / 6));
+    const h = (s - sp) / steps;
+    for (let i = 0; i < steps; i++) {
+      const sm = sp + h * (i + 0.5);
+      const ph = phiOf(sm);
+      const ls = lenAt(sm);
+      x += ux(ph) * h * ls;
+      y += uy(ph) * h * ls;
+    }
+    out[0] = x;
+    out[1] = y;
+    return dir;
+  };
+  const tmp = [0, 0];
+  for (let i = 0; i < n; i++) {
+    const s = rowS[i];
+    pos(s, tmp);
+    rowPx[i] = tmp[0];
+    rowPy[i] = tmp[1];
+    rowPhi[i] = phiOf(s);
+    // curvature magnitude (rad / px) of the bend at s
+    const x = (s - b0) / ARM_BEND_LEN;
+    rowK[i] = x > 0 && x < 1 ? (absBend * 6 * x * (1 - x)) / ARM_BEND_LEN : 0;
+  }
+  // mesh vertices
+  for (let i = 0; i < n; i++) {
+    const phi = rowPhi[i];
+    const cw = Math.cos(phi);
+    const sw = Math.sin(phi);
+    const wx2 = w0x * cw - w0y * sw;
+    const wy2 = w0x * sw + w0y * cw;
+    for (let j = 0; j <= COLS; j++) {
+      const nn = g.nmin + ((g.nmax - g.nmin) * j) / COLS;
+      let ne = nn;
+      const m = nn * innerSign;
+      if (m > 0 && rowK[i] > 0) ne = (m / (1 + m * rowK[i])) * innerSign;
+      const k = i * (COLS + 1) + j;
+      dstX[k] = rowPx[i] + ne * wx2;
+      dstY[k] = rowPy[i] + ne * wy2;
+      srcX[k] = g.s0[0] + rowS[i] * u0x + nn * w0x;
+      srcY[k] = g.s0[1] + rowS[i] * u0y + nn * w0y;
+    }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < COLS; j++) {
+      const a = i * (COLS + 1) + j;
+      const b = a + 1;
+      const c = a + (COLS + 1);
+      const d = c + 1;
+      tri(
+        ctx,
+        img,
+        srcX[a],
+        srcY[a],
+        srcX[b],
+        srcY[b],
+        srcX[c],
+        srcY[c],
+        dstX[a],
+        dstY[a],
+        dstX[b],
+        dstY[b],
+        dstX[c],
+        dstY[c],
+      );
+      tri(
+        ctx,
+        img,
+        srcX[b],
+        srcY[b],
+        srcX[d],
+        srcY[d],
+        srcX[c],
+        srcY[c],
+        dstX[b],
+        dstY[b],
+        dstX[d],
+        dstY[d],
+        dstX[c],
+        dstY[c],
+      );
+    }
+  }
+  // hand frame at ARM_HAND_S
+  pos(ARM_HAND_S, tmp);
+  armFrame.hx = tmp[0];
+  armFrame.hy = tmp[1];
+  armFrame.hPsi = phiOf(ARM_HAND_S) - sgn * g.theta + Math.PI + sgnRot * p.w;
+  armFrame.fore = 1 - raise * 0.75;
+  // Curl the wrist back on-canvas when the tip would leave the 960×1120 frame.
+  {
+    const handLen = 340; // ~ay * HAND_SCALE
+    const tipX = armFrame.hx + Math.sin(armFrame.hPsi) * handLen;
+    const tipY = armFrame.hy - Math.cos(armFrame.hPsi) * handLen;
+    const margin = 36;
+    if (tipX > 960 - margin || tipX < margin || tipY < margin || tipY > 1120 - margin) {
+      const tx = Math.max(120, Math.min(840, (armFrame.hx + 480) * 0.5));
+      const ty = Math.max(120, armFrame.hy - 180);
+      armFrame.hPsi = Math.atan2(tx - armFrame.hx, armFrame.hy - ty);
+    }
+  }
 }
 
 /** Draw a hand piece at the attach frame (call right after drawArmStrip). */
@@ -255,8 +331,121 @@ export function drawHandPiece(
   ctx.save();
   ctx.translate(armFrame.hx, armFrame.hy);
   ctx.rotate(armFrame.hPsi);
-  ctx.scale(sgn * scale, scale * armFrame.fore);
+  ctx.scale(sgn * scale, scale);
   ctx.drawImage(img, -meta.ax, -meta.ay);
   ctx.restore();
   ctx.globalAlpha = prev;
+}
+
+export const drawArmPieces = drawArmStrip;
+
+const plugCache = new WeakMap<object, CanvasImageSource | null>();
+const PLUG_CUT = 200;
+
+/** Upper-sleeve-only cut of the master arm, used to plug the body-noarm shoulder hole. */
+export function shoulderPlug(img: RigImageSource, g: ArmGeom): CanvasImageSource | null {
+  let cached = plugCache.get(img as object);
+  if (cached !== undefined) return cached;
+  try {
+    const iw = (img as { width: number }).width;
+    const ih = (img as { height: number }).height;
+    const c0 =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(iw, ih)
+        : Object.assign(document.createElement('canvas'), { width: iw, height: ih });
+    const x0 = c0.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+    x0.drawImage(img as CanvasImageSource, 0, 0);
+    const src = x0.getImageData(0, 0, iw, ih);
+    const sinT = Math.sin(g.theta);
+    const cosT = Math.cos(g.theta);
+    const ux = g.sgn * sinT;
+    const uy = cosT;
+    const sOf = (x: number, y: number) => (x - g.s0[0]) * ux + (y - g.s0[1]) * uy;
+    const out = new Uint8ClampedArray(src.data);
+    // Keep upper sleeve through near-elbow so the body-noarm void stays sealed when the
+    // mesh rotates away. Soft feather over ~50px so it does not read as a second cuff.
+    const cut = PLUG_CUT;
+    for (let y = 0; y < ih; y++)
+      for (let x = 0; x < iw; x++) {
+        const k = (y * iw + x) * 4 + 3;
+        if (!out[k]) continue;
+        const t = (sOf(x, y) - (cut - 50)) / 50;
+        const f = t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * (3 - 2 * t);
+        out[k] = Math.round(out[k] * f);
+      }
+    const c =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(iw, ih)
+        : Object.assign(document.createElement('canvas'), { width: iw, height: ih });
+    (c.getContext('2d') as CanvasRenderingContext2D).putImageData(new ImageData(out, iw, ih), 0, 0);
+    cached = c as unknown as CanvasImageSource;
+  } catch {
+    cached = null;
+  }
+  plugCache.set(img as object, cached);
+  return cached;
+}
+
+const bodyFillCache = new WeakMap<object, CanvasImageSource | null>();
+
+/**
+ * Pixels that are opaque on `body` but transparent on `body-noarm` near the shoulder —
+ * the armpit notch the arm layer never covers. Cached per body image.
+ */
+export function bodyShoulderFill(
+  body: RigImageSource,
+  bodyNoarm: RigImageSource,
+  bodyOff: readonly [number, number],
+  shoulder: readonly [number, number],
+  radius = 150,
+): CanvasImageSource | null {
+  const key = body as object;
+  let cached = bodyFillCache.get(key);
+  if (cached !== undefined) return cached;
+  try {
+    const bw = (body as { width: number }).width;
+    const bh = (body as { height: number }).height;
+    const mk = (img: RigImageSource) => {
+      const c =
+        typeof OffscreenCanvas !== 'undefined'
+          ? new OffscreenCanvas(bw, bh)
+          : Object.assign(document.createElement('canvas'), { width: bw, height: bh });
+      const x = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+      x.clearRect(0, 0, bw, bh);
+      x.drawImage(img as CanvasImageSource, 0, 0);
+      return x.getImageData(0, 0, bw, bh);
+    };
+    const dBody = mk(body);
+    const dNo = mk(bodyNoarm);
+    const out = new Uint8ClampedArray(bw * bh * 4);
+    // shoulder in body-local px
+    const sx = shoulder[0] - bodyOff[0];
+    const sy = shoulder[1] - bodyOff[1];
+    const r2 = radius * radius;
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        const i = (y * bw + x) * 4;
+        if (dBody.data[i + 3] < 20 || dNo.data[i + 3] > 10) continue;
+        const dx = x - sx;
+        const dy = y - sy;
+        if (dx * dx + dy * dy > r2) continue;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const f = dist < radius - 30 ? 1 : Math.max(0, 1 - (dist - (radius - 30)) / 30);
+        out[i] = dBody.data[i];
+        out[i + 1] = dBody.data[i + 1];
+        out[i + 2] = dBody.data[i + 2];
+        out[i + 3] = Math.round(dBody.data[i + 3] * f);
+      }
+    }
+    const c =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(bw, bh)
+        : Object.assign(document.createElement('canvas'), { width: bw, height: bh });
+    (c.getContext('2d') as CanvasRenderingContext2D).putImageData(new ImageData(out, bw, bh), 0, 0);
+    cached = c as unknown as CanvasImageSource;
+  } catch {
+    cached = null;
+  }
+  bodyFillCache.set(key, cached);
+  return cached;
 }

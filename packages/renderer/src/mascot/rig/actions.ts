@@ -87,22 +87,24 @@ const pulse = (p: string, from: number, peak: number, to: number, v: number): Tr
 
 // --- solved arm poses (right / left) -----------------------------------------------------------
 const P = {
-  waveUp: { r: [14, 165, 0], l: [14, 180, -20] },
-  waveOut: { r: [35, 155, 0], l: [35, 155, 0] },
-  fistUp: { r: [22, 170, -10], l: [22, 185, -30] },
-  peaceUp: { r: [16, 165, 0], l: [16, 180, -20] },
-  thumb: { r: [-16, 160, 20], l: [-14, 160, 20] },
-  point: { r: [-16, 175, 0], l: [-14, 175, 0] },
-  chin: { r: [-8, 210, 0], l: [-14, 212, 0] },
-  cheeks: { r: [-14, 215, 0], l: [-14, 215, 0] },
-  surprise: { r: [-22, 175, 0], l: [-20, 175, 0] },
-  salute: { r: [44, 175, -10], l: [42, 170, 0] },
-  heart: { r: [12, 175, 60], l: [10, 175, 60] },
-  chest: { r: [0, 175, 60], l: [14, 190, 40] },
-  type: { r: [16, 210, 60], l: [12, 215, 60] },
-  stretch: { r: [44, 165, -20], l: [42, 160, -10] },
-  pray: { r: [-6, 205, 40], l: [-12, 200, 50] },
-  clap: { r: [8, 203, 40], l: [2, 198, 50] },
+  // Mild on-canvas raises: long right sleeve exits the 960px frame past ~22° shoulder.
+  // Distal foreshortening + stump-locked mesh keep sleeve+hand continuous and visible.
+  waveUp: { r: [12, 85, 0], l: [10, 88, -12] },
+  waveOut: { r: [14, 78, 0], l: [14, 78, 0] },
+  fistUp: { r: [14, 88, -8], l: [12, 90, -16] },
+  peaceUp: { r: [12, 85, 0], l: [10, 88, -12] },
+  thumb: { r: [8, 80, 15], l: [6, 80, 15] },
+  point: { r: [6, 85, 0], l: [4, 85, 0] },
+  chin: { r: [4, 90, 0], l: [2, 90, 0] },
+  cheeks: { r: [4, 90, 0], l: [4, 90, 0] },
+  surprise: { r: [10, 65, 0], l: [10, 65, 0] },
+  salute: { r: [14, 88, -6], l: [12, 85, 0] },
+  heart: { r: [6, 85, 35], l: [4, 85, 35] },
+  chest: { r: [6, 82, 35], l: [4, 80, 30] },
+  type: { r: [8, 90, 45], l: [6, 90, 45] },
+  stretch: { r: [14, 68, -12], l: [12, 65, -8] },
+  pray: { r: [6, 85, 30], l: [4, 85, 35] },
+  clap: { r: [6, 85, 30], l: [4, 82, 35] },
 } as const satisfies Record<string, { r: Pose; l: Pose }>;
 
 export const ACTIONS: readonly ActionDef[] = [

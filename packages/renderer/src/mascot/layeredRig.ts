@@ -12,8 +12,10 @@ import { ACTIONS } from './rig/actions';
 import { drawBrow, drawFx, drawMouth } from './rig/fx';
 import {
   ARM_HAND_S,
+  bodyShoulderFill,
   drawArmPieces,
   drawHandPiece,
+  shoulderPlug,
   type ArmGeom,
   type HandPieceMeta,
 } from './rig/meshArm';
@@ -582,9 +584,9 @@ export class RigAnimator {
   private armR = new Spring(24, 0.32);
   private badge = new Spring(16, 0.16);
   private strap = new Spring(22, 0.18);
-  private hairL = new Spring(36, 0.26);
-  private hairR = new Spring(32, 0.24);
-  private ribbon = new Spring(20, 0.2);
+  private hairL = new Spring(48, 0.55);
+  private hairR = new Spring(48, 0.55);
+  private ribbon = new Spring(40, 0.5);
   private browS = new Spring(18, 1);
   private cheekS = new Spring(14, 1);
   private nextHairFlick = 4;
@@ -727,7 +729,13 @@ export class RigAnimator {
       const speed = (Math.abs(v[ie] - prevE) + 0.5 * Math.abs(v[ia] - prevA)) * inv;
       this.armPrev[`${side}A`] = v[ia];
       this.armPrev[`${side}E`] = v[ie];
-      const target = Math.max(0, Math.min(1, (speed - 40) / 300)) * (on > 0.01 ? 1 : 0);
+      const speedFore = Math.max(0, Math.min(1, (speed - 40) / 300));
+      // held raised poses also foreshorten so the cuff stays on-canvas
+      const raiseFore = Math.max(
+        Math.min(1, Math.abs(v[ia]) / 40),
+        Math.min(1, Math.abs(v[ie]) / 110) * 0.5,
+      );
+      const target = Math.max(speedFore, raiseFore * 0.9) * (on > 0.01 ? 1 : 0);
       this.foreS[side] = approach(this.foreS[side], target, target > this.foreS[side] ? 28 : 9, dt);
       v[IDX[`${side}F`]] = this.foreS[side];
       // a held arm is never perfectly still
@@ -939,17 +947,14 @@ export class RigAnimator {
     const aY = (vY - this.prev.vY) * inv;
     this.prev = { headRot, headX, headY, torsoX, bodyY: bodyY + headY * 0.3, vX, vY };
 
-    const hairDrive = (-vHeadRot * 0.11 - vHeadX * 0.0018) * m;
-    const hairRotL = this.hairL.step(
-      hairDrive + flick * 0.7 + fbm(t * 0.55, 10) * 1.35 * DEG * m,
-      dt,
-    );
-    const hairRotR = this.hairR.step(
-      hairDrive + flick + fbm(t * 0.52 + 2, 11) * 1.35 * DEG * m,
-      dt,
-    );
+    // hair / bangs / ribbon share one soft follow-through (small lag, tiny asymmetry) so they
+    // read as one head of hair instead of independently flapping cutouts
+    const hairDrive = (-vHeadRot * 0.06 - vHeadX * 0.0009) * m;
+    const hairNoise = fbm(t * 0.4, 10) * 0.35 * DEG * m;
+    const hairRotL = this.hairL.step(hairDrive + flick * 0.25 + hairNoise, dt);
+    const hairRotR = this.hairR.step(hairDrive + flick * 0.3 + hairNoise * 0.85, dt);
     const ribbonRot = this.ribbon.step(
-      hairDrive * 1.6 + (fbm(t * 0.75, 12) * 3.2 - vY * 0.025) * DEG * m,
+      hairDrive * 1.15 + hairNoise * 0.6 - vY * 0.01 * DEG * m,
       dt,
     );
     const lim = (v: number, l: number) => Math.max(-l, Math.min(l, v));
@@ -1487,7 +1492,7 @@ export function drawRig(
     pivot(pv, () => layer(name, alpha), rot);
     ctx.restore();
   };
-  /** one arm: rigid master layer at rest, three-piece sleeve + hand piece while a pose drives it */
+  /** one arm: rest-arm stump seals body-noarm; mesh strip + hand while posed */
   const drawArm = (side: 'l' | 'r') => {
     const name = side === 'l' ? 'arm-l' : 'arm-r';
     const on = side === 'l' ? lOn : rOn;
@@ -1507,27 +1512,19 @@ export function drawRig(
     const meta = hn ? rig.hands?.[hn] : undefined;
     const himg = hn ? imgs.get(`hand-${hn}`) : undefined;
     const ia = side === 'l' ? IDX.lA : IDX.rA;
-    // while the pose fades in / out the sleeve cross-fades with the rest arm underneath; it is
-    // drawn on a scratch canvas first so the overlapping sleeve pieces never double-blend
-    const alpha = smooth(0, 0.85, on);
-    let target: CanvasRenderingContext2D | null = null;
-    const main = ctx;
-    if (alpha < 0.995) {
+    // Full rest arm with distal fade — seals the entire body-noarm hole without a
+    // second hanging sleeve (fade kills the cuff). Mesh draws the posed limb on top.
+    const stump = shoulderPlug(img, geom);
+    if (stump) {
+      ctx.save();
+      ctx.translate(0, lift);
+      ctx.drawImage(stump as CanvasImageSource, off[0], off[1]);
+      ctx.restore();
+    } else {
       part(name, rot, lift);
-      const cw = main.canvas.width;
-      const ch = main.canvas.height;
-      const sc = scratchCanvas(cw, ch, 8);
-      const sctx = sc.getContext('2d') as CanvasRenderingContext2D | null;
-      if (sctx) {
-        sctx.setTransform(1, 0, 0, 1, 0, 0);
-        sctx.clearRect(0, 0, cw, ch);
-        sctx.setTransform(main.getTransform());
-        target = sctx;
-      }
     }
-    const g = target ?? main;
     drawArmPieces(
-      g,
+      ctx,
       img,
       geom,
       pv,
@@ -1542,20 +1539,24 @@ export function drawRig(
       },
       meta && himg ? ARM_HAND_S + 40 : 1e9,
     );
-    if (meta && himg) drawHandPiece(g, himg, meta, sgn, 1);
-    if (target) {
-      main.save();
-      main.setTransform(1, 0, 0, 1, 0, 0);
-      main.globalAlpha = main.globalAlpha * alpha;
-      main.drawImage(
-        scratchCanvas(main.canvas.width, main.canvas.height, 8) as CanvasImageSource,
-        0,
-        0,
-      );
-      main.restore();
-    }
+    if (meta && himg) drawHandPiece(ctx, himg, meta, sgn, 1);
   };
   const armsPass = () => {
+    // Fill the armpit notch that neither arm layer covers (body opaque ∩ body-noarm empty).
+    if (warp && imgs.has('body') && imgs.has('body-noarm')) {
+      const bodyImg = imgs.get('body');
+      const noarmImg = imgs.get('body-noarm');
+      const bodyOff = L['body'] ?? L['body-noarm'];
+      const shoulder = P['arm-r'] ?? P['arm-l'];
+      if (bodyImg && noarmImg && bodyOff && shoulder) {
+        const fill = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], shoulder);
+        if (fill) {
+          ctx.save();
+          ctx.drawImage(fill as CanvasImageSource, bodyOff[0], bodyOff[1]);
+          ctx.restore();
+        }
+      }
+    }
     drawArm('l');
     drawArm('r');
   };
