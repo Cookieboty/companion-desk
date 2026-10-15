@@ -402,6 +402,75 @@ export function shoulderPlug(img: RigImageSource, g: ArmGeom): CanvasImageSource
   return cached;
 }
 
+const sideFillCache = new WeakMap<object, Record<string, CanvasImageSource | null>>();
+
+/**
+ * Everything opaque on `body` but transparent on `body-noarm` on one side of the torso
+ * (the full sleeve-free void). Drawn for the arm that is NOT posed so the rest arm never
+ * leaves a see-through seam against the sleeve-free body. `side` 'l' = left half of the image.
+ */
+export function bodySideFill(
+  body: RigImageSource,
+  bodyNoarm: RigImageSource,
+  side: 'l' | 'r',
+  /** body-local shoulder; when set only the upper-arm void within `radius` is filled (posed arm) */
+  shoulder?: readonly [number, number],
+  radius = 240,
+): CanvasImageSource | null {
+  const key = body as object;
+  const entry = sideFillCache.get(key) ?? {};
+  sideFillCache.set(key, entry);
+  const ck = (shoulder ? `${side}p` : side) as 'l' | 'r';
+  if (entry[ck] !== undefined) return entry[ck] ?? null;
+  let out: CanvasImageSource | null;
+  try {
+    const bw = (body as { width: number }).width;
+    const bh = (body as { height: number }).height;
+    const mk = (img: RigImageSource) => {
+      const c =
+        typeof OffscreenCanvas !== 'undefined'
+          ? new OffscreenCanvas(bw, bh)
+          : Object.assign(document.createElement('canvas'), { width: bw, height: bh });
+      const x = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+      x.clearRect(0, 0, bw, bh);
+      x.drawImage(img as CanvasImageSource, 0, 0);
+      return x.getImageData(0, 0, bw, bh);
+    };
+    const dBody = mk(body);
+    const dNo = mk(bodyNoarm);
+    const px = new Uint8ClampedArray(bw * bh * 4);
+    const mid = bw / 2;
+    for (let y = 0; y < bh; y++) {
+      for (let x = 0; x < bw; x++) {
+        if (side === 'l' ? x >= mid : x < mid) continue;
+        const i = (y * bw + x) * 4;
+        const a = dBody.data[i + 3];
+        const cover = dNo.data[i + 3];
+        if (a < 8 || cover >= 250) continue;
+        px[i] = dBody.data[i];
+        px[i + 1] = dBody.data[i + 1];
+        px[i + 2] = dBody.data[i + 2];
+        let f = 1;
+        if (shoulder) {
+          const dist = Math.hypot(x - shoulder[0], y - shoulder[1]);
+          f = dist < radius - 40 ? 1 : Math.max(0, 1 - (dist - (radius - 40)) / 40);
+        }
+        px[i + 3] = Math.round(a * (1 - cover / 255) * f);
+      }
+    }
+    const c =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(bw, bh)
+        : Object.assign(document.createElement('canvas'), { width: bw, height: bh });
+    (c.getContext('2d') as CanvasRenderingContext2D).putImageData(new ImageData(px, bw, bh), 0, 0);
+    out = c as unknown as CanvasImageSource;
+  } catch {
+    out = null;
+  }
+  entry[ck] = out;
+  return out;
+}
+
 const bodyFillCache = new WeakMap<object, CanvasImageSource | null>();
 
 /**

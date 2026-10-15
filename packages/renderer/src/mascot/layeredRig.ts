@@ -13,6 +13,7 @@ import { drawBrow, drawFx, drawMouth } from './rig/fx';
 import {
   ARM_HAND_S,
   bodyShoulderFill,
+  bodySideFill,
   drawArmPieces,
   drawHandPiece,
   handScaleFor,
@@ -1504,7 +1505,16 @@ export function drawRig(
     const pv = P[name];
     const off = L[name];
     if (on <= 0.001 || !ex || !geom || !img || !pv || !off) {
-      part(name, rot, lift);
+      // While the other arm is posed the torso is the sleeve-free body: keep the idle arm
+      // exactly seated on it (no sway/lift) so no background sliver opens at the shoulder seam.
+      if (warp) {
+        const bImg = imgs.get('body');
+        const nImg = imgs.get('body-noarm');
+        const bOff = L['body'] ?? L['body-noarm'];
+        const fillSide = bImg && nImg && bOff ? bodySideFill(bImg, nImg, side) : null;
+        if (fillSide && bOff) ctx.drawImage(fillSide, bOff[0], bOff[1]);
+        part(name, 0, 0);
+      } else part(name, rot, lift);
       return;
     }
     const sgn = geom.sgn;
@@ -1515,6 +1525,21 @@ export function drawRig(
     const ia = side === 'l' ? IDX.lA : IDX.rA;
     // Full rest arm with distal fade — seals the entire body-noarm hole without a
     // second hanging sleeve (fade kills the cuff). Mesh draws the posed limb on top.
+    {
+      // seal the upper-arm void between the stump and the sleeve-free torso (no see-through seam)
+      const bImg = imgs.get('body');
+      const nImg = imgs.get('body-noarm');
+      const bOff = L['body'] ?? L['body-noarm'];
+      if (bImg && nImg && bOff) {
+        const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]]);
+        if (f) {
+          ctx.save();
+          ctx.translate(0, lift * 0.5);
+          ctx.drawImage(f, bOff[0], bOff[1]);
+          ctx.restore();
+        }
+      }
+    }
     const stump = shoulderPlug(img, geom);
     if (stump) {
       ctx.save();

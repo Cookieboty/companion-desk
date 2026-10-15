@@ -8,7 +8,7 @@ Writes hand-<name>.png and hands.json (metadata merged into manifest.json rig.ha
 import numpy as np, cv2, sys, json
 from PIL import Image
 SRC=sys.argv[1].rstrip('/')+'/'; OUT=sys.argv[2].rstrip('/')+'/'
-NAMES=['wave','fist','thumbsup','point','rest','peace','prayer','ok','chest','softfist']
+NAMES=['wave','fist','thumbsup','point','rest','peace']
 SKIN_T=np.array([252,225,210],np.float32); SKIN_S=np.array([6,9,10],np.float32)
 SLV_T=np.array([248,237,231],np.float32);  SLV_S=np.array([9,13,15],np.float32)
 

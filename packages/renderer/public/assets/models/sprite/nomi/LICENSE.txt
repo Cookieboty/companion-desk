@@ -24,7 +24,7 @@ choker charm) were cut from the official art itself with
 scripts/brand/fix-nomi-brand-parts.py (crops only, no generative redraw).
 Same licence as above.
 
-layers/hands/*.png (wave/fist/thumbsup/point/rest/peace/prayer/ok/chest/softfist) are AI-generated or proportion-rebuilt non-brand hand / forearm pieces, cut out
+layers/hands/*.png are AI-generated, non-brand hand / forearm pieces, cut out
 and colour-matched to the master with scripts/brand/build-nomi-hands.py and
 scripts/brand/build-nomi-arm-parts.py. Licensed by the project owner under the
 repository's MIT license. They contain no brand-bearing detail.
