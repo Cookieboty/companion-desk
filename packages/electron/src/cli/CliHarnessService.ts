@@ -789,7 +789,7 @@ export class CliHarnessService {
       useNode ? [bin, ...argv] : argv,
       {
         cwd: tab.cwd,
-        env: buildCliEnv(process.env),
+        env: cliChildEnv(useNode),
         windowsHide: true,
       },
     );
@@ -962,6 +962,7 @@ export class CliHarnessService {
       argv,
       parseLine: parseCodexLine,
       kind: 'codex',
+      asNode: useNode,
     });
   }
 
@@ -989,6 +990,7 @@ export class CliHarnessService {
       parseLine: createDshParser(),
       kind: 'dsh',
       env: extraEnv,
+      asNode: useNode,
     });
   }
 
@@ -1000,6 +1002,8 @@ export class CliHarnessService {
       parseLine: (line: string) => HarnessEvent[];
       kind: CliBackend;
       env?: Record<string, string>;
+      /** 通过 process.execPath 跑 .mjs/.js 时为 true（需 ELECTRON_RUN_AS_NODE） */
+      asNode?: boolean;
       /** 仅特殊 mock 需要保持 stdin；Codex/dsh 必须立刻 EOF。Claude 走 ensureClaudeLive */
       keepStdin?: boolean;
     },
@@ -1013,7 +1017,8 @@ export class CliHarnessService {
       const child: ChildProcessWithoutNullStreams = spawn(opts.cmd, opts.argv, {
         cwd: tab.cwd,
         // 剔除 Nomi 内部变量；只有该后端自己的档案（opts.env）才会注入额外变量
-        env: buildCliEnv(process.env, opts.env),
+        // .mjs mock 经 Electron execPath 启动时必须 ELECTRON_RUN_AS_NODE（见 cliChildEnv）
+        env: cliChildEnv(Boolean(opts.asNode), opts.env),
         windowsHide: true,
       });
       this.children.set(tab.id, child);
@@ -1246,6 +1251,15 @@ type ClaudeLiveSession = {
 
 function isScript(bin: string) {
   return bin.endsWith('.mjs') || bin.endsWith('.js');
+}
+
+/**
+ * Electron 的 process.execPath 是 Electron 本体；跑 .mjs/.js mock/脚本时必须带
+ * ELECTRON_RUN_AS_NODE=1，否则 Windows 上会以 GUI 子系统拉起，stdin 管道失效，
+ * harness 收到空输出（「无文本输出」），并发/续接用例随之失败。Node 下该变量无害。
+ */
+function cliChildEnv(useNode: boolean, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  return buildCliEnv(process.env, useNode ? { ELECTRON_RUN_AS_NODE: '1', ...extra } : extra);
 }
 
 function clampLimit(n: number): number {

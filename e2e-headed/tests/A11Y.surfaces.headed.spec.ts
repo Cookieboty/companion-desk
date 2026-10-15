@@ -150,15 +150,44 @@ test.describe('A11y: names, focus trap, Esc, reduced motion', () => {
     expect(anim, 'infinite CSS animations still running under prefers-reduced-motion').toBe(0);
     await main.emulateMedia({ reducedMotion: 'no-preference' });
 
-    const chatWin = app.waitForEvent('window', { timeout: 20_000 });
-    await main.evaluate(() =>
-      (
-        window as unknown as { electronAPI: { openAiChat(): Promise<unknown> } }
-      ).electronAPI.openAiChat(),
-    );
-    const chat = await chatWin;
-    await chat.setViewportSize({ width: 1100, height: 800 }).catch(() => undefined);
-    await chat.waitForSelector('textarea', { timeout: 20_000 });
+    // Windows headed：对话窗渲染进程偶发冷启动崩溃；等稳定选择器，失败则关掉残骸再开一次
+    const waitChatReady = async (chat: Page) => {
+      await chat.setViewportSize({ width: 1100, height: 800 }).catch(() => undefined);
+      await chat.waitForLoadState('domcontentloaded').catch(() => undefined);
+      await chat
+        .locator('[data-testid="chat-input"], textarea')
+        .first()
+        .waitFor({ state: 'visible', timeout: 60_000 });
+    };
+    const openChat = async (): Promise<Page> => {
+      const existing = app!.windows().find((w) => w !== main && /ai-chat|chat/i.test(w.url()));
+      if (existing) {
+        await waitChatReady(existing);
+        return existing;
+      }
+      const chatWin = app!.waitForEvent('window', { timeout: 30_000 });
+      await main.evaluate(() =>
+        (
+          window as unknown as { electronAPI: { openAiChat(): Promise<unknown> } }
+        ).electronAPI.openAiChat(),
+      );
+      const chat = await chatWin;
+      await waitChatReady(chat);
+      return chat;
+    };
+    let chat: Page;
+    try {
+      chat = await openChat();
+    } catch (e) {
+      const msg = String((e as Error)?.message ?? e);
+      if (!/crash|Target closed|destroyed/i.test(msg)) throw e;
+      for (const w of app!.windows()) {
+        if (w === main) continue;
+        await w.close().catch(() => undefined);
+      }
+      await main.waitForTimeout(500);
+      chat = await openChat();
+    }
     await check(chat, 'chat-empty');
     await chat.emulateMedia({ reducedMotion: 'reduce' });
     expect(await infiniteAnims(chat), 'chat: infinite animations under reduced motion').toBe(0);

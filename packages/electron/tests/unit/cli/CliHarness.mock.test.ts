@@ -94,6 +94,37 @@ describe('CliHarnessService mock CLI', () => {
     expect(r.text).toContain('Mock Codex');
   });
 
+  it('sets ELECTRON_RUN_AS_NODE when spawning script CLIs via process.execPath', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-erun-'));
+    const bin = path.join(dir, 'env-codex.mjs');
+    fs.writeFileSync(
+      bin,
+      [
+        "const emit = (o) => process.stdout.write(JSON.stringify(o) + '\\n');",
+        "emit({ type: 'thread.started', thread_id: 't1' });",
+        "emit({ type: 'item.completed', item: { id: 'i', type: 'agent_message', text: 'runas=' + (process.env.ELECTRON_RUN_AS_NODE || '') } });",
+        "emit({ type: 'turn.completed', usage: {} });",
+      ].join('\n'),
+    );
+    const prev = process.env.NOMI_CODEX_BIN;
+    process.env.NOMI_CODEX_BIN = bin;
+    try {
+      const h = track(
+        new CliHarnessService({
+          root: path.join(dir, 'root'),
+          logger: { info() {}, warn() {} },
+          defaultCwd: dir,
+        }),
+      );
+      h.setBackend('codex');
+      const r = await h.send('hi');
+      expect(r.text).toBe('runas=1');
+    } finally {
+      if (prev === undefined) delete process.env.NOMI_CODEX_BIN;
+      else process.env.NOMI_CODEX_BIN = prev;
+    }
+  }, 10_000);
+
   it('closes stdin so CLIs that read piped input do not hang', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-stdin-'));
     const bin = path.join(dir, 'stdin-codex.mjs');

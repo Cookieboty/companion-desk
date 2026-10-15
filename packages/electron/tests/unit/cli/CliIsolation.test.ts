@@ -108,6 +108,8 @@ describe('provider isolation: Nomi key never reaches CLI launches', () => {
       expect(JSON.stringify(seen)).not.toContain(NOMI_KEY);
       expect(seen.NOMI_USE_MOCK_CLI).toBeUndefined();
       expect(seen.NOMI_PROVIDER_KEY).toBeUndefined();
+      // .mjs 经 process.execPath 启动时必须带上，Windows Electron 否则 stdin 失效
+      expect(seen.ELECTRON_RUN_AS_NODE).toBe('1');
       expect(fs.existsSync(codexConfigPath(home))).toBe(false);
       expect(fs.existsSync(codexAuthPath(home))).toBe(false);
       expect(fs.existsSync(claudeSettingsPath(home))).toBe(false);
