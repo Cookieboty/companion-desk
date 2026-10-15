@@ -1,12 +1,14 @@
 /**
  * 对话后端切换：Nomi（默认）| Claude Code | Codex | dsh。
- * CLI 模式下禁用 Nomi 工具（由 harness + send 路径保证）。
- * 当前为独立 CLI 标签时，切换的是该标签的后端（不含 Nomi）。
+ * 有消息的会话切换后端时不改写身份：为新后端新建会话 / CLI 标签（可随后分叉复制历史）。
+ * 空会话可原地切换。CLI 标签不含 Nomi。
  */
 import { Select, t } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
 
+import { useAiChat } from '../../contexts/AiChatContext';
 import { useHarnessTabs } from '../../contexts/HarnessTabsContext';
+import { useChatMode } from '../../hooks/useChatMode';
 import {
   harnessClient,
   type HarnessBackend,
@@ -24,6 +26,8 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
   const [state, setState] = useState<HarnessState | null>(null);
   const available = harnessClient.available();
   const tabs = useHarnessTabs();
+  const { isDev, setMode } = useChatMode();
+  const { state: chat, actions } = useAiChat();
 
   useEffect(() => {
     if (!available) return;
@@ -34,18 +38,65 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
     return harnessClient.onChanged(setState);
   }, [available]);
 
-  if (!available || !state) return null;
+  if (!available || !state || !isDev) return null;
 
   const tab = tabs.isCliTab ? tabs.activeTab : null;
   const value: HarnessBackend = tab ? tab.backend : state.backend;
   const busy = tab ? tab.status === 'running' || tab.status === 'queued' : state.busy;
+  const hasMessages = tab ? (tabs.messages?.length ?? 0) > 0 : chat.messages.length > 0;
+
+  const switchTo = async (v: HarnessBackend) => {
+    if (v === value) return;
+
+    // CLI 标签：空会话可原地换后端；有消息则新建标签
+    if (tab) {
+      if (v === 'nomi') return;
+      if (!hasMessages) {
+        await harnessClient.setTabBackend(tab.id, v).catch(() => undefined);
+        return;
+      }
+      await tabs.create(v);
+      return;
+    }
+
+    // 主标签
+    if (!hasMessages) {
+      if (v === 'nomi') {
+        await harnessClient
+          .setBackend('nomi')
+          .then(setState)
+          .catch(() => undefined);
+        return;
+      }
+      // 空主会话切到 CLI → 开新标签（主标签保持 Nomi 身份干净）
+      setMode('dev');
+      await tabs.create(v);
+      return;
+    }
+
+    // 有消息：新建目标端会话，不改写当前历史
+    if (v === 'nomi') {
+      await actions.newConversation();
+      await harnessClient
+        .setBackend('nomi')
+        .then(setState)
+        .catch(() => undefined);
+      return;
+    }
+    setMode('dev');
+    await tabs.create(v);
+  };
 
   return (
     <span
       className={className}
       data-testid="backend-switcher"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-      title={t('切换对话后端（Claude / Codex / dsh 为 UI 转发）')}
+      title={
+        hasMessages
+          ? t('切换后端将新建会话，当前对话保留（可用分叉复制历史）')
+          : t('切换对话后端（Claude / Codex / dsh 为 UI 转发）')
+      }
     >
       <Select
         size="sm"
@@ -55,15 +106,7 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
         value={value}
         disabled={busy}
         onChange={(e) => {
-          const v = e.target.value as HarnessBackend;
-          if (tab) {
-            void harnessClient.setTabBackend(tab.id, v).catch(() => undefined);
-            return;
-          }
-          void harnessClient
-            .setBackend(v)
-            .then(setState)
-            .catch(() => undefined);
+          void switchTo(e.target.value as HarnessBackend);
         }}
         options={(Object.keys(LABELS) as HarnessBackend[])
           .filter((k) => !tab || k !== 'nomi')

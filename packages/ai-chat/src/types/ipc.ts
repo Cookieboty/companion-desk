@@ -56,7 +56,8 @@ export interface IPCClient {
   ): Promise<Omit<ChatSession, 'messages'>>;
   deleteConversation?(id: string): Promise<void>;
   /** 暴露底层 store，供 CLI 标签同步侧栏（可选） */
-  conversationStore?(): import('../services/conversationStore').ConversationStore;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 避免 types↔services 循环
+  conversationStore?(): any;
 
   // 配置相关
   getConfig(): Promise<ChatConfig>;

@@ -8,6 +8,7 @@ import { ChatHeader } from './components/ChatHeader';
 import { ChatTabs, CliTabInfo, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ForkTargetMenu } from './components/ForkMenu';
 import {
   ConfigPanel,
   DesktopPanel,
@@ -33,6 +34,7 @@ import { useAiChat } from './contexts/AiChatContext';
 import { HarnessTabsProvider, useHarnessTabs } from './contexts/HarnessTabsContext';
 import { useChatMode } from './hooks/useChatMode';
 import { desktopClient } from './services/desktopClient';
+import { forkCrossBackend, forkSameBackend } from './services/forkConversation';
 import { providerClient } from './services/providerClient';
 import { screenClient, type ScreenState } from './services/screenClient';
 import {
@@ -43,13 +45,24 @@ import {
   useShortcutBindings,
   type ShortcutId,
 } from './services/shortcuts';
+import type { ConversationBackend } from './types/chat';
 import { type ChatMessage } from './types/chat';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
   const { state, actions } = useAiChat();
   const tabs = useHarnessTabs();
-  const { isDev } = useChatMode();
+  const { isDev, setMode } = useChatMode();
+  const [forkCross, setForkCross] = useState<{
+    id: string;
+    backend: ConversationBackend;
+  } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const tid = window.setTimeout(() => setToast(null), 2400);
+    return () => window.clearTimeout(tid);
+  }, [toast]);
   const [tabRename, setTabRename] = useState(0);
   const [tabNew, setTabNew] = useState(0);
   const cliMessages = useMemo<ChatMessage[]>(
@@ -153,6 +166,73 @@ const AiChatContent: React.FC = () => {
     actions.newConversation();
     focusInput();
   }, [actions, focusInput]);
+
+  const runForkSame = useCallback(
+    async (id: string) => {
+      const store = state.ipcClient.conversationStore?.();
+      if (!store) return;
+      try {
+        const r = await forkSameBackend(store, id);
+        if (r.backend !== 'nomi') setMode('dev');
+        if (r.tabId) await tabs.activate(r.tabId);
+        else {
+          if (tabs.available) await tabs.activate('main');
+          await actions.loadChatHistory();
+        }
+        setToast(t('已分叉为「{0}」', r.title));
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [state.ipcClient, setMode, tabs, actions],
+  );
+
+  const runForkCross = useCallback(
+    async (id: string, target: ConversationBackend) => {
+      const store = state.ipcClient.conversationStore?.();
+      if (!store) return;
+      setForkCross(null);
+      try {
+        const r = await forkCrossBackend(store, id, target);
+        if (r.backend !== 'nomi') setMode('dev');
+        if (r.tabId) await tabs.activate(r.tabId);
+        else {
+          if (tabs.available) await tabs.activate('main');
+          await actions.loadChatHistory();
+        }
+        setToast(t('已分叉到 {0}', r.title));
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [state.ipcClient, setMode, tabs, actions],
+  );
+
+  const onForkRequest = useCallback(
+    (id: string, mode: 'same' | 'cross') => {
+      const store = state.ipcClient.conversationStore?.();
+      const meta = store?.get(id);
+      if (!meta) return;
+      if (mode === 'same') void runForkSame(id);
+      else setForkCross({ id, backend: meta.backend });
+    },
+    [state.ipcClient, runForkSame],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      if (!(isMac() ? e.metaKey : e.ctrlKey) || !e.shiftKey || e.altKey || e.code !== 'KeyF')
+        return;
+      const id = state.ipcClient.currentConversationId?.();
+      if (!id) return;
+      e.preventDefault();
+      void runForkSame(id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state.ipcClient, runForkSame]);
+
   const shortcutActions = useMemo<Partial<Record<ShortcutId, () => void>>>(
     () => ({
       palette: () => setPalette((v) => !v),
@@ -292,6 +372,7 @@ const AiChatContent: React.FC = () => {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onNewChat={handleNewChat}
         onSettings={() => openSettings()}
+        onForkRequest={onForkRequest}
       />
 
       {/* 主内容区域 */}
@@ -424,6 +505,33 @@ const AiChatContent: React.FC = () => {
       <ModalHostContext.Provider value={drawerHost.local}>
         <LocalPanel isVisible={showLocal} onClose={() => setShowLocal(false)} />
       </ModalHostContext.Provider>
+      <ForkTargetMenu
+        open={!!forkCross}
+        current={forkCross?.backend ?? 'nomi'}
+        onClose={() => setForkCross(null)}
+        onPick={(b) => forkCross && void runForkCross(forkCross.id, b)}
+      />
+      {toast && (
+        <div
+          role="status"
+          data-testid="fork-toast"
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 120,
+            padding: '8px 14px',
+            borderRadius: 10,
+            background: 'var(--cd-color-surface-raised, #121a2a)',
+            border: '1px solid var(--cd-color-border)',
+            boxShadow: '0 8px 24px rgba(0,0,0,.35)',
+            fontSize: 13,
+          }}
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 };
