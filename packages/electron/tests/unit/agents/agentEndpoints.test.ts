@@ -202,7 +202,7 @@ describe('Nomi tabs in the aggregated monitor', () => {
     expect(island).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'agent', endpoint: 'codex', status: 'done' }),
     );
-    expect(mascot).toHaveBeenCalledWith({ type: 'motion', name: 'wave' });
+    expect(mascot).toHaveBeenCalledWith({ type: 'motion', name: 'thumbs_up' });
     finish({
       tabId: 'b',
       title: 'Fix',
@@ -215,7 +215,7 @@ describe('Nomi tabs in the aggregated monitor', () => {
     expect(island).toHaveBeenLastCalledWith(
       expect.objectContaining({ endpoint: 'dsh', status: 'failed', body: 'rate limited' }),
     );
-    expect(mascot).toHaveBeenLastCalledWith({ type: 'motion', name: 'think' });
+    expect(mascot).toHaveBeenLastCalledWith({ type: 'motion', name: 'sorry' });
     // 正在前台看的标签：不打扰
     say.mockClear();
     finish({ tabId: 'c', title: 'x', backend: 'claude', ok: true, text: 'y', background: false });

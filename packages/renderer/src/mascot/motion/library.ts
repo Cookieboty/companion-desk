@@ -1,3 +1,5 @@
+import { ACTION_LABELS } from '../rig/actions';
+
 /**
  * 动作库（public/assets/motions/motions.json，由 scripts/build-motions.mjs 生成）。
  *
@@ -27,7 +29,7 @@ export interface MotionLibrary {
 
 export const MOTIONS_PATH = './assets/motions/motions.json';
 
-/** 动作名 → 中文显示名（菜单 / 托盘） */
+/** 动作名 → 中文显示名（菜单 / 托盘）。2D 动作库的名称来自 rig/actions.ts。 */
 export const MOTION_LABELS: Record<string, string> = {
   wave: '挥手',
   nod: '点头',
@@ -51,6 +53,8 @@ export const MOTION_LABELS: Record<string, string> = {
   flinch: '受惊',
   poke: '被戳',
   walk: '散步',
+  // 2D 骨架的动作库（rig/actions.ts）：同名时以这里的名称为准
+  ...ACTION_LABELS,
 };
 
 export function parseMotionLibrary(raw: unknown): MotionLibrary {

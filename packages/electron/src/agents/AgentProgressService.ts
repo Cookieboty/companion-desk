@@ -695,7 +695,7 @@ export class AgentProgressService {
     });
     broadcastMascotCommand({
       type: 'motion',
-      name: next.status === 'failed' || next.status === 'stalled' ? 'think' : 'wave',
+      name: next.status === 'failed' || next.status === 'stalled' ? 'sorry' : 'thumbs_up',
     });
     if (this.settings.osNotify) this.notify(next.label, text);
     next.lastRemindStatus = next.status;
@@ -744,7 +744,7 @@ export class AgentProgressService {
       title: who,
       body: brief || (e.ok ? tr('这一轮做完了') : tr('出错了')),
     });
-    broadcastMascotCommand({ type: 'motion', name: e.ok ? 'wave' : 'think' });
+    broadcastMascotCommand({ type: 'motion', name: e.ok ? 'thumbs_up' : 'sorry' });
     if (this.settings.osNotify) this.notify(label, text);
     this.lastRemindAt = this.now();
     this.d.logger.info('agent-progress endpoint finished', { backend: e.backend, ok: e.ok });

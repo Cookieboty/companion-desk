@@ -484,5 +484,18 @@
   "已有安装 / 更新在进行": "Another install / update is already running",
   "命令失败（退出码 {0}）": "Command failed (exit code {0})",
   "命令已执行完成，但在 PATH 和常见目录里没有找到 {0}；请检查 npm 的全局 bin 目录是否在 PATH 里。": "The command finished, but {0} was not found on PATH or in the usual directories; check that npm's global bin directory is on PATH.",
-  "已安装到 {0}；如需在终端直接使用，请把该目录加入 PATH（Nomi 内可直接使用）。": "Installed to {0}. To use it from a terminal, add that directory to PATH (it works inside Nomi as is)."
+  "已安装到 {0}；如需在终端直接使用，请把该目录加入 PATH（Nomi 内可直接使用）。": "Installed to {0}. To use it from a terminal, add that directory to PATH (it works inside Nomi as is).",
+  "托腮思考": "Chin-rest thinking",
+  "比心": "Heart gesture",
+  "加油握拳": "Cheer (fist pump)",
+  "点赞": "Thumbs up",
+  "剪刀手": "Peace sign",
+  "庆祝": "Celebrate",
+  "鼓掌": "Clap",
+  "害羞": "Shy",
+  "道歉": "Apologise",
+  "惊讶": "Surprised",
+  "打哈欠": "Yawn",
+  "伸懒腰": "Stretch",
+  "晚安": "Good night"
 }

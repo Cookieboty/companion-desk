@@ -37,9 +37,15 @@ export function createPlayMotionTool(
   return {
     name: 'live2d_play_motion',
     description:
-      '让 Nomi 做一个动作。group 为动作名：wave（挥手）、nod（点头）、shake（摇头）、think（思考）、' +
-      'clap（拍手）、bow（鞠躬）、cheer（欢呼）、dance（跳舞）、stretch（伸懒腰）、' +
-      'look_around（张望）、interact（伸手）、flinch（受惊）、random（随机）。index 忽略。',
+      '让 Nomi 做一个动作。group 为动作名（均为中文菜单同名动作）：' +
+      'wave（挥手）、hello（打招呼）、nod（点头）、shake_head（摇头）、bow（鞠躬）、salute（敬礼）、' +
+      'think（托腮思考）、explain（讲解）、eureka（灵光一闪）、puzzled（疑惑歪头）、listen（倾听）、' +
+      'look_around（张望）、look_lr（左顾右盼）、peek（偷看）、heart（比心）、blow_kiss（送飞吻）、' +
+      'shy（害羞）、cover_face（捂脸）、sorry（道歉）、surprise（惊讶）、sigh（叹气）、smug（得意）、' +
+      'aggrieved（委屈）、tears（流泪）、angry（生气）、cold_sweat（冷汗）、daze（发呆）、' +
+      'cheer（加油握拳）、thumbs_up（点赞）、peace（剪刀手）、celebrate（庆祝）、clap（鼓掌）、' +
+      'hop（开心跳动）、wink（眨眼）、tongue（吐舌）、cute（卖萌）、work（打字工作）、' +
+      'yawn（打哈欠）、stretch（伸懒腰）、goodnight（晚安）、peek_note（哼歌）、random（随机）。index 忽略。',
     input: playMotionInputSchema,
     dangerous: opts.dangerous,
     async execute(input: PlayMotionInput) {

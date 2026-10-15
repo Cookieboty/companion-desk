@@ -46,7 +46,8 @@ export function react(
       (r.expressionHold ?? 2) * 1000,
     );
   }
-  if (r.motion) backend?.playMotion(r.motion);
+  // 互动反应优先级 2：高于空闲 / 普通动作，低于任务事件
+  if (r.motion) backend?.playMotion(r.motion, { priority: 2 });
   if (r.lines.length) {
     const line = r.lines[Math.floor(Math.random() * r.lines.length)];
     window.dispatchEvent(new CustomEvent('mascot:say', { detail: { text: line } }));

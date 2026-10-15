@@ -66,7 +66,18 @@ export type MascotEvent =
   /** 用户点了停止生成 */
   | { kind: 'stopped-by-user' }
   /** 智能体在等用户确认一个操作 */
-  | { kind: 'confirm-required' };
+  | { kind: 'confirm-required' }
+  /** 工具正在运行（写代码 / 执行命令） */
+  | { kind: 'tool:running' }
+  /** 一轮任务完成 / 全部完成 / 失败 */
+  | { kind: 'task:done'; all?: boolean }
+  | { kind: 'task:failed' }
+  /** 问候（早安 / 首次打开） */
+  | { kind: 'greeting' }
+  /** 深夜 / 长时间无操作 */
+  | { kind: 'night' }
+  /** 用户把文件拖到她身上 */
+  | { kind: 'file:drop' };
 
 export interface ExpressionDirective {
   expression: MascotExpression;
@@ -76,12 +87,43 @@ export interface ExpressionDirective {
   motion?: string;
   /** 打断类反应：不受自动动作冷却限制，立即播放 */
   force?: boolean;
+  /** 动作优先级（2D 骨架）：0 空闲 · 1 普通 · 2 反应 · 3 任务事件 */
+  priority?: 0 | 1 | 2 | 3;
+  /** 保持动作姿态直到被新动作替换（思考 / 工作） */
+  hold?: boolean;
 }
+
+/** 长回答（讲解）阈值：字符数 */
+export const LONG_ANSWER_CHARS = 280;
 
 export function directiveForEvent(evt: MascotEvent): ExpressionDirective | null {
   switch (evt.kind) {
     case 'agent:step':
-      return { expression: 'relaxed', holdMs: 4000, motion: 'think' };
+      return { expression: 'relaxed', holdMs: 4000, motion: 'think', hold: true, priority: 1 };
+    case 'tool:running':
+      return { expression: 'relaxed', holdMs: 4000, motion: 'work', hold: true, priority: 1 };
+    case 'task:done':
+      return {
+        expression: 'happy',
+        holdMs: 4000,
+        motion: evt.all ? 'celebrate' : 'thumbs_up',
+        priority: 3,
+        force: true,
+      };
+    case 'task:failed':
+      return { expression: 'sad', holdMs: 4500, motion: 'sorry', priority: 3, force: true };
+    case 'greeting':
+      return { expression: 'happy', holdMs: 3000, motion: 'wave', priority: 1, force: true };
+    case 'night':
+      return { expression: 'relaxed', holdMs: 0, motion: 'goodnight', hold: true, priority: 1 };
+    case 'file:drop':
+      return {
+        expression: 'surprised',
+        holdMs: 1500,
+        motion: 'surprise',
+        priority: 2,
+        force: true,
+      };
     case 'message:delta':
       return { expression: 'relaxed', holdMs: 4000 };
     case 'message:complete': {
@@ -91,10 +133,12 @@ export function directiveForEvent(evt: MascotEvent): ExpressionDirective | null 
         a.intensity >= 0.7
           ? (motionForEmotion(a) ?? motionForText(evt.text))
           : motionForText(evt.text);
+      // 没有更具体的动作（或只是默认点头）时，长回答用「讲解」姿态
+      const long = (evt.text?.length ?? 0) >= LONG_ANSWER_CHARS;
       return {
         expression: expressionForText(evt.text),
         holdMs: a.intensity >= 0.7 ? 5000 : 3500,
-        motion,
+        motion: long && (!motion || motion === 'nod') ? 'explain' : motion,
       };
     }
     case 'message:early':

@@ -22,7 +22,8 @@ export function applyDirective(d: ExpressionDirective | null, now = Date.now()):
     }, d.holdMs);
   }
   if (d.motion && (d.force || now - lastAutoMotionAt >= AUTO_MOTION_COOLDOWN_MS)) {
-    if (backend.playMotion(d.motion)) lastAutoMotionAt = now;
+    if (backend.playMotion(d.motion, { priority: d.priority, hold: d.hold }))
+      lastAutoMotionAt = now;
   }
 }
 

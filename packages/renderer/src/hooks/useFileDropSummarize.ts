@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 
+import { directiveForEvent } from '@/mascot/expressionDirector';
+import { applyDirective } from '@/mascot/mood';
+
 /**
  * 把文件拖到看板娘身上 → 主进程临时授权该文件（只读、仅本次运行）并总结，结果显示在气泡与对话窗口。
  * 拖到弹窗（如「导入 VRM」）里的不处理。
@@ -28,6 +31,7 @@ export function useFileDropSummarize(elementId = 'mascot-canvas'): void {
       if (!file) return;
       const ok = api.dropFile(file);
       document.documentElement.dataset.mascotDrop = ok ? file.name : 'no-path';
+      if (ok) applyDirective(directiveForEvent({ kind: 'file:drop' }));
     };
     el.addEventListener('dragover', over);
     el.addEventListener('dragleave', leave);
