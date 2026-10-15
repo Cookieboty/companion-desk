@@ -1,0 +1,320 @@
+/**
+ * E19 · 端点体验整改（真实 dist 应用 + Mock CLI + 夹具会话）
+ *
+ * 1. 端点下拉：纯名称 + 图标、菜单够宽；侧栏条目用图标；新建 / 右键菜单统一；
+ * 2. 历史会话：HOME 里预置 Claude / Codex / dsh 的真实格式会话文件 → 侧栏列出 → 点击续接
+ *    （Mock CLI 回显 `--resume` / `exec resume` / `--session-id` 的 id）→ 不重复；
+ * 3. 供应商页：Nomi / Claude Code / Codex / dsh 四个独立区块；启用、测速、改用 CLI 自带登录；
+ * 4. 工作目录选择器（含最近使用）。
+ * 截图目录：CHAT_V2_SHOTS_DIR（可选）。
+ */
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+import { _electron as electron, expect, test } from '@playwright/test';
+import type { ElectronApplication, Page } from '@playwright/test';
+
+import { repoRoot, resolveElectronExecutable } from '../fixtures/electronApp';
+import { safeRm } from '../fixtures/fsutil';
+
+const electronPkgDir = resolve(repoRoot(), 'packages', 'electron');
+const FIX = resolve(electronPkgDir, 'tests', 'fixtures', 'history');
+const shotDir = process.env.CHAT_V2_SHOTS_DIR;
+
+async function launch(
+  userData: string,
+  home: string,
+): Promise<{ app: ElectronApplication; chat: Page }> {
+  const env: Record<string, string> = {
+    ...(process.env as Record<string, string>),
+    HOME: home,
+    CD_LOCALE: 'zh',
+    CD_ONBOARDING: 'off',
+    ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
+    NOMI_USE_MOCK_CLI: '1',
+  };
+  delete env.NODE_ENV;
+  delete env.DSH_HOME;
+  const app = await electron.launch({
+    executablePath: resolveElectronExecutable(),
+    args: [electronPkgDir, `--user-data-dir=${userData}`, '--enable-unsafe-swiftshader'],
+    cwd: electronPkgDir,
+    env,
+    timeout: 60_000,
+  });
+  const main = await app.firstWindow({ timeout: 30_000 });
+  await main.waitForFunction(() => 'electronAPI' in window, undefined, { timeout: 30_000 });
+  const chatWin = app.waitForEvent('window', { timeout: 30_000 });
+  await main.evaluate(() =>
+    (
+      window as unknown as { electronAPI: { openAiChat(): Promise<unknown> } }
+    ).electronAPI.openAiChat(),
+  );
+  const chat = await chatWin;
+  await chat.setViewportSize({ width: 1180, height: 780 }).catch(() => undefined);
+  await chat.locator('[data-testid="chat-mode-dev"]').click({ timeout: 30_000 });
+  await chat.locator('[data-testid="chat-tabs"]').waitFor({ timeout: 30_000 });
+  return { app, chat };
+}
+
+async function close(app: ElectronApplication | null) {
+  if (!app) return;
+  const proc = app.process();
+  await Promise.race([
+    app.close().catch(() => undefined),
+    new Promise((r) => setTimeout(r, 5_000)),
+  ]);
+  if (proc.exitCode === null) proc.kill('SIGKILL');
+}
+
+const shot = async (p: Page, name: string) => {
+  if (!shotDir) return;
+  mkdirSync(shotDir, { recursive: true });
+  await p.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+  await p.screenshot({ path: join(shotDir, `${name}.png`) });
+};
+
+function zstd(text: string): Buffer | null {
+  try {
+    return execFileSync('zstd', ['-c'], { input: text, maxBuffer: 16 * 1024 * 1024 });
+  } catch {
+    return null;
+  }
+}
+
+/** 在临时 HOME 里放真实格式的 Claude / Codex / dsh 会话 */
+function seedHome(home: string, work: string): { dsh: boolean } {
+  const rw = (name: string) => readFileSync(join(FIX, name), 'utf8');
+  const claudeDir = join(home, '.claude', 'projects', '-work-app');
+  mkdirSync(claudeDir, { recursive: true });
+  const claude = (id: string, text: string, ageMin: number) => {
+    const p = join(claudeDir, `${id}.jsonl`);
+    writeFileSync(p, text.replace(/"cwd":"\/work\/app"/g, `"cwd":${JSON.stringify(work)}`));
+    const t = new Date(Date.now() - ageMin * 60_000);
+    utimes(p, t);
+  };
+  claude('cl-tools-1', rw('claude-tools.jsonl'), 5);
+  claude('cl-tools-2', rw('claude-tools.jsonl').replace(/cl-tools-1/g, 'cl-tools-2'), 90);
+
+  const codexDir = join(home, '.codex', 'sessions', '2026', '10', '14');
+  mkdirSync(codexDir, { recursive: true });
+  const cx = join(
+    codexDir,
+    'rollout-2026-10-14T21-30-12-01a13a9b-34b0-7612-ba36-613a55008483.jsonl',
+  );
+  writeFileSync(
+    cx,
+    rw('codex-rollout.jsonl').replace(/"cwd":\s*"\/tmp"/g, `"cwd":${JSON.stringify(work)}`),
+  );
+  utimes(cx, new Date(Date.now() - 30 * 60_000));
+
+  const id = 'session-887fa07d-22ae-4013-849f-2b2fafcba3c3';
+  const z = zstd(rw('dsh-session.jsonl'));
+  if (z) {
+    const dir = join(home, '.dsh', 'sessions', '--work--', id);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'session.v4.jsonl.zstd'), z);
+    writeFileSync(join(dir, 'session.lock'), '');
+    const idx = join(home, '.dsh', 'storages', 'session_projcache', 'sessions');
+    mkdirSync(idx, { recursive: true });
+    const meta = JSON.parse(rw('dsh-projcache.json'));
+    meta.record.identity.cwd = work;
+    writeFileSync(join(idx, `${id}.json`), JSON.stringify(meta));
+    utimes(join(dir, 'session.v4.jsonl.zstd'), new Date(Date.now() - 10 * 60_000));
+  }
+  return { dsh: Boolean(z) };
+}
+
+function utimes(p: string, t: Date) {
+  utimesSync(p, t, t);
+}
+
+test.describe('E19 · endpoints · history sessions · provider page', () => {
+  let app: ElectronApplication | null = null;
+  let userData = '';
+  let home = '';
+  let work = '';
+  let seeded = { dsh: false };
+  let upstream: ReturnType<typeof createServer> | null = null;
+  let upstreamUrl = '';
+
+  test.beforeAll(async () => {
+    userData = mkdtempSync(join(tmpdir(), 'e19-ud-'));
+    home = mkdtempSync(join(tmpdir(), 'e19-home-'));
+    work = mkdtempSync(join(tmpdir(), 'e19-work-'));
+    seeded = seedHome(home, work);
+    upstream = createServer((req, res) => {
+      if (req.url?.includes('/models')) {
+        res.setHeader('content-type', 'application/json');
+        res.end('{"data":[]}');
+      } else {
+        res.statusCode = 404;
+        res.end();
+      }
+    });
+    await new Promise<void>((r) => upstream!.listen(0, '127.0.0.1', r));
+    const addr = upstream.address();
+    upstreamUrl = `http://127.0.0.1:${typeof addr === 'object' && addr ? addr.port : 0}/v1`;
+  });
+  test.afterAll(async () => {
+    await close(app);
+    upstream?.close();
+    safeRm(userData);
+    safeRm(home);
+    safeRm(work);
+  });
+
+  test('endpoint menus, history resume, provider page', async () => {
+    test.setTimeout(240_000);
+    let chat: Page;
+    ({ app, chat } = await launch(userData, home));
+
+    // ── 1. 端点下拉：纯名称 + 图标，菜单够宽 ─────────────────────────────
+    const sw = chat.locator('[data-testid="backend-switcher"]');
+    await expect(sw).toBeVisible();
+    await chat.getByRole('combobox', { name: '对话后端' }).click();
+    const names = ['Nomi', 'Claude Code', 'Codex', 'dsh'];
+    for (const n of names)
+      await expect(chat.getByRole('option', { name: new RegExp(`^${n}`) })).toBeVisible();
+    await shot(chat, '01-endpoint-dropdown');
+    await chat.keyboard.press('Escape');
+
+    // ── 2. 历史会话 ─────────────────────────────────────────────────────
+    const rows = chat.locator('[data-testid="history-session-item"]');
+    await expect(rows).toHaveCount(seeded.dsh ? 4 : 3, { timeout: 20_000 });
+    await expect(rows.first()).toHaveAttribute('data-backend', 'claude'); // 5 分钟前，最新
+    await shot(chat, '02-sidebar-history');
+    // 「按端」视图只看 Claude Code
+    await chat.click('[data-testid="list-view-by-endpoint"]');
+    await chat.click('[data-testid="endpoint-filter-claude"]');
+    await expect(rows).toHaveCount(2);
+    await shot(chat, '03-sidebar-history-by-endpoint');
+    await chat.click('[data-testid="list-view-all"]');
+
+    // 点击 Claude 历史 → 新标签，转录预填，续接后 Mock 回显 --resume 的 id
+    await rows.first().click();
+    const tabs = chat.locator('[role="tab"]');
+    await expect(tabs).toHaveCount(2);
+    await expect(chat.locator('.ai-chat-app')).toContainText('Fix the failing login test');
+    await expect(chat.locator('.ai-chat-app')).toContainText('The test expected a 401; fixed.');
+    await expect(rows).toHaveCount(seeded.dsh ? 3 : 2); // 已打开的不再重复列出
+    await shot(chat, '04-history-opened-transcript');
+    const input = chat.locator('[data-testid="chat-input"]');
+    await input.fill('continue please');
+    await input.press('Enter');
+    await expect(chat.locator('.ai-chat-app')).toContainText('已续接会话 cl-tools-1', {
+      timeout: 30_000,
+    });
+    await shot(chat, '05-history-resumed-reply');
+    // 目录就是会话原来的目录
+    await expect(chat.locator('[data-testid="cli-workspace-button"]')).toHaveAttribute(
+      'title',
+      new RegExp(work.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    );
+
+    // Codex 历史
+    await chat.locator('[data-testid="history-session-item"][data-backend="codex"]').click();
+    await expect(tabs).toHaveCount(3);
+    await expect(chat.locator('.ai-chat-app')).toContainText('There are two files');
+    await input.fill('and then?');
+    await input.press('Enter');
+    await expect(chat.locator('.ai-chat-app')).toContainText(
+      '已续接会话 01a13a9b-34b0-7612-ba36-613a55008483',
+      { timeout: 30_000 },
+    );
+    if (seeded.dsh) {
+      await chat.locator('[data-testid="history-session-item"][data-backend="dsh"]').click();
+      await expect(tabs).toHaveCount(4);
+      await expect(chat.locator('.ai-chat-app')).toContainText('Reply with just the word PONG');
+      await input.fill('once more');
+      await input.press('Enter');
+      await expect(chat.locator('.ai-chat-app')).toContainText('resumed', { timeout: 30_000 });
+    }
+
+    // ── 3. 统一菜单：新建菜单 / 对话右键菜单 ────────────────────────────
+    await chat.click('[data-testid="new-chat"]');
+    await expect(chat.locator('[data-testid="new-chat-menu"]')).toBeVisible();
+    await shot(chat, '06-new-chat-menu');
+    await chat.keyboard.press('Escape');
+    await chat
+      .locator('[data-testid="history-item"][data-backend="claude"]')
+      .first()
+      .click({ button: 'right' });
+    await expect(chat.locator('[data-testid="conversation-context-menu"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="conversation-close"]')).toBeVisible();
+    await shot(chat, '07-conversation-context-menu');
+    await chat.keyboard.press('Escape');
+
+    // ── 4. 工作目录选择器 ───────────────────────────────────────────────
+    await chat.locator('[data-testid="cli-workspace-button"]').click();
+    await expect(chat.locator('[data-testid="cli-workspace-menu"]')).toBeVisible();
+    await shot(chat, '08-workspace-picker');
+    await chat.keyboard.press('Escape');
+
+    // ── 5. 供应商页 ─────────────────────────────────────────────────────
+    await chat.click('[data-testid="sidebar-settings"]');
+    await chat.click('[data-testid="settings-nav-providers"]');
+    await expect(chat.locator('[data-testid="providers-page"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="providers-endpoint-tabs"] [role=tab]')).toHaveCount(4);
+    await expect(chat.locator('[data-testid="providers-section-nomi"]')).toBeVisible();
+    await shot(chat, '09-providers-nomi');
+
+    await chat.click('[data-testid="providers-endpoint-claude"]');
+    await expect(chat.locator('[data-testid="cli-ep-active"]')).toContainText(
+      '使用 CLI 自带登录/默认配置',
+    );
+    await shot(chat, '10-providers-claude-default');
+    await chat.fill('[data-testid="cli-provider-baseurl"]', upstreamUrl);
+    await chat.locator('[data-testid="cli-provider-form"] input').first().fill('本地中转');
+    await chat.locator('[data-testid="cli-provider-form"] input').nth(1).fill('claude-x');
+    await chat
+      .locator('[data-testid="cli-provider-form"] input[type=password]')
+      .fill('sk-test-123456');
+    await chat.click('[data-testid="cli-provider-save"]');
+    const row = chat.locator('[data-testid^="cli-provider-row-"]').first();
+    await expect(row).toContainText('本地中转');
+    await row.locator('[data-testid="cli-provider-test"]').click();
+    await expect(row.locator('[data-testid="cli-provider-test-result"]')).toContainText('ms');
+    await row.locator('[data-testid="cli-provider-enable"]').click();
+    await expect(chat.locator('[data-testid="cli-ep-active"]')).toHaveText('本地中转');
+    await expect(chat.locator('[data-testid="cli-ep-source"]')).toContainText('Nomi 档案库');
+    await expect(chat.locator('[data-testid="cli-ep-routing"]')).toHaveAttribute(
+      'data-mode',
+      'direct',
+    );
+    await shot(chat, '11-providers-claude-active');
+
+    // 其它端点互不影响：Codex 仍是自带登录
+    await chat.click('[data-testid="providers-endpoint-codex"]');
+    await expect(chat.locator('[data-testid="cli-ep-active"]')).toContainText(
+      '使用 CLI 自带登录/默认配置',
+    );
+    await shot(chat, '12-providers-codex');
+    await chat.click('[data-testid="providers-endpoint-dsh"]');
+    await expect(chat.locator('[data-testid="cli-ep-routing"]')).toHaveAttribute(
+      'data-mode',
+      'n/a',
+    );
+    await shot(chat, '13-providers-dsh');
+
+    // Claude 改用 CLI 自带登录：settings.json 里我们写的 env 被移除
+    await chat.click('[data-testid="providers-endpoint-claude"]');
+    const settingsPath = join(home, '.claude', 'settings.json');
+    expect(readFileSync(settingsPath, 'utf8')).toContain('ANTHROPIC_BASE_URL');
+    await chat.click('[data-testid="cli-ep-use-default"]');
+    await expect(chat.locator('[data-testid="cli-ep-active"]')).toContainText(
+      '使用 CLI 自带登录/默认配置',
+    );
+    expect(readFileSync(settingsPath, 'utf8')).not.toContain('ANTHROPIC_BASE_URL');
+  });
+});
