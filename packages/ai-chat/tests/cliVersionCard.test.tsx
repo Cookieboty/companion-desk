@@ -182,3 +182,98 @@ describe('CliVersionCard', () => {
     expect(r.getByTestId('cli-version-log-claude').textContent).toContain('npm http fetch');
   });
 });
+
+describe('CliVersionCard · task survives unmount (state lives in the main process)', () => {
+  const running = {
+    kind: 'codex',
+    mode: 'update',
+    scope: 'global',
+    status: 'running',
+    argv: ['npm', 'install', '-g', '@openai/codex@latest'],
+    command: 'npm install -g @openai/codex@latest',
+    lines: ['$ npm install -g @openai/codex@latest', 'added 1 package'],
+    startedAt: 1,
+  };
+
+  it('mount → start → unmount → re-mount still shows the running log; finishing shows the result; dismiss clears it', async () => {
+    let job: unknown = null;
+    const { calls, emit } = setup({
+      'ai:cli-update:inspect': () => [
+        info({ kind: 'codex', path: '/x/codex', version: '1.0.0', updateAvailable: true }),
+      ],
+      'ai:cli-update:preview': () => plan({ kind: 'codex', mode: 'update' }),
+      'ai:cli-update:run': () => new Promise(() => undefined), // 主进程里一直在跑
+      'ai:cli-update:job': () => job,
+      'ai:cli-update:dismiss': () => {
+        job = null;
+        return true;
+      },
+    });
+    const first = render(<CliVersionCard kind="codex" />);
+    await waitFor(() => first.getByTestId('cli-version-action-codex'));
+    await waitFor(() =>
+      expect((first.getByTestId('cli-version-action-codex') as HTMLButtonElement).disabled).toBe(
+        false,
+      ),
+    );
+    fireEvent.click(first.getByTestId('cli-version-action-codex'));
+    await waitFor(() => first.getByTestId('cli-version-confirm'));
+    job = running; // 主进程已开始任务
+    fireEvent.click(first.getByTestId('cli-version-confirm'));
+    await waitFor(() => first.getByTestId('cli-version-log-codex'));
+    first.unmount(); // 用户切到别的页面
+
+    // 回来：先取快照，再订阅增量
+    const again = render(<CliVersionCard kind="codex" />);
+    await waitFor(() =>
+      expect(again.getByTestId('cli-version-log-codex').textContent).toContain('added 1 package'),
+    );
+    expect(calls.filter(([c]) => c === 'ai:cli-update:job').length).toBeGreaterThanOrEqual(2);
+    expect((again.getByTestId('cli-version-action-codex') as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+
+    // 增量日志继续追加
+    emit({ kind: 'codex', mode: 'update', phase: 'log', line: 'changed 3 packages' });
+    await waitFor(() =>
+      expect(again.getByTestId('cli-version-log-codex').textContent).toContain(
+        'changed 3 packages',
+      ),
+    );
+
+    // 任务结束：结果由主进程保存，事件触发取快照
+    job = {
+      ...running,
+      status: 'done',
+      finishedAt: 2,
+      result: { ok: true, log: '', version: '1.1.0', path: '/x/codex' },
+    };
+    emit({ kind: 'codex', mode: 'update', phase: 'done', version: '1.1.0' });
+    await waitFor(() =>
+      expect(again.getByTestId('cli-version-result-codex').getAttribute('data-ok')).toBe('1'),
+    );
+    // 再离开再回来，结果仍在，直到用户关闭
+    again.unmount();
+    const third = render(<CliVersionCard kind="codex" />);
+    await waitFor(() => third.getByTestId('cli-version-result-codex'));
+    fireEvent.click(third.getByTestId('cli-version-dismiss-codex'));
+    await waitFor(() => expect(third.queryByTestId('cli-version-result-codex')).toBeNull());
+    expect(calls.some(([c]) => c === 'ai:cli-update:dismiss')).toBe(true);
+  });
+
+  it('shows a failed result from the snapshot on re-mount (error surfaced, not lost)', async () => {
+    setup({
+      'ai:cli-update:inspect': () => [info({ kind: 'dsh', path: '/x/dsh', version: '0.1.0' })],
+      'ai:cli-update:job': () => ({
+        ...running,
+        kind: 'dsh',
+        status: 'error',
+        result: { ok: false, log: 'EACCES: permission denied', version: null },
+      }),
+    });
+    const r = render(<CliVersionCard kind="dsh" />);
+    await waitFor(() =>
+      expect(r.getByTestId('cli-version-result-dsh').textContent).toContain('EACCES'),
+    );
+  });
+});

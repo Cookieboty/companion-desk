@@ -437,6 +437,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - **不静默 sudo**：全局目录只读（如系统 Node）时，给出「安装到 `~/.local`（`--prefix`）」的备选方案并要求确认，绝不自动提权。
 - **dsh 现在可以安装与更新**（取代 §10 第 5 条与 §12.3 中「不负责安装」的旧决定）。
 - **不阻塞主进程**：检测（`which` / `--version` / `npm config get prefix` / `node --version`）全部走异步 `execFile`；`run` 在做前置检查前先占位，防止连点两次同时通过。（Windows 上 `where` / `npm.cmd` 启动较慢，同步调用会让整个应用的输入停顿——CI 里 E19 的点击曾因此超时。）
+- **任务状态由主进程按端点持有**（`CliUpdateService.jobs`）：运行中 / 进度日志（最多 400 行）/ 结果 / 错误都在主进程，不再放在设置页的 React 局部状态里。页面挂载时先 `ai:cli-update:job` 取快照，再订阅 `ai:cli-update:event` 的增量；切换端点、退出设置、关闭再打开都不影响任务，回来后继续显示。同一端点重复点更新会复用当前任务；结束后保留最近一次结果（含失败原因），直到点「关闭结果」（`ai:cli-update:dismiss`）。测试：`CliInstallUpdate.test.ts`（快照 / 复用 / 保留 / 关闭）、`cliVersionCard.test.tsx`（挂载→开始→卸载→重新挂载仍显示）、e2e E20（假 codex / npm）。
 - 已移除日程里的 `CliToolsBlock`。
 - 测试：`packages/electron/tests/unit/cli/CliInstallUpdate.test.ts`（注入 mock npm / CLI 的 probe 与 runner，覆盖计划、Node 过旧、只读前缀、流式事件、失败）与 `packages/ai-chat/tests/cliVersionCard.test.tsx`。
 

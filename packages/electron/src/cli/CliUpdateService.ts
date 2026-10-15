@@ -36,6 +36,7 @@ import type {
   CliInstallInfo,
   CliInstallPlan,
   CliInstallScope,
+  CliJobSnapshot,
   CliKind,
   CliRequirement,
   CliRunResult,
@@ -225,6 +226,9 @@ export class CliUpdateService {
   private cache: CliUpdateCache = { checkedAt: 0, latest: {} };
   private readonly cachePath: string;
   private updating = false;
+  /** 每个端点最近一次任务（运行中 / 已结束，直到用户关闭） */
+  private readonly jobs = new Map<UpdatableCli, CliJobSnapshot>();
+  private readonly inflight = new Map<UpdatableCli, Promise<CliRunResult>>();
   private readonly probe: CliProbe;
   private readonly runner: CliRunner;
 
@@ -427,7 +431,58 @@ export class CliUpdateService {
     return (await this.plan(kind, scope)).plan;
   }
 
-  async run(kind: UpdatableCli, scope: CliInstallScope = 'global'): Promise<CliRunResult> {
+  /** 当前（或最近一次）任务快照；界面挂载时先取它，再订阅增量 */
+  job(kind: UpdatableCli): CliJobSnapshot | null {
+    const j = this.jobs.get(kind);
+    return j ? { ...j, lines: [...j.lines] } : null;
+  }
+
+  /** 关闭已结束任务的结果（运行中的不能关） */
+  dismissJob(kind: UpdatableCli): boolean {
+    const j = this.jobs.get(kind);
+    if (!j || j.status === 'running') return false;
+    this.jobs.delete(kind);
+    return true;
+  }
+
+  private finishJob(kind: UpdatableCli, r: CliRunResult): void {
+    const j = this.jobs.get(kind);
+    if (!j || j.status !== 'running') return;
+    j.status = r.ok ? 'done' : 'error';
+    j.result = r;
+    j.finishedAt = Date.now();
+  }
+
+  /**
+   * 安装 / 更新入口。任务状态由主进程按端点持有：同一端点重复调用复用当前任务；
+   * 界面卸载、切换页面 / 端点都不影响运行，回来后用 `job()` 取回快照。
+   */
+  run(kind: UpdatableCli, scope: CliInstallScope = 'global'): Promise<CliRunResult> {
+    const cur = this.inflight.get(kind);
+    if (cur) return cur;
+    this.jobs.set(kind, {
+      kind,
+      mode: 'update',
+      scope,
+      status: 'running',
+      argv: [],
+      command: '',
+      lines: [],
+      startedAt: Date.now(),
+    });
+    const p = this.runJob(kind, scope)
+      .then((r) => {
+        this.finishJob(kind, r);
+        return r;
+      })
+      .finally(() => {
+        this.inflight.delete(kind);
+      });
+    this.inflight.set(kind, p);
+    return p;
+  }
+
+  private async runJob(kind: UpdatableCli, scope: CliInstallScope): Promise<CliRunResult> {
     if (this.updating) return { ok: false, log: t('已有安装 / 更新在进行'), version: null };
     // 先占位再做（异步的）前置检查，避免两次点击同时通过
     this.updating = true;
@@ -442,6 +497,14 @@ export class CliUpdateService {
     if (plan.blockers.length) {
       this.updating = false;
       return { ok: false, log: plan.blockers.join('\n'), version: null };
+    }
+    {
+      const j = this.jobs.get(kind);
+      if (j) {
+        j.mode = plan.mode;
+        j.argv = plan.argv;
+        j.command = plan.command;
+      }
     }
     this.broadcast({ kind, mode: plan.mode, phase: 'start', argv: plan.argv });
     const logs: string[] = [];
@@ -479,6 +542,7 @@ export class CliUpdateService {
       const bin = await resolveCliBinAsync(kind);
       const version = bin ? await readVersionAsync(bin) : null;
       if (!ok) {
+        this.finishJob(kind, { ok: false, log, version });
         this.broadcast({ kind, mode: plan.mode, phase: 'error', message: log });
         return { ok: false, log, version };
       }
@@ -497,10 +561,13 @@ export class CliUpdateService {
             dir,
           );
       }
+      const result: CliRunResult = { ok: Boolean(bin), log, version, path: bin, note };
+      this.finishJob(kind, result);
       this.broadcast({ kind, mode: plan.mode, phase: 'done', version });
-      return { ok: Boolean(bin), log, version, path: bin, note };
+      return result;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      this.finishJob(kind, { ok: false, log: msg, version: null });
       this.broadcast({ kind, mode: plan.mode, phase: 'error', message: msg });
       return { ok: false, log: msg, version: null };
     } finally {
@@ -514,6 +581,12 @@ export class CliUpdateService {
   }
 
   private broadcast(payload: unknown) {
+    const ev = payload as { kind?: UpdatableCli; phase?: string; line?: string };
+    const job = ev.kind ? this.jobs.get(ev.kind) : undefined;
+    if (job && job.status === 'running' && ev.phase === 'log' && typeof ev.line === 'string') {
+      job.lines.push(ev.line);
+      if (job.lines.length > 400) job.lines.splice(0, job.lines.length - 400);
+    }
     this.d.emit?.(payload);
     if (this.d.silent) return;
     for (const w of BrowserWindow.getAllWindows()) {
@@ -540,6 +613,8 @@ export class CliUpdateService {
     handle('ai:cli-update:preview', (kind, scope) =>
       this.previewUpdate(toUpdatable(kind), toScope(scope)),
     );
+    handle('ai:cli-update:job', (kind) => this.job(toUpdatable(kind)));
+    handle('ai:cli-update:dismiss', (kind) => this.dismissJob(toUpdatable(kind)));
     handle('ai:cli-update:run', (kind, scope) => this.run(toUpdatable(kind), toScope(scope)));
   }
 }

@@ -12,6 +12,7 @@ import {
   type CliInstallInfo,
   type CliInstallPlan,
   type CliInstallScope,
+  type CliJob,
   type CliRunResult,
   type CliUpdatableKind,
 } from '../../services/cliUpdateClient';
@@ -59,17 +60,48 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
     [kind],
   );
 
+  // 任务状态在主进程：挂载时先取快照（运行中 / 最近一次结果），再订阅增量
+  const applyJob = useCallback((j: CliJob | null) => {
+    setRunning(j?.status === 'running');
+    setLines(j ? j.lines : []);
+    setResult(j?.status === 'running' ? null : (j?.result ?? null));
+  }, []);
+
   useEffect(() => {
     setInfo(null);
     setResult(null);
     setLines([]);
+    setRunning(false);
     void load(false);
-    return cliUpdateClient.onEvent((e) => {
+    let alive = true;
+    const off = cliUpdateClient.onEvent((e) => {
       if (e.kind !== kind) return;
-      if (e.phase === 'start') setLines([]);
-      if (e.phase === 'log') setLines((l) => [...l.slice(-200), e.line]);
+      if (e.phase === 'start') {
+        setRunning(true);
+        setResult(null);
+        setLines([]);
+      } else if (e.phase === 'log') {
+        setLines((l) => [...l.slice(-399), e.line]);
+      } else {
+        // done / error：结果已由主进程保存，取快照并刷新版本
+        void cliUpdateClient.job(kind).then((j) => {
+          if (!alive) return;
+          applyJob(j);
+          void load(true);
+        });
+      }
     });
-  }, [kind, load]);
+    cliUpdateClient
+      .job(kind)
+      .then((j) => {
+        if (alive && j) applyJob(j);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [kind, load, applyJob]);
 
   useEffect(() => {
     const el = logRef.current;
@@ -94,16 +126,25 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
     const scope = plan.scope;
     setPlan(null);
     setRunning(true);
+    setResult(null);
     setLines([]);
     try {
+      // 任务由主进程持有：这里的 Promise 即使因页面卸载而无人等待，任务也照常运行；
+      // 结束时由事件 / 快照恢复显示。同一端点重复调用会复用当前任务。
       const r = await cliUpdateClient.run(kind, scope);
       setResult(r);
+      setRunning(false);
       await load(true);
     } catch (e) {
       setResult({ ok: false, log: e instanceof Error ? e.message : String(e), version: null });
-    } finally {
       setRunning(false);
     }
+  };
+
+  const dismissResult = () => {
+    setResult(null);
+    setLines([]);
+    void cliUpdateClient.dismiss(kind).catch(() => undefined);
   };
 
   const statusText =
@@ -199,6 +240,14 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
             : t('{0} 没有安装 / 更新成功：', name)}
           {result.note ? ` ${result.note}` : ''}
           {!result.ok && result.log ? <pre className={styles.logBox}>{result.log}</pre> : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            data-testid={`cli-version-dismiss-${kind}`}
+            onClick={dismissResult}
+          >
+            {t('关闭结果')}
+          </Button>
         </Notice>
       )}
 

@@ -1632,5 +1632,6 @@
   "编程助手分区": "Coding assistant sections",
   "监视与会话": "Monitor & sessions",
   "想完全离线看图：在「设置 → 编程助手 → Nomi」里添加 Ollama，并拉取视觉模型，例如": "To look at images fully offline: add Ollama under “Settings → Coding assistants → Nomi” and pull a vision model, e.g.",
-  "编程助手设置仅在桌面应用中可用；模型配置见「通用」。": "Coding assistant settings are only available in the desktop app; model settings are under “General”."
+  "编程助手设置仅在桌面应用中可用；模型配置见「通用」。": "Coding assistant settings are only available in the desktop app; model settings are under “General”.",
+  "关闭结果": "Dismiss"
 }

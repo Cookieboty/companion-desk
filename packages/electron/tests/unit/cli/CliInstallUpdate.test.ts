@@ -210,3 +210,86 @@ describe('run with a mock npm', () => {
     expect(res.ok).toBe(true);
   });
 });
+
+describe('job state lives in the main process', () => {
+  const gated = () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    let calls = 0;
+    const runner: CliRunner = async (_argv, onLine) => {
+      calls++;
+      onLine('added 1 package');
+      await gate;
+      onLine('done');
+      return { code: 0, output: '' };
+    };
+    return { runner, release: () => release(), calls: () => calls };
+  };
+  const waitFor = async (fn: () => boolean) => {
+    for (let i = 0; i < 200 && !fn(); i++) await new Promise((r) => setTimeout(r, 5));
+    expect(fn()).toBe(true);
+  };
+
+  it('keeps status and log lines while running, so a re-mounted page can restore them', async () => {
+    const g = gated();
+    const svc = make(probe(), g.runner);
+    expect(svc.job('codex')).toBeNull();
+    const first = svc.run('codex');
+    await waitFor(() => (svc.job('codex')?.lines.length ?? 0) >= 2);
+    const snap = svc.job('codex')!;
+    expect(snap.status).toBe('running');
+    expect(snap.command).toMatch(/npm(\.cmd)? install -g @openai\/codex@latest|codex/);
+    expect(snap.lines).toContain('added 1 package');
+    // 「卸载页面再挂载」= 再取一次快照，内容不丢；快照是副本，改它不影响主进程
+    snap.lines.length = 0;
+    expect(svc.job('codex')!.lines.length).toBeGreaterThanOrEqual(2);
+    expect(svc.dismissJob('codex')).toBe(false); // 运行中不能关
+    g.release();
+    const res = await first;
+    expect(typeof res.ok).toBe('boolean');
+    expect(svc.job('codex')?.status).not.toBe('running');
+  });
+
+  it('a second click on the same endpoint reuses the running task', async () => {
+    const g = gated();
+    const svc = make(probe(), g.runner);
+    const a = svc.run('codex');
+    const b = svc.run('codex');
+    await waitFor(() => g.calls() >= 1);
+    g.release();
+    const [ra, rb] = await Promise.all([a, b]);
+    expect(rb).toBe(ra);
+    expect(g.calls()).toBeLessThanOrEqual(2); // 至多一轮命令（含一次回退），不会并发起第二个任务
+  });
+
+  it('keeps the last result until dismissed, including failures', async () => {
+    const svc = make(probe(), async () => ({ code: 1, output: 'EACCES: permission denied' }));
+    const res = await svc.run('dsh');
+    expect(res.ok).toBe(false);
+    const snap = svc.job('dsh')!;
+    expect(snap.status).toBe('error');
+    expect(snap.result?.log).toContain('EACCES');
+    expect(snap.finishedAt).toBeGreaterThan(0);
+    expect(svc.dismissJob('dsh')).toBe(true);
+    expect(svc.job('dsh')).toBeNull();
+  });
+
+  it('a blocked request (Node too old) is also kept as an error job', async () => {
+    const svc = make(probe({ nodeVersion: () => '20.0.0' }));
+    await svc.run('dsh');
+    const snap = svc.job('dsh')!;
+    expect(snap.status).toBe('error');
+    expect(snap.result?.log).toContain('24');
+  });
+
+  it('endpoints keep separate jobs', async () => {
+    const svc = make(probe(), async () => ({ code: 1, output: 'boom' }));
+    await svc.run('claude');
+    await svc.run('codex');
+    expect(svc.job('claude')?.kind).toBe('claude');
+    expect(svc.job('codex')?.kind).toBe('codex');
+    svc.dismissJob('claude');
+    expect(svc.job('claude')).toBeNull();
+    expect(svc.job('codex')).not.toBeNull();
+  });
+});

@@ -42,6 +42,20 @@ export interface CliRunResult {
   note?: string;
 }
 
+/** 主进程按端点持有的任务快照（界面重新挂载时先取它） */
+export interface CliJob {
+  kind: CliUpdatableKind;
+  mode: 'install' | 'update';
+  scope: CliInstallScope;
+  status: 'running' | 'done' | 'error';
+  argv: string[];
+  command: string;
+  lines: string[];
+  startedAt: number;
+  finishedAt?: number;
+  result?: CliRunResult;
+}
+
 export type CliUpdateEvent =
   | { kind: CliUpdatableKind; mode: 'install' | 'update'; phase: 'start'; argv: string[] }
   | { kind: CliUpdatableKind; mode: 'install' | 'update'; phase: 'log'; line: string }
@@ -74,6 +88,13 @@ export const cliUpdateClient = {
     call<CliInstallPlan>('preview', kind, scope),
   run: (kind: CliUpdatableKind, scope: CliInstallScope = 'global') =>
     call<CliRunResult>('run', kind, scope),
+  job: async (kind: CliUpdatableKind): Promise<CliJob | null> => {
+    const j = await call<CliJob | null>('job', kind);
+    return j && typeof j === 'object' && typeof j.status === 'string' && Array.isArray(j.lines)
+      ? j
+      : null;
+  },
+  dismiss: (kind: CliUpdatableKind) => call<boolean>('dismiss', kind),
   onEvent: (fn: (e: CliUpdateEvent) => void) =>
     bridge()?.on('ai:cli-update:event', (p) => fn(p as CliUpdateEvent)) ?? (() => undefined),
 };

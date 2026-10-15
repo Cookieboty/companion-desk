@@ -145,3 +145,17 @@ export interface CliRunResult {
   /** 补充提示（例如装到了 ~/.local/bin 但它不在 PATH 上） */
   note?: string;
 }
+
+/** 安装 / 更新任务快照（主进程按端点持有；界面重新挂载时先取它） */
+export interface CliJobSnapshot {
+  kind: 'claude' | 'codex' | 'dsh';
+  mode: 'install' | 'update';
+  scope: 'global' | 'user';
+  status: 'running' | 'done' | 'error';
+  argv: string[];
+  command: string;
+  lines: string[];
+  startedAt: number;
+  finishedAt?: number;
+  result?: CliRunResult;
+}
