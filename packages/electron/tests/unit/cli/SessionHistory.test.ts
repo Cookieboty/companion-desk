@@ -191,6 +191,22 @@ describe('SessionHistoryService', () => {
     expect(ids.size).toBe(120);
   });
 
+  it('index: hands out compact entries in big, resumable chunks (for sidebar search)', async () => {
+    for (let i = 0; i < 120; i++)
+      writeClaude(`s${String(i).padStart(3, '0')}`, `task ${i}`, 1_000_000 + i * 1000);
+    const svc = mk();
+    const a = await svc.index('claude', { limit: 70 });
+    expect(a.items).toHaveLength(70);
+    expect(a.hasMore).toBe(true);
+    expect(a.items.every((x) => x.cwdMissing === false)).toBe(true);
+    const b = await svc.index('claude', { offset: a.nextOffset! });
+    expect(b.items).toHaveLength(50);
+    expect(b.hasMore).toBe(false);
+    expect(new Set([...a.items, ...b.items].map((x) => x.key)).size).toBe(120);
+    // 一次拿完（默认 500 条一块）
+    expect((await mk().index('claude')).items).toHaveLength(120);
+  });
+
   it('is incremental: unchanged files are not re-read, changed files are', async () => {
     const a = writeClaude('a', 'task a', 1_000_000);
     writeClaude('b', 'task b', 2_000_000);

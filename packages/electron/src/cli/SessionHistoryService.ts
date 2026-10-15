@@ -308,8 +308,29 @@ export class SessionHistoryService {
     backend: HistoryBackend,
     o: { offset?: number; limit?: number; force?: boolean } = {},
   ): Promise<HistoryPage> {
+    return this.page(backend, o, 200, false);
+  }
+
+  /**
+   * 搜索用的紧凑索引：与 list 同一套去重 / 增量解析（只重读变化的文件），但一次可取更多条
+   * （最多 1000），并且不为每条检查工作目录是否存在。匹配在界面里做（防抖后过滤），这里只负责
+   * 「分页地把标题 / 路径交出去」，不会把整盘会话一次性读完。
+   */
+  async index(
+    backend: HistoryBackend,
+    o: { offset?: number; limit?: number; force?: boolean } = {},
+  ): Promise<HistoryPage> {
+    return this.page(backend, { ...o, limit: o.limit ?? 500 }, 1000, true);
+  }
+
+  private async page(
+    backend: HistoryBackend,
+    o: { offset?: number; limit?: number; force?: boolean },
+    cap: number,
+    cheap: boolean,
+  ): Promise<HistoryPage> {
     if (!BACKENDS.includes(backend)) throw new Error(t('未知后端'));
-    const limit = Math.min(200, Math.max(1, Math.round(o.limit ?? HISTORY_PAGE_SIZE)));
+    const limit = Math.min(cap, Math.max(1, Math.round(o.limit ?? HISTORY_PAGE_SIZE)));
     let i = Math.max(0, Math.round(o.offset ?? 0));
     const entries = await this.candidates(backend, Boolean(o.force));
     const open = this.d.openKeys?.() ?? new Set<string>();
@@ -326,7 +347,7 @@ export class SessionHistoryService {
         if (this.byKey.get(m.key)?.path !== batch[k]!.path) continue;
         items.push({
           ...m,
-          cwdMissing: m.cwd ? !isDir(m.cwd) : false,
+          cwdMissing: !cheap && m.cwd ? !isDir(m.cwd) : false,
           updatedAt: batch[k]!.mtime,
         });
         if (items.length >= limit) break;
@@ -415,6 +436,12 @@ export class SessionHistoryService {
     };
     handle('ai:history:list', (b, o) =>
       this.list(
+        b as HistoryBackend,
+        (o ?? {}) as { offset?: number; limit?: number; force?: boolean },
+      ),
+    );
+    handle('ai:history:index', (b, o) =>
+      this.index(
         b as HistoryBackend,
         (o ?? {}) as { offset?: number; limit?: number; force?: boolean },
       ),

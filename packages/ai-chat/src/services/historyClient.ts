@@ -50,6 +50,9 @@ export const historyClient = {
   available: () => !!bridge(),
   list: (backend: HistoryBackend, o: { offset?: number; limit?: number; force?: boolean } = {}) =>
     call<HistoryPage>('ai:history:list', backend, o),
+  /** 搜索用的紧凑索引（主进程增量解析，分块返回） */
+  index: (backend: HistoryBackend, o: { offset?: number; limit?: number; force?: boolean } = {}) =>
+    call<HistoryPage>('ai:history:index', backend, o),
   open: (backend: HistoryBackend, sessionId: string) =>
     call<HistoryOpenResult>('ai:history:open', backend, sessionId),
 };
