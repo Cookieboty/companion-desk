@@ -3,6 +3,25 @@
 > 逐项打勾即可。没装真实 CLI 时，可用 `NOMI_USE_MOCK_CLI=1`（可选 `NOMI_MOCK_DELAY_MS=8000` 放慢回复）启动，用内置的模拟 CLI 走通界面流程。
 > 设计与细节见 [`docs/features/coding-agent-harness.md`](../features/coding-agent-harness.md)。
 
+## 自动化覆盖说明（2026-10-15，**不是**人工验收勾选）
+
+下列项已有单测 / headed e2e / mock CLI 覆盖，**仍须人工在真实应用里勾选**。本表只方便对照「代码侧已护栏」：
+
+| 清单区块                             | 自动化证据（路径）                                                                                                            | 说明                                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| §2 后端切换 / 流式 / 续接            | `packages/electron/tests/unit/cli/CliHarness.mock.test.ts`、`HarnessTabs.test.ts`；e2e `E17` / `E18`（mock）                  | mock claude/codex/dsh；无 Key 时不跑真 CLI                                                           |
+| §3 供应商档案 / 默认格式 / 路由拦截  | `CliProviderBridge.test.ts`、`configPatch.test.ts`、`cliBrand.test.ts`、`providersPage.test.tsx`；`routing/*`                 | dsh 新建默认 `openai_responses`；非原生需开路由                                                      |
+| §3 本地路由流式变换                  | `packages/electron/tests/unit/cli/routing/*`                                                                                  | Messages↔Responses↔Chat↔Gemini                                                                       |
+| §4 dsh                               | `CliHarness.mock.test.ts`（dsh）、`dshRuntime.test.ts`                                                                        | Node≥24 空输出提示                                                                                   |
+| §5 多标签并发 / 排队 / 未读 / 持久化 | `HarnessTabs.test.ts`；e2e `E18`；`chatTabs.test.tsx`（含并发上限 1–8 UI）                                                    | 标签栏 `chat-tabs-max-concurrent`                                                                    |
+| §5 输入框 CLI 提示                   | `chatTabs.test.tsx`（`cliTabPlaceholder`）                                                                                    |                                                                                                      |
+| §6 监视器 / 端点完成 → 看板娘·岛     | `agentEndpoints.test.ts`                                                                                                      | 含 **权限待确认 → island attention + think**                                                         |
+| Claude 权限桥                        | `streamParse.test.ts`、`CliHarness.mock.test.ts`（`NOMI_MOCK_ASK_PERMISSION`）；UI `cli-permission-card`                      | 真机需 Claude CLI + API Key；本机 CLI 2.1.299 有 `--permission-prompt-tool`，**无 Key 未做真机冒烟** |
+| Claude 工具完成态                    | `streamParse.test.ts`（`createClaudeParser`）、`CliHarness.mock.test.ts`（`NOMI_MOCK_TOOLS`）；直播时间线 `cli-tool-timeline` |                                                                                                      |
+| §8–§18 模式 / 侧栏 / 分叉等          | 各 `ai-chat/tests/*`、e2e `E19` 等                                                                                            | 见对应测试名                                                                                         |
+
+**真机 Claude 冒烟（本环境）**：`claude` 在 PATH（`2.1.299`），支持 `--permission-prompt-tool` / `--input-format`；无 `ANTHROPIC_API_KEY`、无 `~/.claude/settings.json` 登录配置 → **无法发起真实对话冒烟**，权限卡与工具时间线以 mock 单测为准。
+
 ## 1. 版本检查与更新
 
 - [ ] 设置 → 编程助手 → Claude Code / Codex / dsh 各自顶部有「版本」卡片：已装版本或「未安装」、npm 最新版本；「检查更新」可手动刷新。（日程页不再有版本区。）
