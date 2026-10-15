@@ -199,7 +199,7 @@ test.describe('E18 · concurrent chat tabs · mock CLI', () => {
     await expect(chat.locator('[data-testid="cli-workspace"]')).toBeVisible();
     await expect(chat.locator('[data-testid="cli-workspace-button"]')).toHaveAttribute(
       'title',
-      /\//,
+      /[\\/]/,
     );
     await expect(tabs2.nth(1)).toHaveAttribute('title', /mock-claude/);
     await shot(chat, '08-restored-after-restart');

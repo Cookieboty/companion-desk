@@ -31,6 +31,7 @@ async function launch(
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
     HOME: home,
+    USERPROFILE: home, // Windows 的 os.homedir() 读它
     CD_LOCALE: 'zh',
     CD_ONBOARDING: 'off',
     ELECTRON_DISABLE_SECURITY_WARNINGS: '1',
