@@ -51,6 +51,17 @@ describe('island geometry', () => {
     expect(islandGeometry('win32', win)).toMatchObject({ mode: 'pill', y: 8 });
   });
 
+  it('endpoint icons embed the Nomi mark, OpenAI and DeepSeek logos', () => {
+    const html = islandHtml(islandGeometry('darwin', notchMac));
+    const js = Buffer.from(
+      /<script[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '',
+      'utf8',
+    ).toString();
+    expect(js).toContain('M9.205 8.658');
+    expect(js).toContain('M23.748 4.482');
+    expect(js).toContain('#FCEFE1');
+  });
+
   it('page renders text via textContent only and has a strict CSP', () => {
     const html = islandHtml(islandGeometry('darwin', notchMac));
     expect(html).toContain("default-src 'none'");
