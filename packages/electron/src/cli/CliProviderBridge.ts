@@ -452,7 +452,7 @@ export class CliProviderBridge {
         if (b) backups.push(b);
         ensureDir(file);
         const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-        const fmt = isDshApiFormat(p.apiFormat) ? p.apiFormat : 'openai_chat_completions';
+        const fmt = isDshApiFormat(p.apiFormat) ? p.apiFormat : 'openai_responses';
         fs.writeFileSync(
           file,
           patchDshYaml(raw, { api: dshApiName(fmt), baseURL: p.baseUrl, model: p.model }),

@@ -7,7 +7,7 @@ describe('CLI 上游格式默认与原生判定', () => {
   it('各端点默认格式为自己的原生协议', () => {
     expect(CLI_DEFAULT_FORMAT.claude).toBe('anthropic_messages');
     expect(CLI_DEFAULT_FORMAT.codex).toBe('openai_responses');
-    expect(CLI_DEFAULT_FORMAT.dsh).toBe('openai_chat_completions');
+    expect(CLI_DEFAULT_FORMAT.dsh).toBe('openai_responses');
   });
 
   it('默认格式对端点均为原生，无需路由', () => {
@@ -37,8 +37,14 @@ describe('CLI 上游格式默认与原生判定', () => {
       'openai_chat_completions',
       'anthropic_messages',
     ]);
+    expect(CLI_FORMATS.dsh.map((f) => f.value)).toEqual([
+      'openai_responses',
+      'openai_chat_completions',
+      'anthropic_messages',
+    ]);
     expect(CLI_FORMATS.claude[0]!.label).toContain('原生');
     expect(CLI_FORMATS.codex[0]!.label).toContain('原生');
+    expect(CLI_FORMATS.dsh[0]!.label).toContain('原生');
     expect(CLI_FORMATS.dsh.every((f) => f.label.includes('原生'))).toBe(true);
   });
 
@@ -46,7 +52,8 @@ describe('CLI 上游格式默认与原生判定', () => {
     expect(presetFormat('openai-chat')).toBe('openai_chat_completions');
     expect(presetFormat('anthropic')).toBe('anthropic_messages');
     expect(presetFormat('openai-responses')).toBe('openai_responses');
-    // Codex 端点新建应忽略上述映射，坚持 Responses
+    // Codex / dsh 新建应忽略上述映射，坚持 Responses
     expect(CLI_DEFAULT_FORMAT.codex).not.toBe(presetFormat('openai-chat'));
+    expect(CLI_DEFAULT_FORMAT.dsh).not.toBe(presetFormat('openai-chat'));
   });
 });

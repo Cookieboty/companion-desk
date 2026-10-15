@@ -57,7 +57,7 @@
 | ------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | 按工具的供应商档案 | Claude / Codex 各自一组档案 | `userData/cli-providers/claude/store.json` 与 `…/codex/store.json`，与 Nomi 原生 ProviderStore **完全隔离** |
 | 一键启用           | 只改连接字段，备份后写回    | 原子写 + `userData/cli-providers/backups/`                                                                  |
-| Direct             | CLI 直连上游（原生协议）    | 默认：Claude=`anthropic_messages`；Codex=`openai_responses`                                                 |
+| Direct             | CLI 直连上游（原生协议）    | 默认：Claude=`anthropic_messages`；Codex=`openai_responses`；dsh=`openai_responses`                         |
 | 本地路由           | 本机代理做协议转换          | `CliRouteService` 监听 `127.0.0.1:18721`；非原生格式须开启路由后才能启用档案                                |
 | Aggregation        | 多上游模型列表合并          | **P2**                                                                                                      |
 | Apps 页升级        | 检测版本、安装、升级        | 对标「版本与更新」章节，由看板娘执行                                                                        |
@@ -66,6 +66,7 @@
 
 - **Claude Code**：原生 Anthropic Messages；OpenAI Chat Completions / Responses / Gemini 需本地路由转换。
 - **Codex**：原生 OpenAI Responses；Chat Completions / Anthropic Messages 需本地路由转换。
+- **dsh**：新建默认 OpenAI Responses；内置适配器另原生支持 Chat Completions / Anthropic Messages，均无需本地路由。
 
 **经本地路由接本机 Ollama（实测 2026-10）：**
 
@@ -422,7 +423,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 ### 14.1 编程助手页：三个 CLI 端点与 Nomi 同款第三方供应商交互
 
 - 设置里的「供应商与模型」改名为 **「编程助手」**，标签：`Nomi` · `Claude Code` · `Codex` · `dsh` · `监视与会话`（`CodingTab`，记在 `chatPrefs`）。旧入口 `providers`、`agents` 作为别名保留（`resolveSection`，`agents` 会落到「监视与会话」）。
-- Claude Code / Codex / dsh 与 Nomi 使用同样的视觉与流程：**卡片列表**（图标 · 名称 · 「使用中」徽标 · 上游格式 · 地址 · 模型 · 打码 Key）→ **添加供应商**打开预设模板网格（含「自定义」）→ 表单（名称、接口地址、API Key、模型、上游格式）→ 保存；每张卡片有 测速 / 编辑 / 删除（删除前确认）/ 启用。预设模板复用 Nomi 的预设；预设的协议若不是该 CLI 的原生格式，则默认选预设自己的协议并提示是否需要本地路由，「自定义」默认取 CLI 原生格式。
+- Claude Code / Codex / dsh 与 Nomi 使用同样的视觉与流程：**卡片列表**（图标 · 名称 · 「使用中」徽标 · 上游格式 · 地址 · 模型 · 打码 Key）→ **添加供应商**打开预设模板网格（含「自定义」）→ 表单（名称、接口地址、API Key、模型、上游格式）→ 保存；每张卡片有 测速 / 编辑 / 删除（删除前确认）/ 启用。预设模板复用 Nomi 的预设（只预填名称 / 地址 / 模型 / Key）；新建上游格式一律取该 CLI 端点原生默认（Claude=`anthropic_messages`，Codex / dsh=`openai_responses`），不被预设 protocol 改写；用户可再改格式，非原生时提示需本地路由。
 - **默认是「CLI 自带登录 / 默认配置」**：列表第一张固定卡片，没有任何档案启用时它就是「当前」；启用某个档案后可随时「改用 CLI 自带登录/默认配置」。
 - **隔离不变**：四套档案库互相独立；本地路由仍在 Claude Code / Codex 各自的「高级」里；dsh 无需路由。
 - 档案新增 `presetId`（可选，旧档案没有时按地址推测品牌图标），仅用于显示品牌图标。

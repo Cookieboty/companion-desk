@@ -102,7 +102,7 @@ describe('api formats routing flags', () => {
   it('defaultFormat is each CLI native protocol', () => {
     expect(defaultFormat('claude')).toBe('anthropic_messages');
     expect(defaultFormat('codex')).toBe('openai_responses');
-    expect(defaultFormat('dsh')).toBe('openai_chat_completions');
+    expect(defaultFormat('dsh')).toBe('openai_responses');
     expect(formatNeedsRouting('claude', defaultFormat('claude'))).toBe(false);
     expect(formatNeedsRouting('codex', defaultFormat('codex'))).toBe(false);
     expect(formatNeedsRouting('dsh', defaultFormat('dsh'))).toBe(false);

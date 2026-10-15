@@ -286,7 +286,7 @@ describe('ProvidersPage', () => {
     fireEvent.click(r.getByTestId('preset-custom'));
     await waitFor(() => r.getByTestId('cli-provider-baseurl'));
     expect((r.getByTestId('cli-provider-format') as HTMLSelectElement).value).toBe(
-      'openai_chat_completions',
+      'openai_responses',
     );
     expect(r.queryByTestId('cli-editor-routing-hint')).toBeNull();
     fireEvent.change(r.getByTestId('cli-provider-baseurl'), {
@@ -298,7 +298,7 @@ describe('ProvidersPage', () => {
       expect(c).toBeTruthy();
       expect(c![1][0]).toMatchObject({
         kind: 'dsh',
-        apiFormat: 'openai_chat_completions',
+        apiFormat: 'openai_responses',
       });
     });
   });

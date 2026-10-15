@@ -38,15 +38,15 @@ export const CLI_FORMATS: Record<CliProviderKind, Array<{ value: string; label: 
     { value: 'anthropic_messages', label: 'Anthropic Messages（需开启路由）' },
   ],
   dsh: [
-    { value: 'openai_chat_completions', label: 'OpenAI Chat Completions（原生）' },
     { value: 'openai_responses', label: 'OpenAI Responses（原生）' },
+    { value: 'openai_chat_completions', label: 'OpenAI Chat Completions（原生）' },
     { value: 'anthropic_messages', label: 'Anthropic Messages（原生）' },
   ],
 };
 export const CLI_DEFAULT_FORMAT: Record<CliProviderKind, string> = {
   claude: 'anthropic_messages',
   codex: 'openai_responses',
-  dsh: 'openai_chat_completions',
+  dsh: 'openai_responses',
 };
 
 export type CliEditorTarget =

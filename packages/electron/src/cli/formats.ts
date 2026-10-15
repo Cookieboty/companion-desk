@@ -60,7 +60,7 @@ export function formatNeedsRouting(
 }
 
 export function defaultFormat(kind: 'claude' | 'codex' | 'dsh'): CliApiFormat {
-  if (kind === 'dsh') return 'openai_chat_completions';
+  if (kind === 'dsh') return 'openai_responses';
   return kind === 'claude' ? 'anthropic_messages' : 'openai_responses';
 }
 
@@ -68,15 +68,15 @@ export function defaultFormat(kind: 'claude' | 'codex' | 'dsh'): CliApiFormat {
  * dsh 内置适配器原生支持三种上游协议，均无需本地路由。
  */
 export const DSH_API_FORMATS = [
-  'openai_chat_completions',
   'openai_responses',
+  'openai_chat_completions',
   'anthropic_messages',
 ] as const;
 export type DshApiFormat = (typeof DSH_API_FORMATS)[number];
 
 export const DSH_FORMAT_LABELS: Record<DshApiFormat, string> = {
-  openai_chat_completions: 'OpenAI Chat Completions（原生）',
   openai_responses: 'OpenAI Responses（原生）',
+  openai_chat_completions: 'OpenAI Chat Completions（原生）',
   anthropic_messages: 'Anthropic Messages（原生）',
 };
 
