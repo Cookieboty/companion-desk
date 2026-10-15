@@ -101,18 +101,6 @@ jest.mock('path', () => ({
   resolve: jest.fn((...args: string[]) => '/' + args.join('/')),
 }));
 
-// 模拟node-global-key-listener（可选依赖）
-jest.mock(
-  'node-global-key-listener',
-  () => ({
-    GlobalKeyboardListener: jest.fn().mockImplementation(() => ({
-      addListener: jest.fn(),
-      kill: jest.fn(),
-    })),
-  }),
-  { virtual: true },
-);
-
 // 全局测试工具
 declare global {
   namespace jest {
@@ -198,7 +186,6 @@ export const testUtils = {
     voiceSettings: {
       enabled: true,
       volume: 0.8,
-      keyboardListening: false,
       timeAnnouncement: true,
       voicePackPath: '/test/voice',
       voiceMode: 'fixed' as const,

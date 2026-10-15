@@ -250,12 +250,6 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
       <section className={styles.group}>
         <h4 className="cd-section-title">{tr('功能设置')}</h4>
         <Switch
-          checked={settings.keyboardListening}
-          onChange={(v) => handleSettingChange('keyboardListening', v)}
-          disabled={off}
-          label={tr('键盘监听（根据输入内容播放语音）')}
-        />
-        <Switch
           checked={settings.timeAnnouncement}
           onChange={(v) => handleSettingChange('timeAnnouncement', v)}
           disabled={off}
@@ -275,7 +269,7 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             {tr('：覆盖写入 localStorage，并尽量写入模型 config.voice（用户导入模型）。')}
           </li>
           <li>
-            <strong>{tr('键盘 / 定时')}</strong>
+            <strong>{tr('定时播报')}</strong>
             {tr('：同样走当前角色的柔和朗读。')}
           </li>
         </ul>

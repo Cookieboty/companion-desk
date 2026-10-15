@@ -39,8 +39,7 @@
     }
   },
   "voice": {
-    "enabled": false,
-    "keyboardListening": false
+    "enabled": false
   },
   "testing": {
     "mockElectron": true,

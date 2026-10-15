@@ -368,9 +368,6 @@ importers:
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
-      node-global-key-listener:
-        specifier: ^0.3.0
-        version: 0.3.0
       onnxruntime-web:
         specifier: 1.30.0
         version: 1.30.0
@@ -4295,9 +4292,6 @@ packages:
       encoding:
         optional: true
 
-  node-global-key-listener@0.3.0:
-    resolution: {integrity: sha512-yWB1OFrDlzXYm3+hYcE8xOscvclpBAQGXcBnc2ytenFLkZfxFipuCwhuIIlIKVtwBuDRkdXJVZMqN99cPVBFFA==}
-
   node-gyp@12.4.0:
     resolution: {integrity: sha512-OMcPNvqTCFUnNaBlmdgq+lfNqY7gTiSmNRDjY3uAXRyudeKZEZxu3CLtjMQrx4zZxCX2b/mpNqTtwuCJgXhHkw==}
     engines: {node: ^20.17.0 || >=22.9.0}
@@ -4956,10 +4950,6 @@ packages:
     resolution: {integrity: sha512-DhuTmvZWux4H1UOnWMB3sk0sbaCVOoQZjv8u1rDoTV0HTdGem9hkAZtl4JZy8P2z4Bg0nT+YMeOFyVr4zcG5Tw==}
     engines: {node: '>=16 || 14 >=14.17'}
     hasBin: true
-
-  sudo-prompt@9.2.1:
-    resolution: {integrity: sha512-Mu7R0g4ig9TUuGSxJavny5Rv0egCEtpZRNMrZaYS1vxkiIxGiGUwoezU3LazIQ+KE04hTrTfNPgxU5gzi7F5Pw==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   sumchecker@3.0.1:
     resolution: {integrity: sha512-MvjXzkz/BOfyVDkG0oFOtBxHX2u3gKbMHIF/dXblZsgD3BWOFLmHovIpZY7BykJdAjcqRCBi1WYBNdEC9yI7vg==}
@@ -7378,7 +7368,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.2': {}
 
@@ -9699,10 +9689,6 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-global-key-listener@0.3.0:
-    dependencies:
-      sudo-prompt: 9.2.1
-
   node-gyp@12.4.0:
     dependencies:
       env-paths: 2.2.1
@@ -10443,8 +10429,6 @@ snapshots:
       pirates: 4.0.7
       tinyglobby: 0.2.17
       ts-interface-checker: 0.1.13
-
-  sudo-prompt@9.2.1: {}
 
   sumchecker@3.0.1:
     dependencies:

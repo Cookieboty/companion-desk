@@ -41,7 +41,6 @@
     "ai": "^7.0.136",
     "electron-updater": "^6.6.2",
     "fflate": "^0.8.3",
-    "node-global-key-listener": "^0.3.0",
     "onnxruntime-web": "1.30.0",
     "tesseract.js": "7.0.0",
     "unpdf": "^1.8.1"

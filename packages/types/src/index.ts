@@ -22,14 +22,6 @@ export interface IpcApi {
   testTTSConnection: (config: TTSConfig) => Promise<TTSTestResult>;
   resetTTSConfig: () => Promise<void>;
 
-  // 键盘监听API
-  startKeyboardListener: () => void;
-  stopKeyboardListener: () => void;
-  onKeyboardEvent: (callback: (event: KeyboardEvent) => void) => void;
-  onKeyboardListenerStarted: (callback: () => void) => void;
-  onKeyboardListenerError: (callback: (error: string) => void) => void;
-  removeKeyboardListeners: () => void;
-
   // AI对话相关API
   openAiChat: () => Promise<{ success: boolean; error?: string }>;
 
@@ -62,16 +54,9 @@ export interface VoiceConfig {
   contributes: VoiceContribute[];
 }
 
-export interface KeyboardEvent {
-  key: string;
-  timestamp: number;
-  type: 'keydown' | 'keyup';
-}
-
 export interface VoiceSettings {
   enabled: boolean;
   volume: number;
-  keyboardListening: boolean;
   timeAnnouncement: boolean;
   voicePackPath: string;
   voiceMode: 'fixed' | 'tts' | 'mixed';
