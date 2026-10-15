@@ -211,6 +211,32 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await shot(chat, '03-sidebar-history-by-endpoint');
     await chat.click('[data-testid="list-view-all"]');
 
+    // 侧栏顶部：logo + Nomi、搜索图标、新建图标（没有整行「新对话」）
+    await expect(
+      chat.locator('[data-testid="chat-sidebar"] [data-testid="endpoint-icon-nomi"]').first(),
+    ).toBeVisible();
+    await shot(chat, '02a-sidebar-top');
+    // 搜索：图标展开为搜索框，实时过滤，高亮；Esc 清空再 Esc 收起
+    await chat.click('[data-testid="sidebar-search-toggle"]');
+    const sq = chat.locator('[data-testid="sidebar-search-input"]');
+    await expect(sq).toBeFocused();
+    await sq.fill('pong');
+    const hits = chat.locator('[data-testid="search-result"]');
+    await expect(hits.first()).toBeVisible();
+    await expect(chat.locator('[data-testid="chat-sidebar"] mark').first()).toContainText(/pong/i);
+    await expect(hits.filter({ hasText: 'Reply with exactly' })).toHaveCount(1);
+    await shot(chat, '02b-sidebar-search');
+    await sq.fill('refctr');
+    await expect(hits.filter({ hasText: 'Refactor login flow' }).first()).toBeVisible(); // 容错
+    await sq.fill('qqqzzzxxx');
+    await expect(chat.locator('[data-testid="sidebar-search-empty"]')).toBeVisible();
+    await shot(chat, '02c-sidebar-search-empty');
+    await sq.press('Escape');
+    await expect(sq).toHaveValue('');
+    await sq.press('Escape');
+    await expect(sq).toHaveCount(0);
+    await expect(rows.first()).toBeVisible();
+
     // 点击 Claude 历史 → 新标签，转录预填，续接后 Mock 回显 --resume 的 id
     await rows.first().click();
     const tabs = chat.locator('[role="tab"]');
@@ -368,5 +394,25 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
       '使用 CLI 自带登录/默认配置',
     );
     expect(readFileSync(settingsPath, 'utf8')).not.toContain('ANTHROPIC_BASE_URL');
+
+    // ── 普通模式：侧栏只剩 Nomi 会话，没有「全部 / 按端」与 CLI 历史 ─────────────
+    await chat.getByText('‹ 返回对话').click();
+    await chat.click('[data-testid="chat-mode-normal"]');
+    await expect(chat.locator('[data-testid="list-view-all"]')).toHaveCount(0);
+    await expect(chat.locator('[data-testid="cli-history"]')).toHaveCount(0);
+    await expect(chat.locator('[data-testid="history-item"][data-backend="claude"]')).toHaveCount(
+      0,
+    );
+    await expect(chat.locator('[data-testid="history-item"][data-backend="codex"]')).toHaveCount(0);
+    await expect(
+      chat.locator('[data-testid="history-item"][data-backend="nomi"]').first(),
+    ).toBeVisible();
+    await shot(chat, '18-sidebar-normal-mode');
+    await chat.click('[data-testid="new-chat"]');
+    await expect(chat.locator('[data-testid="new-chat-menu"]')).toHaveCount(0);
+    // 切回开发模式：视图控件与历史恢复
+    await chat.click('[data-testid="chat-mode-dev"]');
+    await expect(chat.locator('[data-testid="list-view-all"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="cli-history"]')).toBeVisible();
   });
 });

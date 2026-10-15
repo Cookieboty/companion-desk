@@ -161,7 +161,7 @@ test.describe('E6 · real app · AI chat history', () => {
     ]);
 
     // 新对话：不应再带上一会话内容；快捷按钮走非流式 sendMessage
-    await chat.click('[title="开始新对话"]');
+    await chat.click('[data-testid="new-chat"]');
     await chat.click('text=打个招呼');
     await chat.waitForFunction(() => document.body.innerText.includes('answer3'));
     await send('继续', 'answer4');

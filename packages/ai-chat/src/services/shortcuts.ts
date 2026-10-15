@@ -6,9 +6,13 @@
  */
 import { useEffect, useState } from 'react';
 
+/** 快捷键触发「搜索对话」时在 window 上广播的事件（侧栏监听） */
+export const SEARCH_CHATS_EVENT = 'nomi:search-chats';
+
 export type ShortcutId =
   | 'palette'
   | 'newChat'
+  | 'searchChats'
   | 'focusInput'
   | 'settings'
   | 'sidebar'
@@ -37,6 +41,7 @@ export interface ShortcutDef {
 export const SHORTCUT_DEFS: ShortcutDef[] = [
   { id: 'palette', label: '命令面板', combo: 'Mod+K' },
   { id: 'newChat', label: '新对话', combo: 'Mod+N' },
+  { id: 'searchChats', label: '搜索对话', combo: 'Mod+F' },
   { id: 'focusInput', label: '聚焦输入框', combo: 'Mod+L' },
   { id: 'settings', label: '打开设置', combo: 'Mod+,' },
   { id: 'sidebar', label: '收起 / 展开侧栏', combo: 'Mod+B' },
@@ -80,7 +85,6 @@ export const RESERVED: Record<string, string> = {
   'Mod+Q': '退出应用',
   'Mod+W': '关闭窗口',
   'Mod+R': '刷新',
-  'Mod+F': '查找',
   'Mod+Shift+I': '开发者工具',
 };
 

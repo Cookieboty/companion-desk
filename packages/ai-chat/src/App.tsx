@@ -43,6 +43,7 @@ import { forkCrossBackend, forkSameBackend } from './services/forkConversation';
 import { providerClient } from './services/providerClient';
 import { screenClient, type ScreenState } from './services/screenClient';
 import {
+  SEARCH_CHATS_EVENT,
   SHORTCUT_DEFS,
   formatCombo,
   isMac,
@@ -246,6 +247,10 @@ const AiChatContent: React.FC = () => {
     () => ({
       palette: () => setPalette((v) => !v),
       newChat,
+      searchChats: () => {
+        setSidebarCollapsed(false);
+        window.dispatchEvent(new Event(SEARCH_CHATS_EVENT));
+      },
       focusInput,
       settings: () => setSettings((s) => (s ? null : 'general')),
       sidebar: () => setSidebarCollapsed((v) => !v),
