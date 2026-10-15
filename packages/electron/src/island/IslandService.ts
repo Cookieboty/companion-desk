@@ -14,7 +14,12 @@ import { BrowserWindow, ipcMain, screen } from 'electron';
 
 import { t as tr } from '../i18n';
 
-import { islandGeometry, type IslandGeometry } from './geometry';
+import {
+  clampIslandHeight,
+  islandGeometry,
+  islandWindowRect,
+  type IslandGeometry,
+} from './geometry';
 import { islandHtml } from './islandPage';
 
 export type IslandKind = 'message' | 'agent' | 'reminder' | 'info';
@@ -147,11 +152,9 @@ export class IslandService {
     if (this.win && !this.win.isDestroyed() && same && this.ready) return this.ready;
     this.destroy();
     this.geom = g;
+    const rect = islandWindowRect(g, g.height);
     const win = new BrowserWindow({
-      x: g.x,
-      y: g.y,
-      width: g.width,
-      height: g.height,
+      ...rect,
       frame: false,
       transparent: true,
       resizable: false,
@@ -173,6 +176,9 @@ export class IslandService {
         nodeIntegration: false,
         sandbox: true,
         javascript: true,
+        // 独立的内存会话：默认会话上的统一 CSP 响应头（script-src 'self'）会连带拦掉这个 data: 页面的
+        // 内联脚本，岛就只剩一个空黑块、永远不展开。页面自带更严的 meta CSP（default-src 'none'）。
+        partition: 'nomi-island',
       },
     });
     // 菜单栏之上（≈ NSStatusWindowLevel），全屏 App 与所有桌面空间都可见
@@ -211,8 +217,16 @@ export class IslandService {
       await this.ensureWindow();
       const w = this.win;
       if (!w || w.isDestroyed()) throw new Error('island window gone');
+      // 先在隐藏状态下填充内容并量出内容高度 → 窗口高度 = 岛高度（不留空黑），再显示并播放展开动画
+      const measured = await w.webContents.executeJavaScript(
+        `window.__island.prepare(${JSON.stringify(next)})`,
+      );
+      const g = this.geom;
+      if (g) {
+        w.setBounds(islandWindowRect(g, clampIslandHeight(g, Number(measured))));
+      }
       w.showInactive();
-      await w.webContents.executeJavaScript(`window.__island.show(${JSON.stringify(next)})`);
+      await w.webContents.executeJavaScript(`window.__island.play(${JSON.stringify(next)})`);
     } catch (e) {
       this.showing = false;
       this.d.logger?.warn('island notify failed', String(e));

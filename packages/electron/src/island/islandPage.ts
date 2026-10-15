@@ -4,44 +4,71 @@
  * 点击岛 → location.hash = 'open'，主进程监听 did-navigate-in-page 打开对话窗口。
  * 动画：收起（刘海 / 小胶囊）→ 弹性展开 → 停留 → 收起 → 隐藏窗口。
  */
-import type { IslandGeometry } from './geometry';
+import { ISLAND_ROW_MAX, type IslandGeometry } from './geometry';
 
 export function islandHtml(g: IslandGeometry): string {
   const notch = g.mode === 'notch';
+  // i18n-ignore: page CSS contains Chinese comments only
   const css = `
-  :root { color-scheme: dark; }
+  :root { color-scheme: ${notch ? 'dark' : 'light dark'}; --accent: #fb9466; --w: ${g.width}px;
+    --h: ${g.height}px; --cw: ${g.collapsed.width}px; --ch: ${g.collapsed.height}px;
+    --inset: ${g.inset}px; --padT: ${g.pad.top}px; --padB: ${g.pad.bottom}px; --mx: ${g.margin.x}px;
+    --bg: #000; --fg: #f5f2ee; --fg2: rgba(245,242,238,.72); --line: rgba(255,255,255,.07);
+    --shadow: 0 4px 14px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.25); }
+  ${
+    notch
+      ? ''
+      : `@media (prefers-color-scheme: light) { :root { --bg: rgba(252,251,249,.97); --fg: #201d1a;
+    --fg2: rgba(32,29,26,.66); --line: rgba(0,0,0,.09);
+    --shadow: 0 4px 14px rgba(40,30,20,.2), 0 1px 3px rgba(40,30,20,.18); } }`
+  }
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
     font: 500 13px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI',
       'PingFang SC', 'Microsoft YaHei UI', system-ui, sans-serif; -webkit-user-select: none; }
-  #island { position: absolute; left: 50%; top: ${notch ? 0 : 0}px; transform: translateX(-50%);
-    width: ${g.collapsed.width}px; height: ${g.collapsed.height}px; background: #000; color: #f5f2ee;
-    border-radius: ${notch ? '0 0 14px 14px' : '999px'}; overflow: hidden; cursor: pointer;
-    box-shadow: ${notch ? 'none' : '0 6px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06) inset'};
-    transition: width .42s cubic-bezier(.2,1.25,.35,1), height .42s cubic-bezier(.2,1.25,.35,1),
-      border-radius .42s ease, opacity .2s ease; opacity: 0; }
+  /* 岛贴窗口顶部；窗口高度 = 岛高度（+ 胶囊投影留白），不留空黑 */
+  #island { position: absolute; top: 0; left: var(--mx); width: var(--cw); height: var(--ch);
+    margin-left: calc((var(--w) - var(--cw)) / 2); background: var(--bg); color: var(--fg);
+    border-radius: ${notch ? '0 0 14px 14px' : 'calc(var(--ch) / 2)'}; overflow: hidden; cursor: pointer;
+    box-shadow: ${notch ? 'none' : 'var(--shadow), 0 0 0 1px var(--line) inset'};
+    transition: width .34s cubic-bezier(.22,.9,.3,1), height .34s cubic-bezier(.22,.9,.3,1),
+      margin-left .34s cubic-bezier(.22,.9,.3,1), border-radius .34s ease, opacity .18s ease;
+    opacity: 0; }
   #island.on { opacity: 1; }
-  #island.open { width: ${g.width}px; height: ${g.height}px;
-    border-radius: ${notch ? '0 0 26px 26px' : '26px'}; }
-  #row { position: absolute; left: 0; right: 0; bottom: 0; height: 76px; display: flex;
-    align-items: center; gap: 12px; padding: 0 18px; box-sizing: border-box; opacity: 0;
-    transform: translateY(-6px); transition: opacity .22s ease .12s, transform .3s ease .1s; }
+  #island.open { width: var(--w); height: var(--h); margin-left: 0;
+    border-radius: ${notch ? '0 0 22px 22px' : '22px'}; }
+  /* 内容行：固定宽度 = 展开宽度，高度由内容决定；上下内边距对称，刘海屏只在顶部多一个真实刘海高度 */
+  #row { position: absolute; top: 0; left: 50%; width: var(--w); margin-left: calc(var(--w) / -2);
+    display: flex; align-items: center; gap: 12px; box-sizing: border-box;
+    padding: calc(var(--inset) + var(--padT)) 16px var(--padB); opacity: 0; transform: translateY(-4px);
+    transition: opacity .2s ease .08s, transform .28s ease .06s; }
   #island.open #row { opacity: 1; transform: none; }
-  #icon { flex: 0 0 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
-    font-size: 19px; background: rgba(251,148,102,.18); }
-  #icon[data-kind='agent'] { background: rgba(120,170,255,.18); }
-  #icon[data-kind='reminder'] { background: rgba(255,210,110,.18); }
-  #icon[data-status='done'] { background: rgba(110,220,150,.2); }
-  #icon[data-status='failed'] { background: rgba(255,110,110,.22); }
-  #icon[data-status='attention'] { background: rgba(255,210,110,.22); }
+  #icon { flex: 0 0 36px; height: 36px; border-radius: 11px; display: grid;
+    place-items: center; font-size: 18px; background: color-mix(in srgb, var(--accent) 20%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent) inset; }
+  /* 刘海屏：图标与状态点放进刘海带（避开中间的刘海），文字区紧贴其下，没有死黑 */
+  #island.notch #icon { position: absolute; left: 16px; top: calc((var(--inset) - 26px) / 2);
+    flex: none; width: 26px; height: 26px; border-radius: 8px; font-size: 14px; }
+  #island.notch #spark { position: absolute; right: 18px; top: calc((var(--inset) - 16px) / 2);
+    line-height: 16px; }
+  #island[data-kind='agent'] { --accent: #78aaff; }
+  #island[data-kind='reminder'] { --accent: #f5b73d; }
+  #island[data-status='running'] { --accent: #6ea8ff; }
+  #island[data-status='done'] { --accent: #4cc38a; }
+  #island[data-status='failed'] { --accent: #ff6b6b; }
+  #island[data-status='attention'] { --accent: #f5b73d; }
   #text { min-width: 0; flex: 1; }
   #ep { display: none; margin-right: 6px; width: 15px; height: 15px; vertical-align: -3px; }
   #ep.on { display: inline-block; }
   #title { font-weight: 650; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #body { color: rgba(245,242,238,.72); font-weight: 450; white-space: nowrap; overflow: hidden;
+  #body { color: var(--fg2); font-weight: 450; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; margin-top: 2px; }
-  #spark { flex: 0 0 auto; color: #fb9466; font-size: 15px; }
-  @media (prefers-reduced-motion: reduce) { #island, #row { transition: none; } }
+  #body:empty { display: none; }
+  #spark { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
+  #island[data-status='running'] #spark { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { #island, #row { transition: none; } #spark { animation: none !important; } }
   `;
+  // i18n-ignore: page script contains Chinese comments only
   const js = `
   const el = document.getElementById('island');
   const $ = (id) => document.getElementById(id);
@@ -90,11 +117,12 @@ export function islandHtml(g: IslandGeometry): string {
   }
   let timer = 0;
   window.__island = {
-    show(n) {
+    /** 填充内容并量出内容行高度（岛展开后的高度）；主进程据此设置窗口高度，再调用 play() */
+    prepare(n) {
       clearTimeout(timer);
       $('icon').textContent = (n.status && STATUS_ICON[n.status]) || ICON[n.kind] || ICON.info;
-      $('icon').dataset.kind = n.kind || 'info';
-      $('icon').dataset.status = n.status || '';
+      el.dataset.kind = n.kind || 'info';
+      el.dataset.status = n.status || '';
       const ep = String(n.endpoint || '');
       // endpoint icon with accessible name + tooltip
       const known = paintEndpoint($('ep'), ep);
@@ -104,13 +132,21 @@ export function islandHtml(g: IslandGeometry): string {
       $('ep').classList.toggle('on', known);
       $('tt').textContent = String(n.title || '');
       $('body').textContent = String(n.body || '');
+      const base = ${g.inset + g.pad.top + g.pad.bottom};
+      const h = base + Math.min(${ISLAND_ROW_MAX}, Math.max(${g.rowMin}, Math.ceil($('row').getBoundingClientRect().height) - base));
+      document.documentElement.style.setProperty('--h', h + 'px');
+      this.height = h;
+      return h;
+    },
+    play(n) {
       el.classList.add('on');
       requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
-      timer = setTimeout(() => window.__island.hide(), Math.max(1500, n.durationMs || 4500));
+      timer = setTimeout(() => window.__island.hide(), Math.max(1500, (n && n.durationMs) || 4500));
     },
+    show(n) { this.prepare(n); this.play(n); return this.height; },
     hide() {
       el.classList.remove('open');
-      setTimeout(() => { el.classList.remove('on'); document.title = 'hidden:' + Date.now(); }, 460);
+      setTimeout(() => { el.classList.remove('on'); document.title = 'hidden:' + Date.now(); }, 400);
     },
   };
   el.addEventListener('click', () => { location.hash = 'open-' + Date.now(); window.__island.hide(); });
@@ -121,7 +157,7 @@ export function islandHtml(g: IslandGeometry): string {
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <style>${css}</style></head><body>
-<div id="island" role="status" aria-live="polite"><div id="row"><div id="icon"></div>
+<div id="island" class="${notch ? 'notch' : 'pill'}" data-mode="${g.mode}" role="status" aria-live="polite"><div id="row"><div id="icon"></div>
 <div id="text"><div id="title"><svg id="ep" viewBox="0 0 16 16" width="15" height="15" aria-hidden="false"></svg><span id="tt"></span></div><div id="body"></div></div><div id="spark">✦</div></div></div>
 <script>${js}</script></body></html>`;
 }

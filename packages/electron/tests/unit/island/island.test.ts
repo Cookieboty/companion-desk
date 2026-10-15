@@ -16,7 +16,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { hasNotch, islandGeometry, NOTCH_WIDTH } from '../../../src/island/geometry';
+import {
+  clampIslandHeight,
+  hasNotch,
+  islandGeometry,
+  islandHeight,
+  islandWindowRect,
+  NOTCH_WIDTH,
+} from '../../../src/island/geometry';
 import { islandHtml } from '../../../src/island/islandPage';
 import { IslandService, sanitizeIsland } from '../../../src/island/IslandService';
 
@@ -46,9 +53,9 @@ describe('island geometry', () => {
     expect(g.collapsed).toEqual({ width: NOTCH_WIDTH, height: 38 });
     expect(g.x + g.width / 2).toBeCloseTo(756, 0);
     const p = islandGeometry('darwin', plainMac);
-    expect(p).toMatchObject({ mode: 'pill', y: 33 });
+    expect(p).toMatchObject({ mode: 'pill', y: 30 });
     expect(islandGeometry('darwin', notchMac, 'pill').mode).toBe('pill');
-    expect(islandGeometry('win32', win)).toMatchObject({ mode: 'pill', y: 8 });
+    expect(islandGeometry('win32', win)).toMatchObject({ mode: 'pill', y: 5 });
   });
 
   it('endpoint icons embed the Nomi mark, OpenAI and DeepSeek logos', () => {
@@ -76,7 +83,75 @@ describe('island geometry', () => {
     expect(html).toContain("setAttribute('aria-label'");
     expect(html).toContain("dsh: 'dsh'");
     expect(html).toContain('STATUS_ICON');
-    expect(html).toContain("#icon[data-status='failed']");
+    expect(html).toContain("#island[data-status='failed']");
+  });
+});
+
+describe('island layout: window height follows content', () => {
+  it('pill: symmetric 11px padding, no reserved top space', () => {
+    const g = islandGeometry('darwin', plainMac);
+    expect(g.inset).toBe(0);
+    expect(g.pad).toEqual({ top: 11, bottom: 11 });
+    // icon row 36 → 58; title + one body line 38 → 60
+    expect(islandHeight(g, 36)).toBe(58);
+    expect(islandHeight(g, 38)).toBe(60);
+    expect(g.height).toBe(60);
+    // gap to the menu bar / work area top
+    expect(g.y - plainMac.workArea.y).toBe(5);
+  });
+
+  it('notch: only the real menu-bar (notch) height is reserved, then a small gap', () => {
+    const g = islandGeometry('darwin', notchMac);
+    expect(g.inset).toBe(38);
+    expect(g.pad).toEqual({ top: 4, bottom: 12 });
+    expect(islandHeight(g, 18)).toBe(38 + 4 + 12 + 18);
+    expect(g.height).toBe(38 + 4 + 12 + 38);
+    // a smaller menu bar reserves less — never a fixed large value
+    const small = islandGeometry('darwin', {
+      ...notchMac,
+      workArea: { ...notchMac.workArea, y: 32 },
+    });
+    expect(small.inset).toBe(32);
+    expect(small.height).toBeLessThan(g.height);
+    // no notch: nothing reserved on the other displays
+    expect(islandGeometry('darwin', external).inset).toBe(0);
+    expect(islandGeometry('darwin', notchMac, 'pill').inset).toBe(0);
+  });
+
+  it('clamps content height and tolerates garbage measurements', () => {
+    const g = islandGeometry('darwin', plainMac);
+    expect(islandHeight(g, 1)).toBe(22 + 36);
+    expect(islandHeight(g, 9999)).toBe(22 + 64);
+    expect(islandHeight(g, Number.NaN)).toBe(60);
+    expect(clampIslandHeight(g, 60)).toBe(60);
+    expect(clampIslandHeight(g, 0)).toBe(58);
+  });
+
+  it('window rect = island + shadow margin (pill) or exactly the island (notch)', () => {
+    const p = islandGeometry('darwin', plainMac);
+    const r = islandWindowRect(p, 60);
+    expect(r).toEqual({ x: p.x - 14, y: p.y, width: p.width + 28, height: 78 });
+    const n = islandGeometry('darwin', notchMac);
+    expect(islandWindowRect(n, 94)).toEqual({ x: n.x, y: 0, width: n.width, height: 94 });
+  });
+
+  it('page: top padding comes from the geometry, theme + status accents exist', () => {
+    const pill = islandHtml(islandGeometry('darwin', plainMac));
+    expect(pill).toContain('--padT: 11px');
+    expect(pill).toContain('--padB: 11px');
+    expect(pill).toContain('--inset: 0px');
+    expect(pill).toContain('prefers-color-scheme: light');
+    for (const st of ['running', 'done', 'failed', 'attention'])
+      expect(pill).toContain(`#island[data-status='${st}']`);
+    expect(pill).toContain('prefers-reduced-motion');
+    expect(pill).toContain('class="pill"');
+    const notch = islandHtml(islandGeometry('darwin', notchMac));
+    expect(notch).toContain('--inset: 38px');
+    expect(notch).toContain('class="notch"');
+    expect(notch).toContain('#island.notch #icon');
+    expect(notch).not.toContain('prefers-color-scheme: light'); // 刘海始终是黑色
+    // prepare() measures the row so the main process can size the window
+    expect(notch).toContain('prepare(n)');
   });
 });
 
