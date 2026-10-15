@@ -11,7 +11,6 @@ import {
   Modal,
   Notice,
   Select,
-  Skeleton,
   Switch,
   Tabs,
   Textarea,

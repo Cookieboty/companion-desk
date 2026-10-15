@@ -26,12 +26,7 @@ import ppStyles from '../ProviderPanel/index.module.css';
 import { Monogram } from '../ProviderPanel/shared';
 
 import { inferBrand } from './cliBrand';
-import {
-  CLI_DEFAULT_FORMAT,
-  CLI_FORMATS,
-  CliProviderEditor,
-  type CliEditorTarget,
-} from './CliProviderEditor';
+import { CLI_FORMATS, CliProviderEditor, type CliEditorTarget } from './CliProviderEditor';
 import { CliVersionCard } from './CliVersionCard';
 import styles from './index.module.css';
 
