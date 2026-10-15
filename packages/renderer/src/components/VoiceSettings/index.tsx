@@ -257,6 +257,18 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
         />
       </section>
 
+      <section className={styles.group} data-testid="fish-voice-note">
+        <h4 className="cd-section-title">{tr('Fish Audio 播报')}</h4>
+        <p className="cd-muted" style={{ fontSize: 12 }}>
+          {tr(
+            '默认走内置 Fish Audio（可爱 Nomi 预设）。服务未就绪时自动回退下方系统音色。不提供上传克隆。更多选项见「TTS 语音配置」。',
+          )}
+        </p>
+        <p className="cd-notice" style={{ fontSize: 12 }} data-testid="fish-attribution">
+          <strong>Built with Fish Audio</strong>
+        </p>
+      </section>
+
       <section className={styles.group}>
         <h4 className="cd-section-title">{tr('使用说明')}</h4>
         <ul className={styles.help}>
