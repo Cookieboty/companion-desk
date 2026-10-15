@@ -302,21 +302,33 @@ export function drawArmStrip(
   armFrame.hy = tmp[1];
   armFrame.hPsi = phiOf(ARM_HAND_S) - sgn * g.theta + Math.PI + sgnRot * p.w;
   armFrame.fore = 1 - raise * 0.75;
-  // Curl the wrist back on-canvas when the tip would leave the 960×1120 frame.
+  // Soft canvas keep: blend wrist toward an on-canvas aim instead of hard-replacing hPsi.
   {
-    const handLen = 340; // ~ay * HAND_SCALE
+    const handLen = 300;
     const tipX = armFrame.hx + Math.sin(armFrame.hPsi) * handLen;
     const tipY = armFrame.hy - Math.cos(armFrame.hPsi) * handLen;
-    const margin = 36;
-    if (tipX > 960 - margin || tipX < margin || tipY < margin || tipY > 1120 - margin) {
-      const tx = Math.max(120, Math.min(840, (armFrame.hx + 480) * 0.5));
-      const ty = Math.max(120, armFrame.hy - 180);
-      armFrame.hPsi = Math.atan2(tx - armFrame.hx, armFrame.hy - ty);
+    const margin = 48;
+    const ox = tipX > 960 - margin || tipX < margin || tipY < margin || tipY > 1120 - margin;
+    if (ox) {
+      const tx = Math.max(140, Math.min(820, armFrame.hx - Math.sign(armFrame.hx - 480 || 1) * 70));
+      const ty = Math.max(140, Math.min(980, armFrame.hy - 140));
+      const aim = Math.atan2(tx - armFrame.hx, armFrame.hy - ty);
+      // shortest-angle blend
+      let d = aim - armFrame.hPsi;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      armFrame.hPsi += d * 0.65;
     }
   }
 }
 
 /** Draw a hand piece at the attach frame (call right after drawArmStrip). */
+/** Scale a hand piece so its authored sleeve width matches the live cuff. */
+export function handScaleFor(meta: HandPieceMeta, cuffWidth: number): number {
+  const sw = Math.max(40, meta.sleeveW || 160);
+  return Math.max(0.4, Math.min(0.75, (cuffWidth * 0.78) / sw));
+}
+
 export function drawHandPiece(
   ctx: Ctx,
   img: RigImageSource,
@@ -332,6 +344,9 @@ export function drawHandPiece(
   ctx.translate(armFrame.hx, armFrame.hy);
   ctx.rotate(armFrame.hPsi);
   ctx.scale(sgn * scale, scale);
+  // Nudge up the sleeve so cuffY sits on the mesh cuff (hand arts include a sleeve stub)
+  const cuffLift = Math.max(0, (meta.ay - (meta.cuffY || meta.ay * 0.6)) * 0.12);
+  ctx.translate(0, cuffLift);
   ctx.drawImage(img, -meta.ax, -meta.ay);
   ctx.restore();
   ctx.globalAlpha = prev;

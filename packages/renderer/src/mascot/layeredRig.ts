@@ -15,6 +15,7 @@ import {
   bodyShoulderFill,
   drawArmPieces,
   drawHandPiece,
+  handScaleFor,
   shoulderPlug,
   type ArmGeom,
   type HandPieceMeta,
@@ -1523,6 +1524,10 @@ export function drawRig(
     } else {
       part(name, rot, lift);
     }
+    // Wrist gently follows elbow so flaps read as a forearm, not a hinged PNG.
+    const elbow = ex[ia + 1] * DEG;
+    const wrist = ex[ia + 2] * DEG + elbow * 0.12;
+    const hasHand = !!(meta && himg);
     drawArmPieces(
       ctx,
       img,
@@ -1531,15 +1536,20 @@ export function drawRig(
       off as [number, number],
       {
         a: ex[ia] * DEG - sgn * rot,
-        e: ex[ia + 1] * DEG,
-        w: ex[ia + 2] * DEG,
+        e: elbow,
+        w: wrist,
         lift,
         handAlpha: 1,
         fore: ex[side === 'l' ? IDX.lF : IDX.rF],
       },
-      meta && himg ? ARM_HAND_S + 40 : 1e9,
+      // stop the mesh at the cuff so the hand piece owns the sleeve stub (no double cuff)
+      hasHand ? ARM_HAND_S + 8 : 1e9,
     );
-    if (meta && himg) drawHandPiece(ctx, himg, meta, sgn, 1);
+    if (hasHand) {
+      const cuffW = Math.abs(geom.nmax - geom.nmin);
+      const hs = handScaleFor(meta!, cuffW);
+      drawHandPiece(ctx, himg!, meta!, sgn, 1, hs);
+    }
   };
   const armsPass = () => {
     // Fill the armpit notch that neither arm layer covers (body opaque ∩ body-noarm empty).

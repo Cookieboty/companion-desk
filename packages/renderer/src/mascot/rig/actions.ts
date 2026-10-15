@@ -61,9 +61,18 @@ function arm(
     } else keys.push([dur, pose[i]]);
     return keys;
   };
+  const tHandOn = Math.max(0.12, t0 * 0.55);
+  const tHandOff = ret ? Math.max(t1, dur - 0.35) : dur;
   return [
     T(`${side}On`, [0, 1]),
-    T(`${side}Hand`, [0, hand]),
+    // swap the hand shape after the lift starts and drop it before the arm fully rests
+    T(
+      `${side}Hand`,
+      [0, 0],
+      [tHandOn, hand, 's'],
+      [tHandOff, hand, 's'],
+      [Math.min(dur, tHandOff + 0.01), 0, 's'],
+    ),
     { p: `${side}A`, k: key(0), osc: opts.oscA, oscWin: win },
     { p: `${side}E`, k: key(1), osc: opts.oscE, oscWin: win },
     { p: `${side}W`, k: key(2), osc: opts.oscW, oscWin: win },
@@ -97,22 +106,23 @@ const pulse = (p: string, from: number, peak: number, to: number, v: number): Tr
 const P = {
   // Mild on-canvas raises: long right sleeve exits the 960px frame past ~22° shoulder.
   // Distal foreshortening + stump-locked mesh keep sleeve+hand continuous and visible.
-  waveUp: { r: [12, 85, 0], l: [10, 88, -12] },
-  waveOut: { r: [14, 78, 0], l: [14, 78, 0] },
-  fistUp: { r: [14, 88, -8], l: [12, 90, -16] },
-  peaceUp: { r: [12, 85, 0], l: [10, 88, -12] },
-  thumb: { r: [8, 80, 15], l: [6, 80, 15] },
-  point: { r: [6, 85, 0], l: [4, 85, 0] },
-  chin: { r: [4, 90, 0], l: [2, 90, 0] },
-  cheeks: { r: [4, 90, 0], l: [4, 90, 0] },
-  surprise: { r: [10, 65, 0], l: [10, 65, 0] },
-  salute: { r: [14, 88, -6], l: [12, 85, 0] },
-  heart: { r: [6, 85, 35], l: [4, 85, 35] },
-  chest: { r: [6, 82, 35], l: [4, 80, 30] },
-  type: { r: [8, 90, 45], l: [6, 90, 45] },
-  stretch: { r: [14, 68, -12], l: [12, 65, -8] },
-  pray: { r: [6, 85, 30], l: [4, 85, 35] },
-  clap: { r: [6, 85, 30], l: [4, 82, 35] },
+  // [shoulder°, elbow°, wrist°] — wrist authored, not left at 0 (flat PNG flap)
+  waveUp: { r: [12, 82, 18], l: [10, 85, -14] },
+  waveOut: { r: [14, 76, 22], l: [14, 76, -18] },
+  fistUp: { r: [14, 86, -10], l: [12, 88, -16] },
+  peaceUp: { r: [12, 82, 8], l: [10, 85, -10] },
+  thumb: { r: [8, 78, 22], l: [6, 78, 18] },
+  point: { r: [6, 82, 12], l: [4, 82, 10] },
+  chin: { r: [5, 92, 28], l: [3, 90, 24] },
+  cheeks: { r: [5, 90, 20], l: [5, 90, 20] },
+  surprise: { r: [10, 62, 8], l: [10, 62, -8] },
+  salute: { r: [14, 86, -18], l: [12, 82, -8] },
+  heart: { r: [7, 84, 42], l: [5, 84, 40] },
+  chest: { r: [6, 80, 38], l: [4, 78, 32] },
+  type: { r: [8, 88, 48], l: [6, 88, 46] },
+  stretch: { r: [14, 66, -14], l: [12, 64, -10] },
+  pray: { r: [6, 84, 34], l: [4, 84, 36] },
+  clap: { r: [7, 84, 36], l: [5, 82, 40] },
 } as const satisfies Record<string, { r: Pose; l: Pose }>;
 
 export const ACTIONS: readonly ActionDef[] = [
@@ -125,8 +135,8 @@ export const ACTIONS: readonly ActionDef[] = [
     trigger: '问候 / 早安 / 首次打开 / 用户说“你好”', // i18n-ignore
     tracks: [
       ...arm('r', HAND.wave, P.waveOut.r, 0.45, 1.85, 2.3, {
-        oscW: [16, 2.6],
-        oscE: [5, 2.6, 1.2],
+        oscW: [18, 2.8, 0],
+        oscE: [4, 2.8, 1.4],
         win: [0.55, 1.85],
       }),
       pulse('headRot', 0.2, 0.7, 2.2, 7),
@@ -143,7 +153,11 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: '界面首次出现的轻招呼（点头 + 小幅挥手）', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.wave, P.waveUp.r, 0.35, 1.5, 1.9, { oscW: [11, 3, 0], win: [0.45, 1.5] }),
+      ...arm('r', HAND.wave, P.waveUp.r, 0.35, 1.5, 1.9, {
+        oscW: [14, 3.1, 0],
+        oscE: [3, 3.1, 1.3],
+        win: [0.45, 1.5],
+      }),
       T('headNod', [0, 0], [0.3, 8, 'o'], [0.6, 0, 'io'], [0.95, 5, 'o'], [1.4, 0]),
       hold('mouth', 0.25, 1.6, MOUTH.smile),
     ],
@@ -199,7 +213,10 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 1.9,
     trigger: '收到指令 / “收到！”', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.salute.r, 0.35, 1.4, 1.9),
+      ...arm('r', HAND.rest, P.salute.r, 0.35, 1.4, 1.9, {
+        oscW: [3, 1.6, 0],
+        win: [0.55, 1.35],
+      }),
       T('headRot', [0, 0], [0.4, -3, 'o'], [1.5, -3], [1.9, 0]),
       hold('eyeL', 0.3, 1.5, EYE.determined),
       hold('eyeR', 0.3, 1.5, EYE.determined),
@@ -218,7 +235,12 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: 'AI 思考中 / 长时间等待', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.chin.r, 0.5, 3.4, 3.4, { ease: 'io' }),
+      ...arm('r', HAND.rest, P.chin.r, 0.5, 3.4, 3.4, {
+        ease: 'io',
+        oscW: [4, 1.1, 0],
+        oscE: [2, 0.9, 0.5],
+        win: [0.8, 99],
+      }),
       hold('armFront', 0.3, 99, 1),
       T('headRot', [0, 0], [0.7, -9, 'io'], [3.4, -9]),
       T('gazeX', [0, 0], [0.7, -0.5, 'io'], [3.4, -0.5]),
@@ -348,7 +370,10 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.6,
     trigger: '表达喜欢 / 被夸奖 / 摸头', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.heart.r, 0.45, 2.1, 2.6),
+      ...arm('r', HAND.rest, P.heart.r, 0.45, 2.1, 2.6, {
+        oscW: [5, 1.8, 0],
+        win: [0.6, 2.0],
+      }),
       T('headRot', [0, 0], [0.5, 8, 'b'], [2.1, 8], [2.6, 0]),
       hold('eyeL', 0.3, 2.3, EYE.happy),
       hold('eyeR', 0.3, 2.3, EYE.happy),
@@ -661,22 +686,28 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.4,
     trigger: '夸奖 / 用户完成目标', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.clap.r, P.clap.l, 0.35, 2.0, 2.4, {
+      ...arm('r', HAND.rest, P.clap.r, 0.35, 2.0, 2.4, {
         ease: 'io',
-        oscE: [6, 3.5, 0],
-        oscW: [6, 3.5, 0],
+        oscE: [7, 3.6, 0],
+        oscW: [8, 3.6, 0.2],
+        win: [0.5, 2.0],
+      }),
+      ...arm('l', HAND.rest, P.clap.l, 0.35, 2.0, 2.4, {
+        ease: 'io',
+        oscE: [7, 3.6, Math.PI],
+        oscW: [8, 3.6, Math.PI + 0.2],
         win: [0.5, 2.0],
       }),
       hold('armFront', 0.25, 99, 1),
       T(
         'bodyY',
         [0, 0],
-        [0.5, -2],
-        [0.75, 1],
-        [1.0, -2],
-        [1.25, 1],
-        [1.5, -2],
-        [1.75, 0],
+        [0.5, -2, 'io'],
+        [0.75, 1, 'io'],
+        [1.0, -2, 'io'],
+        [1.25, 1, 'io'],
+        [1.5, -2, 'io'],
+        [1.75, 0, 'io'],
         [2.4, 0],
       ),
       hold('eyeL', 0.2, 2.1, EYE.happy),
