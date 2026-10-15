@@ -5,7 +5,17 @@
  * 明文 key 只单向提交给主进程；界面只显示掩码。
  */
 import { t } from '@nomi-ai/ui';
-import { Badge, Button, Card, EmptyState, Modal, Notice, Select, ToastProvider } from '@nomi-ai/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Modal,
+  ModalHostContext,
+  Notice,
+  Select,
+  ToastProvider,
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -228,15 +238,12 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
   if (!isVisible) return null;
   const locked = Boolean(state?.overrideId);
   const current = state?.effectiveProviderId;
-  const title =
-    view.kind === 'add' ? t('添加供应商') : view.kind === 'edit' ? t('供应商设置') : t('AI 供应商');
-
   return (
     <ToastProvider>
       <Modal
         open
         onClose={onClose}
-        title={title}
+        title={t('AI 供应商')}
         size="lg"
         data-testid="provider-panel"
         bodyClassName={styles.modalBody}
@@ -259,57 +266,14 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
               )}
             </Notice>
           )}
-          {locked && view.kind === 'list' && (
+          {locked && (
             <Notice tone="warning">
               {t('环境变量 COMPANION_PROVIDER=')}
               {state!.overrideId} {t('已锁定对话供应商，此处切换不会生效。')}
             </Notice>
           )}
 
-          {view.kind === 'add' && (
-            <>
-              <div className={styles.inline}>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  data-testid="add-back"
-                  onClick={() => setView({ kind: 'list' })}
-                >
-                  {t('‹ 返回')}
-                </Button>
-              </div>
-              <AddProvider
-                presets={presets}
-                onPick={(p) => setView({ kind: 'edit', target: { kind: 'new', preset: p } })}
-              />
-            </>
-          )}
-
-          {view.kind === 'edit' && (
-            <ProviderEditor
-              key={
-                view.target.kind === 'edit'
-                  ? view.target.provider.id
-                  : `new-${view.target.preset.id}`
-              }
-              target={view.target}
-              isActive={view.target.kind === 'edit' && view.target.provider.id === current}
-              onBack={() =>
-                setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
-              }
-              onSaved={(result) => {
-                setError(null);
-                if (result.pickModel) {
-                  setView({ kind: 'edit', target: { kind: 'edit', provider: result.provider } });
-                } else {
-                  setView({ kind: 'list' });
-                }
-              }}
-              onError={onError}
-            />
-          )}
-
-          {view.kind === 'list' && state && (
+          {state && (
             <>
               <div className={styles.inline}>
                 <span className="cd-muted">
@@ -401,6 +365,55 @@ export const ProviderPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           )}
         </div>
       </Modal>
+
+      {(view.kind === 'add' || view.kind === 'edit') && (
+        <ModalHostContext.Provider value={{ mode: 'drawer' }}>
+          <Modal
+            open
+            onClose={() => setView({ kind: 'list' })}
+            title={
+              view.kind === 'add'
+                ? t('添加供应商')
+                : view.target.kind === 'edit'
+                  ? t('供应商设置')
+                  : t('添加 {0}', view.target.preset.name)
+            }
+            size="lg"
+            data-testid="provider-drawer"
+            bodyClassName={styles.drawerBody}
+          >
+            {view.kind === 'add' && (
+              <AddProvider
+                presets={presets}
+                onPick={(p) => setView({ kind: 'edit', target: { kind: 'new', preset: p } })}
+              />
+            )}
+            {view.kind === 'edit' && (
+              <ProviderEditor
+                key={
+                  view.target.kind === 'edit'
+                    ? view.target.provider.id
+                    : `new-${view.target.preset.id}`
+                }
+                target={view.target}
+                isActive={view.target.kind === 'edit' && view.target.provider.id === current}
+                onBack={() =>
+                  setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
+                }
+                onSaved={(result) => {
+                  setError(null);
+                  if (result.pickModel) {
+                    setView({ kind: 'edit', target: { kind: 'edit', provider: result.provider } });
+                  } else {
+                    setView({ kind: 'list' });
+                  }
+                }}
+                onError={onError}
+              />
+            )}
+          </Modal>
+        </ModalHostContext.Provider>
+      )}
     </ToastProvider>
   );
 };

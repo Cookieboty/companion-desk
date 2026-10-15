@@ -304,6 +304,35 @@ describe('ProvidersPage', () => {
     await waitFor(() => expect(calls.some(([c]) => c === 'ai:cli-provider:remove')).toBe(true));
   });
 
+  it('添加/编辑在右侧抽屉打开，主列表与高级区仍可见', async () => {
+    setup([prof({ id: 'c1', kind: 'codex', name: '已有档案', apiFormat: 'openai_responses' })]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'codex');
+    const r = render(<ProvidersPage />);
+    await waitFor(() => r.getByTestId('cli-provider-row-c1'));
+    expect(r.queryByTestId('cli-provider-drawer')).toBeNull();
+
+    fireEvent.click(r.getByTestId('cli-add-provider'));
+    await waitFor(() => expect(r.getByTestId('cli-provider-drawer')).toBeTruthy());
+    expect(r.getByTestId('add-provider')).toBeTruthy();
+    expect(r.getByTestId('cli-provider-row-c1')).toBeTruthy();
+    expect(r.getByTestId('cli-version-card-codex')).toBeTruthy();
+    expect(r.getByTestId('cli-route-advanced')).toBeTruthy();
+
+    fireEvent.click(r.getByTestId('preset-deepseek'));
+    await waitFor(() => r.getByTestId('cli-provider-form'));
+    expect(r.getByTestId('cli-provider-drawer')).toBeTruthy();
+    expect(r.getByTestId('cli-provider-row-c1')).toBeTruthy();
+
+    fireEvent.click(
+      r.getByTestId('cli-provider-row-c1').querySelector('[data-testid=cli-provider-edit]')!,
+    );
+    await waitFor(() => {
+      expect(r.getByTestId('cli-provider-form')).toBeTruthy();
+      expect(r.getByTestId('cli-provider-drawer')).toBeTruthy();
+    });
+    expect(r.getByTestId('cli-version-card-codex')).toBeTruthy();
+  });
+
   it('「监视与会话」标签：监视开关、系统通知、检测到的工具、立即扫描；与提醒设置分开', async () => {
     const calls = setup([]);
     localStorage.setItem('ai-chat:providerEndpoint', 'monitor');

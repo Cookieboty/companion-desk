@@ -240,3 +240,18 @@
 .modelSkeleton {
   margin-top: var(--cd-space-2);
 }
+
+/* 右侧抽屉内：预设列表吃满高度，避免主页再嵌长表单 */
+.drawerBody {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.drawerBody .addWrap {
+  flex: 1;
+  min-height: 0;
+}
+.drawerBody .presetScroll {
+  max-height: none;
+  flex: 1;
+}

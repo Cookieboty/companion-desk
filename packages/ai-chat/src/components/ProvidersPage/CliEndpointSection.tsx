@@ -3,7 +3,17 @@
  * 说明（写到哪里、与其它端点独立）→ 版本卡片（检测 / 更新 / 安装）→ 供应商（与 Nomi 同样的卡片列表 +
  * 添加（预设模板）/ 编辑 / 启用 / 测速 / 删除；默认「使用 CLI 自带登录/默认配置」）→「高级」（本地路由、存储路径）。
  */
-import { Badge, Button, Card, EmptyState, Notice, ToastProvider, t } from '@nomi-ai/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Modal,
+  ModalHostContext,
+  Notice,
+  ToastProvider,
+  t,
+} from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -229,218 +239,220 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
         <CliVersionCard kind={kind} />
 
         <section className={styles.card} data-testid={`cli-provider-list-${kind}`}>
-          {view.kind === 'list' && (
-            <div className={ppStyles.stack}>
-              <div className={ppStyles.inline}>
-                <span className="cd-muted" data-testid="cli-ep-status">
-                  {t('当前：')}
-                  <b data-testid="cli-ep-active">
-                    {active ? active.name : t('使用 CLI 自带登录/默认配置')}
-                  </b>
-                  {active?.model && (
-                    <>
-                      {' '}
-                      · <span>{active.model}</span>
-                    </>
-                  )}
-                </span>
-                <span className="cd-spacer" />
-                <Button
-                  variant="primary"
-                  data-testid="cli-add-provider"
-                  onClick={() => setView({ kind: 'add' })}
-                >
-                  {t('＋ 添加供应商')}
-                </Button>
-              </div>
-              <dl className={styles.facts}>
-                <dt>{t('来源')}</dt>
-                <dd data-testid="cli-ep-source">
-                  {active ? t('Nomi 档案库（独立）') : t('CLI 自带登录 / 默认配置')}
-                </dd>
-                <dt>{t('上游格式')}</dt>
-                <dd>{active ? formatLabel(kind, active.apiFormat) : '—'}</dd>
-                <dt>{t('本地路由')}</dt>
-                <dd data-testid="cli-ep-routing" data-mode={rs.mode}>
-                  {rs.text}
-                </dd>
-              </dl>
-
-              <Card
-                active={!active}
-                className={ppStyles.card}
-                data-testid="cli-provider-default"
-                title={
-                  <span className={ppStyles.inline}>
-                    <EndpointIcon backend={kind} size={28} decorative />
-                    <span>{t('CLI 自带登录 / 默认配置')}</span>
-                    {!active && <Badge data-testid="cli-default-current">{t('当前')}</Badge>}
-                  </span>
-                }
-                subtitle={t(
-                  '不经过 Nomi：沿用 {0} 自己的登录或配置（默认）。启用下方任一供应商后会改用它。',
-                  NAME[kind],
+          <div className={ppStyles.stack}>
+            <div className={ppStyles.inline}>
+              <span className="cd-muted" data-testid="cli-ep-status">
+                {t('当前：')}
+                <b data-testid="cli-ep-active">
+                  {active ? active.name : t('使用 CLI 自带登录/默认配置')}
+                </b>
+                {active?.model && (
+                  <>
+                    {' '}
+                    · <span>{active.model}</span>
+                  </>
                 )}
-                actions={
-                  active ? (
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      disabled={busy}
-                      data-testid="cli-ep-use-default"
-                      onClick={() => void deactivate()}
-                    >
-                      {t('改用 CLI 自带登录/默认配置')}
-                    </Button>
-                  ) : undefined
-                }
-              />
+              </span>
+              <span className="cd-spacer" />
+              <Button
+                variant="primary"
+                data-testid="cli-add-provider"
+                onClick={() => setView({ kind: 'add' })}
+              >
+                {t('＋ 添加供应商')}
+              </Button>
+            </div>
+            <dl className={styles.facts}>
+              <dt>{t('来源')}</dt>
+              <dd data-testid="cli-ep-source">
+                {active ? t('Nomi 档案库（独立）') : t('CLI 自带登录 / 默认配置')}
+              </dd>
+              <dt>{t('上游格式')}</dt>
+              <dd>{active ? formatLabel(kind, active.apiFormat) : '—'}</dd>
+              <dt>{t('本地路由')}</dt>
+              <dd data-testid="cli-ep-routing" data-mode={rs.mode}>
+                {rs.text}
+              </dd>
+            </dl>
 
-              {profiles.length === 0 && (
-                <EmptyState
-                  icon="🔌"
-                  title={t('还没有第三方供应商')}
-                  description={t('点「添加供应商」，选择预设模板或自定义配置')}
+            <Card
+              active={!active}
+              className={ppStyles.card}
+              data-testid="cli-provider-default"
+              title={
+                <span className={ppStyles.inline}>
+                  <EndpointIcon backend={kind} size={28} decorative />
+                  <span>{t('CLI 自带登录 / 默认配置')}</span>
+                  {!active && <Badge data-testid="cli-default-current">{t('当前')}</Badge>}
+                </span>
+              }
+              subtitle={t(
+                '不经过 Nomi：沿用 {0} 自己的登录或配置（默认）。启用下方任一供应商后会改用它。',
+                NAME[kind],
+              )}
+              actions={
+                active ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={busy}
+                    data-testid="cli-ep-use-default"
+                    onClick={() => void deactivate()}
+                  >
+                    {t('改用 CLI 自带登录/默认配置')}
+                  </Button>
+                ) : undefined
+              }
+            />
+
+            {profiles.length === 0 && (
+              <EmptyState
+                icon="🔌"
+                title={t('还没有第三方供应商')}
+                description={t('点「添加供应商」，选择预设模板或自定义配置')}
+              />
+            )}
+            {profiles.map((p) => {
+              const tr = tests[p.id];
+              return (
+                <Card
+                  key={p.id}
+                  active={p.active}
+                  className={ppStyles.card}
+                  data-testid={`cli-provider-row-${p.id}`}
+                  title={
+                    <span className={ppStyles.inline}>
+                      <Monogram name={p.name} brand={activeBrand(p)} size={28} />
+                      <span>{p.name}</span>
+                      {p.active && <Badge data-testid="cli-provider-active">{t('使用中')}</Badge>}
+                      {p.needsRouting && (
+                        <Badge tone="warning" data-testid="cli-provider-needs-routing">
+                          {t('需路由')}
+                        </Badge>
+                      )}
+                    </span>
+                  }
+                  subtitle={
+                    <span>
+                      {formatLabel(kind, p.apiFormat)} ·{' '}
+                      <code className="cd-code">{p.baseUrl}</code>
+                      {p.model ? ` · ${p.model}` : ''}
+                    </span>
+                  }
+                  actions={
+                    <>
+                      {tr && (
+                        <Badge
+                          tone={tr === 'pending' ? 'neutral' : tr.ok ? 'success' : 'danger'}
+                          data-testid="cli-provider-test-result"
+                          role="status"
+                        >
+                          {tr === 'pending'
+                            ? t('测速中…')
+                            : tr.ok
+                              ? `${tr.latencyMs} ms${tr.note ? ` · ${tr.note}` : ''}`
+                              : t('失败：{0}', (tr.error ?? '').slice(0, 80))}
+                        </Badge>
+                      )}
+                      {!p.active && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={busy}
+                          data-testid="cli-provider-enable"
+                          onClick={() => void activate(p)}
+                        >
+                          {t('启用')}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        disabled={tr === 'pending'}
+                        data-testid="cli-provider-test"
+                        onClick={() => void test(p)}
+                      >
+                        {t('⚡ 测速')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        data-testid="cli-provider-edit"
+                        onClick={() =>
+                          setView({ kind: 'edit', target: { kind: 'edit', profile: p } })
+                        }
+                      >
+                        {t('编辑')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={busy}
+                        data-testid="cli-provider-delete"
+                        onClick={() => {
+                          if (!window.confirm(t('删除供应商「{0}」及其 Token？', p.name))) return;
+                          void guard(async () => (await cliProviderClient.remove(p.id), refresh()));
+                        }}
+                      >
+                        {t('删除')}
+                      </Button>
+                    </>
+                  }
+                >
+                  <div className="cd-muted">{p.hasKey ? `Token ${p.keyHint}` : t('无 Token')}</div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        {(view.kind === 'add' || view.kind === 'edit') && (
+          <ModalHostContext.Provider value={{ mode: 'drawer' }}>
+            <Modal
+              open
+              onClose={() => setView({ kind: 'list' })}
+              title={
+                view.kind === 'add'
+                  ? t('添加供应商')
+                  : view.target.kind === 'edit'
+                    ? t('编辑供应商')
+                    : t('添加 {0}', view.target.preset.name)
+              }
+              size="lg"
+              data-testid="cli-provider-drawer"
+              bodyClassName={ppStyles.drawerBody}
+            >
+              {view.kind === 'add' && (
+                <div className={ppStyles.stack}>
+                  <AddProvider
+                    presets={presets}
+                    onPick={(preset) => setView({ kind: 'edit', target: { kind: 'new', preset } })}
+                  />
+                </div>
+              )}
+              {view.kind === 'edit' && (
+                <CliProviderEditor
+                  key={
+                    view.target.kind === 'edit'
+                      ? view.target.profile.id
+                      : `new-${view.target.preset.id}`
+                  }
+                  endpoint={kind}
+                  target={view.target}
+                  onBack={() =>
+                    setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
+                  }
+                  onError={(e) => setMsg(e instanceof Error ? e.message : String(e))}
+                  onSaved={(p, doActivate) => {
+                    setView({ kind: 'list' });
+                    setMsg(view.target.kind === 'edit' ? t('已更新档案') : t('已保存档案'));
+                    refresh();
+                    if (doActivate) void activate(p);
+                  }}
                 />
               )}
-              {profiles.map((p) => {
-                const tr = tests[p.id];
-                return (
-                  <Card
-                    key={p.id}
-                    active={p.active}
-                    className={ppStyles.card}
-                    data-testid={`cli-provider-row-${p.id}`}
-                    title={
-                      <span className={ppStyles.inline}>
-                        <Monogram name={p.name} brand={activeBrand(p)} size={28} />
-                        <span>{p.name}</span>
-                        {p.active && <Badge data-testid="cli-provider-active">{t('使用中')}</Badge>}
-                        {p.needsRouting && (
-                          <Badge tone="warning" data-testid="cli-provider-needs-routing">
-                            {t('需路由')}
-                          </Badge>
-                        )}
-                      </span>
-                    }
-                    subtitle={
-                      <span>
-                        {formatLabel(kind, p.apiFormat)} ·{' '}
-                        <code className="cd-code">{p.baseUrl}</code>
-                        {p.model ? ` · ${p.model}` : ''}
-                      </span>
-                    }
-                    actions={
-                      <>
-                        {tr && (
-                          <Badge
-                            tone={tr === 'pending' ? 'neutral' : tr.ok ? 'success' : 'danger'}
-                            data-testid="cli-provider-test-result"
-                            role="status"
-                          >
-                            {tr === 'pending'
-                              ? t('测速中…')
-                              : tr.ok
-                                ? `${tr.latencyMs} ms${tr.note ? ` · ${tr.note}` : ''}`
-                                : t('失败：{0}', (tr.error ?? '').slice(0, 80))}
-                          </Badge>
-                        )}
-                        {!p.active && (
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            disabled={busy}
-                            data-testid="cli-provider-enable"
-                            onClick={() => void activate(p)}
-                          >
-                            {t('启用')}
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          disabled={tr === 'pending'}
-                          data-testid="cli-provider-test"
-                          onClick={() => void test(p)}
-                        >
-                          {t('⚡ 测速')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={busy}
-                          data-testid="cli-provider-edit"
-                          onClick={() =>
-                            setView({ kind: 'edit', target: { kind: 'edit', profile: p } })
-                          }
-                        >
-                          {t('编辑')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          disabled={busy}
-                          data-testid="cli-provider-delete"
-                          onClick={() => {
-                            if (!window.confirm(t('删除供应商「{0}」及其 Token？', p.name))) return;
-                            void guard(
-                              async () => (await cliProviderClient.remove(p.id), refresh()),
-                            );
-                          }}
-                        >
-                          {t('删除')}
-                        </Button>
-                      </>
-                    }
-                  >
-                    <div className="cd-muted">
-                      {p.hasKey ? `Token ${p.keyHint}` : t('无 Token')}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
-          {view.kind === 'add' && (
-            <div className={ppStyles.stack}>
-              <div className={ppStyles.inline}>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  data-testid="cli-add-back"
-                  onClick={() => setView({ kind: 'list' })}
-                >
-                  {t('‹ 返回')}
-                </Button>
-              </div>
-              <AddProvider
-                presets={presets}
-                onPick={(preset) => setView({ kind: 'edit', target: { kind: 'new', preset } })}
-              />
-            </div>
-          )}
-
-          {view.kind === 'edit' && (
-            <CliProviderEditor
-              key={
-                view.target.kind === 'edit'
-                  ? view.target.profile.id
-                  : `new-${view.target.preset.id}`
-              }
-              endpoint={kind}
-              target={view.target}
-              onBack={() =>
-                setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
-              }
-              onError={(e) => setMsg(e instanceof Error ? e.message : String(e))}
-              onSaved={(p, doActivate) => {
-                setView({ kind: 'list' });
-                setMsg(view.target.kind === 'edit' ? t('已更新档案') : t('已保存档案'));
-                refresh();
-                if (doActivate) void activate(p);
-              }}
-            />
-          )}
-        </section>
+            </Modal>
+          </ModalHostContext.Provider>
+        )}
 
         <details className={styles.advanced} data-testid="cli-route-advanced">
           <summary>{t('高级')}</summary>

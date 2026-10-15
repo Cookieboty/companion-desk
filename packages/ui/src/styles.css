@@ -1212,3 +1212,6 @@
 .cd-modal--drawer .cd-modal__title {
   flex: 1;
 }
+.cd-modal--drawer.cd-modal--lg {
+  width: min(720px, 96vw);
+}
