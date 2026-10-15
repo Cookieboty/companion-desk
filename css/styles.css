@@ -911,6 +911,15 @@ h3 { font-size: 1.25rem; letter-spacing: -0.02em; }
   color: var(--nomi-warm-gray);
 }
 .platform-card .btn { width: 100%; margin-top: auto; }
+.platform-card .dl-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: auto;
+}
+.platform-card .dl-row .btn { width: 100%; margin-top: 0; }
+
 
 /* ——— Steps ——— */
 .steps {
