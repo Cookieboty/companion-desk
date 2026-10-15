@@ -339,7 +339,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 
 **查证结果（用大白话）**
 
-1. **显示是错的，配置没有串。** 输入栏里的「供应商 / 模型」选择器原来是 Nomi 自己的，不管当前是哪个端点都显示它，所以看起来像是 CLI 在用 Nomi 的模型。实际上 CLI 标签发消息时只读它自己的配置，不读 Nomi 的选择。已改为：CLI 标签显示**该 CLI 自己的**供应商 / 模型（只列该端点自己档案库里的档案）；没有启用任何档案时明确显示「使用 CLI 自带登录/默认配置」。
+1. **显示是错的，配置没有串。** 输入栏里的「供应商 / 模型」选择器原来是 Nomi 自己的，不管当前是哪个端点都显示它，所以看起来像是 CLI 在用 Nomi 的模型。实际上 CLI 标签发消息时只读它自己的配置，不读 Nomi 的选择。已改为：CLI 标签显示**该 CLI 自己的**供应商 / 模型（只列该端点自己档案库里的档案）；没有启用任何档案时明确显示「CLI 默认 / 已登录」；🔑 按钮直达该端点的供应商设置页。
 2. **启动 CLI 子进程时会把 Nomi 的环境变量带进去。** 原来直接继承 Nomi 进程的环境变量（`NOMI_*`、`COMPANION_*`、`IG_*`、`CD_*`、MCP 相关变量）。这些不是 CLI 的配置，但属于不该泄露的内部状态。已改为子进程环境统一经过 `buildCliEnv`：剥掉这些内部变量，其余（`PATH`、`HOME`、用户自己设置的 `ANTHROPIC_*` / `OPENAI_*` 等）原样保留；dsh 的 Key 只通过显式的 `NOMI_DSH_API_KEY` 注入。
 3. **没有档案时不会写任何 CLI 配置文件。** Codex 档案库为空时，既不写 `~/.codex/config.toml` 也不写 `auth.json`；启用 Claude 档案不会碰 Codex 的文件，反之亦然。（有隔离测试 `CliIsolation.test.ts`。）
 4. **补上了「停用」。** 以前启用过的档案没办法退回 CLI 自带登录。现在每个端点都能「改用 CLI 自带登录/默认配置」：Claude 只移除我们写入的 `ANTHROPIC_API_KEY / BASE_URL / MODEL`；Codex 移除 `[model_providers.nomi]`、对应的 `model` / `model_provider` 和我们写入的 `OPENAI_API_KEY`；dsh 只移除带标记的区块；都先备份。

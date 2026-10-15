@@ -126,7 +126,7 @@ describe('CliProviderChip', () => {
     await waitFor(() =>
       expect(r.getByTestId('cli-provider-chip').getAttribute('data-source')).toBe('cli-default'),
     );
-    expect(r.getByTestId('cli-provider-chip').textContent).toContain('使用 CLI 自带登录/默认配置');
+    expect(r.getByTestId('cli-provider-chip').textContent).toContain('CLI 默认 / 已登录');
     expect(r.queryByText('Amux')).toBeNull();
     expect(r.queryByText('MyClaude')).toBeNull();
   });
@@ -154,6 +154,60 @@ describe('CliProviderChip', () => {
     fireEvent.click(r.getByRole('combobox'));
     fireEvent.click(document.querySelector('[data-value=""]')!);
     await waitFor(() => expect(invoke).toHaveBeenCalledWith('ai:cli-provider:deactivate', 'codex'));
+  });
+});
+
+describe('each CLI chip shows only its own store', () => {
+  it.each([
+    ['claude', 'ClaudeP', 'claude-m'],
+    ['codex', 'CodexP', 'codex-m'],
+    ['dsh', 'DshP', 'dsh-m'],
+  ] as const)(
+    '%s shows its own active profile + model and nothing else',
+    async (kind, name, model) => {
+      mockIpc({
+        cli: cliState([
+          prof({ id: 'c', kind: 'claude', name: 'ClaudeP', model: 'claude-m', active: true }),
+          prof({ id: 'x', kind: 'codex', name: 'CodexP', model: 'codex-m', active: true }),
+          prof({ id: 'd', kind: 'dsh', name: 'DshP', model: 'dsh-m', active: true }),
+        ]),
+        tabs: { tabs: [], activeTabId: 'main', maxConcurrent: 3, running: 0, queued: 0 },
+      });
+      const r = render(<CliProviderChip backend={kind} />);
+      await waitFor(() =>
+        expect(r.getByTestId('cli-provider-chip').getAttribute('data-source')).toBe('own-store'),
+      );
+      const text = r.getByTestId('cli-provider-chip').textContent ?? '';
+      expect(text).toContain(name);
+      expect(r.getByTestId('cli-model-label').textContent).toBe(model);
+      for (const other of ['ClaudeP', 'CodexP', 'DshP'].filter((n) => n !== name))
+        expect(text).not.toContain(other);
+    },
+  );
+
+  it('the settings button opens that endpoint provider page', async () => {
+    mockIpc({
+      cli: cliState([]),
+      tabs: {
+        tabs: [
+          tab({ id: 'main', backend: 'nomi' }),
+          tab({ id: 'cx', backend: 'codex', title: 'Codex' }),
+        ],
+        activeTabId: 'cx',
+        maxConcurrent: 3,
+        running: 0,
+        queued: 0,
+      },
+    });
+    const onManageCli = vi.fn();
+    const r = render(
+      <HarnessTabsProvider>
+        <EndpointControls onManageNomi={() => undefined} onManageCli={onManageCli} />
+      </HarnessTabsProvider>,
+    );
+    await waitFor(() => r.getByTestId('open-cli-provider-panel'));
+    fireEvent.click(r.getByTestId('open-cli-provider-panel'));
+    expect(onManageCli).toHaveBeenCalledWith('codex');
   });
 });
 

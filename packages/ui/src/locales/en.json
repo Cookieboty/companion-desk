@@ -1557,7 +1557,6 @@
   "{0} 的供应商档案（独立于 Nomi）": "{0} provider profile (independent from Nomi)",
   "未启用档案：沿用 {0} 自带的登录与默认配置": "No profile enabled: using {0}'s own login and default config",
   "使用 CLI 自带登录/默认配置": "Use the CLI's own login / default config",
-  "供应商管理": "Manage providers",
   "切换对话端点": "Switch conversation endpoint",
   "工作目录：{0}": "Workspace: {0}",
   "未设置": "Not set",
@@ -1614,5 +1613,8 @@
   "没有找到本机的历史会话": "No local history sessions found",
   "正在扫描历史会话…": "Scanning history sessions…",
   "原目录已不存在": "The original directory no longer exists",
-  "加载更多": "Load more"
+  "加载更多": "Load more",
+  "CLI 默认 / 已登录": "CLI default / signed in",
+  "沿用 CLI 自带登录与默认配置": "Keep the CLI's own login and default config",
+  "打开 {0} 的供应商设置": "Open {0} provider settings"
 }

@@ -2,7 +2,7 @@
  * CLI 后端（Claude Code / Codex / dsh）输入栏上的供应商 / 模型芯片。
  *
  * 只读取该后端自己的档案库（cli-providers/<kind>/store.json），绝不显示 Nomi 的供应商；
- * 没有启用的档案时显示「使用 CLI 自带登录/默认配置」。快速切换只在本后端的档案里选。
+ * 没有启用的档案时显示「CLI 默认 / 已登录」。快速切换只在本后端的档案里选。
  */
 import { Select, t } from '@nomi-ai/ui';
 import React, { useEffect, useState } from 'react';
@@ -97,7 +97,8 @@ export const CliProviderChip: React.FC<{
         options={[
           {
             value: CLI_DEFAULT_VALUE,
-            label: t('使用 CLI 自带登录/默认配置'),
+            label: t('CLI 默认 / 已登录'),
+            description: t('沿用 CLI 自带登录与默认配置'),
           },
           ...profiles.map((p) => ({
             value: p.id,
@@ -131,8 +132,8 @@ export const CliProviderChip: React.FC<{
           data-testid="open-cli-provider-panel"
           style={{ fontSize: 12 }}
           onClick={onManage}
-          title={t('供应商管理')}
-          aria-label={t('供应商管理')}
+          title={t('打开 {0} 的供应商设置', backendName(backend))}
+          aria-label={t('打开 {0} 的供应商设置', backendName(backend))}
         >
           🔑
         </button>

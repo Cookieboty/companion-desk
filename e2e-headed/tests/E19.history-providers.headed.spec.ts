@@ -308,6 +308,28 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     );
     await shot(chat, '13-providers-dsh');
 
+    // 回到对话：Claude 标签的输入栏只显示 Claude 自己启用的档案 + 模型；Codex 标签显示默认
+    await chat.getByText('‹ 返回对话').click();
+    await chat.locator('[data-testid="chat-tab-1"]').click();
+    const chip = chat.locator('[data-testid="cli-provider-chip"]');
+    await expect(chip).toHaveAttribute('data-backend', 'claude');
+    await expect(chip).toHaveAttribute('data-source', 'own-store');
+    await expect(chip).toContainText('本地中转');
+    await expect(chat.locator('[data-testid="cli-model-label"]')).toHaveText('claude-x');
+    await shot(chat, '14-cli-chip-claude-own-profile');
+    await chat.locator('[data-testid="chat-tab-2"]').click();
+    await expect(chip).toHaveAttribute('data-backend', 'codex');
+    await expect(chip).toHaveAttribute('data-source', 'cli-default');
+    await expect(chip).toContainText('CLI 默认 / 已登录');
+    await expect(chip).not.toContainText('本地中转');
+    await shot(chat, '15-cli-chip-codex-default');
+    // 🔑 直达该端点的供应商设置
+    await chat.click('[data-testid="open-cli-provider-panel"]');
+    await expect(chat.locator('[data-testid="providers-endpoint-codex"]')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
     // Claude 改用 CLI 自带登录：settings.json 里我们写的 env 被移除
     await chat.click('[data-testid="providers-endpoint-claude"]');
     const settingsPath = join(home, '.claude', 'settings.json');
