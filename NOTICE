@@ -1,10 +1,20 @@
 Nomi — third-party notices (excerpt)
 
 ================================================================================
+sherpa-onnx
+================================================================================
+
+The built-in offline text-to-speech path uses sherpa-onnx (sherpa-onnx-node and its
+per-platform prebuilt packages), licensed under the Apache License 2.0
+(https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE). Copyright the
+sherpa-onnx / k2-fsa contributors. The speech model is not bundled; it is downloaded
+on demand and verified by SHA-256.
+
+================================================================================
 Fish Audio / fish-speech
 ================================================================================
 
-This product’s optional high-quality text-to-speech path is Built with Fish Audio.
+This product’s optional advanced text-to-speech engine is Built with Fish Audio.
 Fish Speech / Fish Audio Materials are subject to the Fish Audio Community License
 (see https://github.com/fishaudio/fish-speech/blob/main/LICENSE). Summary only —
 the official LICENSE controls:
