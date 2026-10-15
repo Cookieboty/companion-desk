@@ -273,9 +273,9 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
 
     // ── 5. 供应商页 ─────────────────────────────────────────────────────
     await chat.click('[data-testid="sidebar-settings"]');
-    await chat.click('[data-testid="settings-nav-providers"]');
+    await chat.click('[data-testid="settings-nav-coding"]');
     await expect(chat.locator('[data-testid="providers-page"]')).toBeVisible();
-    await expect(chat.locator('[data-testid="providers-endpoint-tabs"] [role=tab]')).toHaveCount(4);
+    await expect(chat.locator('[data-testid="providers-endpoint-tabs"] [role=tab]')).toHaveCount(5);
     await expect(chat.locator('[data-testid="providers-section-nomi"]')).toBeVisible();
     await shot(chat, '09-providers-nomi');
 
@@ -284,12 +284,16 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
       '使用 CLI 自带登录/默认配置',
     );
     await shot(chat, '10-providers-claude-default');
+    // 与 Nomi 同样的交互：添加供应商 → 选预设模板（这里用自定义）→ 表单 → 保存
+    await chat.click('[data-testid="cli-add-provider"]');
+    await expect(chat.locator('[data-testid="preset-deepseek"]')).toBeVisible();
+    await shot(chat, '10b-providers-claude-presets');
+    await chat.click('[data-testid="preset-custom"]');
     await chat.fill('[data-testid="cli-provider-baseurl"]', upstreamUrl);
-    await chat.locator('[data-testid="cli-provider-form"] input').first().fill('本地中转');
-    await chat.locator('[data-testid="cli-provider-form"] input').nth(1).fill('claude-x');
-    await chat
-      .locator('[data-testid="cli-provider-form"] input[type=password]')
-      .fill('sk-test-123456');
+    await chat.fill('[data-testid="cli-provider-name"]', '本地中转');
+    await chat.fill('[data-testid="cli-provider-model"]', 'claude-x');
+    await chat.fill('[data-testid="cli-provider-key"]', 'sk-test-123456');
+    await shot(chat, '10c-providers-claude-editor');
     await chat.click('[data-testid="cli-provider-save"]');
     const row = chat.locator('[data-testid^="cli-provider-row-"]').first();
     await expect(row).toContainText('本地中转');

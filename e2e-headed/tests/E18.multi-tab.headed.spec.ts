@@ -3,7 +3,7 @@
  *
  * 1. 新建 Claude Code / Codex / dsh 三个标签，各发一条消息；并发上限设为 2 → 两个运行、一个排队；
  * 2. 后台标签完成后出现未读角标；切换标签（Ctrl+Tab / Mod+数字）后清零；
- * 3. 重命名、关闭标签；监视器（日程 · 编程助手）里能看到 Nomi 标签；
+ * 3. 重命名、关闭标签；监视器（设置 → 编程助手 → 监视与会话）里能看到 Nomi 标签；
  * 4. 重启应用：标签、标题、会话与消息都还在。
  * 截图目录：MULTI_TAB_SHOTS_DIR（可选）。
  */
@@ -166,13 +166,10 @@ test.describe('E18 · concurrent chat tabs · mock CLI', () => {
     await rename.press('Enter');
     await expect(tabs.nth(2)).toContainText('Tests');
 
-    // 监视器汇总：日程 · 编程助手 → Nomi 标签
-    await chat.keyboard.press(`${mod}+Shift+d`);
-    await chat
-      .locator('[data-testid="sched-panel"]')
-      .getByText('编程助手', { exact: true })
-      .first()
-      .click();
+    // 监视器汇总：设置 → 编程助手 → 监视与会话 → Nomi 标签
+    await chat.click('[data-testid="sidebar-settings"]');
+    await chat.click('[data-testid="settings-nav-coding"]');
+    await chat.click('[data-testid="providers-endpoint-monitor"]');
     await expect(chat.locator('[data-testid="agents-endpoints"]')).toBeVisible({
       timeout: 15_000,
     });
