@@ -8,8 +8,45 @@ export interface CliInstallInfo {
   installMethod: 'npm' | 'native' | 'unknown';
   updateAvailable: boolean;
   updateSupported: boolean;
+  installSupported?: boolean;
   runtimeWarning?: { nodeVersion: string | null; required: number } | null;
 }
+
+export type CliUpdatableKind = 'claude' | 'codex' | 'dsh';
+export type CliInstallScope = 'global' | 'user';
+
+export interface CliRequirement {
+  id: 'node' | 'npm' | 'write';
+  ok: boolean;
+  label: string;
+  detail: string;
+}
+
+/** 安装 / 更新计划：确切命令 + 前置检查 + 阻塞原因（执行前在确认框展示） */
+export interface CliInstallPlan {
+  kind: CliUpdatableKind;
+  mode: 'install' | 'update';
+  scope: CliInstallScope;
+  argv: string[];
+  command: string;
+  requirements: CliRequirement[];
+  blockers: string[];
+  userScopeCommand?: string;
+}
+
+export interface CliRunResult {
+  ok: boolean;
+  log: string;
+  version: string | null;
+  path?: string | null;
+  note?: string;
+}
+
+export type CliUpdateEvent =
+  | { kind: CliUpdatableKind; mode: 'install' | 'update'; phase: 'start'; argv: string[] }
+  | { kind: CliUpdatableKind; mode: 'install' | 'update'; phase: 'log'; line: string }
+  | { kind: CliUpdatableKind; mode: 'install' | 'update'; phase: 'done'; version: string | null }
+  | { kind: CliUpdatableKind; mode: 'install' | 'update'; phase: 'error'; message: string };
 
 interface AiBridge {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
@@ -33,10 +70,10 @@ async function call<T>(method: string, ...args: unknown[]): Promise<T> {
 export const cliUpdateClient = {
   available: () => !!bridge(),
   inspect: (refresh = false) => call<CliInstallInfo[]>('inspect', refresh),
-  preview: (kind: 'claude' | 'codex' | 'dsh') =>
-    call<{ argv: string[] } | { error: string }>('preview', kind),
-  run: (kind: 'claude' | 'codex' | 'dsh') =>
-    call<{ ok: boolean; log: string; version: string | null }>('run', kind),
-  onEvent: (fn: (e: unknown) => void) =>
-    bridge()?.on('ai:cli-update:event', fn) ?? (() => undefined),
+  preview: (kind: CliUpdatableKind, scope: CliInstallScope = 'global') =>
+    call<CliInstallPlan>('preview', kind, scope),
+  run: (kind: CliUpdatableKind, scope: CliInstallScope = 'global') =>
+    call<CliRunResult>('run', kind, scope),
+  onEvent: (fn: (e: CliUpdateEvent) => void) =>
+    bridge()?.on('ai:cli-update:event', (p) => fn(p as CliUpdateEvent)) ?? (() => undefined),
 };

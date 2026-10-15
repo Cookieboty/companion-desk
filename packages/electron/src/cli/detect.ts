@@ -24,12 +24,45 @@ const CANDIDATES: Record<CliKind, string[]> = {
   cursor: ['cursor-agent', 'agent'],
 };
 
+/**
+ * 从 Dock / 开始菜单启动的应用拿到的 PATH 往往很短（macOS 没有 /opt/homebrew/bin、/usr/local/bin），
+ * 探测与安装 CLI 时补上常见的 Node / npm / CLI 目录（只补不删，保持用户 PATH 的优先级）。
+ */
+export function cliSearchDirs(home = os.homedir(), platform = process.platform): string[] {
+  if (platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+    return [path.join(appData, 'npm'), path.join(home, '.local')];
+  }
+  return [
+    path.join(home, '.local', 'bin'),
+    path.join(home, '.npm-global', 'bin'),
+    path.join(home, '.local', 'npm-global', 'bin'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+  ];
+}
+
+export function withCliPath(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const key = Object.keys(base).find((k) => k.toLowerCase() === 'path') ?? 'PATH';
+  const cur = (base[key] ?? '').split(path.delimiter).filter(Boolean);
+  const extra = cliSearchDirs().filter((d) => !cur.includes(d) && fs.existsSync(d));
+  return { ...base, [key]: [...cur, ...extra].join(path.delimiter) };
+}
+
+/** npm 可执行文件（NOMI_NPM_BIN 可覆盖，供测试 / 特殊安装）；找不到返回 null */
+export function resolveNpmBin(): string | null {
+  const env = process.env.NOMI_NPM_BIN?.trim();
+  if (env && fs.existsSync(env)) return env;
+  return which(process.platform === 'win32' ? 'npm.cmd' : 'npm') ?? which('npm');
+}
+
 function which(cmd: string): string | null {
   try {
     const out = execFileSync(process.platform === 'win32' ? 'where' : 'which', [cmd], {
       encoding: 'utf8',
       timeout: 3000,
       windowsHide: true,
+      env: withCliPath(),
     })
       .split(/\r?\n/)
       .map((s) => s.trim())
@@ -48,13 +81,14 @@ export function resolveCliBin(kind: CliKind): string | null {
     if (p) return p;
   }
   // 常见用户级 npm 前缀
-  const home = os.homedir();
-  for (const c of CANDIDATES[kind]) {
-    for (const root of [
-      path.join(home, '.local', 'bin', c),
-      path.join(home, '.local', 'npm-global', 'bin', c),
-    ]) {
-      if (fs.existsSync(root)) return root;
+  const names =
+    process.platform === 'win32'
+      ? CANDIDATES[kind].flatMap((c) => [`${c}.cmd`, `${c}.exe`, c])
+      : CANDIDATES[kind];
+  for (const dir of cliSearchDirs()) {
+    for (const c of names) {
+      const p = path.join(dir, c);
+      if (fs.existsSync(p)) return p;
     }
   }
   return null;
@@ -66,7 +100,9 @@ export function readVersion(bin: string): string | null {
       encoding: 'utf8',
       timeout: 8000,
       windowsHide: true,
-      env: { ...process.env, NO_COLOR: '1' },
+      // Windows 上 npm 装出来的是 .cmd 垫片，必须经 shell 才能执行
+      shell: process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin),
+      env: { ...withCliPath(), NO_COLOR: '1' },
     });
     // 保留预发布段（dsh 当前发布 0.2.0-rc.x）
     const m = /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/.exec(out);
@@ -87,10 +123,17 @@ export function guessInstallMethod(bin: string | null): 'npm' | 'native' | 'unkn
 /** 异步拉 npm latest（失败返回 null） */
 export function fetchNpmLatest(pkg: string, timeoutMs = 12_000): Promise<string | null> {
   return new Promise((resolve) => {
+    const npm = resolveNpmBin() ?? (process.platform === 'win32' ? 'npm.cmd' : 'npm');
     execFile(
-      process.platform === 'win32' ? 'npm.cmd' : 'npm',
+      npm,
       ['view', pkg, 'version', '--json'],
-      { timeout: timeoutMs, windowsHide: true, encoding: 'utf8' },
+      {
+        timeout: timeoutMs,
+        windowsHide: true,
+        encoding: 'utf8',
+        env: withCliPath(),
+        shell: process.platform === 'win32',
+      },
       (err, stdout) => {
         if (err) return resolve(null);
         try {
@@ -111,6 +154,9 @@ export const NPM_PKG: Record<UpdatableCli, string> = {
   dsh: '@deepseek-ai/dsh',
 };
 
+/** 各 CLI 运行所需的最低 Node 主版本（claude-code engines ≥ 22；codex ≥ 16；dsh 需要 24） */
+export const CLI_MIN_NODE_MAJOR: Record<UpdatableCli, number> = { claude: 22, codex: 16, dsh: 24 };
+
 /** dsh 依赖 Node ≥ 24（import.meta.main）；更低版本下静默无输出 */
 export const DSH_MIN_NODE_MAJOR = 24;
 
@@ -121,6 +167,7 @@ export function readPathNodeVersion(): string | null {
       encoding: 'utf8',
       timeout: 5000,
       windowsHide: true,
+      env: withCliPath(),
     });
     const m = /v?(\d+\.\d+\.\d+)/.exec(out);
     return m ? m[1]! : null;

@@ -41,7 +41,6 @@ import {
 import { RemindersTab } from '../DesktopPanel/RemindersTab';
 import { EndpointIcon } from '../EndpointIcon';
 
-import { CliToolsBlock } from './CliToolsBlock';
 import styles from './index.module.css';
 
 /** 相对时间：刚刚 / N 分钟前 / N 小时前 / 日期 */
@@ -546,7 +545,6 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                     '监视本机编程助手会话（Claude Code / Codex / Gemini CLI / Cursor / Aider / Cline / Continue）：只算「文件刚有写入且进程还在」的会话，按会话去重。只读本地日志与进程列表，不登录、不刮取任何账号。',
                   )}
                 </p>
-                <CliToolsBlock />
                 {!agentsClient.available() && (
                   <Notice tone="warning">{tr('当前环境无法访问主进程监视器。')}</Notice>
                 )}

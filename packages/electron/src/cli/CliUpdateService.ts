@@ -1,9 +1,17 @@
 /**
- * CLI 版本检测与白名单更新（Claude Code / Codex / dsh 可更新；Cursor 仅检测）。
- * dsh 没有自更新命令，只走 npm 全局安装。
+ * CLI 版本检测、安装与白名单更新（Claude Code / Codex / dsh 都可在应用内安装 / 更新；Cursor 仅检测）。
+ *
+ * - 安装 / 更新只会执行固定 argv 的白名单命令（`npm install -g <包>@latest [--prefix ~/.local]`、
+ *   `claude|codex update`），永不经 shell 拼接；Windows 的 npm.cmd 例外地经 shell 执行，参数同样来自白名单。
+ * - 执行前先出「计划」：确切命令 + 前置检查（Node 版本 / npm / 写权限）。不满足就给出原因，不执行。
+ * - 全局目录没有写权限时**不会**偷偷用 sudo：提示用户改装到用户目录（`--prefix ~/.local`，不需要管理员权限）
+ *   或自行在终端处理。
+ * - 输出按行通过 `ai:cli-update:event` 推给界面（进度 / 日志 / 错误）。
+ * - dsh 没有自更新命令，只走 npm 全局安装。
  */
-import { execFile } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import { BrowserWindow, ipcMain } from 'electron';
@@ -11,15 +19,27 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { t } from '../i18n';
 
 import {
+  CLI_MIN_NODE_MAJOR,
   NPM_PKG,
   dshRuntimeProblem,
   fetchNpmLatest,
   guessInstallMethod,
+  readPathNodeVersion,
   readVersion,
   resolveCliBin,
+  resolveNpmBin,
+  withCliPath,
 } from './detect';
 import { isNewer } from './semver';
-import type { CliInstallInfo, CliKind, UpdatableCli } from './types';
+import type {
+  CliInstallInfo,
+  CliInstallPlan,
+  CliInstallScope,
+  CliKind,
+  CliRequirement,
+  CliRunResult,
+  UpdatableCli,
+} from './types';
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
 
@@ -28,25 +48,44 @@ export interface CliUpdateCache {
   latest: Partial<Record<CliKind, string | null>>;
 }
 
-/** 允许执行的更新命令模板（argv 固定，禁止任意 shell） */
+/** 允许执行的命令模板（argv 固定，禁止任意 shell） */
 export type UpdateRecipe =
   | { kind: 'claude' | 'codex'; via: 'self'; argv: string[] }
   | { kind: UpdatableCli; via: 'npm'; argv: string[] };
 
+const isWin = () => process.platform === 'win32';
+
+/** 用户目录安装前缀：bin 落在 ~/.local/bin（Windows 为 ~/.local），resolveCliBin 会去那里找 */
+export function userPrefix(): string {
+  return path.join(os.homedir(), '.local');
+}
+
+function npmCommand(): string {
+  const env = process.env.NOMI_NPM_BIN?.trim();
+  if (env) return env;
+  return isWin() ? 'npm.cmd' : 'npm';
+}
+
 export function updateRecipes(
   kind: UpdatableCli,
-  bin: string,
+  bin: string | null,
   method: 'npm' | 'native' | 'unknown',
+  scope: CliInstallScope = 'global',
 ): UpdateRecipe[] {
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const recipes: UpdateRecipe[] = [];
-  if (kind !== 'dsh' && (method === 'native' || method === 'unknown')) {
+  if (bin && kind !== 'dsh' && (method === 'native' || method === 'unknown')) {
     recipes.push({ kind, via: 'self', argv: [bin, 'update'] });
   }
   recipes.push({
     kind,
     via: 'npm',
-    argv: [npmCmd, 'install', '-g', `${NPM_PKG[kind]}@latest`],
+    argv: [
+      npmCommand(),
+      'install',
+      '-g',
+      `${NPM_PKG[kind]}@latest`,
+      ...(scope === 'user' ? ['--prefix', userPrefix()] : []),
+    ],
   });
   return recipes;
 }
@@ -66,15 +105,17 @@ export function isAllowedUpdateArgv(argv: string[]): boolean {
   ) {
     return true;
   }
-  // npm install -g @scope/pkg@latest
-  if (base === 'npm' && rest[0] === 'install' && rest[1] === '-g') {
+  // npm install -g @scope/pkg@latest [--prefix <用户目录>]
+  const envNpm = process.env.NOMI_NPM_BIN?.trim();
+  if ((base === 'npm' || (envNpm && cmd === envNpm)) && rest[0] === 'install' && rest[1] === '-g') {
     const pkg = rest[2] ?? '';
-    return (
-      rest.length === 3 &&
-      (pkg === '@anthropic-ai/claude-code@latest' ||
-        pkg === '@openai/codex@latest' ||
-        pkg === '@deepseek-ai/dsh@latest')
-    );
+    const pkgOk =
+      pkg === '@anthropic-ai/claude-code@latest' ||
+      pkg === '@openai/codex@latest' ||
+      pkg === '@deepseek-ai/dsh@latest';
+    if (!pkgOk) return false;
+    if (rest.length === 3) return true;
+    return rest.length === 5 && rest[3] === '--prefix' && rest[4] === userPrefix();
   }
   return false;
 }
@@ -87,12 +128,119 @@ function toUpdatable(kind: unknown): UpdatableCli {
   return kind === 'codex' || kind === 'dsh' ? kind : 'claude';
 }
 
+function toScope(v: unknown): CliInstallScope {
+  return v === 'user' ? 'user' : 'global';
+}
+
+function quoteArg(a: string): string {
+  return /^[A-Za-z0-9_@./:\\=+-]+$/.test(a) ? a : `"${a.replace(/"/g, '\\"')}"`;
+}
+export const commandLine = (argv: string[]): string => argv.map(quoteArg).join(' ');
+
+/** 环境探测（可注入，便于用 Mock 测试） */
+export interface CliProbe {
+  nodeVersion(): string | null;
+  npmBin(): string | null;
+  /** `npm config get prefix` */
+  npmPrefix(): string | null;
+  canWrite(dir: string): boolean;
+}
+
+export const defaultProbe: CliProbe = {
+  nodeVersion: () => readPathNodeVersion(),
+  npmBin: () => resolveNpmBin(),
+  npmPrefix: () => {
+    const npm = resolveNpmBin();
+    if (!npm) return null;
+    try {
+      const out = execFileSync(npm, ['config', 'get', 'prefix'], {
+        encoding: 'utf8',
+        timeout: 8000,
+        windowsHide: true,
+        env: withCliPath(),
+        shell: isWin(),
+      })
+        .trim()
+        .split(/\r?\n/)
+        .pop();
+      return out || null;
+    } catch {
+      return null;
+    }
+  },
+  canWrite: (dir) => {
+    // 目录不存在时看最近的已存在父目录（npm 会 mkdir -p）
+    let d = dir;
+    for (let i = 0; i < 8 && !fs.existsSync(d); i++) d = path.dirname(d);
+    try {
+      fs.accessSync(d, fs.constants.W_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
+
+export type CliRunner = (
+  argv: string[],
+  onLine: (line: string) => void,
+  opts: { timeoutMs: number },
+) => Promise<{ code: number | null; output: string }>;
+
+export const defaultRunner: CliRunner = (argv, onLine, { timeoutMs }) =>
+  new Promise((resolve) => {
+    const useShell = isWin() && /\.(cmd|bat)$/i.test(argv[0]!);
+    const child = useShell
+      ? spawn(commandLine(argv), { shell: true, windowsHide: true, env: withCliPath() })
+      : spawn(argv[0]!, argv.slice(1), { windowsHide: true, env: withCliPath() });
+    let output = '';
+    let pending = '';
+    const feed = (chunk: Buffer) => {
+      const text = chunk.toString('utf8');
+      output = (output + text).slice(-64 * 1024);
+      pending += text;
+      const lines = pending.split(/\r?\n/);
+      pending = lines.pop() ?? '';
+      for (const l of lines) if (l.trim()) onLine(l);
+    };
+    child.stdout?.on('data', feed);
+    child.stderr?.on('data', feed);
+    const timer = setTimeout(() => {
+      output += '\n' + t('超时，已终止');
+      child.kill();
+    }, timeoutMs);
+    child.on('error', (e) => {
+      clearTimeout(timer);
+      resolve({ code: null, output: `${output}\n${e.message}`.trim() });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (pending.trim()) onLine(pending);
+      resolve({ code, output: output.trim() });
+    });
+  });
+
 export class CliUpdateService {
   private cache: CliUpdateCache = { checkedAt: 0, latest: {} };
   private readonly cachePath: string;
   private updating = false;
+  private readonly probe: CliProbe;
+  private readonly runner: CliRunner;
 
-  constructor(private readonly d: { root: string; logger: Logger }) {
+  constructor(
+    private readonly d: {
+      root: string;
+      logger: Logger;
+      probe?: CliProbe;
+      runner?: CliRunner;
+      /** 测试：不向窗口广播 */
+      silent?: boolean;
+      /** 观察所有进度事件（测试 / 日志） */
+      emit?: (payload: unknown) => void;
+    },
+  ) {
+    this.probe = d.probe ?? defaultProbe;
+    this.runner = d.runner ?? defaultRunner;
     this.cachePath = path.join(d.root, 'cache.json');
     fs.mkdirSync(d.root, { recursive: true });
     this.load();
@@ -156,6 +304,7 @@ export class CliUpdateService {
             updateSupported && version && latest && isNewer(latest, version),
           ),
           updateSupported,
+          installSupported: updateSupported,
         };
       });
     } catch (err) {
@@ -168,60 +317,186 @@ export class CliUpdateService {
         installMethod: 'unknown' as const,
         updateAvailable: false,
         updateSupported: isUpdatable(kind),
+        installSupported: isUpdatable(kind),
       }));
     }
   }
 
-  /** 预览将执行的命令（不跑） */
-  previewUpdate(
+  /** 前置检查：Node 版本 / npm / 目标目录写权限（只在会执行 npm 时检查） */
+  private checkRequirements(
     kind: UpdatableCli,
-  ): { argv: string[]; recipes: UpdateRecipe[] } | { error: string } {
-    const bin = resolveCliBin(kind);
-    if (!bin) return { error: t('{0} 未安装', kind) };
-    const method = kind === 'dsh' ? 'npm' : guessInstallMethod(bin);
-    const recipes = updateRecipes(kind, bin, method);
-    const first = recipes[0]!;
-    if (!isAllowedUpdateArgv(first.argv)) return { error: t('更新命令未通过白名单') };
-    return { argv: first.argv, recipes };
+    scope: CliInstallScope,
+  ): { requirements: CliRequirement[]; blockers: string[]; needsUserScope: boolean } {
+    const requirements: CliRequirement[] = [];
+    const blockers: string[] = [];
+    let needsUserScope = false;
+
+    const need = CLI_MIN_NODE_MAJOR[kind];
+    const nodeV = this.probe.nodeVersion();
+    const major = nodeV ? Number(nodeV.split('.')[0]) : NaN;
+    const nodeOk = Number.isFinite(major) && major >= need;
+    requirements.push({
+      id: 'node',
+      ok: nodeOk,
+      label: t('Node.js ≥ {0}', need),
+      detail: nodeV ? `v${nodeV}` : t('未找到'),
+    });
+    if (!nodeOk)
+      blockers.push(
+        nodeV
+          ? t('需要 Node.js ≥ {0}，当前是 v{1}。请先升级 Node.js 再安装。', need, nodeV)
+          : t('找不到 Node.js（需要 ≥ {0}）。请先安装 Node.js。', need),
+      );
+
+    const npm = this.probe.npmBin();
+    requirements.push({
+      id: 'npm',
+      ok: Boolean(npm),
+      label: 'npm',
+      detail: npm ?? t('未找到'),
+    });
+    if (!npm) blockers.push(t('找不到 npm（随 Node.js 一起安装）。请先安装 Node.js。'));
+
+    const target =
+      scope === 'user' ? userPrefix() : this.probe.npmPrefix() || (npm ? '' : userPrefix());
+    if (npm && target) {
+      const writable = this.probe.canWrite(target);
+      requirements.push({
+        id: 'write',
+        ok: writable,
+        label: t('目录可写'),
+        detail: target,
+      });
+      if (!writable) {
+        if (scope === 'global') needsUserScope = true;
+        blockers.push(
+          scope === 'global'
+            ? t(
+                'npm 全局目录 {0} 没有写入权限。Nomi 不会自动使用 sudo / 管理员权限；可改为安装到用户目录，或自行在终端里用管理员权限安装。',
+                target,
+              )
+            : t('用户目录 {0} 没有写入权限。', target),
+        );
+      }
+    }
+    return { requirements, blockers, needsUserScope };
   }
 
-  async runUpdate(
+  /** 生成安装 / 更新计划（不执行） */
+  plan(
     kind: UpdatableCli,
-  ): Promise<{ ok: boolean; log: string; version: string | null }> {
-    if (this.updating) return { ok: false, log: t('已有更新在进行'), version: null };
-    const preview = this.previewUpdate(kind);
-    if ('error' in preview) return { ok: false, log: preview.error, version: null };
-    const argv = preview.argv;
-    if (!isAllowedUpdateArgv(argv))
-      return { ok: false, log: t('拒绝：命令不在白名单'), version: null };
+    scope: CliInstallScope = 'global',
+  ): { plan: CliInstallPlan; recipes: UpdateRecipe[] } {
+    const bin = resolveCliBin(kind);
+    const mode: 'install' | 'update' = bin ? 'update' : 'install';
+    const method = kind === 'dsh' && bin ? 'npm' : guessInstallMethod(bin);
+    // 用户目录方案只对 npm 有意义；已有 native 安装的 claude/codex 先走自带 update
+    const recipes = updateRecipes(kind, bin, method, scope);
+    const first = recipes[0]!;
+    const usesNpm = first.via === 'npm';
+    const checks = usesNpm
+      ? this.checkRequirements(kind, scope)
+      : { requirements: [], blockers: [], needsUserScope: false };
+    const blockers = [...checks.blockers];
+    if (!isAllowedUpdateArgv(first.argv)) blockers.unshift(t('命令未通过白名单'));
+    const plan: CliInstallPlan = {
+      kind,
+      mode,
+      scope,
+      argv: first.argv,
+      command: commandLine(first.argv),
+      requirements: checks.requirements,
+      blockers,
+    };
+    if (checks.needsUserScope) {
+      plan.userScopeCommand = commandLine(updateRecipes(kind, bin, 'npm', 'user')[0]!.argv);
+    }
+    return { plan, recipes };
+  }
+
+  /** 预览将执行的命令（不跑） */
+  previewUpdate(kind: UpdatableCli, scope: CliInstallScope = 'global'): CliInstallPlan {
+    return this.plan(kind, scope).plan;
+  }
+
+  async run(kind: UpdatableCli, scope: CliInstallScope = 'global'): Promise<CliRunResult> {
+    if (this.updating) return { ok: false, log: t('已有安装 / 更新在进行'), version: null };
+    const { plan, recipes } = this.plan(kind, scope);
+    if (plan.blockers.length) return { ok: false, log: plan.blockers.join('\n'), version: null };
     this.updating = true;
-    this.broadcast({ kind, phase: 'start', argv });
+    this.broadcast({ kind, mode: plan.mode, phase: 'start', argv: plan.argv });
+    const logs: string[] = [];
     try {
-      const log = await new Promise<string>((resolve, reject) => {
-        execFile(
-          argv[0]!,
-          argv.slice(1),
-          { timeout: 10 * 60_000, windowsHide: true, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 },
-          (err, stdout, stderr) => {
-            const body = `${stdout ?? ''}\n${stderr ?? ''}`.trim();
-            if (err) reject(new Error(body || err.message));
-            else resolve(body);
-          },
+      let ok = false;
+      for (const recipe of recipes) {
+        // 自带 update 失败时回退到 npm（此时才检查 npm 前置条件）
+        if (recipe.via === 'npm' && recipe !== recipes[0]) {
+          const again = this.checkRequirements(kind, scope);
+          if (again.blockers.length) {
+            logs.push(...again.blockers);
+            break;
+          }
+        }
+        if (!isAllowedUpdateArgv(recipe.argv)) {
+          logs.push(t('拒绝：命令不在白名单'));
+          continue;
+        }
+        const line = `$ ${commandLine(recipe.argv)}`;
+        logs.push(line);
+        this.broadcast({ kind, mode: plan.mode, phase: 'log', line });
+        const res = await this.runner(
+          recipe.argv,
+          (l) => this.broadcast({ kind, mode: plan.mode, phase: 'log', line: l }),
+          { timeoutMs: 10 * 60_000 },
         );
-      });
-      const version = readVersion(resolveCliBin(kind) ?? argv[0]!);
-      this.broadcast({ kind, phase: 'done', version });
-      return { ok: true, log, version };
+        if (res.output) logs.push(res.output);
+        if (res.code === 0) {
+          ok = true;
+          break;
+        }
+        logs.push(t('命令失败（退出码 {0}）', res.code ?? '—'));
+      }
+      const log = logs.join('\n').slice(-8000);
+      const bin = resolveCliBin(kind);
+      const version = bin ? readVersion(bin) : null;
+      if (!ok) {
+        this.broadcast({ kind, mode: plan.mode, phase: 'error', message: log });
+        return { ok: false, log, version };
+      }
+      let note: string | undefined;
+      if (!bin) {
+        note = t(
+          '命令已执行完成，但在 PATH 和常见目录里没有找到 {0}；请检查 npm 的全局 bin 目录是否在 PATH 里。',
+          kind,
+        );
+      } else if (scope === 'user') {
+        const dir = path.dirname(bin);
+        const inPath = (process.env.PATH ?? '').split(path.delimiter).includes(dir);
+        if (!inPath)
+          note = t(
+            '已安装到 {0}；如需在终端直接使用，请把该目录加入 PATH（Nomi 内可直接使用）。',
+            dir,
+          );
+      }
+      this.broadcast({ kind, mode: plan.mode, phase: 'done', version });
+      return { ok: Boolean(bin), log, version, path: bin, note };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      this.broadcast({ kind, phase: 'error', message: msg });
+      this.broadcast({ kind, mode: plan.mode, phase: 'error', message: msg });
       return { ok: false, log: msg, version: null };
     } finally {
       this.updating = false;
     }
   }
 
+  /** 兼容旧名 */
+  runUpdate(kind: UpdatableCli, scope: CliInstallScope = 'global'): Promise<CliRunResult> {
+    return this.run(kind, scope);
+  }
+
   private broadcast(payload: unknown) {
+    this.d.emit?.(payload);
+    if (this.d.silent) return;
     for (const w of BrowserWindow.getAllWindows()) {
       try {
         w.webContents.send('ai:cli-update:event', payload);
@@ -243,13 +518,20 @@ export class CliUpdateService {
       });
     };
     handle('ai:cli-update:inspect', (refresh) => this.inspect(refresh === true));
-    handle('ai:cli-update:preview', (kind) => this.previewUpdate(toUpdatable(kind)));
-    handle('ai:cli-update:run', (kind) => this.runUpdate(toUpdatable(kind)));
+    handle('ai:cli-update:preview', (kind, scope) =>
+      this.previewUpdate(toUpdatable(kind), toScope(scope)),
+    );
+    handle('ai:cli-update:run', (kind, scope) => this.run(toUpdatable(kind), toScope(scope)));
   }
 }
 
 let inst: CliUpdateService | null = null;
-export function initCliUpdateService(d: { root: string; logger: Logger }): CliUpdateService {
+export function initCliUpdateService(d: {
+  root: string;
+  logger: Logger;
+  probe?: CliProbe;
+  runner?: CliRunner;
+}): CliUpdateService {
   inst = new CliUpdateService(d);
   return inst;
 }

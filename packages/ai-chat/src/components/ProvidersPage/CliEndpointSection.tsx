@@ -19,6 +19,7 @@ import {
 } from '../../services/cliProviderClient';
 import { EndpointIcon } from '../EndpointIcon';
 
+import { CliVersionCard } from './CliVersionCard';
 import styles from './index.module.css';
 
 type Fmt = ClaudeApiFormat | CodexApiFormat;
@@ -252,6 +253,8 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
         </p>
         <p>{where}</p>
       </div>
+
+      <CliVersionCard kind={kind} />
 
       <section className={styles.card} data-testid="cli-ep-status">
         <h3 className={styles.cardTitle}>

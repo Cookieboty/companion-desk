@@ -429,9 +429,6 @@
   "未找到 Codex（可设 NOMI_USE_MOCK_CLI=1）": "Codex not found (set NOMI_USE_MOCK_CLI=1 for mock)",
   "{0} 退出码 {1}": "{0} exit code {1}",
   "（无文本输出）": "(no text output)",
-  "{0} 未安装": "{0} is not installed",
-  "更新命令未通过白名单": "Update command failed whitelist check",
-  "已有更新在进行": "An update is already in progress",
   "拒绝：命令不在白名单": "Rejected: command not on whitelist",
   "未命名": "Untitled",
   "档案不存在": "Profile not found",
@@ -475,5 +472,17 @@
   "当前环境不支持打开历史会话": "Opening history sessions is not supported here",
   "找不到该会话，可能已被删除": "Session not found; it may have been deleted",
   "原工作目录已不存在：{0}。续接需要同一目录，请先恢复该目录。": "The original working directory no longer exists: {0}. Resuming needs the same directory; please restore it first.",
-  "历史较长，只显示了最近的部分消息": "Long history: only the most recent messages are shown"
+  "历史较长，只显示了最近的部分消息": "Long history: only the most recent messages are shown",
+  "超时，已终止": "Timed out and stopped",
+  "需要 Node.js ≥ {0}，当前是 v{1}。请先升级 Node.js 再安装。": "Node.js ≥ {0} is required (found v{1}). Please upgrade Node.js first.",
+  "找不到 Node.js（需要 ≥ {0}）。请先安装 Node.js。": "Node.js (≥ {0}) was not found. Please install Node.js first.",
+  "找不到 npm（随 Node.js 一起安装）。请先安装 Node.js。": "npm was not found (it ships with Node.js). Please install Node.js first.",
+  "目录可写": "Directory writable",
+  "npm 全局目录 {0} 没有写入权限。Nomi 不会自动使用 sudo / 管理员权限；可改为安装到用户目录，或自行在终端里用管理员权限安装。": "The npm global directory {0} is not writable. Nomi never uses sudo / admin rights on its own; install into your user directory instead, or run the command yourself in a terminal with the needed rights.",
+  "用户目录 {0} 没有写入权限。": "The user directory {0} is not writable.",
+  "命令未通过白名单": "The command is not on the allow-list",
+  "已有安装 / 更新在进行": "Another install / update is already running",
+  "命令失败（退出码 {0}）": "Command failed (exit code {0})",
+  "命令已执行完成，但在 PATH 和常见目录里没有找到 {0}；请检查 npm 的全局 bin 目录是否在 PATH 里。": "The command finished, but {0} was not found on PATH or in the usual directories; check that npm's global bin directory is on PATH.",
+  "已安装到 {0}；如需在终端直接使用，请把该目录加入 PATH（Nomi 内可直接使用）。": "Installed to {0}. To use it from a terminal, add that directory to PATH (it works inside Nomi as is)."
 }
