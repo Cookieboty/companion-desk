@@ -436,6 +436,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - **需求检查**：Node 版本不够、没有 npm、全局目录不可写，都会在确认框里以本地化原因拦住，不执行。
 - **不静默 sudo**：全局目录只读（如系统 Node）时，给出「安装到 `~/.local`（`--prefix`）」的备选方案并要求确认，绝不自动提权。
 - **dsh 现在可以安装与更新**（取代 §10 第 5 条与 §12.3 中「不负责安装」的旧决定）。
+- **不阻塞主进程**：检测（`which` / `--version` / `npm config get prefix` / `node --version`）全部走异步 `execFile`；`run` 在做前置检查前先占位，防止连点两次同时通过。（Windows 上 `where` / `npm.cmd` 启动较慢，同步调用会让整个应用的输入停顿——CI 里 E19 的点击曾因此超时。）
 - 已移除日程里的 `CliToolsBlock`。
 - 测试：`packages/electron/tests/unit/cli/CliInstallUpdate.test.ts`（注入 mock npm / CLI 的 probe 与 runner，覆盖计划、Node 过旧、只读前缀、流式事件、失败）与 `packages/ai-chat/tests/cliVersionCard.test.tsx`。
 

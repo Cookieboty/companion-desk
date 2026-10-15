@@ -62,8 +62,8 @@ const make = (p: CliProbe, runner: CliRunner = async () => ({ code: 0, output: '
   });
 
 describe('install plan', () => {
-  it('not-installed dsh: exact npm command, all requirements green', () => {
-    const plan = make(probe()).previewUpdate('dsh');
+  it('not-installed dsh: exact npm command, all requirements green', async () => {
+    const plan = await make(probe()).previewUpdate('dsh');
     expect(plan.mode).toBe('install');
     expect(plan.command).toMatch(/^npm(\.cmd)? install -g @deepseek-ai\/dsh@latest$/);
     expect(plan.blockers).toEqual([]);
@@ -74,33 +74,33 @@ describe('install plan', () => {
     ]);
   });
 
-  it('dsh needs Node >= 24: blocks with the detected version', () => {
-    const plan = make(probe({ nodeVersion: () => '22.14.0' })).previewUpdate('dsh');
+  it('dsh needs Node >= 24: blocks with the detected version', async () => {
+    const plan = await make(probe({ nodeVersion: () => '22.14.0' })).previewUpdate('dsh');
     expect(plan.blockers.join()).toContain('24');
     expect(plan.blockers.join()).toContain('22.14.0');
     expect(plan.requirements.find((r) => r.id === 'node')?.ok).toBe(false);
     // 同一个 Node 装 Claude Code（≥22）没问题
-    expect(make(probe({ nodeVersion: () => '22.14.0' })).previewUpdate('claude').blockers).toEqual(
-      [],
-    );
+    expect(
+      (await make(probe({ nodeVersion: () => '22.14.0' })).previewUpdate('claude')).blockers,
+    ).toEqual([]);
   });
 
-  it('missing node / npm are reported, never silently ignored', () => {
-    const plan = make(probe({ nodeVersion: () => null, npmBin: () => null })).previewUpdate(
+  it('missing node / npm are reported, never silently ignored', async () => {
+    const plan = await make(probe({ nodeVersion: () => null, npmBin: () => null })).previewUpdate(
       'codex',
     );
     expect(plan.blockers).toHaveLength(2);
     expect(plan.requirements.find((r) => r.id === 'npm')?.ok).toBe(false);
   });
 
-  it('read-only global prefix: no sudo, offers the user-directory command instead', () => {
+  it('read-only global prefix: no sudo, offers the user-directory command instead', async () => {
     const svc = make(probe({ canWrite: (d) => d !== '/usr/local' }));
-    const plan = svc.previewUpdate('claude');
+    const plan = await svc.previewUpdate('claude');
     expect(plan.blockers.join()).toMatch(/sudo/);
     expect(plan.userScopeCommand).toContain(`--prefix`);
     expect(plan.userScopeCommand).toContain('.local');
     expect(plan.command).not.toMatch(/sudo/);
-    const user = svc.previewUpdate('claude', 'user');
+    const user = await svc.previewUpdate('claude', 'user');
     expect(user.blockers).toEqual([]);
     expect(user.argv.slice(-2)).toEqual(['--prefix', userPrefix()]);
     expect(isAllowedUpdateArgv(user.argv)).toBe(true);
@@ -150,7 +150,7 @@ describe('run with a mock npm', () => {
       // PATH 上没有 ~/.local/bin → 给出提示
       expect(res.note).toContain('PATH');
       // 装完再看就是「更新」模式
-      expect(svc.previewUpdate('dsh').mode).toBe('update');
+      expect((await svc.previewUpdate('dsh')).mode).toBe('update');
     },
   );
 
@@ -201,7 +201,7 @@ describe('run with a mock npm', () => {
         ? { code: 1, output: 'not supported' }
         : { code: 0, output: 'ok' };
     });
-    expect(svc.previewUpdate('claude').mode).toBe('update');
+    expect((await svc.previewUpdate('claude')).mode).toBe('update');
     const res = await svc.run('claude');
     expect(calls.map((c) => c.slice(1).join(' '))).toEqual([
       'update',

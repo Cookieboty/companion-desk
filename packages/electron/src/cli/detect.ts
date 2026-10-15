@@ -7,6 +7,7 @@ import { execFileSync, execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import type { CliKind, UpdatableCli } from './types';
 
@@ -185,4 +186,96 @@ export function dshRuntimeProblem(
   const major = nodeVersion ? Number(nodeVersion.split('.')[0]) : NaN;
   if (Number.isFinite(major) && major >= DSH_MIN_NODE_MAJOR) return null;
   return { nodeVersion, required: DSH_MIN_NODE_MAJOR };
+}
+
+// ---------------------------------------------------------------------------
+// 异步探测：IPC（检查 / 预览）里使用，避免同步 execFileSync 卡住主进程
+// （Windows 上 where / npm.cmd 经 shell 启动较慢，会让整个应用的输入停顿）
+// ---------------------------------------------------------------------------
+
+const execFileP = promisify(execFile);
+
+async function whichAsync(cmd: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileP(process.platform === 'win32' ? 'where' : 'which', [cmd], {
+      encoding: 'utf8',
+      timeout: 3000,
+      windowsHide: true,
+      env: withCliPath(),
+    });
+    const out = String(stdout)
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .find(Boolean);
+    return out && fs.existsSync(out) ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveNpmBinAsync(): Promise<string | null> {
+  const env = process.env.NOMI_NPM_BIN?.trim();
+  if (env && fs.existsSync(env)) return env;
+  return (
+    (await whichAsync(process.platform === 'win32' ? 'npm.cmd' : 'npm')) ??
+    (await whichAsync('npm'))
+  );
+}
+
+export async function resolveCliBinAsync(kind: CliKind): Promise<string | null> {
+  const env = process.env[ENV_BIN[kind]]?.trim();
+  if (env && fs.existsSync(env)) return env;
+  for (const c of CANDIDATES[kind]) {
+    const p = await whichAsync(c);
+    if (p) return p;
+  }
+  const names =
+    process.platform === 'win32'
+      ? CANDIDATES[kind].flatMap((c) => [`${c}.cmd`, `${c}.exe`, c])
+      : CANDIDATES[kind];
+  for (const dir of cliSearchDirs()) {
+    for (const c of names) {
+      const p = path.join(dir, c);
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  return null;
+}
+
+export async function readVersionAsync(bin: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileP(bin, ['--version'], {
+      encoding: 'utf8',
+      timeout: 8000,
+      windowsHide: true,
+      shell: process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin),
+      env: { ...withCliPath(), NO_COLOR: '1' },
+    });
+    const out = String(stdout);
+    const m = /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/.exec(out);
+    return m ? m[1]! : out.trim().slice(0, 64) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function readPathNodeVersionAsync(): Promise<string | null> {
+  try {
+    const { stdout } = await execFileP(
+      process.platform === 'win32' ? 'node.exe' : 'node',
+      ['--version'],
+      { encoding: 'utf8', timeout: 5000, windowsHide: true, env: withCliPath() },
+    );
+    const m = /v?(\d+\.\d+\.\d+)/.exec(String(stdout));
+    return m ? m[1]! : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function dshRuntimeProblemAsync(): Promise<{
+  nodeVersion: string | null;
+  required: number;
+} | null> {
+  return dshRuntimeProblem(await readPathNodeVersionAsync());
 }

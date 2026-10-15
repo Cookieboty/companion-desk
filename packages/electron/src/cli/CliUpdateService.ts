@@ -9,10 +9,11 @@
  * - 输出按行通过 `ai:cli-update:event` 推给界面（进度 / 日志 / 错误）。
  * - dsh 没有自更新命令，只走 npm 全局安装。
  */
-import { execFileSync, spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import { BrowserWindow, ipcMain } from 'electron';
 
@@ -21,13 +22,13 @@ import { t } from '../i18n';
 import {
   CLI_MIN_NODE_MAJOR,
   NPM_PKG,
-  dshRuntimeProblem,
+  dshRuntimeProblemAsync,
   fetchNpmLatest,
   guessInstallMethod,
-  readPathNodeVersion,
-  readVersion,
-  resolveCliBin,
-  resolveNpmBin,
+  readPathNodeVersionAsync,
+  readVersionAsync,
+  resolveCliBinAsync,
+  resolveNpmBinAsync,
   withCliPath,
 } from './detect';
 import { isNewer } from './semver';
@@ -138,31 +139,31 @@ function quoteArg(a: string): string {
 export const commandLine = (argv: string[]): string => argv.map(quoteArg).join(' ');
 
 /** 环境探测（可注入，便于用 Mock 测试） */
+type MaybeAsync<T> = T | Promise<T>;
 export interface CliProbe {
-  nodeVersion(): string | null;
-  npmBin(): string | null;
+  nodeVersion(): MaybeAsync<string | null>;
+  npmBin(): MaybeAsync<string | null>;
   /** `npm config get prefix` */
-  npmPrefix(): string | null;
-  canWrite(dir: string): boolean;
+  npmPrefix(): MaybeAsync<string | null>;
+  canWrite(dir: string): MaybeAsync<boolean>;
 }
 
 export const defaultProbe: CliProbe = {
-  nodeVersion: () => readPathNodeVersion(),
-  npmBin: () => resolveNpmBin(),
-  npmPrefix: () => {
-    const npm = resolveNpmBin();
+  nodeVersion: () => readPathNodeVersionAsync(),
+  npmBin: () => resolveNpmBinAsync(),
+  // 异步执行：不阻塞主进程（Windows 上 npm.cmd 经 shell 启动较慢）
+  npmPrefix: async () => {
+    const npm = await resolveNpmBinAsync();
     if (!npm) return null;
     try {
-      const out = execFileSync(npm, ['config', 'get', 'prefix'], {
+      const { stdout } = await promisify(execFile)(npm, ['config', 'get', 'prefix'], {
         encoding: 'utf8',
         timeout: 8000,
         windowsHide: true,
         env: withCliPath(),
         shell: isWin(),
-      })
-        .trim()
-        .split(/\r?\n/)
-        .pop();
+      });
+      const out = String(stdout).trim().split(/\r?\n/).pop();
       return out || null;
     } catch {
       return null;
@@ -277,36 +278,40 @@ export class CliUpdateService {
           /* cache 写失败不影响探测结果 */
         }
       }
-      return kinds.map((kind) => {
-        let bin: string | null = null;
-        let version: string | null = null;
-        try {
-          const resolved = resolveCliBin(kind);
-          bin = resolved;
-          version = resolved ? readVersion(resolved) : null;
-        } catch {
-          /* 探测失败当作未安装 */
-        }
-        const latest = this.cache.latest[kind] ?? null;
-        const method = kind === 'dsh' && bin ? 'npm' : guessInstallMethod(bin);
-        const updateSupported = isUpdatable(kind);
-        // 真实 dsh（非 .mjs Mock）才检查 Node 版本
-        const runtimeWarning =
-          kind === 'dsh' && bin && !/\.(mjs|js)$/.test(bin) ? dshRuntimeProblem() : null;
-        return {
-          kind,
-          runtimeWarning,
-          path: bin,
-          version,
-          latest,
-          installMethod: method,
-          updateAvailable: Boolean(
-            updateSupported && version && latest && isNewer(latest, version),
-          ),
-          updateSupported,
-          installSupported: updateSupported,
-        };
-      });
+      return Promise.all(
+        kinds.map(async (kind) => {
+          let bin: string | null = null;
+          let version: string | null = null;
+          try {
+            const resolved = await resolveCliBinAsync(kind);
+            bin = resolved;
+            version = resolved ? await readVersionAsync(resolved) : null;
+          } catch {
+            /* 探测失败当作未安装 */
+          }
+          const latest = this.cache.latest[kind] ?? null;
+          const method = kind === 'dsh' && bin ? 'npm' : guessInstallMethod(bin);
+          const updateSupported = isUpdatable(kind);
+          // 真实 dsh（非 .mjs Mock）才检查 Node 版本
+          const runtimeWarning =
+            kind === 'dsh' && bin && !/\.(mjs|js)$/.test(bin)
+              ? await dshRuntimeProblemAsync()
+              : null;
+          return {
+            kind,
+            runtimeWarning,
+            path: bin,
+            version,
+            latest,
+            installMethod: method,
+            updateAvailable: Boolean(
+              updateSupported && version && latest && isNewer(latest, version),
+            ),
+            updateSupported,
+            installSupported: updateSupported,
+          };
+        }),
+      );
     } catch (err) {
       this.d.logger.warn('cli-update inspect failed', err);
       return kinds.map((kind) => ({
@@ -323,16 +328,16 @@ export class CliUpdateService {
   }
 
   /** 前置检查：Node 版本 / npm / 目标目录写权限（只在会执行 npm 时检查） */
-  private checkRequirements(
+  private async checkRequirements(
     kind: UpdatableCli,
     scope: CliInstallScope,
-  ): { requirements: CliRequirement[]; blockers: string[]; needsUserScope: boolean } {
+  ): Promise<{ requirements: CliRequirement[]; blockers: string[]; needsUserScope: boolean }> {
     const requirements: CliRequirement[] = [];
     const blockers: string[] = [];
     let needsUserScope = false;
 
     const need = CLI_MIN_NODE_MAJOR[kind];
-    const nodeV = this.probe.nodeVersion();
+    const nodeV = await this.probe.nodeVersion();
     const major = nodeV ? Number(nodeV.split('.')[0]) : NaN;
     const nodeOk = Number.isFinite(major) && major >= need;
     requirements.push({
@@ -348,7 +353,7 @@ export class CliUpdateService {
           : t('找不到 Node.js（需要 ≥ {0}）。请先安装 Node.js。', need),
       );
 
-    const npm = this.probe.npmBin();
+    const npm = await this.probe.npmBin();
     requirements.push({
       id: 'npm',
       ok: Boolean(npm),
@@ -358,9 +363,9 @@ export class CliUpdateService {
     if (!npm) blockers.push(t('找不到 npm（随 Node.js 一起安装）。请先安装 Node.js。'));
 
     const target =
-      scope === 'user' ? userPrefix() : this.probe.npmPrefix() || (npm ? '' : userPrefix());
+      scope === 'user' ? userPrefix() : (await this.probe.npmPrefix()) || (npm ? '' : userPrefix());
     if (npm && target) {
-      const writable = this.probe.canWrite(target);
+      const writable = await this.probe.canWrite(target);
       requirements.push({
         id: 'write',
         ok: writable,
@@ -383,11 +388,11 @@ export class CliUpdateService {
   }
 
   /** 生成安装 / 更新计划（不执行） */
-  plan(
+  async plan(
     kind: UpdatableCli,
     scope: CliInstallScope = 'global',
-  ): { plan: CliInstallPlan; recipes: UpdateRecipe[] } {
-    const bin = resolveCliBin(kind);
+  ): Promise<{ plan: CliInstallPlan; recipes: UpdateRecipe[] }> {
+    const bin = await resolveCliBinAsync(kind);
     const mode: 'install' | 'update' = bin ? 'update' : 'install';
     const method = kind === 'dsh' && bin ? 'npm' : guessInstallMethod(bin);
     // 用户目录方案只对 npm 有意义；已有 native 安装的 claude/codex 先走自带 update
@@ -395,7 +400,7 @@ export class CliUpdateService {
     const first = recipes[0]!;
     const usesNpm = first.via === 'npm';
     const checks = usesNpm
-      ? this.checkRequirements(kind, scope)
+      ? await this.checkRequirements(kind, scope)
       : { requirements: [], blockers: [], needsUserScope: false };
     const blockers = [...checks.blockers];
     if (!isAllowedUpdateArgv(first.argv)) blockers.unshift(t('命令未通过白名单'));
@@ -415,15 +420,29 @@ export class CliUpdateService {
   }
 
   /** 预览将执行的命令（不跑） */
-  previewUpdate(kind: UpdatableCli, scope: CliInstallScope = 'global'): CliInstallPlan {
-    return this.plan(kind, scope).plan;
+  async previewUpdate(
+    kind: UpdatableCli,
+    scope: CliInstallScope = 'global',
+  ): Promise<CliInstallPlan> {
+    return (await this.plan(kind, scope)).plan;
   }
 
   async run(kind: UpdatableCli, scope: CliInstallScope = 'global'): Promise<CliRunResult> {
     if (this.updating) return { ok: false, log: t('已有安装 / 更新在进行'), version: null };
-    const { plan, recipes } = this.plan(kind, scope);
-    if (plan.blockers.length) return { ok: false, log: plan.blockers.join('\n'), version: null };
+    // 先占位再做（异步的）前置检查，避免两次点击同时通过
     this.updating = true;
+    let planned: Awaited<ReturnType<CliUpdateService['plan']>>;
+    try {
+      planned = await this.plan(kind, scope);
+    } catch (e) {
+      this.updating = false;
+      return { ok: false, log: e instanceof Error ? e.message : String(e), version: null };
+    }
+    const { plan, recipes } = planned;
+    if (plan.blockers.length) {
+      this.updating = false;
+      return { ok: false, log: plan.blockers.join('\n'), version: null };
+    }
     this.broadcast({ kind, mode: plan.mode, phase: 'start', argv: plan.argv });
     const logs: string[] = [];
     try {
@@ -431,7 +450,7 @@ export class CliUpdateService {
       for (const recipe of recipes) {
         // 自带 update 失败时回退到 npm（此时才检查 npm 前置条件）
         if (recipe.via === 'npm' && recipe !== recipes[0]) {
-          const again = this.checkRequirements(kind, scope);
+          const again = await this.checkRequirements(kind, scope);
           if (again.blockers.length) {
             logs.push(...again.blockers);
             break;
@@ -457,8 +476,8 @@ export class CliUpdateService {
         logs.push(t('命令失败（退出码 {0}）', res.code ?? '—'));
       }
       const log = logs.join('\n').slice(-8000);
-      const bin = resolveCliBin(kind);
-      const version = bin ? readVersion(bin) : null;
+      const bin = await resolveCliBinAsync(kind);
+      const version = bin ? await readVersionAsync(bin) : null;
       if (!ok) {
         this.broadcast({ kind, mode: plan.mode, phase: 'error', message: log });
         return { ok: false, log, version };
