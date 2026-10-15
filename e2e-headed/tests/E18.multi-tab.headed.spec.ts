@@ -138,10 +138,12 @@ test.describe('E18 · concurrent chat tabs · mock CLI', () => {
     await expect(chat.locator('[data-testid="cli-tab-live"]')).toContainText('排队中');
     await shot(chat, '03-concurrent-running-queued');
 
-    // 全部完成：后台两个标签有未读
-    await expect(chat.locator('[data-testid="chat-tabs-load"]')).toHaveCount(0, {
+    // 全部完成：concurrency 控件常驻，等 running/queued 归零（勿断言 chat-tabs-load 消失）
+    await expect(chat.locator('[role="tab"][data-status="running"]')).toHaveCount(0, {
       timeout: 60_000,
     });
+    await expect(chat.locator('[role="tab"][data-status="queued"]')).toHaveCount(0);
+    await expect(chat.locator('[data-testid="chat-tabs-load"] > span').first()).toContainText('0/');
     await expect(chat.locator('[data-testid="chat-tab-unread"]')).toHaveCount(2);
     await expect(chat.locator('.ai-chat-app')).toContainText('update the docs');
     await expect(chat.locator('.ai-chat-app')).toContainText('Mock dsh');
