@@ -14,6 +14,7 @@ import {
   type HarnessBackend,
   type HarnessState,
 } from '../../services/harnessClient';
+import { EndpointIcon } from '../EndpointIcon';
 
 const LABELS: Record<HarnessBackend, () => string> = {
   nomi: () => t('Nomi'),
@@ -114,14 +115,18 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
             return {
               value: k,
               label: LABELS[k](),
+              icon: <EndpointIcon backend={k} size={16} decorative />,
               // 未安装的 CLI 置灰，只留一个很短的后缀
               description: missing ? t('未安装') : undefined,
               disabled: missing,
             };
           })}
       />
-      {(tab || state.toolsDisabled) && (
-        <span data-testid="harness-tools-off" style={{ fontSize: 11, opacity: 0.75 }}>
+      {!tab && state.toolsDisabled && (
+        <span
+          data-testid="harness-tools-off"
+          style={{ fontSize: 11, opacity: 0.75, whiteSpace: 'nowrap' }}
+        >
           {t('Nomi 工具已关闭')}
         </span>
       )}

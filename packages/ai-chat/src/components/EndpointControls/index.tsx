@@ -51,15 +51,7 @@ export const EndpointControls: React.FC<{
   return (
     <>
       {isDev && <BackendSwitcher />}
-      {cli && (
-        <WorkspacePicker
-          up
-          value={cwd}
-          onChange={changeCwd}
-          testId="cli-workspace"
-          label={t('工作目录')}
-        />
-      )}
+      {cli && <WorkspacePicker up value={cwd} onChange={changeCwd} testId="cli-workspace" />}
       {cli ? (
         <CliProviderChip backend={cli} className={className} onManage={() => onManageCli(cli)} />
       ) : (

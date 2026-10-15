@@ -40,10 +40,8 @@
   white-space: nowrap;
 }
 .menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 60;
+  position: fixed;
+  z-index: 1000;
   min-width: 260px;
   max-width: 420px;
   padding: 4px;
@@ -51,10 +49,6 @@
   border-radius: 10px;
   background: var(--cd-color-surface-raised, #121a2a);
   box-shadow: var(--cd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.35));
-}
-.up {
-  top: auto;
-  bottom: calc(100% + 4px);
 }
 .group {
   padding: 4px 8px 2px;

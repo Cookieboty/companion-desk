@@ -3,7 +3,7 @@
  * 说明（写到哪里、与其它端点独立）→ 当前状态（来源 / 格式 / 模型 / 路由）→ 档案列表
  * （启用 / 测速 / 编辑 / 删除）→ 添加或编辑档案 →「高级」（本地路由、存储路径）。
  */
-import { Button, Notice, Select, t } from '@nomi-ai/ui';
+import { Button, Input, Notice, Select, t } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -382,15 +382,16 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
           <div className={styles.formGrid}>
             <label className={styles.field}>
               {t('名称')}
-              <input value={name} onChange={(e) => setName(e.target.value)} />
+              <Input size="sm" value={name} onChange={(e) => setName(e.target.value)} />
             </label>
             <label className={styles.field}>
               {t('模型')}
-              <input value={model} onChange={(e) => setModel(e.target.value)} />
+              <Input size="sm" value={model} onChange={(e) => setModel(e.target.value)} />
             </label>
             <label className={styles.field}>
               {t('API 地址')}
-              <input
+              <Input
+                size="sm"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="https://…"
@@ -399,7 +400,8 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
             </label>
             <label className={styles.field}>
               {editingId ? t('API Key（留空保持不变）') : t('API Key')}
-              <input
+              <Input
+                size="sm"
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
