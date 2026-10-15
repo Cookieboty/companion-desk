@@ -10,8 +10,15 @@ export type FishTtsFormat = 'mp3' | 'wav' | 'opus' | 'pcm';
 
 export interface FishSynthesizeParams {
   text: string;
-  /** Built-in / server-side reference id (not user-uploaded blob). */
+  /** Server-side saved voice id (optional when referenceAudioBase64 is set). */
   referenceId?: string;
+  /**
+   * Built-in / inline reference wav as base64 (fish-speech JSON API).
+   * Prefer this for product-bundled seeds so the server needs no references/ copy.
+   */
+  referenceAudioBase64?: string;
+  /** Transcript of referenceAudioBase64 (required with it). */
+  referenceText?: string;
   format?: FishTtsFormat;
   /** Cloud model header, e.g. s2.1-pro-free */
   cloudModel?: string;
@@ -128,7 +135,11 @@ export class FishTtsClient {
       text,
       format,
     };
-    if (params.referenceId) {
+    // Prefer inline built-in reference (true zero-config for local fish-speech).
+    if (params.referenceAudioBase64 && params.referenceText) {
+      body.reference_audio = params.referenceAudioBase64;
+      body.reference_text = params.referenceText;
+    } else if (params.referenceId) {
       body.reference_id = params.referenceId;
     }
 

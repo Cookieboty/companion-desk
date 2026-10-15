@@ -50,8 +50,8 @@
             <option value="nomi">Nomi（可爱）</option>
           </select>
           <p class="cd-muted" style="font-size: 12px; margin: 4px 0 8px">
-            本地：在 fish-speech 的 <code>references/nomi/</code> 放置项目自有可爱样例（sample.wav + sample.lab）。
-            应用不提供「上传我的音色」入口。
+            应用已内置 Nomi 可爱种子，合成时自动以 <code>reference_audio</code> 发给本地 Fish，无需手动拷贝。
+            不提供「上传我的音色」入口。
           </p>
 
           <label class="cd-field__label" for="format">音频格式</label>
@@ -106,9 +106,8 @@
 
       <div class="help-text cd-notice">
         <strong>怎么用（内置 Fish）</strong><br />
-        1. 推荐本地：用 Docker / uv 启动 fish-speech，监听 <code>127.0.0.1:8080</code>，放入
-        <code>references/nomi/sample.wav</code> + <code>sample.lab</code>（项目自有可爱样例，见
-        <code>packages/electron/assets/tts/references/nomi/</code>）。<br />
+        1. 推荐本地：用 Docker / uv 启动 fish-speech，监听 <code>127.0.0.1:8080</code>。
+        应用会内置带上 Nomi 可爱参考音（无需拷到服务器 <code>references/</code>）。<br />
         2. 或 Fish 云：填写你自己的 API Key（不捆绑 Research-only 权重）。<br />
         3. 服务未就绪时，看板娘自动回退系统语音，无需试听步骤。<br />
         4. 需要对接其它克隆 API 时，选择「外部 legacy TTS」。

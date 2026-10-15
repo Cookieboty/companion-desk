@@ -95,6 +95,36 @@ describe('FishTtsClient', () => {
     expect(fetchImpl).toHaveBeenCalled();
   });
 
+  it('prefers inline reference_audio over reference_id', async () => {
+    const audio = Buffer.from([9, 9]);
+    const fetchImpl = jest.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.reference_audio).toBe('QQ==');
+      expect(body.reference_text).toBe('你好呀');
+      expect(body.reference_id).toBeUndefined();
+      return {
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength),
+        headers: { get: () => 'audio/mpeg' },
+      };
+    }) as unknown as typeof fetch;
+
+    const client = new FishTtsClient({
+      mode: 'local',
+      baseUrl: 'http://127.0.0.1:8080',
+      fetchImpl,
+    });
+    await client.synthesize({
+      text: '测试',
+      referenceId: 'nomi',
+      referenceAudioBase64: 'QQ==',
+      referenceText: '你好呀',
+    });
+    expect(fetchImpl).toHaveBeenCalled();
+  });
+
   it('health fails gracefully on network error', async () => {
     const fetchImpl = jest.fn(async () => {
       throw new Error('ECONNREFUSED');

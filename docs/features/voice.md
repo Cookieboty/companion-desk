@@ -16,12 +16,12 @@
 
 Nomi 默认走 **内置 Fish Audio** 高质量播报路径（可爱 / 卡哇伊声线预设 `nomi`），而不是系统硬朗读。
 
-| 提供方 | 说明 |
-| --- | --- |
-| `fish-local`（默认） | 本机 [fish-speech](https://github.com/fishaudio/fish-speech) HTTP API，`http://127.0.0.1:8080` |
-| `fish-cloud` | [Fish Audio 云](https://fish.audio) `https://api.fish.audio/v1/tts`，使用**你自己的** API Key（safeStorage 加密） |
-| `legacy` | 保留：对接你自己的外部克隆 TTS（hostname/port/path/audioUrl/promptText） |
-| `system` | 仅系统 Web Speech（柔和中文女声回退） |
+| 提供方               | 说明                                                                                                              |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `fish-local`（默认） | 本机 [fish-speech](https://github.com/fishaudio/fish-speech) HTTP API，`http://127.0.0.1:8080`                    |
+| `fish-cloud`         | [Fish Audio 云](https://fish.audio) `https://api.fish.audio/v1/tts`，使用**你自己的** API Key（safeStorage 加密） |
+| `legacy`             | 保留：对接你自己的外部克隆 TTS（hostname/port/path/audioUrl/promptText）                                          |
+| `system`             | 仅系统 Web Speech（柔和中文女声回退）                                                                             |
 
 **行为**
 
@@ -30,6 +30,10 @@ Nomi 默认走 **内置 Fish Audio** 高质量播报路径（可爱 / 卡哇伊�
 - 产品内角色自己说话 ≠ Hosted Service；不要把本应用做成对外自助 TTS 平台。
 
 ### 本地 fish-speech 快速开始
+
+应用已内置可爱种子 `packages/electron/assets/tts/references/nomi/{sample.wav,sample.lab}`。
+合成时主进程读取该资源，以 JSON 字段 `reference_audio`（base64）+ `reference_text` 发给本地 Fish，
+**无需**把文件拷进 fish-speech 的 `references/` 目录。
 
 ```bash
 # 示例：Docker Compose（以官方文档为准）
@@ -40,17 +44,8 @@ curl -s http://127.0.0.1:8080/v1/health
 # → {"status":"ok"}
 ```
 
-把**项目自有、可分发**的可爱普通话样例放到服务端：
-
-```
-references/nomi/sample.wav   # 约 5–15 秒清晰人声，勿用侵权角色包
-references/nomi/sample.lab   # 与音频一致的转写文本
-```
-
-仓库内占位说明见 `packages/electron/assets/tts/references/nomi/`。  
-**不要**把数 GB 模型权重 commit 进本仓库；权重由你本地或镜像按 fish-speech 文档下载。
-
-也可用 uv / 官方 `tools/api_server.py` 启动本地服务（见 Fish Speech 文档）。
+仍需在本机（或局域网）运行 fish-speech HTTP 服务（默认 `http://127.0.0.1:8080`）；
+应用不捆绑数 GB 模型权重。也可用 uv / 官方 `tools/api_server.py` 启动（见 Fish Speech 文档）。
 
 ### Fish 云
 

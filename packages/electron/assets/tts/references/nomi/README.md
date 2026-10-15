@@ -2,6 +2,10 @@
 
 Default local fish-speech reference id: `nomi`.
 
+At runtime the Electron main process loads these files and sends them inline as
+`reference_audio` (base64) + `reference_text` on `POST /v1/tts`, so you do **not**
+need to copy them into the fish-speech server `references/` folder.
+
 ## Files
 
 - `sample.wav` — mono 44.1 kHz, ~8s cute Mandarin seed for zero-shot cloning

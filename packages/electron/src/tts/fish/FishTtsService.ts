@@ -1,14 +1,16 @@
 /**
  * Built-in Fish TTS orchestration for the main process.
- * Product default: fish-local + referenceId `nomi` (cute built-in preset).
- * On failure / disabled / system provider → report fallbackToSystem (renderer uses Web Speech).
+ * Product default: fish-local + cute nomi seed (bundled sample.wav inlined as reference_audio).
+ * On failure / disabled / system provider → fallbackToSystem (renderer uses Web Speech).
  * Does not expose user voice-upload cloning.
  */
 
 import type { TTSConfig, TTSSpeakRequest, TTSSpeakResult, TTSTestResult } from '@nomi-ai/types';
+import { app } from 'electron';
 
 import { createMainLogger } from '../../utils/log';
 
+import { builtinAssetsRoots, loadBuiltinReference } from './builtinReference';
 import { FishTtsClient, resolveFishBaseUrl } from './FishTtsClient';
 import { FishTtsConfigStore } from './FishTtsConfigStore';
 
@@ -51,7 +53,6 @@ export class FishTtsService {
     }
 
     if (cfg.provider === 'legacy') {
-      // Legacy path stays on existing VoiceService / test-tts-voice; renderer may still soft-speak.
       return {
         success: false,
         via: 'legacy',
@@ -74,13 +75,19 @@ export class FishTtsService {
       };
     }
 
-    const referenceId = (req.referenceId || cfg.referenceId || 'nomi').trim();
+    const referenceId = (req.referenceId || cfg.referenceId || 'nomi').trim() || 'nomi';
+    const builtin = this.loadReference(referenceId);
     const client = this.createClient(cfg);
 
     try {
+      const useInline = Boolean(builtin) && cfg.provider === 'fish-local';
       const result = await client.synthesize({
         text,
-        referenceId: referenceId || undefined,
+        // Local: embed bundled wav so fish-speech needs no references/nomi copy.
+        // Cloud: reference_id only (inline audio needs msgpack on Fish cloud).
+        referenceId: useInline ? undefined : referenceId,
+        referenceAudioBase64: useInline ? builtin!.audioBase64 : undefined,
+        referenceText: useInline ? builtin!.referenceText : undefined,
         format: cfg.format,
         cloudModel: cfg.cloudModel,
         timeoutMs: cfg.timeoutMs,
@@ -115,11 +122,30 @@ export class FishTtsService {
     const client = this.createClient(cfg as TTSConfig, override?.apiKey);
     const health = await client.health(Math.min(cfg.timeoutMs || 5000, 5000));
     this.healthCache = { at: Date.now(), ok: health.ok };
+    const builtin = this.loadReference(cfg.referenceId || 'nomi');
+    const seedNote = builtin
+      ? `; built-in seed ${builtin.id} ready (${Math.round(builtin.audioBase64.length / 1024)}KB b64)`
+      : '; built-in seed missing';
     return {
       success: health.ok,
-      message: health.message,
+      message: health.message + seedNote,
       latency: health.latencyMs || Date.now() - started,
     };
+  }
+
+  private loadReference(referenceId: string) {
+    let appPath: string | undefined;
+    let resourcesPath: string | undefined;
+    try {
+      appPath = app.getAppPath();
+    } catch {
+      /* unit / non-electron */
+    }
+    if (typeof process.resourcesPath === 'string' && process.resourcesPath) {
+      resourcesPath = process.resourcesPath;
+    }
+    const roots = builtinAssetsRoots({ appPath, resourcesPath });
+    return loadBuiltinReference(referenceId, { roots });
   }
 
   private createClient(cfg: TTSConfig, apiKeyOverride?: string): FishTtsClient {
@@ -138,7 +164,6 @@ export class FishTtsService {
     if (this.healthCache && now - this.healthCache.at < HEALTH_CACHE_MS) {
       return this.healthCache.ok;
     }
-    // Cloud: if no key, not reachable for speak
     if (cfg.provider === 'fish-cloud' && !this.store.getApiKey() && !cfg.apiKey) {
       this.healthCache = { at: now, ok: false };
       return false;
