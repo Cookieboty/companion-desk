@@ -16,7 +16,7 @@ export interface IpcApi {
   getVoiceSettings: () => Promise<VoiceSettings>;
   saveVoiceSettings: (settings: VoiceSettings) => void;
 
-  // TTS配置相关API（内置 Fish + legacy 外部服务）
+  // TTS配置相关API（内置 sherpa-onnx 离线 TTS / 可选 Fish / legacy 外部服务）
   getTTSConfig: () => Promise<TTSConfig | null>;
   saveTTSConfig: (config: TTSConfig) => Promise<void>;
   testTTSConnection: (config: TTSConfig) => Promise<TTSTestResult>;
@@ -24,6 +24,11 @@ export interface IpcApi {
   /** Main-process Fish synthesize; on failure renderer falls back to Web Speech */
   ttsSpeak?: (req: TTSSpeakRequest) => Promise<TTSSpeakResult>;
   ttsHealth?: (config?: Partial<TTSConfig>) => Promise<TTSTestResult>;
+  /** sherpa 离线 TTS 模型状态（含下载进度） */
+  ttsSherpaStatus?: () => Promise<SherpaModelStatus>;
+  /** 开始首次下载模型（幂等；已在下载则返回当前状态） */
+  ttsSherpaDownload?: () => Promise<SherpaModelStatus>;
+  ttsSherpaCancel?: () => Promise<SherpaModelStatus>;
 
   // AI对话相关API
   openAiChat: () => Promise<{ success: boolean; error?: string }>;
@@ -65,15 +70,19 @@ export interface VoiceSettings {
   voiceMode: 'fixed' | 'tts' | 'mixed';
 }
 
-/** TTS provider: built-in Fish, legacy external clone API, or system Web Speech. */
-export type TTSProvider = 'fish-local' | 'fish-cloud' | 'legacy' | 'system';
+/**
+ * TTS provider: built-in sherpa-onnx offline (default), optional Fish (advanced),
+ * legacy external clone API, or system Web Speech.
+ */
+export type TTSProvider = 'sherpa-theresa' | 'fish-local' | 'fish-cloud' | 'legacy' | 'system';
 
 /** Audio format requested from Fish /v1/tts */
 export type TTSAudioFormat = 'mp3' | 'wav' | 'opus' | 'pcm';
 
 /**
  * TTS configuration (userData/tts-config.json).
- * Built-in default prefers Fish local (`fish-local`) with cute Nomi referenceId.
+ * Built-in default is the offline sherpa-onnx VITS model (`sherpa-theresa`, sid 0, speed 1.0).
+ * Fish (`fish-local` / `fish-cloud`) is an optional advanced engine with cute Nomi referenceId.
  * `apiKey` for fish-cloud is stored via safeStorage in the main process — never trust
  * a raw key from the renderer as the source of truth.
  * Legacy fields (hostname/port/path/audioUrl/promptText) remain for external TTS.
@@ -81,8 +90,12 @@ export type TTSAudioFormat = 'mp3' | 'wav' | 'opus' | 'pcm';
  */
 export interface TTSConfig {
   enabled: boolean;
-  /** Default: fish-local (built-in Fish path; falls back to system if unreachable). */
+  /** Default: sherpa-theresa (offline; falls back to system speech if model missing / failed). */
   provider: TTSProvider;
+  /** sherpa speaker id (default 0). */
+  sherpaSid?: number;
+  /** sherpa speech speed multiplier (default 1.0 — do not speed up). */
+  sherpaSpeed?: number;
   /** fish-local base, default http://127.0.0.1:8080 */
   baseUrl: string;
   /**
@@ -115,10 +128,12 @@ export interface TTSConfig {
   lastModified: number;
 }
 
-/** Public defaults for built-in Fish (no secrets). */
+/** Public defaults: built-in sherpa-onnx offline TTS (no secrets). Fish fields kept for the advanced engine. */
 export const DEFAULT_TTS_CONFIG: Omit<TTSConfig, 'lastModified'> = {
   enabled: true,
-  provider: 'fish-local',
+  provider: 'sherpa-theresa',
+  sherpaSid: 0,
+  sherpaSpeed: 1.0,
   baseUrl: 'http://127.0.0.1:8080',
   referenceId: 'nomi',
   format: 'mp3',
@@ -153,8 +168,8 @@ export interface TTSSpeakResult {
   /** base64 audio when success; renderer plays it */
   audioBase64?: string;
   mimeType?: string;
-  /** 'fish' | 'legacy' | 'none' — none means caller should use Web Speech */
-  via?: 'fish' | 'legacy' | 'none';
+  /** 'sherpa' | 'fish' | 'legacy' | 'none' — none means caller should use Web Speech */
+  via?: 'sherpa' | 'fish' | 'legacy' | 'none';
   message?: string;
   fallbackToSystem?: boolean;
 }
@@ -167,3 +182,15 @@ export interface TTSTestResult {
 }
 
 export * from './models';
+
+/** sherpa-onnx offline TTS model lifecycle (first-use download into userData/tts-models). */
+export interface SherpaModelStatus {
+  state: 'ready' | 'missing' | 'downloading' | 'extracting' | 'error';
+  /** where the model was found (dev: repo-side models dir) */
+  source?: 'dev' | 'userData' | 'env';
+  modelId: string;
+  /** Approximate download size in bytes (archive). */
+  totalBytes: number;
+  receivedBytes: number;
+  message?: string;
+}

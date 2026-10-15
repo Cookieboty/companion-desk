@@ -226,4 +226,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ttsHealth: async (config?: unknown) => {
     return await ipcRenderer.invoke('tts:health', config);
   },
+  ttsSherpaStatus: async () => {
+    return await ipcRenderer.invoke('tts:sherpa:status');
+  },
+  ttsSherpaDownload: async () => {
+    return await ipcRenderer.invoke('tts:sherpa:download');
+  },
+  ttsSherpaCancel: async () => {
+    return await ipcRenderer.invoke('tts:sherpa:cancel');
+  },
 } as IpcApi);

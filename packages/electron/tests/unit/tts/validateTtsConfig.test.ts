@@ -3,17 +3,42 @@ import { DEFAULT_TTS_CONFIG } from '@nomi-ai/types';
 import { normalizeTtsConfig, validateTtsConfig } from '../../../src/tts/fish/validateTtsConfig';
 
 describe('validateTtsConfig', () => {
-  it('accepts built-in fish-local defaults', () => {
+  it('accepts built-in sherpa defaults (sid 0, speed 1.0)', () => {
     const cfg = normalizeTtsConfig({ ...DEFAULT_TTS_CONFIG, lastModified: 1 });
     const v = validateTtsConfig(cfg);
     expect(v.isValid).toBe(true);
-    expect(cfg.provider).toBe('fish-local');
+    expect(cfg.provider).toBe('sherpa-theresa');
+    expect(cfg.sherpaSid).toBe(0);
+    expect(cfg.sherpaSpeed).toBe(1.0);
     expect(cfg.referenceId).toBe('nomi');
+  });
+
+  it('defaults to sherpa when no file / no provider; keeps explicit Fish choice', () => {
+    expect(normalizeTtsConfig(null).provider).toBe('sherpa-theresa');
+    expect(normalizeTtsConfig({}).provider).toBe('sherpa-theresa');
+    expect(normalizeTtsConfig({ provider: 'fish-local' }).provider).toBe('fish-local');
+    expect(normalizeTtsConfig({ provider: 'fish-cloud' }).provider).toBe('fish-cloud');
+  });
+
+  it('sanitizes sherpa sid / speed and validates ranges', () => {
+    const cfg = normalizeTtsConfig({ sherpaSid: -1, sherpaSpeed: 9 });
+    expect(cfg.sherpaSid).toBe(0);
+    expect(cfg.sherpaSpeed).toBe(1.0);
+    expect(normalizeTtsConfig({ sherpaSid: 5, sherpaSpeed: 1.2 })).toMatchObject({
+      sherpaSid: 5,
+      sherpaSpeed: 1.2,
+    });
+    const bad = { ...cfg, sherpaSid: 1000 };
+    expect(validateTtsConfig(bad).errors.some((e) => /sherpaSid/.test(e))).toBe(true);
+    expect(
+      validateTtsConfig({ ...cfg, sherpaSpeed: 3 }).errors.some((e) => /sherpaSpeed/.test(e)),
+    ).toBe(true);
   });
 
   it('rejects invalid fish baseUrl', () => {
     const cfg = normalizeTtsConfig({
       ...DEFAULT_TTS_CONFIG,
+      provider: 'fish-local',
       baseUrl: 'not-a-url',
       lastModified: 1,
     });

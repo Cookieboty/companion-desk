@@ -1,6 +1,7 @@
 /**
- * Built-in Fish TTS orchestration for the main process.
- * Product default: fish-local + cute nomi seed (bundled sample.wav inlined as reference_audio).
+ * Optional (advanced) Fish TTS orchestration for the main process.
+ * No longer the product default (sherpa-onnx offline TTS is; see ../ttsRouter.ts).
+ * When selected: fish-local + cute nomi seed (bundled sample.wav inlined as reference_audio).
  * On failure / disabled / system provider → fallbackToSystem (renderer uses Web Speech).
  * Does not expose user voice-upload cloning.
  */
@@ -50,6 +51,10 @@ export class FishTtsService {
     const cfg = this.store.load();
     if (!cfg.enabled || cfg.provider === 'system') {
       return { success: false, via: 'none', fallbackToSystem: true, message: 'system provider' };
+    }
+
+    if (cfg.provider === 'sherpa-theresa') {
+      return { success: false, via: 'none', fallbackToSystem: true, message: 'handled by sherpa' };
     }
 
     if (cfg.provider === 'legacy') {

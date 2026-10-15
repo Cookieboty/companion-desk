@@ -6,7 +6,12 @@
 import http from 'http';
 import https from 'https';
 
-import { type TTSConfig, type TTSSpeakRequest, type TTSTestResult } from '@nomi-ai/types';
+import {
+  type SherpaModelStatus,
+  type TTSConfig,
+  type TTSSpeakRequest,
+  type TTSTestResult,
+} from '@nomi-ai/types';
 import { app } from 'electron';
 
 import { t } from '../../i18n';
@@ -14,6 +19,8 @@ import { type IConfigService, type VoiceSettings } from '../../services/ConfigSe
 import { type ILoggerService } from '../../services/LoggerService';
 import { getFishTtsService } from '../../tts/fish';
 import { validateTtsConfig } from '../../tts/fish/validateTtsConfig';
+import { getSherpaTtsService } from '../../tts/sherpa';
+import { TtsRouter } from '../../tts/ttsRouter';
 
 import { BaseIpcHandler } from './BaseIpcHandler';
 
@@ -258,8 +265,18 @@ export class ConfigIpcHandler extends BaseIpcHandler {
    */
   private initializeTTSHandlers(): void {
     const fish = getFishTtsService();
+    const sherpa = getSherpaTtsService();
+    const router = new TtsRouter({
+      getConfig: () => fish.getConfig(),
+      sherpa,
+      fish,
+      onSherpaFailure: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('sherpa TTS 不可用，回退系统语音', { message });
+      },
+    });
 
-    // 获取TTS配置（无文件时返回内置 Fish 默认，便于开箱走 Fish 路径）
+    // 获取TTS配置（无文件时返回内置 sherpa 离线默认，便于开箱走 sherpa 路径）
     this.registerHandler('getTTSConfig', async () => {
       try {
         const config = fish.getConfig();
@@ -297,14 +314,16 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
-    // 测试连接：Fish → /v1/health；legacy → 原 POST 探测
+    // 测试连接：sherpa → 模型就绪 + 引擎可加载；Fish → /v1/health；legacy → 原 POST 探测
     this.registerHandler('testTTSConnection', async (_, config: TTSConfig) => {
       this.validateArgs([config], 1, ['object']);
 
       try {
         const startTime = Date.now();
         let result: TTSTestResult;
-        if (config.provider === 'fish-local' || config.provider === 'fish-cloud') {
+        if (config.provider === 'sherpa-theresa') {
+          result = await this.checkSherpaHealth();
+        } else if (config.provider === 'fish-local' || config.provider === 'fish-cloud') {
           result = await fish.checkHealth(config);
         } else if (config.provider === 'system') {
           result = { success: true, message: t('系统语音模式，无需连接 TTS 服务') };
@@ -339,11 +358,11 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
-    // 内置 Fish 合成（渲染层播放；失败则回退系统语音）
+    // 合成路由：sherpa（默认）/ Fish（可选）；渲染层播放，失败则回退系统语音
     this.registerHandler('tts:speak', async (_, req: TTSSpeakRequest) => {
       this.validateArgs([req], 1, ['object']);
       try {
-        return await fish.speak(req ?? { text: '' });
+        return await router.speak(req ?? { text: '' });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('tts:speak 失败', { error: errorMessage });
@@ -356,8 +375,23 @@ export class ConfigIpcHandler extends BaseIpcHandler {
       }
     });
 
+    // sherpa 模型状态 / 首次使用下载（进度由渲染进程轮询 status）
+    this.registerHandler('tts:sherpa:status', async (): Promise<SherpaModelStatus> => {
+      return sherpa.getStatus();
+    });
+    this.registerHandler('tts:sherpa:download', async (): Promise<SherpaModelStatus> => {
+      this.logger.info('sherpa TTS 模型开始下载');
+      return sherpa.startDownload();
+    });
+    this.registerHandler('tts:sherpa:cancel', async (): Promise<SherpaModelStatus> => {
+      return sherpa.cancelDownload();
+    });
+
     this.registerHandler('tts:health', async (_, config?: Partial<TTSConfig>) => {
       try {
+        if ((config?.provider ?? fish.getConfig().provider) === 'sherpa-theresa') {
+          return await this.checkSherpaHealth();
+        }
         return await fish.checkHealth(config);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -372,8 +406,12 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         this.validateArgs([testConfig], 1, ['object']);
 
         try {
-          if (testConfig.provider === 'fish-local' || testConfig.provider === 'fish-cloud') {
-            const spoken = await fish.speak({
+          if (
+            testConfig.provider === 'sherpa-theresa' ||
+            testConfig.provider === 'fish-local' ||
+            testConfig.provider === 'fish-cloud'
+          ) {
+            const spoken = await (testConfig.provider === 'sherpa-theresa' ? router : fish).speak({
               text: testConfig.testText,
               referenceId: testConfig.referenceId,
             });
@@ -385,7 +423,7 @@ export class ConfigIpcHandler extends BaseIpcHandler {
                 mimeType: spoken.mimeType,
               };
             }
-            throw new Error(spoken.message || t('Fish 合成失败'));
+            throw new Error(spoken.message || t('TTS 合成失败'));
           }
 
           const validation = validateTtsConfig({
@@ -443,6 +481,35 @@ export class ConfigIpcHandler extends BaseIpcHandler {
         }
       },
     );
+  }
+
+  /** sherpa：模型是否就绪 + 引擎是否能加载（会预热，耗时约 1s） */
+  private async checkSherpaHealth(): Promise<TTSTestResult> {
+    const sherpa = getSherpaTtsService();
+    const status = sherpa.getStatus();
+    if (status.state === 'downloading' || status.state === 'extracting') {
+      return { success: false, message: t('离线语音模型正在下载，完成后自动可用') };
+    }
+    if (status.state !== 'ready') {
+      return {
+        success: false,
+        message:
+          status.state === 'error' && status.message
+            ? t('离线语音模型下载失败: {0}', status.message)
+            : t('离线语音模型尚未下载，当前使用系统语音；可在此页点击「下载离线语音模型」'),
+      };
+    }
+    try {
+      const ms = await sherpa.warmup();
+      return {
+        success: true,
+        message: t('离线语音引擎就绪（模型位置：{0}）', status.source ?? ''),
+        latency: ms,
+      };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return { success: false, message: t('离线语音引擎加载失败，将回退系统语音: {0}', msg) };
+    }
   }
 
   /**

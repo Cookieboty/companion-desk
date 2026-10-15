@@ -5,7 +5,10 @@
 import type { TTSConfig, TTSProvider } from '@nomi-ai/types';
 import { DEFAULT_TTS_CONFIG } from '@nomi-ai/types';
 
-const PROVIDERS: TTSProvider[] = ['fish-local', 'fish-cloud', 'legacy', 'system'];
+const PROVIDERS: TTSProvider[] = ['sherpa-theresa', 'fish-local', 'fish-cloud', 'legacy', 'system'];
+const SHERPA_MAX_SID = 803;
+const SHERPA_SPEED_MIN = 0.5;
+const SHERPA_SPEED_MAX = 1.5;
 const FORMATS = ['mp3', 'wav', 'opus', 'pcm'] as const;
 
 export interface TtsValidation {
@@ -25,6 +28,19 @@ export function normalizeTtsConfig(raw: Partial<TTSConfig> | null | undefined): 
     ...base,
     ...raw,
     provider,
+    sherpaSid:
+      typeof raw.sherpaSid === 'number' &&
+      Number.isInteger(raw.sherpaSid) &&
+      raw.sherpaSid >= 0 &&
+      raw.sherpaSid <= SHERPA_MAX_SID
+        ? raw.sherpaSid
+        : (base.sherpaSid ?? 0),
+    sherpaSpeed:
+      typeof raw.sherpaSpeed === 'number' &&
+      raw.sherpaSpeed >= SHERPA_SPEED_MIN &&
+      raw.sherpaSpeed <= SHERPA_SPEED_MAX
+        ? raw.sherpaSpeed
+        : (base.sherpaSpeed ?? 1),
     enabled: raw.enabled !== false,
     baseUrl:
       typeof raw.baseUrl === 'string' && raw.baseUrl.trim() ? raw.baseUrl.trim() : base.baseUrl,
@@ -50,11 +66,11 @@ export function normalizeTtsConfig(raw: Partial<TTSConfig> | null | undefined): 
 }
 
 function inferProvider(raw: Partial<TTSConfig>): TTSProvider {
-  // Legacy files without provider: if classic clone fields look filled → legacy; else fish-local
+  // Legacy files without provider: if classic clone fields look filled → legacy; else product default
   if (raw.hostname && raw.port && raw.path && raw.audioUrl && raw.promptText) {
     return 'legacy';
   }
-  return 'fish-local';
+  return DEFAULT_TTS_CONFIG.provider;
 }
 
 export function validateTtsConfig(config: TTSConfig): TtsValidation {
@@ -64,7 +80,26 @@ export function validateTtsConfig(config: TTSConfig): TtsValidation {
     errors.push('enabled must be boolean');
   }
   if (!PROVIDERS.includes(config.provider)) {
-    errors.push('provider must be fish-local | fish-cloud | legacy | system');
+    errors.push('provider must be sherpa-theresa | fish-local | fish-cloud | legacy | system');
+  }
+
+  if (config.provider === 'sherpa-theresa') {
+    if (
+      config.sherpaSid != null &&
+      (!Number.isInteger(config.sherpaSid) ||
+        config.sherpaSid < 0 ||
+        config.sherpaSid > SHERPA_MAX_SID)
+    ) {
+      errors.push(`sherpaSid must be an integer 0–${SHERPA_MAX_SID}`);
+    }
+    if (
+      config.sherpaSpeed != null &&
+      (typeof config.sherpaSpeed !== 'number' ||
+        config.sherpaSpeed < SHERPA_SPEED_MIN ||
+        config.sherpaSpeed > SHERPA_SPEED_MAX)
+    ) {
+      errors.push(`sherpaSpeed must be ${SHERPA_SPEED_MIN}–${SHERPA_SPEED_MAX}`);
+    }
   }
 
   if (config.provider === 'fish-local' || config.provider === 'fish-cloud') {
