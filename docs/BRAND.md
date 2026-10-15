@@ -111,7 +111,7 @@ Nomi 的造型是品牌资产。看板娘有 41 个动作，但**每一帧里，
 
 **怎么保证**
 
-- 主图层只来自官方原画的裁切：`packages/renderer/public/assets/models/sprite/nomi/layers/`；官方参考图在 `docs/brand/reference/` 与 `docs/brand/nomi-brand-board.jpg`。
+- 主图层只来自官方原画的裁切：`packages/renderer/public/assets/models/sprite/nomi/layers/`；官方参考图在 `docs/brand/reference/`（特写 `nomi-closeup.png`、半身 `nomi-clean-halfbody.jpg`）与 `docs/brand/nomi-brand-board.jpg`。
 - `brand-lock.json`（由 `node scripts/brand/update-brand-lock.mjs` 生成）记录每个图层 PNG 的 sha256 和图层摆放（偏移 / 锚点 / 支点）。`tests/mascot/brandLock.test.ts` 在 CI 里逐个校验；任何改动都会让测试失败，必须有意识地更新。
 - 同一个测试还对每个动作的每一帧检查：品牌图层都被绘制、完全不透明、只做旋转 + 等比缩放（无剪切、无挤压）、发夹 / 蝴蝶结 / 耳坠留在画布内，头上的部件一起刚性运动（蝴蝶结可在发夹处小幅摆动）。
 - 动作只移动 / 旋转原图层，用网格弯曲袖子，叠加品牌色的矢量表情符号；**不重绘任何品牌部件**。手持物之类自然的遮挡（手挡住一部分胸前标志）是允许的，变形不允许。

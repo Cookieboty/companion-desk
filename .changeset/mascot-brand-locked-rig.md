@@ -1,0 +1,4 @@
+---
+---
+
+feat(mascot): Nomi's 2D mascot now has 41 named Live2D-style actions (wave, nod, think, heart, blow a kiss, thumbs up, sorry, yawn, goodnight and more) on a brand-locked rig. The official hairclips, orange bow, hair bars, earring, choker charm, jacket, chest logo and ID tag are only ever moved, never redrawn: a test hashes every master layer and checks that all brand layers stay opaque, unsheared and uniformly scaled in every frame of every action. Hands are cut from AI art and attached at the elbow with a mesh-warped arm. The action manager has priorities, queueing, holds, cooldowns and crossfades, with idle micro-actions on top; task results, thinking, tools, long answers and file drops pick fitting actions, reduced motion is respected, and the toolbar menu, tray and AI tool list every action with Chinese labels.
