@@ -34,7 +34,10 @@ export function inferBrand(baseUrl: string): string | undefined {
   return table.find(([re]) => re.test(host))?.[1];
 }
 
-/** Nomi 预设的协议 → CLI 档案的上游格式 */
+/**
+ * Nomi 预设的协议 → CLI 档案的上游格式（仅作参考映射；新建档案默认用
+ * CLI_DEFAULT_FORMAT，不要用本函数覆盖端点原生格式）。
+ */
 export function presetFormat(protocol: Protocol): Fmt {
   if (protocol === 'anthropic') return 'anthropic_messages';
   if (protocol === 'openai-responses') return 'openai_responses';

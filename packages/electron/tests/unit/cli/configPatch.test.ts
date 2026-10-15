@@ -19,6 +19,7 @@ import {
 import {
   claudeFormatNeedsRouting,
   codexFormatNeedsRouting,
+  defaultFormat,
   formatNeedsRouting,
 } from '../../../src/cli/formats';
 
@@ -96,6 +97,15 @@ describe('api formats routing flags', () => {
     expect(codexFormatNeedsRouting('openai_chat_completions')).toBe(true);
     expect(codexFormatNeedsRouting('anthropic_messages')).toBe(true);
     expect(formatNeedsRouting('codex', 'openai_chat_completions')).toBe(true);
+  });
+
+  it('defaultFormat is each CLI native protocol', () => {
+    expect(defaultFormat('claude')).toBe('anthropic_messages');
+    expect(defaultFormat('codex')).toBe('openai_responses');
+    expect(defaultFormat('dsh')).toBe('openai_chat_completions');
+    expect(formatNeedsRouting('claude', defaultFormat('claude'))).toBe(false);
+    expect(formatNeedsRouting('codex', defaultFormat('codex'))).toBe(false);
+    expect(formatNeedsRouting('dsh', defaultFormat('dsh'))).toBe(false);
   });
 });
 

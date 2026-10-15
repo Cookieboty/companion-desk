@@ -219,7 +219,7 @@ describe('ProvidersPage', () => {
     expect(r.getByTestId('preset-custom')).toBeTruthy();
   });
 
-  it('选预设 → 表单预填地址与默认上游格式；非原生格式提示需路由；保存并启用走 upsert + activate', async () => {
+  it('选预设 → 预填地址；默认上游格式为端点原生（不受预设 protocol 改写）；保存并启用走 upsert + activate', async () => {
     const calls = setup([]);
     localStorage.setItem('ai-chat:providerEndpoint', 'claude');
     const r = render(<ProvidersPage />);
@@ -231,8 +231,11 @@ describe('ProvidersPage', () => {
     expect((r.getByTestId('cli-provider-baseurl') as HTMLInputElement).value).toBe(
       'https://api.deepseek.com',
     );
-    // DeepSeek 是 OpenAI Chat 协议，对 Claude Code 不是原生格式 → 需要路由提示
-    expect(r.getByTestId('cli-editor-routing-hint')).toBeTruthy();
+    // Claude Code 默认 Anthropic Messages 原生，即使 DeepSeek 预设是 openai-chat
+    expect((r.getByTestId('cli-provider-format') as HTMLSelectElement).value).toBe(
+      'anthropic_messages',
+    );
+    expect(r.queryByTestId('cli-editor-routing-hint')).toBeNull();
     fireEvent.change(r.getByTestId('cli-provider-key'), { target: { value: 'sk-test' } });
     fireEvent.click(r.getByTestId('cli-provider-save-activate'));
     await waitFor(() => {
@@ -241,7 +244,7 @@ describe('ProvidersPage', () => {
       expect(c![1][0]).toMatchObject({
         kind: 'claude',
         presetId: 'deepseek',
-        apiFormat: 'openai_chat_completions',
+        apiFormat: 'anthropic_messages',
         apiKey: 'sk-test',
         baseUrl: 'https://api.deepseek.com',
       });
@@ -251,6 +254,25 @@ describe('ProvidersPage', () => {
         true,
       ),
     );
+  });
+
+  it('Codex 选 OpenAI 兼容预设仍默认 Responses 原生；改 Chat Completions 才提示需路由', async () => {
+    setup([]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'codex');
+    const r = render(<ProvidersPage />);
+    await waitFor(() => r.getByTestId('cli-add-provider'));
+    fireEvent.click(r.getByTestId('cli-add-provider'));
+    await waitFor(() => r.getByTestId('preset-deepseek'));
+    fireEvent.click(r.getByTestId('preset-deepseek'));
+    await waitFor(() => r.getByTestId('cli-provider-form'));
+    expect((r.getByTestId('cli-provider-format') as HTMLSelectElement).value).toBe(
+      'openai_responses',
+    );
+    expect(r.queryByTestId('cli-editor-routing-hint')).toBeNull();
+    fireEvent.change(r.getByTestId('cli-provider-format'), {
+      target: { value: 'openai_chat_completions' },
+    });
+    await waitFor(() => expect(r.getByTestId('cli-editor-routing-hint')).toBeTruthy());
   });
 
   it('新增档案带当前端点 kind；dsh 的高级里没有路由开关；Anthropic 预设对 Claude 是原生格式', async () => {
@@ -263,6 +285,10 @@ describe('ProvidersPage', () => {
     await waitFor(() => r.getByTestId('preset-custom'));
     fireEvent.click(r.getByTestId('preset-custom'));
     await waitFor(() => r.getByTestId('cli-provider-baseurl'));
+    expect((r.getByTestId('cli-provider-format') as HTMLSelectElement).value).toBe(
+      'openai_chat_completions',
+    );
+    expect(r.queryByTestId('cli-editor-routing-hint')).toBeNull();
     fireEvent.change(r.getByTestId('cli-provider-baseurl'), {
       target: { value: 'https://d.test/v1' },
     });
@@ -270,7 +296,10 @@ describe('ProvidersPage', () => {
     await waitFor(() => {
       const c = calls.find(([ch]) => ch === 'ai:cli-provider:upsert');
       expect(c).toBeTruthy();
-      expect((c![1][0] as { kind: string }).kind).toBe('dsh');
+      expect(c![1][0]).toMatchObject({
+        kind: 'dsh',
+        apiFormat: 'openai_chat_completions',
+      });
     });
   });
 

@@ -21,7 +21,7 @@ import {
 import ppStyles from '../ProviderPanel/index.module.css';
 import { Monogram, FetchBadge } from '../ProviderPanel/shared';
 
-import { inferBrand, nativeFormat, presetFormat } from './cliBrand';
+import { inferBrand, nativeFormat } from './cliBrand';
 
 type Fmt = Parameters<typeof cliProviderClient.upsert>[0]['apiFormat'];
 
@@ -69,11 +69,9 @@ export const CliProviderEditor: React.FC<{
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState(saved?.baseUrl ?? preset?.baseURL ?? '');
   const [model, setModel] = useState(saved?.model ?? preset?.defaultModel ?? '');
+  // 新建时默认用该 CLI 端点自己的原生格式，不被 Nomi 预设 protocol 改写（预设只预填 name/url/model/key）。
   const [apiFormat, setApiFormat] = useState<string>(
-    saved?.apiFormat ??
-      (preset && preset.id !== 'custom'
-        ? presetFormat(preset.protocol)
-        : CLI_DEFAULT_FORMAT[endpoint]),
+    saved?.apiFormat ?? CLI_DEFAULT_FORMAT[endpoint],
   );
   const [fetched, setFetched] = useState<FetchedModel[]>([]);
   const [fetchRes, setFetchRes] = useState<FetchModelsResult | 'pending'>();
