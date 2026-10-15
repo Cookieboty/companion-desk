@@ -220,4 +220,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resetTTSConfig: async () => {
     return await ipcRenderer.invoke('resetTTSConfig');
   },
+  ttsSpeak: async (req: { text: string; referenceId?: string; volume?: number }) => {
+    return await ipcRenderer.invoke('tts:speak', req);
+  },
+  ttsHealth: async (config?: unknown) => {
+    return await ipcRenderer.invoke('tts:health', config);
+  },
 } as IpcApi);
