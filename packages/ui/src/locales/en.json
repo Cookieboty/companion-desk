@@ -1607,5 +1607,12 @@
   "新建对话": "New conversation",
   "把当前对话分叉为新对话": "Fork the current conversation into a new one",
   "↑ / ↓ / Enter（菜单里）": "↑ / ↓ / Enter (in menus)",
-  "在菜单项间移动 / 确认": "Move between menu items / confirm"
+  "在菜单项间移动 / 确认": "Move between menu items / confirm",
+  "打开历史会话失败": "Could not open the history session",
+  "编程助手历史会话": "Coding assistant history",
+  "刷新历史会话": "Refresh history",
+  "没有找到本机的历史会话": "No local history sessions found",
+  "正在扫描历史会话…": "Scanning history sessions…",
+  "原目录已不存在": "The original directory no longer exists",
+  "加载更多": "Load more"
 }

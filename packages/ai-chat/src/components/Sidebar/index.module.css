@@ -217,3 +217,57 @@
   font: inherit;
   font-size: 13px;
 }
+
+.histSection {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.histHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.histRefresh {
+  border: none;
+  background: transparent;
+  color: var(--cd-color-text-subtle);
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.histRefresh:hover:not(:disabled) {
+  background: var(--cd-color-hover);
+  color: var(--cd-color-text);
+}
+.histRefresh:disabled {
+  opacity: 0.5;
+}
+.histRow {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 34px;
+}
+.histRow[data-cwd-missing] {
+  opacity: 0.55;
+}
+.histRow[aria-busy='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.histMore {
+  margin: 6px 8px 10px;
+  padding: 6px 10px;
+  border: 1px dashed var(--cd-color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cd-color-text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.histMore:hover:not(:disabled) {
+  background: var(--cd-color-hover);
+  color: var(--cd-color-text);
+}

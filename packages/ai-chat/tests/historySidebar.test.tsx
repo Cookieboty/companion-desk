@@ -1,0 +1,156 @@
+// @vitest-environment happy-dom
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { Sidebar } from '../src/components/Sidebar';
+import { HarnessTabsProvider } from '../src/contexts/HarnessTabsContext';
+import { setChatMode } from '../src/services/chatPrefs';
+import type { HistorySession } from '../src/services/historyClient';
+
+vi.mock('../src/contexts/AiChatContext', () => ({
+  useAiChat: () => ({
+    state: {
+      messages: [],
+      ipcClient: {
+        listConversations: async () => [
+          { id: 'n1', name: '聊天', backend: 'nomi', createdAt: 1, updatedAt: Date.now() },
+        ],
+        currentConversationId: () => 'n1',
+        conversationStore: () => undefined,
+      },
+    },
+    actions: {},
+  }),
+}));
+
+const h = (backend: HistorySession['backend'], i: number, o: Partial<HistorySession> = {}) =>
+  ({
+    key: `${backend}:${i}`,
+    backend,
+    sessionId: `${backend}-${i}`,
+    title: `${backend} 历史 ${i}`,
+    cwd: '/work/app',
+    cwdMissing: false,
+    updatedAt: Date.now() - i * 60_000,
+    ...o,
+  }) as HistorySession;
+
+function mockIpc(opts: { openResult?: unknown } = {}) {
+  const calls: Array<[string, unknown[]]> = [];
+  const invoke = vi.fn(async (ch: string, ...args: unknown[]) => {
+    calls.push([ch, args]);
+    if (ch === 'ai:harness:tabs')
+      return { tabs: [], activeTabId: 'main', maxConcurrent: 3, running: 0, queued: 0 };
+    if (ch === 'ai:harness:state')
+      return { backend: 'nomi', cwd: '/w', bins: { claude: '/c', codex: '/x', dsh: null } };
+    if (ch === 'ai:harness:recent-cwds') return [];
+    if (ch === 'ai:history:list') {
+      const [b, o] = args as [HistorySession['backend'], { offset?: number }];
+      if (b === 'claude') {
+        return (o.offset ?? 0) === 0
+          ? { items: [h('claude', 1), h('claude', 3)], nextOffset: 50, hasMore: true }
+          : { items: [h('claude', 9)], nextOffset: null, hasMore: false };
+      }
+      if (b === 'codex')
+        return { items: [h('codex', 2, { cwdMissing: true })], nextOffset: null, hasMore: false };
+      return { items: [], nextOffset: null, hasMore: false };
+    }
+    if (ch === 'ai:history:open') return opts.openResult ?? { ok: true };
+    return {};
+  });
+  (window as unknown as { aiIPC: unknown }).aiIPC = { invoke, on: () => () => undefined };
+  return calls;
+}
+
+const mount = (onNotice = vi.fn()) =>
+  render(
+    <HarnessTabsProvider>
+      <Sidebar
+        collapsed={false}
+        onToggle={() => undefined}
+        onNewChat={() => undefined}
+        onNotice={onNotice}
+      />
+    </HarnessTabsProvider>,
+  );
+
+beforeEach(() => setChatMode('dev'));
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+  delete (window as { aiIPC?: unknown }).aiIPC;
+});
+
+describe('CLI history in the sidebar', () => {
+  it('dev mode: merged list across installed endpoints, newest first, with endpoint icons', async () => {
+    mockIpc();
+    const r = mount();
+    await waitFor(() => expect(r.getAllByTestId('history-session-item')).toHaveLength(3));
+    const rows = r.getAllByTestId('history-session-item');
+    expect(rows.map((x) => x.getAttribute('data-session-id'))).toEqual([
+      'claude-1',
+      'codex-2',
+      'claude-3',
+    ]);
+    expect(rows[0]!.querySelector('[data-testid="endpoint-icon-claude"]')).toBeTruthy();
+    // 目录已不存在 → 置灰并带提示
+    expect(rows[1]!.getAttribute('data-cwd-missing')).toBe('true');
+    expect(rows[1]!.getAttribute('title')).toContain('原目录已不存在');
+    // dsh 未安装 → 不扫描
+    expect(r.getAllByTestId('history-session-item').some((x) => x.dataset.backend === 'dsh')).toBe(
+      false,
+    );
+  });
+
+  it('normal mode does not show or scan history', async () => {
+    setChatMode('normal');
+    const calls = mockIpc();
+    const r = mount();
+    await waitFor(() => r.getAllByTestId('history-item'));
+    expect(r.queryByTestId('cli-history')).toBeNull();
+    expect(calls.some(([c]) => c === 'ai:history:list')).toBe(false);
+  });
+
+  it('by-endpoint view scopes to one endpoint and loads the next page for it', async () => {
+    localStorage.setItem('ai-chat:conversationListView', 'by-endpoint');
+    localStorage.setItem('ai-chat:endpointFilter', 'claude');
+    const calls = mockIpc();
+    const r = mount();
+    await waitFor(() => expect(r.getAllByTestId('history-session-item')).toHaveLength(2));
+    expect(
+      r.getAllByTestId('history-session-item').every((x) => x.dataset.backend === 'claude'),
+    ).toBe(true);
+    fireEvent.click(r.getByTestId('cli-history-more'));
+    await waitFor(() => expect(r.getAllByTestId('history-session-item')).toHaveLength(3));
+    expect(
+      calls.filter(
+        ([c, a]) => c === 'ai:history:list' && (a[1] as { offset?: number }).offset === 50,
+      ),
+    ).toHaveLength(1);
+    expect(r.queryByTestId('cli-history-more')).toBeNull();
+  });
+
+  it('clicking a row opens it through the main process and reports problems', async () => {
+    const onNotice = vi.fn();
+    const calls = mockIpc({ openResult: { ok: false, error: '原工作目录已不存在：/work/app' } });
+    const r = mount(onNotice);
+    await waitFor(() => expect(r.getAllByTestId('history-session-item')).toHaveLength(3));
+    fireEvent.click(r.getAllByTestId('history-session-item')[0]!);
+    await waitFor(() =>
+      expect(
+        calls.some(([c, a]) => c === 'ai:history:open' && a[0] === 'claude' && a[1] === 'claude-1'),
+      ).toBe(true),
+    );
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith('原工作目录已不存在：/work/app'));
+  });
+
+  it('shows the transcript notice returned by the main process', async () => {
+    const onNotice = vi.fn();
+    mockIpc({ openResult: { ok: true, notice: '没有解析到可显示的历史消息' } });
+    const r = mount(onNotice);
+    await waitFor(() => expect(r.getAllByTestId('history-session-item')).toHaveLength(3));
+    fireEvent.click(r.getAllByTestId('history-session-item')[2]!);
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith('没有解析到可显示的历史消息'));
+  });
+});

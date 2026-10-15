@@ -375,6 +375,7 @@ const AiChatContent: React.FC = () => {
         onNewChat={handleNewChat}
         onSettings={() => openSettings()}
         onForkRequest={onForkRequest}
+        onNotice={setToast}
       />
 
       {/* 主内容区域 */}

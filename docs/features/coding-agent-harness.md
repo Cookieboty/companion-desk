@@ -396,3 +396,23 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - **任务路由**（对话 / 工具调用 / 摘要）只在 **Nomi** 区，沿用原有 `ProviderPanel`；CLI 端点没有任务路由。
 - 存储与 IPC 语义不变：`ai:cli-provider:*`（`upsert` / `remove` / `activate` / `deactivate` / `state` / 新增 `test`）、`ai:cli-route:*`。
 - 入口：设置 → 供应商与模型；输入栏供应商芯片的「管理」直接跳到对应端点；日程里的编程助手面板只保留一句指引。
+
+### 13.5 历史会话（Claude Code / Codex / dsh）
+
+**范围**：开发模式下，侧栏除了 Nomi 的对话与已打开的 CLI 标签，还列出本机磁盘上各 CLI **已有的**历史会话（包括在终端里直接用 CLI 产生的），点一下就在新标签里续接。普通模式不扫描、不显示。
+
+**数据源与解析**（主进程 `SessionHistoryService`，只读本机文件，不联网）：
+
+| 端点        | 位置                                                                                                                                      | 元信息                                                                                                                           | 续接命令                                                      |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Claude Code | `~/.claude/projects/<编码后的 cwd>/<sessionId>.jsonl`                                                                                     | 首个真实提问做标题、`cwd`、`sessionId`；子代理（`isSidechain` / `subagents/`）不单列；只有 `queue-operation`、没有提问的文件跳过 | `claude -p … --resume <sessionId>`                            |
+| Codex       | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`                                                                                            | `session_meta` 取 `id` / `cwd`（头部含超大 `base_instructions`，读 512KB 头部）；环境上下文、`AGENTS.md` 等注入内容不当标题      | `codex exec resume <id> …`（cwd 由进程目录决定）              |
+| dsh         | `$DSH_HOME/sessions/<编码后的 cwd>/session-<uuid>/session.v4.jsonl.zstd`，标题 / cwd 来自 `storages/session_projcache/sessions/<id>.json` | 明文索引，列表不解压                                                                                                             | `dsh --profile headless --json --session-id session-<uuid> …` |
+
+- **增量扫描**：目录列表 3 秒内复用；每个文件的解析结果按 `(mtime, size)` 缓存，只重读变化的文件（测试里断言未变化时不再打开文件）。全程异步 I/O，不阻塞主进程。
+- **分页**：按修改时间倒序，**每个端点 50 条**，「加载更多」取下一页（`offset` 是候选文件序号，被过滤的文件不占名额）。「全部」视图合并三个端点按时间排序，「加载更多」同时翻各端点的下一页；「按端」视图只看当前端点。窗口重新获得焦点、标签集合变化、点「↻」时刷新。
+- **去重**：已经绑定在某个标签上的会话（`backend + cliSessionId` 相同，含主标签）不会再出现在历史里；同一会话再次打开会直接切到那个标签，不会新建重复标签。
+- **打开**：`ai:history:open` → 检查原工作目录仍存在（续接要求同目录，否则提示「原工作目录已不存在」，条目也会置灰）→ 读出**可见转录**（用户 / 助手文本，工具只记名字，最近 300 条）→ 新建标签并绑定 `cliSessionId` 与原 cwd，转录预填；之后发送的第一条消息就用上表的续接命令。
+- **转录是尽力而为**：Claude 合并同一次回复的多个片段，跳过 `tool_result`、`isMeta`、子代理；Codex 只取 `response_item` 里的 `user` / `assistant` 消息并跳过环境 / 指令注入，函数调用记为工具名；dsh 只取 `source.kind = user` 的提问与 `assistant/message`（`.zstd` 用 Node 内置 `zlib.zstdDecompressSync`，不可用时回退系统 `zstd`）。解析不出来时标签是空的，并提示「没有解析到可显示的历史消息，仍可继续该会话」——续接本身不依赖转录。文件超过 12MB 时只读尾部并提示。
+- **测试**：夹具来自真实会话文件（`packages/electron/tests/fixtures/history/`，已裁掉超长指令）；覆盖三种解析器、分页（120 条 → 50/50/20）、增量、去重、cwd 缺失、转录失败、以及 mock CLI 的续接参数（`--resume` / `exec resume` / `--session-id`）。
+- **已知限制**：只支持这三个端点；没有对话内容搜索；dsh 的转录格式是内部格式（v4），升级后可能需要跟进解析器；Claude Code 的会话如果在终端里仍在运行，续接会和它同时写同一个文件。

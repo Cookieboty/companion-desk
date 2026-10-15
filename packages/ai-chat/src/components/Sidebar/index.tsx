@@ -5,10 +5,17 @@ import { List, type RowComponentProps } from 'react-window';
 import { useAiChat } from '../../contexts/AiChatContext';
 import { useHarnessTabs } from '../../contexts/HarnessTabsContext';
 import { useChatMode } from '../../hooks/useChatMode';
+import { useCliHistory } from '../../hooks/useCliHistory';
 import { useCliTabSync } from '../../hooks/useCliTabSync';
 import { useConversationListView } from '../../hooks/useConversationListView';
 import { useNewWorkspace } from '../../hooks/useNewWorkspace';
 import { MAIN_TAB_ID, harnessClient, type HarnessTabMeta } from '../../services/harnessClient';
+import {
+  HISTORY_BACKENDS,
+  historyClient,
+  type HistoryBackend,
+  type HistorySession,
+} from '../../services/historyClient';
 import type { ConversationBackend, ChatSession } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
 import { ENDPOINT_FULL } from '../../utils/endpointBadge';
@@ -24,6 +31,8 @@ interface SidebarProps {
   onNewChat: () => void;
   onSettings?: () => void;
   onForkRequest?: (id: string, mode: 'same' | 'cross') => void;
+  /** 打开历史会话失败 / 有提示时 */
+  onNotice?: (message: string) => void;
 }
 
 type Meta = Omit<ChatSession, 'messages'>;
@@ -145,6 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewChat,
   onSettings,
   onForkRequest,
+  onNotice,
 }) => {
   const { state, actions } = useAiChat();
   const ipc = state.ipcClient;
@@ -313,6 +323,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const cliMissing = (b: ConversationBackend) => b !== 'nomi' && !bins[b];
 
+  // 开发模式：磁盘上的 CLI 历史会话（每端 50 条一页）
+  const histBackends = useMemo(() => HISTORY_BACKENDS.filter((b) => Boolean(bins[b])), [bins]);
+  const tabsKey = (tabs.state?.tabs ?? []).map((x) => `${x.id}:${x.cliSessionId ?? ''}`).join('|');
+  const history = useCliHistory(isDev, histBackends, tabsKey);
+  const histScope: HistoryBackend | undefined =
+    view === 'by-endpoint' && endpointFilter !== 'nomi'
+      ? (endpointFilter as HistoryBackend)
+      : undefined;
+  const histItems: HistorySession[] =
+    view === 'by-endpoint' && endpointFilter === 'nomi' ? [] : history.items(histScope);
+  const [openingKey, setOpeningKey] = useState<string | null>(null);
+
+  const openHistory = async (h: HistorySession) => {
+    if (openingKey) return;
+    setOpeningKey(h.key);
+    try {
+      const r = await historyClient.open(h.backend, h.sessionId);
+      if (!r.ok) onNotice?.(r.error || t('打开历史会话失败'));
+      else if (r.notice) onNotice?.(r.notice);
+    } catch (e) {
+      onNotice?.(e instanceof Error ? e.message : String(e));
+    } finally {
+      setOpeningKey(null);
+      history.refresh();
+    }
+  };
+
   return (
     <aside
       className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}
@@ -454,6 +491,64 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 style={{ height: '100%', width: '100%' }}
               />
+            </div>
+          )}
+          {isDev && history.available && histBackends.length > 0 && (
+            <div className={styles.histSection} data-testid="cli-history">
+              <div className={styles.histHead}>
+                <span className={styles.sectionTitle}>{t('编程助手历史会话')}</span>
+                <button
+                  type="button"
+                  className={styles.histRefresh}
+                  onClick={history.refresh}
+                  disabled={history.loading}
+                  title={t('刷新历史会话')}
+                  aria-label={t('刷新历史会话')}
+                  data-testid="cli-history-refresh"
+                >
+                  ↻
+                </button>
+              </div>
+              {histItems.length === 0 && history.loaded && !history.loading && (
+                <div className={styles.empty} data-testid="cli-history-empty">
+                  {t('没有找到本机的历史会话')}
+                </div>
+              )}
+              {histItems.length === 0 && history.loading && !history.loaded && (
+                <div className={styles.empty}>{t('正在扫描历史会话…')}</div>
+              )}
+              {histItems.map((h) => (
+                <button
+                  key={h.key}
+                  type="button"
+                  className={`${styles.thread} ${styles.histRow}`}
+                  data-testid="history-session-item"
+                  data-backend={h.backend}
+                  data-session-id={h.sessionId}
+                  data-cwd-missing={h.cwdMissing || undefined}
+                  aria-busy={openingKey === h.key}
+                  title={[h.title, h.cwd, h.cwdMissing ? t('原目录已不存在') : '']
+                    .filter(Boolean)
+                    .join('\n')}
+                  onClick={() => void openHistory(h)}
+                >
+                  <span className={styles.dot} aria-hidden />
+                  <EndpointIcon backend={h.backend} size={14} />
+                  <span className={styles.threadName}>{h.title}</span>
+                  <span className={styles.threadTime}>{rel(h.updatedAt)}</span>
+                </button>
+              ))}
+              {history.hasMore(histScope) && (
+                <button
+                  type="button"
+                  className={styles.histMore}
+                  onClick={() => history.loadMore(histScope)}
+                  disabled={history.loading}
+                  data-testid="cli-history-more"
+                >
+                  {history.loading ? t('加载中…') : t('加载更多')}
+                </button>
+              )}
             </div>
           )}
         </nav>
