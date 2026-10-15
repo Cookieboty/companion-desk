@@ -186,11 +186,6 @@
   white-space: nowrap;
   margin-left: auto;
 }
-.newMenuMiss {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--cd-color-text-subtle);
-}
 .badge {
   font-size: 10px;
   font-weight: 650;
@@ -206,82 +201,19 @@
 .newMenu {
   position: absolute;
   left: 8px;
-  min-width: 200px;
-  width: max-content;
-  max-width: calc(100vw - 24px);
   top: calc(100% + 4px);
   z-index: 40;
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--cd-color-surface-raised, #121a2a);
-  border: 1px solid var(--cd-color-border);
-  box-shadow: var(--cd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.35));
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.newMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--cd-color-text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  text-align: left;
-}
-.newMenuItem:hover:not(:disabled) {
-  background: var(--cd-color-hover);
-}
-.newMenuItem:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.ctx {
-  position: fixed;
-  z-index: 80;
-  min-width: 180px;
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--cd-color-surface-raised, #121a2a);
-  border: 1px solid var(--cd-color-border);
-  box-shadow: var(--cd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.4));
-  display: flex;
-  flex-direction: column;
-}
-.ctxItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--cd-color-text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  text-align: left;
-}
-.ctxItem:hover:not(:disabled) {
-  background: var(--cd-color-hover);
-}
-.ctxItem:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.ctxSub {
-  padding-left: 12px;
-  font-size: 12px;
-  color: var(--cd-color-text-muted);
 }
 
-.newMenuWs {
-  margin-top: 4px;
-  padding: 6px 4px 2px;
-  border-top: 1px solid var(--cd-color-border);
+.renameInput {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--cd-color-accent);
+  border-radius: 6px;
+  background: var(--cd-color-surface);
+  color: var(--cd-color-text);
+  font: inherit;
+  font-size: 13px;
 }

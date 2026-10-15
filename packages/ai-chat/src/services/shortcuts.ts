@@ -62,7 +62,9 @@ export const FIXED_SHORTCUTS: Array<[string, string]> = [
   ['Enter / Shift+Enter', '发送 / 换行'],
   ['↑（输入框为空时）', '找回上一条提问'],
   ['F2（按住）', '说话'],
+  ['Mod+Shift+F', '把当前对话分叉为新对话'],
   ['Esc', '关闭弹窗 / 菜单'],
+  ['↑ / ↓ / Enter（菜单里）', '在菜单项间移动 / 确认'],
   ['Mod+1…9', '切换到第 n 个标签（9 = 最后一个）'],
 ];
 

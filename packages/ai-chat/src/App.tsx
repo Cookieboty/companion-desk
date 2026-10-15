@@ -407,6 +407,10 @@ const AiChatContent: React.FC = () => {
             renameRequest={tabRename}
             newTabRequest={tabNew}
             mainLoading={state.isLoading}
+            onForkTab={(tabId, mode) => {
+              const meta = state.ipcClient.conversationStore?.()?.findByTabId(tabId);
+              if (meta) onForkRequest(meta.id, mode);
+            }}
           />
         )}
         {/* 对话区域 */}

@@ -13,9 +13,6 @@ export const ENDPOINT_NAME: Record<ConversationBackend, string> = {
   dsh: 'dsh',
 };
 
-/** @deprecated 与 ENDPOINT_NAME 相同；保留给还未迁移的调用方 */
-export const ENDPOINT_SHORT = ENDPOINT_NAME;
-
 export const ENDPOINT_FULL: Record<ConversationBackend, () => string> = {
   nomi: () => t('Nomi'),
   claude: () => t('Claude Code'),

@@ -15,8 +15,9 @@ import {
 } from '../../services/harnessClient';
 import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
 import { ENDPOINT_NAME } from '../../utils/endpointBadge';
+import { ConversationMenu } from '../ConversationMenu';
 import { EndpointIcon } from '../EndpointIcon';
-import { WorkspacePicker } from '../WorkspacePicker';
+import { NewChatMenu } from '../NewChatMenu';
 
 import styles from './index.module.css';
 
@@ -59,12 +60,15 @@ export const ChatTabs: React.FC<{
   newTabRequest?: number;
   /** 主对话（Nomi）正在回复 */
   mainLoading?: boolean;
-}> = ({ renameRequest = 0, newTabRequest = 0, mainLoading = false }) => {
+  /** 右键菜单里的分叉（tabId → 由上层映射到对话） */
+  onForkTab?: (tabId: string, mode: 'same' | 'cross') => void;
+}> = ({ renameRequest = 0, newTabRequest = 0, mainLoading = false, onForkTab }) => {
   const tabs = useHarnessTabs();
   const bindings = useShortcutBindings();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [menu, setMenu] = useState(false);
+  const [ctx, setCtx] = useState<{ tabId: string; x: number; y: number } | null>(null);
   const [bins, setBins] = useState<Record<string, string | null>>({});
   const ws = useNewWorkspace();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -111,6 +115,15 @@ export const ChatTabs: React.FC<{
 
   if (!tabs.available || !st) return null;
 
+  const closeTab = (tab: { id: string; status: string }) => {
+    if (
+      (tab.status === 'running' || tab.status === 'queued') &&
+      !window.confirm(t('该标签仍在运行，关闭会中止它。确定关闭？'))
+    )
+      return;
+    void tabs.close(tab.id);
+  };
+
   const commitRename = () => {
     const id = editing;
     setEditing(null);
@@ -151,6 +164,11 @@ export const ChatTabs: React.FC<{
                 setEditing(tab.id);
                 setDraft(tab.title);
               }}
+              onContextMenu={(e) => {
+                if (tab.id === MAIN_TAB_ID) return;
+                e.preventDefault();
+                setCtx({ tabId: tab.id, x: e.clientX, y: e.clientY });
+              }}
               onAuxClick={(e) => {
                 if (e.button === 1 && tab.id !== MAIN_TAB_ID) void tabs.close(tab.id);
               }}
@@ -190,12 +208,7 @@ export const ChatTabs: React.FC<{
                   title={`${t('关闭标签')} (${formatCombo(bindings.closeTab)})`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (
-                      (tab.status === 'running' || tab.status === 'queued') &&
-                      !window.confirm(t('该标签仍在运行，关闭会中止它。确定关闭？'))
-                    )
-                      return;
-                    void tabs.close(tab.id);
+                    closeTab(tab);
                   }}
                 >
                   ×
@@ -205,6 +218,26 @@ export const ChatTabs: React.FC<{
           );
         })}
       </div>
+      {ctx &&
+        (() => {
+          const tab = st.tabs.find((x) => x.id === ctx.tabId);
+          if (!tab) return null;
+          return (
+            <ConversationMenu
+              x={ctx.x}
+              y={ctx.y}
+              isTab
+              onDismiss={() => setCtx(null)}
+              onRename={() => {
+                setEditing(tab.id);
+                setDraft(tab.title);
+              }}
+              onFork={() => onForkTab?.(tab.id, 'same')}
+              onForkCross={() => onForkTab?.(tab.id, 'cross')}
+              onClose={() => closeTab(tab)}
+            />
+          );
+        })()}
       {st.running + st.queued > 0 && (
         <span className={styles.load} data-testid="chat-tabs-load">
           {t('运行 {0}/{1}', st.running, st.maxConcurrent)}
@@ -224,38 +257,20 @@ export const ChatTabs: React.FC<{
           +
         </button>
         {menu && (
-          <div className={styles.menu} role="menu" data-testid="chat-tab-menu">
-            {CLI_BACKENDS.map((b) => (
-              <button
-                key={b}
-                type="button"
-                role="menuitem"
-                className={styles.menuItem}
-                data-testid={`chat-tab-new-${b}`}
-                disabled={bins[b] === null}
-                onClick={() => {
-                  setMenu(false);
-                  void tabs.create(b, ws.chosen).catch(() => undefined);
-                }}
-              >
-                <span className={styles.menuName}>
-                  <EndpointIcon backend={b} size={16} decorative />
-                  {ENDPOINT_NAME[b]}
-                </span>
-                <span className={styles.menuHint}>
-                  {bins[b] === null ? t('未安装') : b === tabs.lastBackend ? t('上次使用') : ''}
-                </span>
-              </button>
-            ))}
-            <div className={styles.menuWs}>
-              <WorkspacePicker
-                value={ws.cwd}
-                onChange={ws.set}
-                testId="new-tab-workspace"
-                label={t('目录')}
-              />
-            </div>
-          </div>
+          <NewChatMenu
+            className={styles.menu}
+            backends={CLI_BACKENDS}
+            bins={bins}
+            lastBackend={tabs.lastBackend}
+            workspace={ws}
+            testId="chat-tab-menu"
+            itemTestId={(b) => `chat-tab-new-${b}`}
+            workspaceTestId="new-tab-workspace"
+            onPick={(b) => {
+              setMenu(false);
+              void tabs.create(b, ws.chosen).catch(() => undefined);
+            }}
+          />
         )}
       </div>
     </div>

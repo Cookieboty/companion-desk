@@ -12,8 +12,9 @@ import { MAIN_TAB_ID, harnessClient, type HarnessTabMeta } from '../../services/
 import type { ConversationBackend, ChatSession } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
 import { ENDPOINT_FULL } from '../../utils/endpointBadge';
+import { ConversationMenu } from '../ConversationMenu';
 import { EndpointIcon } from '../EndpointIcon';
-import { WorkspacePicker } from '../WorkspacePicker';
+import { NewChatMenu } from '../NewChatMenu';
 
 import styles from './index.module.css';
 
@@ -48,24 +49,56 @@ const ThreadItem: React.FC<{
   tab?: HarnessTabMeta;
   onOpen: (id: string) => void;
   onCtx: (id: string, e: React.MouseEvent) => void;
+  renaming?: boolean;
+  onRename?: (id: string, name: string | null) => void;
   style?: React.CSSProperties;
-}> = ({ c, active, tab, onOpen, onCtx, style }) => (
-  <button
-    className={`${styles.thread} ${active ? styles.threadActive : ''}`}
-    style={style}
-    onClick={() => void onOpen(c.id)}
-    onContextMenu={(e) => onCtx(c.id, e)}
-    title={t(c.name)}
-    data-testid="history-item"
-    data-backend={c.backend}
-    data-conversation-id={c.id}
-  >
-    <span className={styles.dot} data-live={liveOf(tab) || undefined} aria-hidden />
-    <EndpointIcon backend={c.backend} size={14} />
-    <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
-    <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
-  </button>
-);
+}> = ({ c, active, tab, onOpen, onCtx, renaming, onRename, style }) => {
+  const cls = `${styles.thread} ${active ? styles.threadActive : ''}`;
+  const lead = (
+    <>
+      <span className={styles.dot} data-live={liveOf(tab) || undefined} aria-hidden />
+      <EndpointIcon backend={c.backend} size={14} />
+    </>
+  );
+  if (renaming) {
+    return (
+      <div className={cls} style={style} data-testid="history-item" data-backend={c.backend}>
+        {lead}
+        <input
+          className={styles.renameInput}
+          data-testid="conversation-rename-input"
+          defaultValue={c.name ? t(c.name) : ''}
+          aria-label={t('重命名')}
+          maxLength={60}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => onRename?.(c.id, e.currentTarget.value.trim() || null)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') onRename?.(c.id, e.currentTarget.value.trim() || null);
+            if (e.key === 'Escape') onRename?.(c.id, null);
+          }}
+        />
+      </div>
+    );
+  }
+  return (
+    <button
+      className={cls}
+      style={style}
+      onClick={() => void onOpen(c.id)}
+      onContextMenu={(e) => onCtx(c.id, e)}
+      title={t(c.name)}
+      data-testid="history-item"
+      data-backend={c.backend}
+      data-conversation-id={c.id}
+    >
+      {lead}
+      <span className={styles.threadName}>{c.name ? t(c.name) : t('新对话')}</span>
+      <span className={styles.threadTime}>{rel(c.updatedAt)}</span>
+    </button>
+  );
+};
 
 type VirtualProps = {
   items: Meta[];
@@ -73,6 +106,8 @@ type VirtualProps = {
   tabById: Map<string, HarnessTabMeta>;
   open: (id: string) => void;
   onCtx: (id: string, e: React.MouseEvent) => void;
+  renamingId: string | null;
+  onRename: (id: string, name: string | null) => void;
 };
 
 const VirtualRow = ({
@@ -83,6 +118,8 @@ const VirtualRow = ({
   tabById,
   open,
   onCtx,
+  renamingId,
+  onRename,
   ariaAttributes,
 }: RowComponentProps<VirtualProps>) => {
   const c = items[index]!;
@@ -94,6 +131,8 @@ const VirtualRow = ({
         tab={c.tabId ? tabById.get(c.tabId) : undefined}
         onOpen={open}
         onCtx={onCtx}
+        renaming={renamingId === c.id}
+        onRename={onRename}
       />
     </div>
   );
@@ -117,6 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [bins, setBins] = useState<Record<string, string | null>>({});
   const [newMenu, setNewMenu] = useState(false);
   const [ctx, setCtx] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const ws = useNewWorkspace();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -143,12 +183,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isDev]);
 
   useEffect(() => {
-    if (!newMenu && !ctx) return;
+    if (!newMenu) return;
     const close = (e: Event) => {
       if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
       if (e instanceof MouseEvent && menuRef.current?.contains(e.target as Node)) return;
       setNewMenu(false);
-      setCtx(null);
     };
     window.addEventListener('mousedown', close);
     window.addEventListener('keydown', close);
@@ -156,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       window.removeEventListener('mousedown', close);
       window.removeEventListener('keydown', close);
     };
-  }, [newMenu, ctx]);
+  }, [newMenu]);
 
   const tabById = useMemo(() => {
     const m = new Map<string, HarnessTabMeta>();
@@ -253,6 +292,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     refresh();
   };
 
+  const commitRename = useCallback(
+    (id: string, name: string | null) => {
+      setRenamingId(null);
+      if (!name || !ipc) return;
+      const meta = list.find((x) => x.id === id);
+      if (!meta || meta.name === name) return;
+      if (meta.tabId) void tabs.rename(meta.tabId, name).catch(() => undefined);
+      else ipc.conversationStore?.()?.updateMeta(id, { name });
+      refresh();
+    },
+    [ipc, list, tabs, refresh],
+  );
+
   const onCtx = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     setNewMenu(false);
@@ -309,31 +361,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!collapsed && <span>{t('新对话')}</span>}
         </button>
         {newMenu && !collapsed && (
-          <div className={styles.newMenu} role="menu" data-testid="new-chat-menu">
-            {CONVERSATION_BACKENDS.map((b) => (
-              <button
-                key={b}
-                type="button"
-                role="menuitem"
-                className={styles.newMenuItem}
-                disabled={cliMissing(b)}
-                onClick={() => void createFor(b)}
-                data-testid={`new-chat-${b}`}
-              >
-                <EndpointIcon backend={b} size={16} decorative />
-                <span>{ENDPOINT_FULL[b]()}</span>
-                {cliMissing(b) && <span className={styles.newMenuMiss}>{t('未安装')}</span>}
-              </button>
-            ))}
-            <div className={styles.newMenuWs}>
-              <WorkspacePicker
-                value={ws.cwd}
-                onChange={ws.set}
-                testId="new-chat-workspace"
-                label={t('目录')}
-              />
-            </div>
-          </div>
+          <NewChatMenu
+            className={styles.newMenu}
+            backends={CONVERSATION_BACKENDS}
+            bins={bins}
+            strictBins
+            workspace={ws}
+            onPick={(b) => void createFor(b)}
+          />
         )}
       </div>
 
@@ -398,6 +433,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 tab={c.tabId ? tabById.get(c.tabId) : undefined}
                 onOpen={open}
                 onCtx={onCtx}
+                renaming={renamingId === c.id}
+                onRename={commitRename}
               />
             ))}
           {visible.length > 100 && (
@@ -412,6 +449,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   tabById,
                   open,
                   onCtx,
+                  renamingId,
+                  onRename: commitRename,
                 }}
                 style={{ height: '100%', width: '100%' }}
               />
@@ -420,48 +459,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       )}
 
-      {ctx && (
-        <div
-          className={styles.ctx}
-          style={{ left: ctx.x, top: ctx.y }}
-          role="menu"
-          data-testid="conversation-context-menu"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            className={styles.ctxItem}
-            onClick={() => {
-              onForkRequest?.(ctx.id, 'same');
-              setCtx(null);
-            }}
-            data-testid="fork-same"
-          >
-            {t('分叉为新对话')}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={styles.ctxItem}
-            onClick={() => {
-              onForkRequest?.(ctx.id, 'cross');
-              setCtx(null);
-            }}
-            data-testid="fork-cross"
-          >
-            {t('分叉到其他端')}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={styles.ctxItem}
-            onClick={() => void removeItem(ctx.id)}
-            data-testid="conversation-delete"
-          >
-            {t('删除对话')}
-          </button>
-        </div>
-      )}
+      {ctx &&
+        (() => {
+          const meta = list.find((x) => x.id === ctx.id);
+          return (
+            <ConversationMenu
+              x={ctx.x}
+              y={ctx.y}
+              isTab={Boolean(meta?.tabId)}
+              onDismiss={() => setCtx(null)}
+              onRename={() => setRenamingId(ctx.id)}
+              onFork={() => onForkRequest?.(ctx.id, 'same')}
+              onForkCross={() => onForkRequest?.(ctx.id, 'cross')}
+              onClose={meta?.tabId ? () => void removeItem(ctx.id) : undefined}
+              onDelete={meta?.tabId ? undefined : () => void removeItem(ctx.id)}
+            />
+          );
+        })()}
 
       {onSettings && (
         <button

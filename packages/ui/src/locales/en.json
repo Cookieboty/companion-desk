@@ -1601,5 +1601,11 @@
   "选择端点": "Choose endpoint",
   "Nomi 自有 AI 的供应商，配置存在 Nomi 自己的 ai-providers.json（密钥加密保存）。Claude Code / Codex / dsh 不会读取这里，这里也不会写它们的配置。": "Providers for Nomi's own AI, stored in Nomi's own ai-providers.json (keys are encrypted). Claude Code / Codex / dsh never read this, and nothing here writes their configs.",
   "任务路由（对话 / 工具 / 摘要）只属于 Nomi，在下方「任务路由」里设置。": "Task routing (chat / agent tools / summary) belongs to Nomi only and is set under \"Task routing\" below.",
-  "供应商档案、上游格式与本地路由已合并到「设置 → 供应商与模型」，按端点分别配置。": "Provider profiles, upstream formats and local routing now live under Settings → Providers & Models, configured per endpoint."
+  "供应商档案、上游格式与本地路由已合并到「设置 → 供应商与模型」，按端点分别配置。": "Provider profiles, upstream formats and local routing now live under Settings → Providers & Models, configured per endpoint.",
+  "对话操作": "Conversation actions",
+  "重命名": "Rename",
+  "新建对话": "New conversation",
+  "把当前对话分叉为新对话": "Fork the current conversation into a new one",
+  "↑ / ↓ / Enter（菜单里）": "↑ / ↓ / Enter (in menus)",
+  "在菜单项间移动 / 确认": "Move between menu items / confirm"
 }
