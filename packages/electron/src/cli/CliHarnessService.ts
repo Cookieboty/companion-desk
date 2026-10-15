@@ -341,6 +341,8 @@ export class CliHarnessService {
       title?: string;
       /** 分叉时预填的可见消息（不 resume CLI 会话） */
       messages?: HarnessTabMessage[];
+      /** 打开历史会话：直接绑定已有 CLI 会话，下一条消息按各 CLI 的续接参数继续 */
+      cliSessionId?: string;
     } = {},
   ): HarnessTabMeta {
     const backend = opts.backend ?? 'claude';
@@ -358,7 +360,7 @@ export class CliHarnessService {
         (sameKind ? `${BACKEND_TITLE[backend]} ${sameKind + 1}` : BACKEND_TITLE[backend]),
       backend,
       cwd,
-      cliSessionId: null,
+      cliSessionId: opts.cliSessionId?.trim() || null,
       status: 'idle',
       unread: 0,
       createdAt: now,
@@ -393,6 +395,40 @@ export class CliHarnessService {
     this.activeTabId = tab.id;
     this.changed();
     return { ...tab };
+  }
+
+  /** 已绑定 CLI 会话的标签：`${backend}:${cliSessionId}`（历史列表据此去重） */
+  openSessionKeys(): Set<string> {
+    const out = new Set<string>();
+    for (const x of this.tabs.values()) {
+      if (x.cliSessionId) out.add(`${x.backend}:${x.cliSessionId}`);
+    }
+    return out;
+  }
+
+  /** 打开历史会话：已有同会话标签则切过去，否则新建并预填转录 */
+  openHistorySession(o: {
+    backend: CliBackend;
+    sessionId: string;
+    cwd: string;
+    title: string;
+    messages: HarnessTabMessage[];
+  }): { tab: HarnessTabMeta; reused: boolean } {
+    const existing = [...this.tabs.values()].find(
+      (x) => x.backend === o.backend && x.cliSessionId === o.sessionId,
+    );
+    if (existing) {
+      this.setActiveTab(existing.id);
+      return { tab: { ...existing }, reused: true };
+    }
+    const tab = this.createTab({
+      backend: o.backend,
+      cwd: o.cwd,
+      title: o.title,
+      messages: o.messages,
+      cliSessionId: o.sessionId,
+    });
+    return { tab, reused: false };
   }
 
   /** 用可见消息覆盖标签转录（分叉 / 导入）；不改 cliSessionId */
@@ -640,7 +676,8 @@ export class CliHarnessService {
           '--permission-prompts',
           'none',
         ];
-    if (tab.cliSessionId && !useNode) argv.push('--resume', tab.cliSessionId);
+    // Mock（.mjs）也收到续接参数，便于测试「打开历史会话」
+    if (tab.cliSessionId) argv.push('--resume', tab.cliSessionId);
     return this.spawnCollect(tab, {
       cmd: useNode ? process.execPath : bin,
       argv,
@@ -655,7 +692,9 @@ export class CliHarnessService {
     const useNode = isScript(bin);
     // `exec resume` 不接受 --cd；工作目录由 spawn 的 cwd 决定
     const argv = useNode
-      ? [bin, 'exec', '--json', prompt]
+      ? tab.cliSessionId
+        ? [bin, 'exec', 'resume', '--json', tab.cliSessionId, prompt]
+        : [bin, 'exec', '--json', prompt]
       : tab.cliSessionId
         ? ['exec', 'resume', '--json', '--skip-git-repo-check', tab.cliSessionId, prompt]
         : ['exec', '--json', '--skip-git-repo-check', '--cd', tab.cwd, prompt];

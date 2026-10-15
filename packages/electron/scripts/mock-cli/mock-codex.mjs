@@ -15,8 +15,16 @@ if (args.includes('update')) {
   process.exit(0);
 }
 
-const reply = process.env.NOMI_MOCK_CODEX_REPLY || '【Mock Codex】任务完成。';
-const threadId = process.env.NOMI_MOCK_SESSION || 'mock-codex-thread-1';
+// exec resume [...flags] <id> <prompt>：续接历史会话
+const resumeAt = args.indexOf('resume');
+const resumed = resumeAt >= 0 ? args.filter((a) => !a.startsWith('-')).slice(2)[0] : '';
+const ownThread = process.env.NOMI_MOCK_SESSION || 'mock-codex-thread-1';
+// 只有续接「别的」会话（历史会话）才改回复，普通多轮对话的回复保持不变
+const foreign = resumed && resumed !== ownThread;
+const reply =
+  process.env.NOMI_MOCK_CODEX_REPLY ||
+  (foreign ? `【Mock Codex】已续接会话 ${resumed}` : '【Mock Codex】任务完成。');
+const threadId = resumed || ownThread;
 
 if (delayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
 function emit(obj) {

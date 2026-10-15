@@ -467,5 +467,13 @@
   "已连通（该上游没有模型列表接口，无法校验 Key）": "Reachable (this upstream has no model-list endpoint, so the key can't be verified)",
   "Key 无效或无权限（HTTP {0}）": "Invalid key or no permission (HTTP {0})",
   "上游返回 HTTP {0}": "Upstream returned HTTP {0}",
-  "连接超时（8 秒）": "Connection timed out (8 s)"
+  "连接超时（8 秒）": "Connection timed out (8 s)",
+  "（无标题会话）": "(Untitled session)",
+  "找不到该会话的记录文件": "Could not find the record file for this session",
+  "没有解析到可显示的历史消息": "No displayable history messages were found",
+  "读取历史消息失败，仍可继续该会话": "Could not read the history messages; you can still continue the session",
+  "当前环境不支持打开历史会话": "Opening history sessions is not supported here",
+  "找不到该会话，可能已被删除": "Session not found; it may have been deleted",
+  "原工作目录已不存在：{0}。续接需要同一目录，请先恢复该目录。": "The original working directory no longer exists: {0}. Resuming needs the same directory; please restore it first.",
+  "历史较长，只显示了最近的部分消息": "Long history: only the most recent messages are shown"
 }

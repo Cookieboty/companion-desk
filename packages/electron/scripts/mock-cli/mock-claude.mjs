@@ -18,8 +18,16 @@ if (args.includes('update')) {
   process.exit(0);
 }
 
-const reply = process.env.NOMI_MOCK_CLAUDE_REPLY || '【Mock Claude】已收到，并完成演示回复。';
-const sessionId = process.env.NOMI_MOCK_SESSION || 'mock-claude-session-1';
+// --resume <id>：续接历史会话（e2e / 单测据此确认续接参数）
+const resumeIdx = args.indexOf('--resume');
+const ownSession = process.env.NOMI_MOCK_SESSION || 'mock-claude-session-1';
+const resumed = resumeIdx >= 0 ? args[resumeIdx + 1] : '';
+// 只有续接「别的」会话（历史会话）才改回复，普通多轮对话的回复保持不变
+const foreign = resumed && resumed !== ownSession;
+const reply =
+  process.env.NOMI_MOCK_CLAUDE_REPLY ||
+  (foreign ? `【Mock Claude】已续接会话 ${resumed}` : '【Mock Claude】已收到，并完成演示回复。');
+const sessionId = resumed || ownSession;
 
 if (delayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
 function emit(obj) {

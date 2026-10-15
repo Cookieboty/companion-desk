@@ -16,6 +16,7 @@ import { initCliHarnessService } from '../cli/CliHarnessService';
 import { initCliProviderBridge, getCliProviderBridge } from '../cli/CliProviderBridge';
 import { initCliUpdateService } from '../cli/CliUpdateService';
 import { initCliRouteService } from '../cli/routing/CliRouteService';
+import { initSessionHistoryService } from '../cli/SessionHistoryService';
 import { getDesktopService } from '../desktop/DesktopService';
 import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
@@ -352,6 +353,11 @@ export class Application implements IApplication {
         dshEnv: () => getCliProviderBridge()?.dshEnv() ?? {},
       });
       harness.registerIpc();
+      initSessionHistoryService({
+        logger: this.logger as never,
+        openKeys: () => harness.openSessionKeys(),
+        openTab: (o) => harness.openHistorySession(o),
+      }).registerIpc();
       // 监视器汇总 Nomi 标签；任一标签一轮结束 → 看板娘 / 灵动岛
       agents.attachHarness({
         tabs: () => harness.listTabs().tabs,
