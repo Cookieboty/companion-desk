@@ -18,7 +18,12 @@ import zlib from 'node:zlib';
 
 import { ipcMain } from 'electron';
 
-import { parseClaudeSession, parseCodexSession, parseDshProjcache } from '../agents/parsers';
+import {
+  jsonlEvents,
+  parseClaudeSession,
+  parseCodexSession,
+  parseDshProjcache,
+} from '../agents/parsers';
 import { t } from '../i18n';
 
 import { parseTranscript, titleFromMessages, type HistoryBackend } from './historyTranscript';
@@ -244,7 +249,11 @@ export class SessionHistoryService {
     if (backend === 'claude') {
       const head = await readHead(f.path, 128 * 1024);
       const info = parseClaudeSession(head, '');
-      if (info.parentId) return null; // 子代理
+      // 子代理：文件里第一条对话事件就是 sidechain（主会话里偶尔夹带的 sidechain 行不算）
+      const firstTurn = jsonlEvents(head, 200).find(
+        (e) => e.type === 'user' || e.type === 'assistant',
+      );
+      if (firstTurn?.isSidechain === true) return null;
       const sessionId = info.sessionId ?? path.basename(f.path, '.jsonl');
       const hasUser = /"type"\s*:\s*"user"/.test(head);
       const title = info.title ?? (hasUser ? t('（无标题会话）') : undefined);

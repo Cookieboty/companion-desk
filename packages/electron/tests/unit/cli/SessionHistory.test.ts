@@ -159,6 +159,20 @@ describe('SessionHistoryService', () => {
     expect(page.nextOffset).toBeNull();
   });
 
+  it('keeps a main session that merely contains sidechain lines; drops pure sub-agent files', async () => {
+    const p = writeClaude('mixed', 'main task', 1_000_000);
+    fs.appendFileSync(
+      p,
+      '{"type":"assistant","isSidechain":true,"sessionId":"mixed","message":{"role":"assistant","content":"x"}}\n',
+    );
+    fs.writeFileSync(
+      path.join(claudeDir(), 'sub.jsonl'),
+      '{"type":"user","isSidechain":true,"sessionId":"sub","message":{"role":"user","content":"sub task"}}\n',
+    );
+    const page = await mk().list('claude');
+    expect(page.items.map((x) => x.sessionId)).toEqual(['mixed']);
+  });
+
   it('pages 50 at a time per endpoint', async () => {
     for (let i = 0; i < 120; i++)
       writeClaude(`s${String(i).padStart(3, '0')}`, `task ${i}`, 1_000_000 + i * 1000);
