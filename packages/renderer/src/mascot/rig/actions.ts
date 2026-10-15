@@ -224,6 +224,38 @@ export const ACTIONS: readonly ActionDef[] = [
     ],
   },
   // ---- think / explain -----------------------------------------------------------------------
+
+  {
+    id: 'pray',
+    label: '合十',
+    category: 'emotion',
+    dur: 2.8,
+    trigger: '感谢 / 拜托 / 祈祷', // i18n-ignore
+    tracks: [
+      ...both(HAND.prayer, P.pray.r, P.pray.l, 0.45, 2.2, 2.8, { ease: 'io' }),
+      hold('armFront', 0.35, 99, 1),
+      T('headNod', [0, 0], [0.5, 10, 'io'], [2.0, 10], [2.8, 0]),
+      hold('eyeL', 0.4, 2.4, EYE.closed),
+      hold('eyeR', 0.4, 2.4, EYE.closed),
+      hold('mouth', 0.4, 2.4, MOUTH.smile),
+      T('fxSparkle', [0, 0], [0.6, 0.6], [2.2, 0.6], [2.8, 0]),
+    ],
+  },
+  {
+    id: 'ok_hand',
+    label: 'OK 手势',
+    category: 'celebrate',
+    dur: 2.2,
+    trigger: '确认 / 没问题 / OK', // i18n-ignore
+    tracks: [
+      ...arm('r', HAND.ok, P.thumb.r, 0.35, 1.8, 2.2),
+      T('headNod', [0, 0], [0.4, 6, 'o'], [1.6, 6], [2.2, 0]),
+      hold('eyeL', 0.3, 1.9, EYE.happy),
+      hold('eyeR', 0.3, 1.9, EYE.happy),
+      hold('mouth', 0.3, 1.9, MOUTH.smile),
+      T('fxSparkle', [0, 0], [0.4, 0.7], [1.8, 0.7], [2.2, 0]),
+    ],
+  },
   {
     id: 'think',
     label: '托腮思考',
@@ -370,7 +402,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.6,
     trigger: '表达喜欢 / 被夸奖 / 摸头', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.heart.r, 0.45, 2.1, 2.6, {
+      ...arm('r', HAND.chest, P.heart.r, 0.45, 2.1, 2.6, {
         oscW: [5, 1.8, 0],
         win: [0.6, 2.0],
       }),
@@ -485,7 +517,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 3.0,
     trigger: '长时间失败 / 无聊', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.chest.r, 0.6, 2.5, 3.0, { ease: 'io' }),
+      ...arm('r', HAND.chest, P.chest.r, 0.6, 2.5, 3.0, { ease: 'io' }),
       hold('armFront', 0.4, 99, 1),
       T('headNod', [0, 0], [0.8, 8, 'io'], [2.0, 12, 'io'], [3.0, 0]),
       T('shoulder', [0, 0], [0.6, -6, 'o'], [1.6, 4, 'io'], [3.0, 0]),
@@ -686,13 +718,13 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.4,
     trigger: '夸奖 / 用户完成目标', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.clap.r, 0.35, 2.0, 2.4, {
+      ...arm('r', HAND.softfist, P.clap.r, 0.35, 2.0, 2.4, {
         ease: 'io',
         oscE: [7, 3.6, 0],
         oscW: [8, 3.6, 0.2],
         win: [0.5, 2.0],
       }),
-      ...arm('l', HAND.rest, P.clap.l, 0.35, 2.0, 2.4, {
+      ...arm('l', HAND.softfist, P.clap.l, 0.35, 2.0, 2.4, {
         ease: 'io',
         oscE: [7, 3.6, Math.PI],
         oscW: [8, 3.6, Math.PI + 0.2],
