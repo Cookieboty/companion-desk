@@ -309,7 +309,7 @@ export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ o
           <>
             <p className={styles.note}>
               {t(
-                '添加一个模型服务商（OpenAI 兼容、Anthropic、本机 Ollama 等）。不着急的话可以先跳过，之后在「设置 → 供应商与模型」里添加。',
+                '添加一个模型服务商（OpenAI 兼容、Anthropic、本机 Ollama 等）。不着急的话可以先跳过，之后在「设置 → 编程助手 → Nomi」里添加。',
               )}
             </p>
             <div className={styles.provider} data-testid="onb-provider">

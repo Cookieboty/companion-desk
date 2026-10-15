@@ -234,7 +234,9 @@ const ModelSection: React.FC<{
       )}
       {st.providers.length === 0 && (
         <p className={styles.hint}>
-          {tr('还没有可用的服务。先在「供应商与模型」里添加 Ollama 或其他 OpenAI 兼容服务。')}
+          {tr(
+            '还没有可用的服务。先在「设置 → 编程助手 → Nomi」里添加 Ollama 或其他 OpenAI 兼容服务。',
+          )}
         </p>
       )}
       {blocked && (

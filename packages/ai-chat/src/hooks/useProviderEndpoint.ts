@@ -1,21 +1,21 @@
 /**
- * 供应商页当前选中的端点（Nomi / Claude Code / Codex / dsh），持久化在 localStorage。
+ * 编程助手页当前选中的标签（Nomi / Claude Code / Codex / dsh / 监视与会话），持久化在 localStorage。
  */
 import { useCallback, useSyncExternalStore } from 'react';
 
 import {
+  type CodingTab,
   getProviderEndpoint,
   setProviderEndpoint,
   subscribeProviderEndpoint,
 } from '../services/chatPrefs';
-import type { ConversationBackend } from '../types/chat';
 
-export function useProviderEndpoint(): [ConversationBackend, (b: ConversationBackend) => void] {
+export function useProviderEndpoint(): [CodingTab, (b: CodingTab) => void] {
   const ep = useSyncExternalStore(
     subscribeProviderEndpoint,
     getProviderEndpoint,
-    () => 'nomi' as ConversationBackend,
+    () => 'nomi' as CodingTab,
   );
-  const set = useCallback((b: ConversationBackend) => setProviderEndpoint(b), []);
+  const set = useCallback((b: CodingTab) => setProviderEndpoint(b), []);
   return [ep, set];
 }

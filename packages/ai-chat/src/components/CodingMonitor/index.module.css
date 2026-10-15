@@ -1,0 +1,35 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cd-space-3);
+}
+.row {
+  display: flex;
+  gap: var(--cd-space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.hint {
+  font-size: var(--cd-font-size-xs);
+  line-height: var(--cd-line-height-xs);
+  color: var(--cd-color-text-muted);
+  margin: 0;
+}
+.tool {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cd-space-2);
+}
+.h3 {
+  margin: 0;
+  font-size: var(--cd-font-size-md, 14px);
+}

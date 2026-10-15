@@ -26,7 +26,7 @@ export const PIN_POOL: PinDef[] = [
   { id: 'model', icon: '🔑', label: '供应商与模型' },
   { id: 'kbm', icon: '🗂', label: '知识库管理', sc: 'kb' },
   { id: 'memory', icon: '🧠', label: '长期记忆', sc: 'memory' },
-  { id: 'schedule', icon: '🗓', label: '日程 · 编程助手', sc: 'schedule' },
+  { id: 'schedule', icon: '🗓', label: '日程与提醒', sc: 'schedule' },
   { id: 'screen', icon: '🖥', label: '屏幕记忆', sc: 'screen' },
   { id: 'ext', icon: '🧩', label: '扩展 / MCP', sc: 'ext' },
   { id: 'desktop', icon: '📁', label: '桌面权限' },

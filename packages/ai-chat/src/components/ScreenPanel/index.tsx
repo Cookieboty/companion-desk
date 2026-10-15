@@ -203,7 +203,9 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
               )}
             </div>
             <Notice tone="info">
-              {tr('想完全离线看图：在「供应商与模型」里添加 Ollama，并拉取视觉模型，例如')}
+              {tr(
+                '想完全离线看图：在「设置 → 编程助手 → Nomi」里添加 Ollama，并拉取视觉模型，例如',
+              )}
               <code> ollama pull qwen2.5vl:3b </code>
               {tr('或')}
               <code> llava </code>

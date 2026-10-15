@@ -15,6 +15,60 @@ vi.mock('../src/components/lazyPanels', () => ({
   ProviderPanel: () => <div data-testid="nomi-provider-panel-stub">任务路由</div>,
 }));
 
+const PRESETS = [
+  {
+    id: 'custom',
+    name: '自定义配置',
+    category: 'custom',
+    protocol: 'openai-chat',
+    baseURL: '',
+    defaultModel: '',
+    models: [],
+    requiresApiKey: false,
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    category: 'vendor',
+    protocol: 'openai-chat',
+    baseURL: 'https://api.deepseek.com',
+    defaultModel: '',
+    models: [],
+    requiresApiKey: true,
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    category: 'vendor',
+    protocol: 'anthropic',
+    baseURL: 'https://api.anthropic.com',
+    defaultModel: '',
+    models: [],
+    requiresApiKey: true,
+  },
+];
+const AGENTS = {
+  settings: {
+    enabled: true,
+    stallMs: 1,
+    cooldownMs: 1,
+    osNotify: false,
+    tools: {
+      codex: true,
+      claude: true,
+      dsh: true,
+      aider: false,
+      cline: false,
+      continue: false,
+      cursor: false,
+      gemini: false,
+    },
+  },
+  sessions: [],
+  detected: ['claude'],
+  lastRemindAt: 0,
+};
+
 const prof = (o: Partial<CliProviderProfile>): CliProviderProfile => ({
   id: 'p',
   kind: 'claude',
@@ -58,6 +112,10 @@ function setup(profiles: CliProviderProfile[], routing: CliRouteSettings = route
     if (ch === 'ai:cli-provider:deactivate') return { ok: true, backups: [] };
     if (ch === 'ai:cli-provider:test') return { ok: true, latencyMs: 123 };
     if (ch === 'ai:cli-route:set') return { ...routing, enabled: true };
+    if (ch === 'ai:providers:presets') return PRESETS;
+    if (ch === 'ai:cli-provider:upsert')
+      return prof({ id: 'new1', kind: (args[0] as { kind: 'claude' }).kind, name: 'N' });
+    if (ch === 'ai:agents:state' || ch === 'ai:agents:scan') return AGENTS;
     return {};
   });
   (window as unknown as { aiIPC: unknown }).aiIPC = { invoke, on: () => () => undefined };
@@ -96,7 +154,8 @@ describe('ProvidersPage', () => {
     expect(r.getByTestId('cli-ep-intro').textContent).toContain(
       '~/.codex/config.toml'.replace('~', '/home/u'),
     );
-    expect(r.getByTestId('providers-endpoint-tabs').querySelectorAll('[role=tab]').length).toBe(4);
+    // 四个端点 + 「监视与会话」
+    expect(r.getByTestId('providers-endpoint-tabs').querySelectorAll('[role=tab]').length).toBe(5);
   });
 
   it('只显示该端点自己的档案，未启用时显示 CLI 自带登录', async () => {
@@ -147,12 +206,63 @@ describe('ProvidersPage', () => {
     );
   });
 
-  it('新增档案带当前端点 kind；dsh 的高级里没有路由开关', async () => {
+  it('默认使用 CLI 自带登录：显示「当前」卡片与空状态，添加走预设模板', async () => {
+    setup([]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'codex');
+    const r = render(<ProvidersPage />);
+    await waitFor(() => expect(r.getByTestId('cli-provider-default')).toBeTruthy());
+    expect(r.getByTestId('cli-default-current')).toBeTruthy();
+    expect(r.getByTestId('cli-ep-active').textContent).toContain('使用 CLI 自带登录/默认配置');
+    fireEvent.click(r.getByTestId('cli-add-provider'));
+    await waitFor(() => expect(r.getByTestId('add-provider')).toBeTruthy());
+    expect(r.getByTestId('preset-deepseek')).toBeTruthy();
+    expect(r.getByTestId('preset-custom')).toBeTruthy();
+  });
+
+  it('选预设 → 表单预填地址与默认上游格式；非原生格式提示需路由；保存并启用走 upsert + activate', async () => {
+    const calls = setup([]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'claude');
+    const r = render(<ProvidersPage />);
+    await waitFor(() => r.getByTestId('cli-add-provider'));
+    fireEvent.click(r.getByTestId('cli-add-provider'));
+    await waitFor(() => r.getByTestId('preset-deepseek'));
+    fireEvent.click(r.getByTestId('preset-deepseek'));
+    await waitFor(() => r.getByTestId('cli-provider-form'));
+    expect((r.getByTestId('cli-provider-baseurl') as HTMLInputElement).value).toBe(
+      'https://api.deepseek.com',
+    );
+    // DeepSeek 是 OpenAI Chat 协议，对 Claude Code 不是原生格式 → 需要路由提示
+    expect(r.getByTestId('cli-editor-routing-hint')).toBeTruthy();
+    fireEvent.change(r.getByTestId('cli-provider-key'), { target: { value: 'sk-test' } });
+    fireEvent.click(r.getByTestId('cli-provider-save-activate'));
+    await waitFor(() => {
+      const c = calls.find(([ch]) => ch === 'ai:cli-provider:upsert');
+      expect(c).toBeTruthy();
+      expect(c![1][0]).toMatchObject({
+        kind: 'claude',
+        presetId: 'deepseek',
+        apiFormat: 'openai_chat_completions',
+        apiKey: 'sk-test',
+        baseUrl: 'https://api.deepseek.com',
+      });
+    });
+    await waitFor(() =>
+      expect(calls.some(([c, a]) => c === 'ai:cli-provider:activate' && a[0] === 'new1')).toBe(
+        true,
+      ),
+    );
+  });
+
+  it('新增档案带当前端点 kind；dsh 的高级里没有路由开关；Anthropic 预设对 Claude 是原生格式', async () => {
     const calls = setup([]);
     localStorage.setItem('ai-chat:providerEndpoint', 'dsh');
     const r = render(<ProvidersPage />);
     await waitFor(() => expect(r.getByTestId('providers-section-dsh')).toBeTruthy());
     expect(r.queryByTestId('cli-route-enabled')).toBeNull();
+    fireEvent.click(r.getByTestId('cli-add-provider'));
+    await waitFor(() => r.getByTestId('preset-custom'));
+    fireEvent.click(r.getByTestId('preset-custom'));
+    await waitFor(() => r.getByTestId('cli-provider-baseurl'));
     fireEvent.change(r.getByTestId('cli-provider-baseurl'), {
       target: { value: 'https://d.test/v1' },
     });
@@ -162,5 +272,52 @@ describe('ProvidersPage', () => {
       expect(c).toBeTruthy();
       expect((c![1][0] as { kind: string }).kind).toBe('dsh');
     });
+  });
+
+  it('Anthropic 预设 + Claude Code：原生格式，不提示路由', async () => {
+    setup([]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'claude');
+    const r = render(<ProvidersPage />);
+    await waitFor(() => r.getByTestId('cli-add-provider'));
+    fireEvent.click(r.getByTestId('cli-add-provider'));
+    await waitFor(() => r.getByTestId('preset-anthropic'));
+    fireEvent.click(r.getByTestId('preset-anthropic'));
+    await waitFor(() => r.getByTestId('cli-provider-form'));
+    expect(r.queryByTestId('cli-editor-routing-hint')).toBeNull();
+  });
+
+  it('每个 CLI 端点都有版本卡片；删除前先确认', async () => {
+    const calls = setup([
+      prof({ id: 'c1', kind: 'codex', name: '要删的', apiFormat: 'openai_responses' }),
+    ]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'codex');
+    const r = render(<ProvidersPage />);
+    await waitFor(() => r.getByTestId('cli-provider-row-c1'));
+    expect(r.getByTestId('cli-version-card-codex')).toBeTruthy();
+    const confirm = vi.fn(() => false);
+    window.confirm = confirm;
+    fireEvent.click(r.getByTestId('cli-provider-delete'));
+    expect(confirm).toHaveBeenCalled();
+    expect(calls.some(([c]) => c === 'ai:cli-provider:remove')).toBe(false);
+    confirm.mockReturnValue(true);
+    fireEvent.click(r.getByTestId('cli-provider-delete'));
+    await waitFor(() => expect(calls.some(([c]) => c === 'ai:cli-provider:remove')).toBe(true));
+  });
+
+  it('「监视与会话」标签：监视开关、系统通知、检测到的工具、立即扫描；与提醒设置分开', async () => {
+    const calls = setup([]);
+    localStorage.setItem('ai-chat:providerEndpoint', 'monitor');
+    const onNotify = vi.fn();
+    const r = render(<ProvidersPage onOpenNotify={onNotify} />);
+    await waitFor(() => r.getByTestId('coding-monitor'));
+    await waitFor(() => r.getByTestId('agents-enabled'));
+    expect(r.getByTestId('agents-os-notify')).toBeTruthy();
+    expect(r.getByTestId('agents-tool-claude')).toBeTruthy();
+    fireEvent.click(r.getByTestId('agents-scan'));
+    await waitFor(() => expect(calls.some(([c]) => c === 'ai:agents:scan')).toBe(true));
+    fireEvent.click(r.getByTestId('agents-open-notify'));
+    expect(onNotify).toHaveBeenCalled();
+    // 不再混着日程 / 提醒的东西
+    expect(r.queryByTestId('sched-panel')).toBeNull();
   });
 });

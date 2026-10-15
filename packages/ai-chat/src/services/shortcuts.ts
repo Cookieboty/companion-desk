@@ -45,7 +45,7 @@ export const SHORTCUT_DEFS: ShortcutDef[] = [
   { id: 'handsFree', label: '免按键对话开关', combo: 'Mod+Shift+H' },
   { id: 'memory', label: '记忆', combo: 'Mod+Shift+M' },
   { id: 'kb', label: '知识库', combo: 'Mod+Shift+L' },
-  { id: 'schedule', label: '日程 · 编程助手', combo: 'Mod+Shift+D' },
+  { id: 'schedule', label: '日程与提醒', combo: 'Mod+Shift+D' },
   { id: 'ext', label: '扩展 / MCP', combo: 'Mod+Shift+E' },
   { id: 'local', label: '本机管理', combo: 'Mod+Shift+J' },
   { id: 'screen', label: '屏幕记忆', combo: 'Mod+Shift+O' },

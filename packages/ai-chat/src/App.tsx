@@ -26,7 +26,11 @@ import { MessageInput } from './components/MessageInput';
 import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
-import { SETTINGS_SECTIONS, type SettingsSection } from './components/SettingsView/sections';
+import {
+  SETTINGS_SECTIONS,
+  resolveSection,
+  type SettingsSection,
+} from './components/SettingsView/sections';
 import { Sidebar } from './components/Sidebar';
 import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
@@ -141,7 +145,10 @@ const AiChatContent: React.FC = () => {
   }, [isDev, tabs.isCliTab, tabs]);
 
   const [settings, setSettings] = useState<SettingsSection | null>(null);
-  const openSettings = useCallback((sec: SettingsSection = 'general') => {
+  const openSettings = useCallback((raw: SettingsSection | string = 'general') => {
+    // 旧入口（providers / agents）折叠到「编程助手」；agents 落在「监视与会话」标签
+    const { section: sec, tab } = resolveSection(raw);
+    if (tab) setProviderEndpoint(tab);
     setShowKb(false);
     setShowMem(false);
     setShowSched(false);
@@ -476,7 +483,7 @@ const AiChatContent: React.FC = () => {
             onProvidersClick={() => setShowProviders(true)}
             onSettingsClick={(sec, endpoint) => {
               if (isConversationBackend(endpoint)) setProviderEndpoint(endpoint);
-              openSettings(sec as SettingsSection);
+              openSettings(sec);
             }}
             onDesktopClick={() => setShowDesktop(true)}
             onKnowledgeClick={() => setShowKb(true)}

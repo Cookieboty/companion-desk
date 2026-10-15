@@ -121,4 +121,15 @@ describe('schedule panel', () => {
     expect(describeRepeat({ kind: 'weekly', days: [5, 1] })).toBe('每周一、五');
     expect(describeRepeat(undefined)).toBe('不重复');
   });
+
+  it('不再有「编程助手」标签：日程页只剩提醒 / 定时任务 / 主动聊天 / 免打扰', async () => {
+    mockIpc();
+    const r = render(<SchedulePanel isVisible onClose={() => undefined} />);
+    await waitFor(() => r.getByTestId('quiet-badge'));
+    const labels = Array.from(r.container.ownerDocument.querySelectorAll('[role=tab]')).map(
+      (e) => e.textContent,
+    );
+    expect(labels).toEqual(['提醒', '定时任务', '主动聊天', '免打扰与通知']);
+    expect(r.queryByTestId('sched-agents')).toBeNull();
+  });
 });

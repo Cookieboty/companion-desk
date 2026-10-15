@@ -18,18 +18,7 @@ import {
 } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
-import {
-  AGENT_LABEL,
-  STATUS_LABEL,
-  agentsClient,
-  endpointCounts,
-  filterSessions,
-  type AgentKind,
-  type AgentWatchState,
-  type EndpointFilter,
-} from '../../services/agentsClient';
 import { describeRepeat, type RepeatRule } from '../../services/desktopClient';
-import { harnessClient } from '../../services/harnessClient';
 import {
   BRIEFING_PROMPT,
   schedClient,
@@ -39,20 +28,10 @@ import {
   type TaskResult,
 } from '../../services/schedClient';
 import { RemindersTab } from '../DesktopPanel/RemindersTab';
-import { EndpointIcon } from '../EndpointIcon';
 
 import styles from './index.module.css';
 
-/** 相对时间：刚刚 / N 分钟前 / N 小时前 / 日期 */
-function relTime(ms: number): string {
-  const d = Date.now() - ms;
-  if (d < 60_000) return tr('刚刚');
-  if (d < 3_600_000) return tr('{0} 分钟前', Math.floor(d / 60_000));
-  if (d < 86_400_000) return tr('{0} 小时前', Math.floor(d / 3_600_000));
-  return new Date(ms).toLocaleString();
-}
-
-type Tab = 'reminders' | 'tasks' | 'proactive' | 'agents' | 'quiet';
+type Tab = 'reminders' | 'tasks' | 'proactive' | 'quiet';
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const fmt = (t?: number) =>
   t
@@ -204,19 +183,6 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [tab, setTab] = useState<Tab>(initialTab ?? 'reminders');
-  const [agents, setAgents] = useState<AgentWatchState | null>(null);
-  const [agentFilter, setAgentFilter] = useState<EndpointFilter>('all');
-  const loadAgents = useCallback(() => {
-    if (!agentsClient.available()) return;
-    void agentsClient
-      .state()
-      .then(setAgents)
-      .catch((e) => {
-        // 主进程未就绪时不污染整页错误条
-        console.warn('[agents]', errText(e));
-      });
-  }, []);
-
   const [editing, setEditing] = useState<SchedTask | 'new' | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -241,11 +207,9 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
   }, [refresh]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.altKey && ['1', '2', '3', '4', '5'].includes(e.key)) {
+      if (e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
         e.preventDefault();
-        setTab(
-          (['reminders', 'tasks', 'proactive', 'agents', 'quiet'] as Tab[])[Number(e.key) - 1],
-        );
+        setTab((['reminders', 'tasks', 'proactive', 'quiet'] as Tab[])[Number(e.key) - 1]);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -282,11 +246,6 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
       setMsg(errText(e));
     }
   };
-
-  useEffect(() => {
-    loadAgents();
-    return agentsClient.onChanged(() => loadAgents());
-  }, [loadAgents]);
 
   return (
     <Modal
@@ -333,7 +292,6 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 { value: 'reminders', label: tr('提醒') },
                 { value: 'tasks', label: tr('定时任务') },
                 { value: 'proactive', label: tr('主动聊天') },
-                { value: 'agents', label: tr('编程助手') },
                 { value: 'quiet', label: tr('免打扰与通知') },
               ]}
             />
@@ -538,179 +496,6 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
               </div>
             )}
 
-            {tab === 'agents' && (
-              <div className={styles.stack} data-testid="sched-agents">
-                <p className={styles.hint}>
-                  {tr(
-                    '监视本机编程助手会话（Claude Code / Codex / Gemini CLI / Cursor / Aider / Cline / Continue）：只算「文件刚有写入且进程还在」的会话，按会话去重。只读本地日志与进程列表，不登录、不刮取任何账号。',
-                  )}
-                </p>
-                {!agentsClient.available() && (
-                  <Notice tone="warning">{tr('当前环境无法访问主进程监视器。')}</Notice>
-                )}
-                {agents && (
-                  <>
-                    <Switch
-                      checked={agents.settings.enabled}
-                      onChange={(v) =>
-                        void agentsClient.setSettings({ enabled: v }).then(loadAgents)
-                      }
-                      label={tr('监视编程助手进度')}
-                      data-testid="agents-enabled"
-                    />
-                    <Switch
-                      checked={agents.settings.osNotify}
-                      onChange={(v) =>
-                        void agentsClient.setSettings({ osNotify: v }).then(loadAgents)
-                      }
-                      label={tr('同时发送系统通知')}
-                      data-testid="agents-os-notify"
-                    />
-                    <div className={styles.row} style={{ flexWrap: 'wrap', gap: 8 }}>
-                      {(Object.keys(AGENT_LABEL) as AgentKind[]).map((k) => (
-                        <label
-                          key={k}
-                          className={styles.hint}
-                          style={{ display: 'inline-flex', gap: 4 }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={agents.settings.tools[k]}
-                            disabled={!agents.settings.enabled}
-                            onChange={(e) =>
-                              void agentsClient
-                                .setSettings({
-                                  tools: { [k]: e.target.checked } as Partial<
-                                    Record<AgentKind, boolean>
-                                  >,
-                                })
-                                .then(loadAgents)
-                            }
-                            data-testid={`agents-tool-${k}`}
-                          />
-                          {tr(AGENT_LABEL[k])}
-                          {agents.detected.includes(k) ? ' ✓' : ''}
-                        </label>
-                      ))}
-                    </div>
-                    <div className={styles.row}>
-                      <Button
-                        size="sm"
-                        onClick={() => void agentsClient.scan().then(setAgents)}
-                        data-testid="agents-scan"
-                      >
-                        {tr('立即扫描')}
-                      </Button>
-                      <span className={styles.hint}>
-                        {tr('已检测：')}
-                        {agents.detected.length
-                          ? agents.detected.map((k) => tr(AGENT_LABEL[k])).join('、')
-                          : tr('无')}
-                      </span>
-                    </div>
-                    {agents.sessions.length > 0 && (
-                      <div
-                        className={styles.row}
-                        style={{ flexWrap: 'wrap', gap: 6 }}
-                        role="group"
-                        aria-label={tr('按端点筛选')}
-                        data-testid="agents-endpoints"
-                      >
-                        {endpointCounts(agents.sessions).map(([k, n]) => (
-                          <Button
-                            key={k}
-                            size="sm"
-                            variant={agentFilter === k ? 'primary' : 'ghost'}
-                            aria-pressed={agentFilter === k}
-                            data-testid={`agents-filter-${k}`}
-                            onClick={() => setAgentFilter(k)}
-                          >
-                            {k === 'claude' || k === 'codex' || k === 'dsh' ? (
-                              <EndpointIcon backend={k} size={14} decorative />
-                            ) : null}
-                            {k === 'all'
-                              ? tr('全部')
-                              : k === 'tabs'
-                                ? tr('Nomi 标签')
-                                : tr(AGENT_LABEL[k as AgentKind])}{' '}
-                            {n}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                    {agents.sessions.length === 0 ? (
-                      <EmptyState
-                        title={tr('暂无活跃会话')}
-                        description={tr(
-                          '启动 Claude Code、Codex、dsh 等工具或打开编程助手标签后会出现在这里。',
-                        )}
-                      />
-                    ) : (
-                      <div className={styles.stack} data-testid="agents-sessions">
-                        {filterSessions(agents.sessions, agentFilter)
-                          .slice(0, 20)
-                          .map((s) => (
-                            <Card
-                              key={s.id}
-                              flat
-                              data-testid={`agents-session-${s.source ?? 'file'}`}
-                            >
-                              <div className={styles.row}>
-                                {s.kind === 'nomi' ||
-                                s.kind === 'claude' ||
-                                s.kind === 'codex' ||
-                                s.kind === 'dsh' ? (
-                                  <EndpointIcon backend={s.kind} size={16} />
-                                ) : null}
-                                <strong className={styles.grow} title={s.cwd || s.path}>
-                                  {s.title}
-                                </strong>
-                                <Badge
-                                  tone={
-                                    s.status === 'failed' || s.status === 'stalled'
-                                      ? 'warning'
-                                      : s.status === 'completed'
-                                        ? 'success'
-                                        : undefined
-                                  }
-                                >
-                                  {tr(STATUS_LABEL[s.status])}
-                                </Badge>
-                                {s.source === 'tab' && s.tabId && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    data-testid="agents-open-tab"
-                                    onClick={() =>
-                                      void harnessClient
-                                        .activateTab(s.tabId!)
-                                        .then(() => onClose())
-                                        .catch(() => undefined)
-                                    }
-                                  >
-                                    {s.unread ? tr('查看 {0} 条新结果', s.unread) : tr('打开标签')}
-                                  </Button>
-                                )}
-                              </div>
-                              <p className={styles.hint} data-testid="agents-session-meta">
-                                {[
-                                  s.label,
-                                  s.project,
-                                  tr('最后活动 {0}', relTime(s.mtime)),
-                                  s.summary,
-                                ]
-                                  .filter(Boolean)
-                                  .join(' · ')}
-                              </p>
-                            </Card>
-                          ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
             {tab === 'quiet' && (
               <div className={styles.stack} data-testid="sched-quiet">
                 <Switch
@@ -759,7 +544,7 @@ const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, in
                 <p className={styles.hint}>
                   {tr('快捷键：')}
                   <span className={styles.kbd}>Ctrl/⌘ + Shift + D</span> {tr('打开日程 ·')}{' '}
-                  <span className={styles.kbd}>Alt + 1~5</span> {tr('切换标签')}
+                  <span className={styles.kbd}>Alt + 1~4</span> {tr('切换标签')}
                 </p>
               </div>
             )}

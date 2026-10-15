@@ -17,6 +17,7 @@ export interface CliProviderProfile {
   hasKey: boolean;
   keyHint: string;
   active: boolean;
+  presetId?: string;
 }
 
 export interface CliRouteSettings {
@@ -89,6 +90,7 @@ export const cliProviderClient = {
     model: string;
     apiFormat?: ClaudeApiFormat | CodexApiFormat;
     apiKey?: string;
+    presetId?: string;
   }) => call<CliProviderProfile>('upsert', p),
   remove: (id: string) => call<CliProviderState>('remove', id),
   activate: (id: string) =>

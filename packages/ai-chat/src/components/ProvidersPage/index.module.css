@@ -274,3 +274,8 @@
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* 「监视与会话」标签与四个端点标签之间留出分隔 */
+.tabMonitor {
+  margin-left: auto;
+}

@@ -80,7 +80,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'sched',
-      tip: t('日程 · 编程助手进度'),
+      tip: t('日程与提醒'),
       key: formatCombo(bindings.schedule),
       id: 'open-sched-panel',
       pin: 'schedule',

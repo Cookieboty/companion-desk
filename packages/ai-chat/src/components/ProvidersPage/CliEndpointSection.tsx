@@ -1,56 +1,58 @@
 /**
- * 单个 CLI 端点（Claude Code / Codex / dsh）的供应商配置区：
- * 说明（写到哪里、与其它端点独立）→ 当前状态（来源 / 格式 / 模型 / 路由）→ 档案列表
- * （启用 / 测速 / 编辑 / 删除）→ 添加或编辑档案 →「高级」（本地路由、存储路径）。
+ * 单个 CLI 端点（Claude Code / Codex / dsh）的页面：
+ * 说明（写到哪里、与其它端点独立）→ 版本卡片（检测 / 更新 / 安装）→ 供应商（与 Nomi 同样的卡片列表 +
+ * 添加（预设模板）/ 编辑 / 启用 / 测速 / 删除；默认「使用 CLI 自带登录/默认配置」）→「高级」（本地路由、存储路径）。
  */
-import { Button, Input, Notice, Select, t } from '@nomi-ai/ui';
+import { Badge, Button, Card, EmptyState, Notice, ToastProvider, t } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   cliProviderClient,
   cliRouteClient,
-  type ClaudeApiFormat,
   type CliProfileTestResult,
   type CliProviderKind,
   type CliProviderProfile,
   type CliProviderState,
   type CliRouteSettings,
-  type CodexApiFormat,
 } from '../../services/cliProviderClient';
+import {
+  providerClient,
+  providerClientAvailable,
+  type ProviderPreset,
+} from '../../services/providerClient';
 import { EndpointIcon } from '../EndpointIcon';
+import { AddProvider } from '../ProviderPanel/AddProvider';
+import ppStyles from '../ProviderPanel/index.module.css';
+import { Monogram } from '../ProviderPanel/shared';
 
+import { inferBrand } from './cliBrand';
+import {
+  CLI_DEFAULT_FORMAT,
+  CLI_FORMATS,
+  CliProviderEditor,
+  type CliEditorTarget,
+} from './CliProviderEditor';
 import { CliVersionCard } from './CliVersionCard';
 import styles from './index.module.css';
 
-type Fmt = ClaudeApiFormat | CodexApiFormat;
-
-const FORMATS: Record<CliProviderKind, Array<{ value: Fmt; label: string }>> = {
-  claude: [
-    { value: 'anthropic_messages', label: 'Anthropic Messages（原生）' },
-    { value: 'openai_chat_completions', label: 'OpenAI Chat Completions（需开启路由）' },
-    { value: 'openai_responses', label: 'OpenAI Responses API（需开启路由）' },
-    { value: 'gemini_generate_content', label: 'Gemini Native generateContent（需开启路由）' },
-  ],
-  codex: [
-    { value: 'openai_responses', label: 'Responses（原生）' },
-    { value: 'openai_chat_completions', label: 'Chat Completions（需开启路由）' },
-    { value: 'anthropic_messages', label: 'Anthropic Messages（需开启路由）' },
-  ],
-  dsh: [
-    { value: 'openai_chat_completions', label: 'OpenAI Chat Completions（原生）' },
-    { value: 'openai_responses', label: 'OpenAI Responses（原生）' },
-    { value: 'anthropic_messages', label: 'Anthropic Messages（原生）' },
-  ],
-};
-const DEFAULT_FORMAT: Record<CliProviderKind, Fmt> = {
-  claude: 'anthropic_messages',
-  codex: 'openai_responses',
-  dsh: 'openai_chat_completions',
-};
+const FORMATS = CLI_FORMATS;
 const NAME: Record<CliProviderKind, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
+};
+
+/** 本地没有预设服务（非桌面环境）时，添加页至少有「自定义配置」 */
+const CUSTOM_PRESET: ProviderPreset = {
+  id: 'custom',
+  name: '自定义配置',
+  category: 'custom',
+  protocol: 'openai-chat',
+  baseURL: '',
+  defaultModel: '',
+  models: [],
+  requiresApiKey: false,
+  hint: '手动填写请求地址和 API Key',
 };
 
 export function formatLabel(kind: CliProviderKind, f: string): string {
@@ -99,15 +101,13 @@ export function routingStatus(
       };
 }
 
+type View = { kind: 'list' } | { kind: 'add' } | { kind: 'edit'; target: CliEditorTarget };
+
 export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }) => {
   const [state, setState] = useState<CliProviderState | null>(null);
   const [route, setRoute] = useState<CliRouteSettings | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [baseUrl, setBaseUrl] = useState('');
-  const [model, setModel] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [apiFormat, setApiFormat] = useState<string>(DEFAULT_FORMAT[kind]);
+  const [view, setView] = useState<View>({ kind: 'list' });
+  const [presets, setPresets] = useState<ProviderPreset[]>([CUSTOM_PRESET]);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [tests, setTests] = useState<Record<string, CliProfileTestResult | 'pending'>>({});
@@ -128,6 +128,13 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
       setRoute(s.routing);
     });
   }, [refresh]);
+  useEffect(() => {
+    if (!providerClientAvailable()) return;
+    void providerClient
+      .presets()
+      .then((ps) => setPresets(ps.some((p) => p.id === 'custom') ? ps : [CUSTOM_PRESET, ...ps]))
+      .catch(() => undefined);
+  }, []);
 
   const profiles = useMemo(
     () => (state?.profiles ?? []).filter((p) => p.kind === kind),
@@ -144,15 +151,6 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
     kind === 'claude' ? state?.claudeStore : kind === 'codex' ? state?.codexStore : state?.dshStore;
   const rs = routingStatus(kind, active, route);
 
-  const resetForm = () => {
-    setEditingId(null);
-    setName('');
-    setBaseUrl('');
-    setModel('');
-    setApiKey('');
-    setApiFormat(DEFAULT_FORMAT[kind]);
-  };
-
   const guard = async (fn: () => Promise<void>) => {
     setBusy(true);
     setMsg('');
@@ -164,22 +162,6 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
       setBusy(false);
     }
   };
-
-  const save = () =>
-    guard(async () => {
-      await cliProviderClient.upsert({
-        id: editingId ?? undefined,
-        kind,
-        name: name || NAME[kind],
-        baseUrl,
-        model,
-        apiFormat: apiFormat as Fmt,
-        apiKey: apiKey || undefined,
-      });
-      setMsg(editingId ? t('已更新档案') : t('已保存档案'));
-      resetForm();
-      refresh();
-    });
 
   const activate = (p: CliProviderProfile) =>
     guard(async () => {
@@ -216,15 +198,6 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
     }
   };
 
-  const edit = (p: CliProviderProfile) => {
-    setEditingId(p.id);
-    setName(p.name);
-    setBaseUrl(p.baseUrl);
-    setModel(p.model);
-    setApiKey('');
-    setApiFormat(p.apiFormat);
-  };
-
   const patchRoute = (patch: Partial<CliRouteSettings>) =>
     guard(async () => setRoute(await cliRouteClient.set(patch)));
 
@@ -244,254 +217,288 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
             writes ?? '~/.dsh/cordis.patch.yml',
           );
 
+  const activeBrand = (p: CliProviderProfile) =>
+    p.presetId && p.presetId !== 'custom' ? p.presetId : inferBrand(p.baseUrl);
+
   return (
-    <div className={styles.section} data-testid={`providers-section-${kind}`}>
-      <div className={styles.intro} data-testid="cli-ep-intro">
-        <p>
-          <strong>{t(NAME[kind])}</strong>
-          {t(' 的供应商档案独立保存，与 Nomi、其它编程助手互不影响。')}
-        </p>
-        <p>{where}</p>
-      </div>
+    <ToastProvider>
+      <div className={styles.section} data-testid={`providers-section-${kind}`}>
+        <div className={styles.intro} data-testid="cli-ep-intro">
+          <p>
+            <strong>{t(NAME[kind])}</strong>
+            {t(' 的供应商档案独立保存，与 Nomi、其它编程助手互不影响。')}
+          </p>
+          <p>{where}</p>
+        </div>
 
-      <CliVersionCard kind={kind} />
+        <CliVersionCard kind={kind} />
 
-      <section className={styles.card} data-testid="cli-ep-status">
-        <h3 className={styles.cardTitle}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <EndpointIcon backend={kind} size={16} decorative />
-            {t('当前使用')}
-          </span>
-        </h3>
-        <dl className={styles.facts}>
-          <dt>{t('供应商')}</dt>
-          <dd data-testid="cli-ep-active">
-            {active ? active.name : t('使用 CLI 自带登录/默认配置')}
-          </dd>
-          <dt>{t('来源')}</dt>
-          <dd data-testid="cli-ep-source">
-            {active ? t('Nomi 档案库（独立）') : t('CLI 自带登录 / 默认配置')}
-          </dd>
-          <dt>{t('上游格式')}</dt>
-          <dd>{active ? formatLabel(kind, active.apiFormat) : '—'}</dd>
-          <dt>{t('模型')}</dt>
-          <dd>{active?.model || '—'}</dd>
-          <dt>{t('本地路由')}</dt>
-          <dd data-testid="cli-ep-routing" data-mode={rs.mode}>
-            {rs.text}
-          </dd>
-        </dl>
-        {active && (
-          <div>
-            <Button
-              size="sm"
-              disabled={busy}
-              data-testid="cli-ep-use-default"
-              onClick={() => void deactivate()}
-            >
-              {t('改用 CLI 自带登录/默认配置')}
-            </Button>
-          </div>
-        )}
-      </section>
-
-      <section className={styles.card} data-testid={`cli-provider-list-${kind}`}>
-        <h3 className={styles.cardTitle}>{t('档案')}</h3>
-        {profiles.length === 0 && <span className={styles.empty}>{t('暂无档案')}</span>}
-        {profiles.map((p) => {
-          const tr = tests[p.id];
-          return (
-            <div
-              key={p.id}
-              className={`${styles.row} ${p.active ? styles.rowActive : ''}`}
-              data-testid={`cli-provider-row-${p.id}`}
-            >
-              <div className={styles.rowMain}>
-                <span>
-                  <strong>{p.name}</strong>{' '}
-                  {p.active && (
-                    <span className={styles.pill} data-testid="cli-provider-active">
-                      {t('使用中')}
-                    </span>
-                  )}{' '}
-                  {p.needsRouting && (
-                    <span
-                      className={`${styles.pill} ${styles.pillWarn}`}
-                      data-testid="cli-provider-needs-routing"
-                    >
-                      {t('需路由')}
-                    </span>
+        <section className={styles.card} data-testid={`cli-provider-list-${kind}`}>
+          {view.kind === 'list' && (
+            <div className={ppStyles.stack}>
+              <div className={ppStyles.inline}>
+                <span className="cd-muted" data-testid="cli-ep-status">
+                  {t('当前：')}
+                  <b data-testid="cli-ep-active">
+                    {active ? active.name : t('使用 CLI 自带登录/默认配置')}
+                  </b>
+                  {active?.model && (
+                    <>
+                      {' '}
+                      · <span>{active.model}</span>
+                    </>
                   )}
                 </span>
-                <span className={styles.rowSub}>
-                  {[formatLabel(kind, p.apiFormat), p.model, p.baseUrl].filter(Boolean).join(' · ')}
-                </span>
-                {tr && (
-                  <span
-                    className={`${styles.pill} ${
-                      tr === 'pending' ? '' : tr.ok ? styles.pillOk : styles.pillBad
-                    }`}
-                    style={{ width: 'fit-content' }}
-                    data-testid="cli-provider-test-result"
-                    role="status"
+                <span className="cd-spacer" />
+                <Button
+                  variant="primary"
+                  data-testid="cli-add-provider"
+                  onClick={() => setView({ kind: 'add' })}
+                >
+                  {t('＋ 添加供应商')}
+                </Button>
+              </div>
+              <dl className={styles.facts}>
+                <dt>{t('来源')}</dt>
+                <dd data-testid="cli-ep-source">
+                  {active ? t('Nomi 档案库（独立）') : t('CLI 自带登录 / 默认配置')}
+                </dd>
+                <dt>{t('上游格式')}</dt>
+                <dd>{active ? formatLabel(kind, active.apiFormat) : '—'}</dd>
+                <dt>{t('本地路由')}</dt>
+                <dd data-testid="cli-ep-routing" data-mode={rs.mode}>
+                  {rs.text}
+                </dd>
+              </dl>
+
+              <Card
+                active={!active}
+                className={ppStyles.card}
+                data-testid="cli-provider-default"
+                title={
+                  <span className={ppStyles.inline}>
+                    <EndpointIcon backend={kind} size={28} decorative />
+                    <span>{t('CLI 自带登录 / 默认配置')}</span>
+                    {!active && <Badge data-testid="cli-default-current">{t('当前')}</Badge>}
+                  </span>
+                }
+                subtitle={t(
+                  '不经过 Nomi：沿用 {0} 自己的登录或配置（默认）。启用下方任一供应商后会改用它。',
+                  NAME[kind],
+                )}
+                actions={
+                  active ? (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={busy}
+                      data-testid="cli-ep-use-default"
+                      onClick={() => void deactivate()}
+                    >
+                      {t('改用 CLI 自带登录/默认配置')}
+                    </Button>
+                  ) : undefined
+                }
+              />
+
+              {profiles.length === 0 && (
+                <EmptyState
+                  icon="🔌"
+                  title={t('还没有第三方供应商')}
+                  description={t('点「添加供应商」，选择预设模板或自定义配置')}
+                />
+              )}
+              {profiles.map((p) => {
+                const tr = tests[p.id];
+                return (
+                  <Card
+                    key={p.id}
+                    active={p.active}
+                    className={ppStyles.card}
+                    data-testid={`cli-provider-row-${p.id}`}
+                    title={
+                      <span className={ppStyles.inline}>
+                        <Monogram name={p.name} brand={activeBrand(p)} size={28} />
+                        <span>{p.name}</span>
+                        {p.active && <Badge data-testid="cli-provider-active">{t('使用中')}</Badge>}
+                        {p.needsRouting && (
+                          <Badge tone="warning" data-testid="cli-provider-needs-routing">
+                            {t('需路由')}
+                          </Badge>
+                        )}
+                      </span>
+                    }
+                    subtitle={
+                      <span>
+                        {formatLabel(kind, p.apiFormat)} ·{' '}
+                        <code className="cd-code">{p.baseUrl}</code>
+                        {p.model ? ` · ${p.model}` : ''}
+                      </span>
+                    }
+                    actions={
+                      <>
+                        {tr && (
+                          <Badge
+                            tone={tr === 'pending' ? 'neutral' : tr.ok ? 'success' : 'danger'}
+                            data-testid="cli-provider-test-result"
+                            role="status"
+                          >
+                            {tr === 'pending'
+                              ? t('测速中…')
+                              : tr.ok
+                                ? `${tr.latencyMs} ms${tr.note ? ` · ${tr.note}` : ''}`
+                                : t('失败：{0}', (tr.error ?? '').slice(0, 80))}
+                          </Badge>
+                        )}
+                        {!p.active && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            disabled={busy}
+                            data-testid="cli-provider-enable"
+                            onClick={() => void activate(p)}
+                          >
+                            {t('启用')}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          disabled={tr === 'pending'}
+                          data-testid="cli-provider-test"
+                          onClick={() => void test(p)}
+                        >
+                          {t('⚡ 测速')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          data-testid="cli-provider-edit"
+                          onClick={() =>
+                            setView({ kind: 'edit', target: { kind: 'edit', profile: p } })
+                          }
+                        >
+                          {t('编辑')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          disabled={busy}
+                          data-testid="cli-provider-delete"
+                          onClick={() => {
+                            if (!window.confirm(t('删除供应商「{0}」及其 Token？', p.name))) return;
+                            void guard(
+                              async () => (await cliProviderClient.remove(p.id), refresh()),
+                            );
+                          }}
+                        >
+                          {t('删除')}
+                        </Button>
+                      </>
+                    }
                   >
-                    {tr === 'pending'
-                      ? t('测速中…')
-                      : tr.ok
-                        ? `${tr.latencyMs} ms${tr.note ? ` · ${tr.note}` : ''}`
-                        : t('失败：{0}', tr.error ?? '')}
+                    <div className="cd-muted">
+                      {p.hasKey ? `Token ${p.keyHint}` : t('无 Token')}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {view.kind === 'add' && (
+            <div className={ppStyles.stack}>
+              <div className={ppStyles.inline}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  data-testid="cli-add-back"
+                  onClick={() => setView({ kind: 'list' })}
+                >
+                  {t('‹ 返回')}
+                </Button>
+              </div>
+              <AddProvider
+                presets={presets}
+                onPick={(preset) => setView({ kind: 'edit', target: { kind: 'new', preset } })}
+              />
+            </div>
+          )}
+
+          {view.kind === 'edit' && (
+            <CliProviderEditor
+              key={
+                view.target.kind === 'edit'
+                  ? view.target.profile.id
+                  : `new-${view.target.preset.id}`
+              }
+              endpoint={kind}
+              target={view.target}
+              onBack={() =>
+                setView(view.target.kind === 'new' ? { kind: 'add' } : { kind: 'list' })
+              }
+              onError={(e) => setMsg(e instanceof Error ? e.message : String(e))}
+              onSaved={(p, doActivate) => {
+                setView({ kind: 'list' });
+                setMsg(view.target.kind === 'edit' ? t('已更新档案') : t('已保存档案'));
+                refresh();
+                if (doActivate) void activate(p);
+              }}
+            />
+          )}
+        </section>
+
+        <details className={styles.advanced} data-testid="cli-route-advanced">
+          <summary>{t('高级')}</summary>
+          <div className={styles.advBody}>
+            {kind === 'dsh' ? (
+              <p className={styles.sub}>
+                {t(
+                  'dsh 原生支持 openai-completions / openai-responses / anthropic-messages，不需要本地路由。',
+                )}
+              </p>
+            ) : (
+              <>
+                <p className={styles.sub}>
+                  {t('非原生上游格式时，CLI 仍发原生协议；由本机路由转换后再转发。')}
+                </p>
+                <label className={styles.check}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(route?.enabled)}
+                    data-testid="cli-route-enabled"
+                    onChange={(e) => void patchRoute({ enabled: e.target.checked })}
+                  />
+                  {t('开启本地路由')}
+                </label>
+                <label className={styles.check}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(route?.[kind])}
+                    disabled={!route?.enabled}
+                    data-testid={`cli-route-${kind}`}
+                    onChange={(e) => void patchRoute({ [kind]: e.target.checked })}
+                  />
+                  {t('接管 {0}', NAME[kind])}
+                </label>
+                {route?.listenUrl && (
+                  <span className={styles.sub} data-testid="cli-route-url">
+                    {t('监听')} {route.listenUrl}
                   </span>
                 )}
-              </div>
-              <div className={styles.rowActions}>
-                <Button
-                  size="sm"
-                  disabled={busy || p.active}
-                  data-testid="cli-provider-enable"
-                  onClick={() => void activate(p)}
-                >
-                  {t('启用')}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={tr === 'pending'}
-                  data-testid="cli-provider-test"
-                  onClick={() => void test(p)}
-                >
-                  {t('测速')}
-                </Button>
-                <Button size="sm" disabled={busy} onClick={() => edit(p)}>
-                  {t('编辑')}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={busy}
-                  data-testid="cli-provider-delete"
-                  onClick={() =>
-                    void guard(async () => (await cliProviderClient.remove(p.id), refresh()))
-                  }
-                >
-                  {t('删除')}
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      <section className={styles.card} data-testid="cli-provider-form">
-        <h3 className={styles.cardTitle}>{editingId ? t('编辑档案') : t('添加档案')}</h3>
-        <div className={styles.form}>
-          <div className={styles.formGrid}>
-            <label className={styles.field}>
-              {t('名称')}
-              <Input size="sm" value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <label className={styles.field}>
-              {t('模型')}
-              <Input size="sm" value={model} onChange={(e) => setModel(e.target.value)} />
-            </label>
-            <label className={styles.field}>
-              {t('API 地址')}
-              <Input
-                size="sm"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://…"
-                data-testid="cli-provider-baseurl"
-              />
-            </label>
-            <label className={styles.field}>
-              {editingId ? t('API Key（留空保持不变）') : t('API Key')}
-              <Input
-                size="sm"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                autoComplete="off"
-              />
-            </label>
-          </div>
-          <div className={styles.field}>
-            {t('上游格式')}
-            <Select
-              size="sm"
-              data-testid="cli-provider-format"
-              value={apiFormat}
-              onChange={(e) => setApiFormat(e.target.value)}
-              menuMinWidth={320}
-              options={FORMATS[kind].map((f) => ({ value: f.value, label: t(f.label) }))}
-            />
-          </div>
-          <div className={styles.rowActions}>
-            <Button
-              size="sm"
-              disabled={busy || !baseUrl.trim()}
-              onClick={() => void save()}
-              data-testid="cli-provider-save"
-            >
-              {editingId ? t('保存修改') : t('添加档案')}
-            </Button>
-            {editingId && (
-              <Button size="sm" variant="ghost" onClick={resetForm}>
-                {t('取消编辑')}
-              </Button>
+              </>
             )}
+            <pre className={styles.paths} data-testid="cli-provider-paths">
+              {[t('档案库：{0}', store ?? '-'), t('写入位置：{0}', writes ?? '-')].join('\n')}
+            </pre>
           </div>
-        </div>
-      </section>
+        </details>
 
-      <details className={styles.advanced} data-testid="cli-route-advanced">
-        <summary>{t('高级')}</summary>
-        <div className={styles.advBody}>
-          {kind === 'dsh' ? (
-            <p className={styles.sub}>
-              {t(
-                'dsh 原生支持 openai-completions / openai-responses / anthropic-messages，不需要本地路由。',
-              )}
-            </p>
-          ) : (
-            <>
-              <p className={styles.sub}>
-                {t('非原生上游格式时，CLI 仍发原生协议；由本机路由转换后再转发。')}
-              </p>
-              <label className={styles.check}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(route?.enabled)}
-                  data-testid="cli-route-enabled"
-                  onChange={(e) => void patchRoute({ enabled: e.target.checked })}
-                />
-                {t('开启本地路由')}
-              </label>
-              <label className={styles.check}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(route?.[kind])}
-                  disabled={!route?.enabled}
-                  data-testid={`cli-route-${kind}`}
-                  onChange={(e) => void patchRoute({ [kind]: e.target.checked })}
-                />
-                {t('接管 {0}', NAME[kind])}
-              </label>
-              {route?.listenUrl && (
-                <span className={styles.sub} data-testid="cli-route-url">
-                  {t('监听')} {route.listenUrl}
-                </span>
-              )}
-            </>
-          )}
-          <pre className={styles.paths} data-testid="cli-provider-paths">
-            {[t('档案库：{0}', store ?? '-'), t('写入位置：{0}', writes ?? '-')].join('\n')}
-          </pre>
-        </div>
-      </details>
-
-      {msg && (
-        <Notice tone="info" data-testid="cli-provider-msg">
-          {msg}
-        </Notice>
-      )}
-    </div>
+        {msg && (
+          <Notice tone="info" data-testid="cli-provider-msg">
+            {msg}
+          </Notice>
+        )}
+      </div>
+    </ToastProvider>
   );
 };

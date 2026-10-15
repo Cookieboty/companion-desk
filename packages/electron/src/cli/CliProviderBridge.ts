@@ -52,6 +52,8 @@ interface StoredProfile {
   apiFormat: CliApiFormat;
   keyEnc: string;
   active: boolean;
+  /** 来自哪个预设模板（用于品牌图标）；自定义为 'custom' */
+  presetId?: string;
 }
 
 interface StoreFile {
@@ -211,6 +213,7 @@ export class CliProviderBridge {
       hasKey: Boolean(key),
       keyHint: mask(key),
       active: p.active,
+      presetId: p.presetId,
     };
   }
 
@@ -388,6 +391,7 @@ export class CliProviderBridge {
       apiFormat,
       keyEnc,
       active: existing?.active ?? false,
+      presetId: input.presetId?.trim() || existing?.presetId,
     };
     if (existing) Object.assign(existing, next);
     else this.data[kind].profiles.push(next);

@@ -99,11 +99,11 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         );
       case 'shortcuts':
         return <ShortcutSettings />;
-      case 'providers':
+      case 'coding':
         return providerClientAvailable() || cliProviderClient.available() ? (
-          <ProvidersPage />
+          <ProvidersPage onOpenedTab={onClose} onOpenNotify={() => onSection('notify')} />
         ) : (
-          <p className={styles.note}>{t('供应商管理仅在桌面应用中可用；模型配置见「通用」。')}</p>
+          <p className={styles.note}>{t('编程助手设置仅在桌面应用中可用；模型配置见「通用」。')}</p>
         );
       case 'voice':
         return <VoiceSection />;
@@ -117,8 +117,6 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return <IslandSettings />;
       case 'calendar':
         return <CalendarSettings />;
-      case 'agents':
-        return <SchedulePanel key="a" isVisible onClose={noop} initialTab="agents" />;
       case 'screen':
         return <ScreenPanel isVisible onClose={noop} />;
       case 'ext':

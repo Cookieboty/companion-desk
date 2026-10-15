@@ -82,17 +82,22 @@ export function setEndpointFilter(backend: ConversationBackend): void {
 const PROVIDER_ENDPOINT_KEY = 'ai-chat:providerEndpoint';
 const providerEpSubs = new Set<Listener>();
 
-export function getProviderEndpoint(): ConversationBackend {
+/** 编程助手页的当前标签：四个端点之一，或「监视与会话」 */
+export type CodingTab = ConversationBackend | 'monitor';
+export const isCodingTab = (v: unknown): v is CodingTab =>
+  v === 'monitor' || isConversationBackend(v);
+
+export function getProviderEndpoint(): CodingTab {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return 'nomi';
     const v = window.localStorage.getItem(PROVIDER_ENDPOINT_KEY);
-    return isConversationBackend(v) ? v : 'nomi';
+    return isCodingTab(v) ? v : 'nomi';
   } catch {
     return 'nomi';
   }
 }
 
-export function setProviderEndpoint(backend: ConversationBackend): void {
+export function setProviderEndpoint(backend: CodingTab): void {
   write(PROVIDER_ENDPOINT_KEY, backend);
   providerEpSubs.forEach((fn) => fn());
 }

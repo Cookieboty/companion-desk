@@ -38,6 +38,8 @@ export interface CliProviderProfile {
   hasKey: boolean;
   keyHint: string;
   active: boolean;
+  /** 来自哪个预设模板（品牌图标 / 来源提示）；自定义为 'custom' */
+  presetId?: string;
 }
 
 export interface CliProviderInput {
@@ -48,6 +50,7 @@ export interface CliProviderInput {
   model: string;
   apiFormat?: ClaudeApiFormat | CodexApiFormat | DshApiFormat;
   apiKey?: string;
+  presetId?: string;
 }
 
 export interface HarnessSessionState {
