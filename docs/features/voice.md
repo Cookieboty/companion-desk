@@ -37,10 +37,11 @@ Nomi 默认使用**内置离线语音**（[sherpa-onnx](https://github.com/k2-fs
 
 模型约 133 MB（解压目录），**随安装包 `extraResources` 分发**到 `resources/tts-models/<id>/`，不进 git。
 
-1. 打包前 `pnpm --filter @nomi-ai/electron sync-tts-model`（各 `package:*` 的 `prepackage*` 会自动调用）把源目录同步到 `packages/electron/resources/tts-models/`（已 gitignore）。
-2. 源目录解析顺序：`NOMI_SHERPA_TTS_MODEL_DIR` → 仓库同级 `../models/<id>` → 仓库内 `models/<id>`。文件清单与字节数钉死在 `packages/electron/src/tts/sherpa/manifest.ts`（与 sync 脚本一致）。
-3. 运行时定位顺序：环境变量 → `process.resourcesPath/tts-models/<id>`（打包）→ 开发态上述目录。缺失或大小不符时回退系统语音。
-4. IPC：`tts:sherpa:status`（ready / missing / error）；设置页只展示状态，无下载进度条。
+1. 打包前 `pnpm --filter @nomi-ai/electron sync-tts-model`（各 `package:*` 的 `prepackage*` 会自动调用）把源目录同步到 `packages/electron/resources/tts-models/`（已 gitignore）。若本地没有源目录，脚本会从 k2-fsa/sherpa-onnx `tts-models` release 自动下载到仓库同级 `../models/<id>` 再同步。
+2. 源目录解析顺序：`NOMI_SHERPA_TTS_MODEL_DIR` → 仓库同级 `../models/<id>` → 仓库内 `models/<id>`。文件清单、归档 URL / sha256 与字节数钉死在 `packages/electron/src/tts/sherpa/manifest.ts`（与 sync 脚本一致）。
+3. 运行时定位顺序：环境变量 → `process.resourcesPath/tts-models/<id>`（打包）→ 开发态上述目录 → `userData/tts-models/<id>`。
+4. **开发启动缺模型**：主进程 `SherpaTtsService` 在预热 / 首次合成时自动下载到 `../models/`（日志打进度；无安装器 UI）。生产包已带 model 则不会下载。
+5. IPC：`tts:sherpa:status`（ready / missing / error）；设置页只展示状态，无下载进度条。
 
 ### 实现与平台
 

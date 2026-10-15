@@ -15,6 +15,10 @@ import {
 
 const manifest: ModelManifest = {
   id: 'tiny',
+  url: 'https://example.invalid/tiny.tar.bz2',
+  sha256: '0'.repeat(64),
+  bytes: 1,
+  topDir: 'tiny',
   files: { 'model.onnx': 1 },
 };
 
@@ -112,7 +116,7 @@ describe('SherpaTtsService', () => {
     });
   });
 
-  it('missing model → not_ready (caller falls back to system speech), status=missing', async () => {
+  it('missing model without installRoot → not_ready (caller falls back to system speech)', async () => {
     const loadAddon = jest.fn();
     const svc = new SherpaTtsService({
       resourcesRoot: () => fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-empty-')),
@@ -122,6 +126,37 @@ describe('SherpaTtsService', () => {
     await expect(svc.synthesize('你好')).rejects.toMatchObject({ code: 'not_ready' });
     expect(loadAddon).not.toHaveBeenCalled();
     expect(svc.getStatus()).toMatchObject({ state: 'missing', modelId: 'tiny' });
+  });
+
+  it('missing model with installRoot → auto-downloads then synthesizes', async () => {
+    const { addon, createAsync, generate } = fakeAddon();
+    const loadAddon = jest.fn(() => addon);
+    const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-install-'));
+    const install = jest.fn(async () => {
+      const dir = path.join(installRoot, 'tiny');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'model.onnx'), 'x');
+      return dir;
+    });
+    const logs: string[] = [];
+    const svc = new SherpaTtsService({
+      resourcesRoot: () => fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-sherpa-empty-')),
+      installRoot: () => installRoot,
+      userRoot: () => installRoot,
+      loadAddon,
+      install,
+      manifest,
+      log: (m: string) => logs.push(m),
+    });
+    expect(svc.getStatus().state).toBe('missing');
+    const r = await svc.synthesize('你好');
+    expect(r.sentences).toBe(1);
+    expect(install).toHaveBeenCalledTimes(1);
+    expect(loadAddon).toHaveBeenCalledTimes(1);
+    expect(createAsync).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalled();
+    expect(svc.getStatus()).toMatchObject({ state: 'ready', source: 'userData' });
+    expect(logs.some((l) => /download/i.test(l) || /missing/i.test(l))).toBe(true);
   });
 
   it('addon load failure → engine_failed, then cooldown avoids retrying immediately', async () => {

@@ -2,14 +2,30 @@
  * sherpa-onnx 本地离线 TTS 默认模型清单。
  * 模型随安装包 extraResources 分发（packages/electron/resources/tts-models/，由 sync-tts-model.mjs 同步），
  * 不进 git；开发态指向仓库同级 ../models/<id> 或 NOMI_SHERPA_TTS_MODEL_DIR。
+ * 开发启动若目录缺失/不完整，运行时从下方 URL 自动拉取（仅日志进度，无安装器 UI）。
  */
 export interface ModelManifest {
   id: string;
+  /** 归档下载 URL（k2-fsa/sherpa-onnx tts-models release） */
+  url: string;
+  sha256: string;
+  /** 归档字节数（进度日志总量） */
+  bytes: number;
+  /** 归档内顶层目录（解压时剥掉） */
+  topDir: string;
   /** 运行所需文件（相对模型目录）→ 精确字节数（完整性校验） */
   files: Readonly<Record<string, number>>;
 }
 
 export const SHERPA_MODEL_ID = 'vits-zh-hf-theresa';
+
+export const SHERPA_MODEL_URL =
+  'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-zh-hf-theresa.tar.bz2';
+
+export const SHERPA_ARCHIVE_SHA256 =
+  'f337638c49689e1d87135c4e224daa1aacc0109e784b1cf78eafb1b14a1d9e92';
+
+export const SHERPA_ARCHIVE_BYTES = 120596617;
 
 export const SHERPA_REQUIRED_FILES: Readonly<Record<string, number>> = Object.freeze({
   'theresa.onnx': 121913906,
@@ -32,6 +48,10 @@ export const SHERPA_REQUIRED_FILES: Readonly<Record<string, number>> = Object.fr
 
 export const SHERPA_MANIFEST: ModelManifest = Object.freeze({
   id: SHERPA_MODEL_ID,
+  url: SHERPA_MODEL_URL,
+  sha256: SHERPA_ARCHIVE_SHA256,
+  bytes: SHERPA_ARCHIVE_BYTES,
+  topDir: SHERPA_MODEL_ID,
   files: SHERPA_REQUIRED_FILES,
 });
 

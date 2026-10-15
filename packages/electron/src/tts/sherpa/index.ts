@@ -8,7 +8,7 @@ import { SherpaTtsService } from './SherpaTtsService';
 export { SherpaTtsService, SherpaTtsError } from './SherpaTtsService';
 export type { SherpaErrorCode } from './SherpaTtsService';
 export * from './manifest';
-export { locateModel, verifyModelDir } from './modelStore';
+export { locateModel, verifyModelDir, installModel } from './modelStore';
 export { splitSentences } from './sentences';
 export { encodeWavPcm16, concatSamples } from './wav';
 
@@ -37,6 +37,22 @@ function devModelDirs(): string[] {
   }
 }
 
+/** 开发态自动下载落点：仓库同级 ../models（与 locate / sync 一致） */
+function devInstallRoot(): string | undefined {
+  if (app.isPackaged) return undefined;
+  try {
+    const electronRoot = path.resolve(app.getAppPath());
+    const repoRoot = path.resolve(electronRoot, '../..');
+    return path.resolve(repoRoot, '../models');
+  } catch {
+    return undefined;
+  }
+}
+
+function userDataModelsRoot(): string {
+  return path.join(app.getPath('userData'), 'tts-models');
+}
+
 export function getSherpaTtsService(): SherpaTtsService {
   if (!singleton) {
     singleton = new SherpaTtsService({
@@ -50,6 +66,22 @@ export function getSherpaTtsService(): SherpaTtsService {
       },
       devDirs: devModelDirs,
       envDir: () => process.env.NOMI_SHERPA_TTS_MODEL_DIR?.trim() || undefined,
+      userRoot: () => {
+        try {
+          return userDataModelsRoot();
+        } catch {
+          return undefined;
+        }
+      },
+      // 开发：下到 ../models；打包且 extraResources 缺失时下到 userData（兜底，无 UI）
+      installRoot: () => {
+        try {
+          if (!app.isPackaged) return devInstallRoot();
+          return userDataModelsRoot();
+        } catch {
+          return undefined;
+        }
+      },
     });
   }
   return singleton;

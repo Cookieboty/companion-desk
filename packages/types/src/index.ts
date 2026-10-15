@@ -180,11 +180,11 @@ export interface TTSTestResult {
 
 export * from './models';
 
-/** sherpa-onnx offline TTS model status (bundled via extraResources; no first-use download). */
+/** sherpa-onnx offline TTS model status (extraResources / env / auto-fetched for dev). */
 export interface SherpaModelStatus {
   state: 'ready' | 'missing' | 'error';
   /** where the model was found */
-  source?: 'env' | 'resources' | 'dev';
+  source?: 'env' | 'resources' | 'dev' | 'userData';
   modelId: string;
   message?: string;
 }

@@ -2,8 +2,9 @@
  * sherpa-onnx 本地离线 TTS（主进程）。
  * - 原生 addon（sherpa-onnx-node，N-API）懒加载；模型懒加载；单例；推理走 *Async（不阻塞主进程事件循环）。
  * - 分句合成后拼接成一段 16-bit mono WAV，交给渲染进程 <audio> 播放（沿用 tts:speak 的 base64 协议）。
- * - 模型随安装包 extraResources 分发；任何失败都抛 SherpaTtsError，上层路由回退系统语音。
+ * - 模型随安装包 extraResources 分发；开发态缺失时自动下载到约定目录（日志进度，无安装器 UI）。
  * - Electron 下必须 enableExternalBuffer:false，否则 V8 内存笼会拒绝 external ArrayBuffer。
+ * - 任何失败都抛 SherpaTtsError，上层路由回退系统语音。
  */
 import path from 'node:path';
 
@@ -18,7 +19,7 @@ import {
   SHERPA_RULE_FSTS,
   type ModelManifest,
 } from './manifest';
-import { locateModel, type ModelSource } from './modelStore';
+import { installModel, locateModel, type ModelSource } from './modelStore';
 import { splitSentences } from './sentences';
 import { concatSamples, encodeWavPcm16 } from './wav';
 
@@ -59,9 +60,19 @@ export interface SherpaServiceDeps {
   /** 开发态（未打包）模型目录候选 */
   devDirs?: () => string[];
   envDir?: () => string | undefined;
+  /** userData/tts-models：定位 + 打包态自动下载落点 */
+  userRoot?: () => string | undefined;
+  /**
+   * 自动下载根目录（最终 `<root>/<id>/`）。
+   * 开发态：仓库同级 `../models`；未设置则不自动下载。
+   */
+  installRoot?: () => string | undefined;
   loadAddon?: () => SherpaAddon;
+  install?: typeof installModel;
   manifest?: ModelManifest;
   now?: () => number;
+  /** 进度日志（默认 console.info） */
+  log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
 export interface SherpaSynthResult {
@@ -87,6 +98,7 @@ export class SherpaTtsService {
   private engine: Promise<{ handle: SherpaHandle; modelDir: string }> | null = null;
   private engineFailedAt = 0;
   private lastError: string | undefined;
+  private ensurePromise: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   private seq = 0;
 
@@ -98,12 +110,22 @@ export class SherpaTtsService {
     return (this.deps.now ?? Date.now)();
   }
 
+  private log(msg: string, extra?: Record<string, unknown>): void {
+    if (this.deps.log) {
+      this.deps.log(msg, extra);
+      return;
+    }
+    if (extra) console.warn(`[sherpa-tts] ${msg}`, extra);
+    else console.warn(`[sherpa-tts] ${msg}`);
+  }
+
   private locate(): { dir: string; source: ModelSource } | null {
     const resourcesRoot = this.deps.resourcesRoot?.();
     return locateModel({
       envDir: this.deps.envDir?.(),
       resourcesDir: resourcesRoot ? path.join(resourcesRoot, this.manifest.id) : undefined,
       devDirs: this.deps.devDirs?.(),
+      userRoot: this.deps.userRoot?.(),
       manifest: this.manifest,
     });
   }
@@ -118,6 +140,62 @@ export class SherpaTtsService {
     return { ...base, state: 'missing' };
   }
 
+  /**
+   * 若模型目录缺失/不完整且配置了 installRoot，则下载解压到约定目录。
+   * 幂等；已就绪直接返回。失败写入 lastError 并抛出。
+   */
+  private async ensureModelPresent(): Promise<void> {
+    if (this.locate()) return;
+    if (this.ensurePromise) return this.ensurePromise;
+    const installRoot = this.deps.installRoot?.();
+    if (!installRoot) {
+      throw new SherpaTtsError('not_ready', 'sherpa model not found');
+    }
+    const run = this.deps.install ?? installModel;
+    let lastPct = -1;
+    this.log(`model missing; downloading ${this.manifest.id} → ${installRoot}`);
+    this.ensurePromise = run({
+      installRoot,
+      manifest: this.manifest,
+      onProgress: (phase, p) => {
+        if (phase === 'extract') {
+          this.log('extracting archive…');
+          return;
+        }
+        const total = p.total || this.manifest.bytes;
+        const pct = total > 0 ? Math.floor((p.received / total) * 100) : 0;
+        // 每 10% 打一次，避免刷屏
+        if (pct >= lastPct + 10 || p.received === total) {
+          lastPct = pct;
+          this.log(`download ${pct}%`, {
+            received: p.received,
+            total,
+          });
+        }
+      },
+    })
+      .then((dir) => {
+        this.lastError = undefined;
+        this.engineFailedAt = 0;
+        this.log(`model ready at ${dir}`);
+      })
+      .catch((e: unknown) => {
+        this.lastError = e instanceof Error ? e.message : String(e);
+        throw e;
+      })
+      .finally(() => {
+        this.ensurePromise = null;
+      });
+    try {
+      await this.ensurePromise;
+    } catch (e) {
+      throw new SherpaTtsError(
+        'not_ready',
+        e instanceof Error ? e.message : 'sherpa model download failed',
+      );
+    }
+  }
+
   private ensureEngine(): Promise<{ handle: SherpaHandle; modelDir: string }> {
     if (this.engine) return this.engine;
     if (this.engineFailedAt && this.now() - this.engineFailedAt < ENGINE_RETRY_COOLDOWN_MS) {
@@ -125,12 +203,13 @@ export class SherpaTtsService {
         new SherpaTtsError('engine_failed', this.lastError ?? 'sherpa engine failed recently'),
       );
     }
-    const found = this.locate();
-    if (!found) {
-      return Promise.reject(new SherpaTtsError('not_ready', 'sherpa model not found'));
-    }
-    const dir = found.dir;
     const p = (async () => {
+      await this.ensureModelPresent();
+      const found = this.locate();
+      if (!found) {
+        throw new SherpaTtsError('not_ready', 'sherpa model not found after install');
+      }
+      const dir = found.dir;
       const addon = (this.deps.loadAddon ?? defaultLoadAddon)();
       const j = (f: string) => path.join(dir, f);
       const handle = await addon.OfflineTts.createAsync({
@@ -153,15 +232,19 @@ export class SherpaTtsService {
     this.engine = p;
     p.catch((e: unknown) => {
       this.engine = null;
-      this.engineFailedAt = this.now();
-      this.lastError = e instanceof Error ? e.message : String(e);
+      // download 失败用 not_ready，不算引擎冷却
+      if (!(e instanceof SherpaTtsError && e.code === 'not_ready')) {
+        this.engineFailedAt = this.now();
+        this.lastError = e instanceof Error ? e.message : String(e);
+      }
     });
     return p.catch((e: unknown) => {
+      if (e instanceof SherpaTtsError) throw e;
       throw new SherpaTtsError('engine_failed', e instanceof Error ? e.message : String(e));
     });
   }
 
-  /** 预加载引擎（设置页「检测」用）；返回耗时毫秒。 */
+  /** 预加载引擎（设置页「检测」用）；缺模型时会先自动下载。返回耗时毫秒。 */
   async warmup(): Promise<number> {
     const t0 = this.now();
     await this.ensureEngine();

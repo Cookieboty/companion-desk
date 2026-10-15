@@ -476,28 +476,28 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     );
   }
 
-  /** sherpa：模型是否就绪 + 引擎是否能加载（会预热，耗时约 1s） */
+  /** sherpa：缺模型时会先自动下载，再预热引擎（开发态常见；打包包内已有模型则跳过下载） */
   private async checkSherpaHealth(): Promise<TTSTestResult> {
     const sherpa = getSherpaTtsService();
-    const status = sherpa.getStatus();
-    if (status.state !== 'ready') {
-      return {
-        success: false,
-        message:
-          status.state === 'error' && status.message
-            ? t('离线语音模型不可用: {0}', status.message)
-            : t('离线语音模型缺失，当前使用系统语音'),
-      };
-    }
     try {
       const ms = await sherpa.warmup();
+      const status = sherpa.getStatus();
       return {
         success: true,
         message: t('离线语音引擎就绪（模型位置：{0}）', status.source ?? ''),
         latency: ms,
       };
     } catch (error) {
+      const status = sherpa.getStatus();
       const msg = error instanceof Error ? error.message : String(error);
+      if (status.state === 'missing' || status.state === 'error') {
+        return {
+          success: false,
+          message: status.message
+            ? t('离线语音模型不可用: {0}', status.message)
+            : t('离线语音模型缺失，当前使用系统语音'),
+        };
+      }
       return { success: false, message: t('离线语音引擎加载失败，将回退系统语音: {0}', msg) };
     }
   }
