@@ -258,16 +258,21 @@ describe('ActionManager', () => {
   it('update() returns the same bag and keeps every value inside its range', () => {
     const all = new ActionManager(ACTIONS);
     const bag = all.update(0.016);
+    let sameBag = true;
+    const outOfRange: string[] = [];
     for (const a of ACTIONS) {
       all.play(a.id, { force: true, priority: 3 });
       for (let i = 0; i < 90; i++) {
-        expect(all.update(1 / 60)).toBe(bag);
+        if (all.update(1 / 60) !== bag) sameBag = false;
         for (let p = 0; p < PARAM_DEFS.length; p++) {
-          expect(bag.v[p]).toBeGreaterThanOrEqual(PARAM_DEFS[p].min);
-          expect(bag.v[p]).toBeLessThanOrEqual(PARAM_DEFS[p].max);
+          const v = bag.v[p];
+          if (v < PARAM_DEFS[p].min || v > PARAM_DEFS[p].max)
+            outOfRange.push(`${a.id}.${PARAM_DEFS[p].name}=${v}`);
         }
       }
     }
+    expect(sameBag).toBe(true);
+    expect(outOfRange.slice(0, 5)).toEqual([]);
   });
 
   it('an arm that only fades out keeps its pose while the sleeve cross-fades', () => {
