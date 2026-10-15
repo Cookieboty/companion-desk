@@ -18,6 +18,7 @@ jest.mock('electron', () => ({
 describe('CliHarnessService mock CLI', () => {
   const mockClaude = path.resolve(__dirname, '../../../scripts/mock-cli/mock-claude.mjs');
   const mockCodex = path.resolve(__dirname, '../../../scripts/mock-cli/mock-codex.mjs');
+  const harnesses: CliHarnessService[] = [];
 
   beforeAll(() => {
     process.env.NOMI_CLAUDE_BIN = mockClaude;
@@ -25,12 +26,24 @@ describe('CliHarnessService mock CLI', () => {
     delete process.env.NOMI_USE_MOCK_CLI;
   });
 
+  afterEach(() => {
+    for (const h of harnesses) h.dispose();
+    harnesses.length = 0;
+  });
+
+  function track(h: CliHarnessService): CliHarnessService {
+    harnesses.push(h);
+    return h;
+  }
+
   it('forwards to mock claude', async () => {
-    const h = new CliHarnessService({
-      root: path.join(os.tmpdir(), `harness-${Date.now()}`),
-      logger: { info() {}, warn() {} },
-      defaultCwd: process.cwd(),
-    });
+    const h = track(
+      new CliHarnessService({
+        root: path.join(os.tmpdir(), `harness-${Date.now()}`),
+        logger: { info() {}, warn() {} },
+        defaultCwd: process.cwd(),
+      }),
+    );
     h.setBackend('claude');
     const r = await h.send('hello');
     expect(r.text).toContain('Mock Claude');
@@ -41,11 +54,13 @@ describe('CliHarnessService mock CLI', () => {
     const prev = process.env.NOMI_MOCK_TOOLS;
     process.env.NOMI_MOCK_TOOLS = '1';
     try {
-      const h = new CliHarnessService({
-        root: path.join(os.tmpdir(), `harness-tools-${Date.now()}`),
-        logger: { info() {}, warn() {} },
-        defaultCwd: process.cwd(),
-      });
+      const h = track(
+        new CliHarnessService({
+          root: path.join(os.tmpdir(), `harness-tools-${Date.now()}`),
+          logger: { info() {}, warn() {} },
+          defaultCwd: process.cwd(),
+        }),
+      );
       const tab = h.createTab({ backend: 'claude' });
       const tools: Array<{ name: string; status: string }> = [];
       h.events.on('event', (p: { event: { type: string; name?: string; status?: string } }) => {
@@ -67,18 +82,19 @@ describe('CliHarnessService mock CLI', () => {
   }, 15_000);
 
   it('forwards to mock codex', async () => {
-    const h = new CliHarnessService({
-      root: path.join(os.tmpdir(), `harness-${Date.now()}-c`),
-      logger: { info() {}, warn() {} },
-      defaultCwd: process.cwd(),
-    });
+    const h = track(
+      new CliHarnessService({
+        root: path.join(os.tmpdir(), `harness-${Date.now()}-c`),
+        logger: { info() {}, warn() {} },
+        defaultCwd: process.cwd(),
+      }),
+    );
     h.setBackend('codex');
     const r = await h.send('hello');
     expect(r.text).toContain('Mock Codex');
   });
 
   it('closes stdin so CLIs that read piped input do not hang', async () => {
-    // 模拟真实 CLI：stdin 为管道时先读到 EOF 才输出
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-stdin-'));
     const bin = path.join(dir, 'stdin-codex.mjs');
     fs.writeFileSync(
@@ -96,11 +112,13 @@ describe('CliHarnessService mock CLI', () => {
     const prev = process.env.NOMI_CODEX_BIN;
     process.env.NOMI_CODEX_BIN = bin;
     try {
-      const h = new CliHarnessService({
-        root: path.join(dir, 'root'),
-        logger: { info() {}, warn() {} },
-        defaultCwd: dir,
-      });
+      const h = track(
+        new CliHarnessService({
+          root: path.join(dir, 'root'),
+          logger: { info() {}, warn() {} },
+          defaultCwd: dir,
+        }),
+      );
       h.setBackend('codex');
       const r = await h.send('hello');
       expect(r.text).toContain('after-eof');
@@ -114,11 +132,13 @@ describe('CliHarnessService mock CLI', () => {
     process.env.NOMI_MOCK_ASK_PERMISSION = '1';
     process.env.NOMI_MOCK_PERMISSION_ID = 'perm-test-1';
     try {
-      const h = new CliHarnessService({
-        root: path.join(os.tmpdir(), `harness-perm-${Date.now()}`),
-        logger: { info() {}, warn() {} },
-        defaultCwd: process.cwd(),
-      });
+      const h = track(
+        new CliHarnessService({
+          root: path.join(os.tmpdir(), `harness-perm-${Date.now()}`),
+          logger: { info() {}, warn() {} },
+          defaultCwd: process.cwd(),
+        }),
+      );
       h.setBackend('claude');
       const seen: string[] = [];
       h.events.on('event', (p: { tabId: string; event: { type: string; id?: string } }) => {
@@ -143,11 +163,13 @@ describe('CliHarnessService mock CLI', () => {
     process.env.NOMI_MOCK_ASK_PERMISSION = '1';
     process.env.NOMI_MOCK_PERMISSION_ID = 'perm-deny-1';
     try {
-      const h = new CliHarnessService({
-        root: path.join(os.tmpdir(), `harness-perm-deny-${Date.now()}`),
-        logger: { info() {}, warn() {} },
-        defaultCwd: process.cwd(),
-      });
+      const h = track(
+        new CliHarnessService({
+          root: path.join(os.tmpdir(), `harness-perm-deny-${Date.now()}`),
+          logger: { info() {}, warn() {} },
+          defaultCwd: process.cwd(),
+        }),
+      );
       h.setBackend('claude');
       h.events.on('event', (p: { tabId: string; event: { type: string; id?: string } }) => {
         if (p.event.type === 'permission') {
@@ -164,25 +186,90 @@ describe('CliHarnessService mock CLI', () => {
   }, 15_000);
 
   it('defaults to nomi with tools enabled', () => {
-    const h = new CliHarnessService({
-      root: path.join(os.tmpdir(), `harness-${Date.now()}-n`),
-      logger: { info() {}, warn() {} },
-    });
+    const h = track(
+      new CliHarnessService({
+        root: path.join(os.tmpdir(), `harness-${Date.now()}-n`),
+        logger: { info() {}, warn() {} },
+      }),
+    );
     expect(h.state().backend).toBe('nomi');
     expect(h.state().toolsDisabled).toBe(false);
   });
+
+  it('reuses one Claude process across turns (session-level live)', async () => {
+    const boot = path.join(os.tmpdir(), `claude-boot-${Date.now()}.log`);
+    const prev = process.env.NOMI_MOCK_CLAUDE_BOOT_LOG;
+    process.env.NOMI_MOCK_CLAUDE_BOOT_LOG = boot;
+    try {
+      const h = track(
+        new CliHarnessService({
+          root: path.join(os.tmpdir(), `harness-live-${Date.now()}`),
+          logger: { info() {}, warn() {} },
+          defaultCwd: process.cwd(),
+        }),
+      );
+      h.setBackend('claude');
+      const r1 = await h.send('one');
+      expect(r1.text).toContain('Mock Claude');
+      const sid = h.state().cliSessionId;
+      expect(sid).toBeTruthy();
+      const r2 = await h.send('two');
+      expect(r2.text).toContain('Mock Claude');
+      expect(h.state().cliSessionId).toBe(sid);
+      const boots = fs.readFileSync(boot, 'utf8').trim().split('\n').filter(Boolean);
+      expect(boots).toHaveLength(1);
+      expect(boots[0]).toMatch(/^\d+$/);
+    } finally {
+      if (prev === undefined) delete process.env.NOMI_MOCK_CLAUDE_BOOT_LOG;
+      else process.env.NOMI_MOCK_CLAUDE_BOOT_LOG = prev;
+    }
+  }, 20_000);
+
+  it('tears down Claude live on cancel and respawns with --resume next turn', async () => {
+    const boot = path.join(os.tmpdir(), `claude-boot-cancel-${Date.now()}.log`);
+    const prev = process.env.NOMI_MOCK_CLAUDE_BOOT_LOG;
+    process.env.NOMI_MOCK_CLAUDE_BOOT_LOG = boot;
+    try {
+      const h = track(
+        new CliHarnessService({
+          root: path.join(os.tmpdir(), `harness-live-cancel-${Date.now()}`),
+          logger: { info() {}, warn() {} },
+          defaultCwd: process.cwd(),
+        }),
+      );
+      const tab = h.createTab({ backend: 'claude' });
+      await h.sendTab(tab.id, 'first');
+      const sid = h.listTabs().tabs.find((t) => t.id === tab.id)?.cliSessionId;
+      expect(sid).toBeTruthy();
+      expect(h.cancelTab(tab.id)).toBe(true);
+      await h.sendTab(tab.id, 'second');
+      const boots = fs.readFileSync(boot, 'utf8').trim().split('\n').filter(Boolean);
+      expect(boots.length).toBeGreaterThanOrEqual(2);
+      expect(h.listTabs().tabs.find((t) => t.id === tab.id)?.cliSessionId).toBe(sid);
+    } finally {
+      if (prev === undefined) delete process.env.NOMI_MOCK_CLAUDE_BOOT_LOG;
+      else process.env.NOMI_MOCK_CLAUDE_BOOT_LOG = prev;
+    }
+  }, 20_000);
 });
 
 describe('CliHarnessService session handling', () => {
-  // 需要可直接执行的 shebang 脚本（Windows 无法 spawn）
   const itPosix = process.platform === 'win32' ? it.skip : it;
+  const harnesses: CliHarnessService[] = [];
+  afterEach(() => {
+    for (const h of harnesses) h.dispose();
+    harnesses.length = 0;
+  });
+  function track(h: CliHarnessService): CliHarnessService {
+    harnesses.push(h);
+    return h;
+  }
 
   itPosix(
     'drops the CLI session id when switching backend and resumes codex with valid argv',
     async () => {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-argv-'));
       const bin = path.join(dir, 'argv-codex');
-      // 记录收到的 argv，并回一个会话 id
       fs.writeFileSync(
         bin,
         [
@@ -198,11 +285,13 @@ describe('CliHarnessService session handling', () => {
       const prev = process.env.NOMI_CODEX_BIN;
       process.env.NOMI_CODEX_BIN = bin;
       try {
-        const h = new CliHarnessService({
-          root: path.join(dir, 'root'),
-          logger: { info() {}, warn() {} },
-          defaultCwd: dir,
-        });
+        const h = track(
+          new CliHarnessService({
+            root: path.join(dir, 'root'),
+            logger: { info() {}, warn() {} },
+            defaultCwd: dir,
+          }),
+        );
         h.setBackend('claude');
         await h.send('hi');
         expect(h.state().cliSessionId).toBeTruthy();
@@ -228,12 +317,14 @@ describe('CliHarnessService session handling', () => {
   describe('dsh backend', () => {
     const mockDsh = path.resolve(__dirname, '../../../scripts/mock-cli/mock-dsh.mjs');
     const mk = (dshEnv?: () => Record<string, string>) =>
-      new CliHarnessService({
-        root: fs.mkdtempSync(path.join(os.tmpdir(), 'harness-dsh-')),
-        logger: { info() {}, warn() {} },
-        defaultCwd: process.cwd(),
-        dshEnv,
-      });
+      track(
+        new CliHarnessService({
+          root: fs.mkdtempSync(path.join(os.tmpdir(), 'harness-dsh-')),
+          logger: { info() {}, warn() {} },
+          defaultCwd: process.cwd(),
+          dshEnv,
+        }),
+      );
     let prev: string | undefined;
     beforeEach(() => {
       prev = process.env.NOMI_DSH_BIN;
@@ -274,7 +365,6 @@ describe('CliHarnessService session handling', () => {
       const h = mk();
       h.setBackend('dsh');
       await h.send('first');
-      // 伪造一个失效的会话 id
       (h as unknown as { tabs: Map<string, { cliSessionId: string }> }).tabs.get(
         'main',
       )!.cliSessionId = 'session-unknown';

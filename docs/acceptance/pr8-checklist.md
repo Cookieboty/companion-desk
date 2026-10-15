@@ -17,10 +17,14 @@
 | §5 输入框 CLI 提示                   | `chatTabs.test.tsx`（`cliTabPlaceholder`）                                                                                    |                                                                                                      |
 | §6 监视器 / 端点完成 → 看板娘·岛     | `agentEndpoints.test.ts`                                                                                                      | 含 **权限待确认 → island attention + think**                                                         |
 | Claude 权限桥                        | `streamParse.test.ts`、`CliHarness.mock.test.ts`（`NOMI_MOCK_ASK_PERMISSION`）；UI `cli-permission-card`                      | 真机需 Claude CLI + API Key；本机 CLI 2.1.299 有 `--permission-prompt-tool`，**无 Key 未做真机冒烟** |
+| Claude 会话级长驻 / 复用             | `CliHarness.mock.test.ts`：`reuses one Claude process across turns`、`tears down Claude live on cancel and respawns`          | mock 断言同一 pid 跨两轮；取消后重拉；**无 API Key，未做真机长驻冒烟**                               |
 | Claude 工具完成态                    | `streamParse.test.ts`（`createClaudeParser`）、`CliHarness.mock.test.ts`（`NOMI_MOCK_TOOLS`）；直播时间线 `cli-tool-timeline` |                                                                                                      |
+| Codex 交互权限                       | 查证结论写入 `coding-agent-harness.md` §5（exec JSON 无 approval 回写；app-server 才有）                                      | **不做假 UI**；本环境 Codex 0.162.1                                                                  |
 | §8–§18 模式 / 侧栏 / 分叉等          | 各 `ai-chat/tests/*`、e2e `E19` 等                                                                                            | 见对应测试名                                                                                         |
 
-**真机 Claude 冒烟（本环境）**：`claude` 在 PATH（`2.1.299`），支持 `--permission-prompt-tool` / `--input-format`；无 `ANTHROPIC_API_KEY`、无 `~/.claude/settings.json` 登录配置 → **无法发起真实对话冒烟**，权限卡与工具时间线以 mock 单测为准。
+**真机 Claude 冒烟（本环境）**：`claude` 在 PATH（`2.1.299`），支持 `--permission-prompt-tool` / `--input-format stream-json`；无 `ANTHROPIC_API_KEY`、无 `~/.claude/settings.json` 登录配置 → **无法发起真实对话 / 长驻冒烟**，权限卡、工具时间线、进程复用以 mock 单测为准。
+
+**Codex 权限查证（本环境）**：`codex` 0.162.1；`exec --json` 无线上交互 approval 事件；审批协议仅见 `codex app-server generate-json-schema`（实验性）→ P0 不接权限 UI。
 
 ## 1. 版本检查与更新
 
@@ -78,6 +82,7 @@
 - 「运行中」的 dsh 精确判断仅限 Linux（读 `/proc/locks`）；macOS / Windows 退回进程扫描 + 修改时间，可能有延迟。
 - 监视列表里外部启动的 CLI 会话只能查看，不能在标签中续接。
 - 多上游模型列表合并（Aggregation）不在本 PR 范围内。
+- Codex `exec --json` 无交互式权限桥（见 §5 查证）；Claude 为会话级进程复用，不是全局 daemon。
 - 跨端分叉只复制可见文本作上下文，**不能**跨 CLI resume 原会话。
 - 普通模式下后台 CLI 标签不可见但继续运行；切回开发可恢复。
 - 历史转录是尽力还原：只含文本消息，上限 300 条，工具调用不显示；dsh 的 v4 会话格式属内部格式，将来变化可能需要适配。

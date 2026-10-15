@@ -99,6 +99,12 @@ export class CliHarnessService {
     string,
     Map<string, ReturnType<typeof setTimeout>>
   >();
+  /**
+   * Claude 会话级长驻进程：同一标签多轮复用同一子进程（stdin stream-json）。
+   * 进程在空闲时仍存活；换 cwd / 后端 / 关标签 / 取消当前轮时拆除。
+   * 若 CLI 异常退出，下一轮会带 --resume 重新拉起（会话级复用 + 降级）。
+   */
+  private readonly claudeLive = new Map<string, ClaudeLiveSession>();
   private readonly waiters: Array<() => void> = [];
   private running = 0;
   private activeTabId = MAIN_TAB_ID;
@@ -470,6 +476,7 @@ export class CliHarnessService {
     if (id === MAIN_TAB_ID) throw new Error(t('主对话标签不能关闭'));
     this.requireTab(id);
     this.cancelTab(id);
+    this.teardownClaudeLive(id);
     const order = [...this.tabs.keys()];
     const idx = order.indexOf(id);
     this.tabs.delete(id);
@@ -514,7 +521,10 @@ export class CliHarnessService {
     }
     if (tab.status === 'running' || tab.status === 'queued') throw new Error(t('上一轮尚未结束'));
     // 会话 id 只属于产生它的 CLI；切换后端即丢弃，避免把 Claude 会话交给 Codex resume
-    if (backend !== tab.backend) tab.cliSessionId = null;
+    if (backend !== tab.backend) {
+      this.teardownClaudeLive(id);
+      tab.cliSessionId = null;
+    }
     tab.backend = backend;
     this.changed();
     return { ...tab };
@@ -523,8 +533,11 @@ export class CliHarnessService {
   setTabCwd(id: string, cwd: string): HarnessTabMeta {
     const tab = this.requireTab(id);
     const abs = validDir(cwd);
-    // dsh / Codex 的续接与 cwd 绑定：换目录即开新会话
-    if (abs !== tab.cwd) tab.cliSessionId = null;
+    // CLI 续接与 cwd 绑定：换目录即开新会话，并拆掉 Claude 长驻进程
+    if (abs !== tab.cwd) {
+      this.teardownClaudeLive(id);
+      tab.cliSessionId = null;
+    }
     tab.cwd = abs;
     if (tab.backend !== 'nomi') this.rememberCwd(abs);
     this.changed();
@@ -549,14 +562,40 @@ export class CliHarnessService {
     return this.listTabs();
   }
 
-  /** 中止标签当前轮次（排队中的直接出队） */
+  /** 中止标签当前轮次；Claude 长驻进程一并拆除（下一轮可 --resume） */
   cancelTab(id: string): boolean {
+    const live = this.claudeLive.get(id);
+    if (live?.turn) {
+      this.writeClaudeControl(live, { subtype: 'interrupt' });
+    }
+    if (!this.children.has(id) && !live) return false;
+    this.teardownClaudeLive(id);
+    // Codex/dsh：无 claudeLive，仍按 children 杀
     const child = this.children.get(id);
     if (child) {
-      child.kill();
-      return true;
+      try {
+        child.kill();
+      } catch {
+        /* */
+      }
+      this.children.delete(id);
+      this.clearPermissionTimeouts(id);
     }
-    return false;
+    return true;
+  }
+
+  /** 测试 / 应用退出：拆除所有长驻 Claude 与残留子进程 */
+  dispose(): void {
+    for (const id of [...this.claudeLive.keys()]) this.teardownClaudeLive(id);
+    for (const [id, child] of [...this.children.entries()]) {
+      try {
+        child.kill();
+      } catch {
+        /* */
+      }
+      this.children.delete(id);
+      this.clearPermissionTimeouts(id);
+    }
   }
 
   /** 发送一轮到指定标签；多个标签并发，超出上限排队 */
@@ -681,33 +720,229 @@ export class CliHarnessService {
 
   // ───────────────────────── CLI 适配器 ─────────────────────────
 
+  /**
+   * Claude：会话级长驻进程（--input-format/--output-format stream-json）。
+   * 每轮向 stdin 写一条 user NDJSON，等 result 后进程保持存活供下一轮复用；
+   * 权限仍走 control_request ↔ control_response。CLI 若不支持或不稳定，
+   * 进程退出后下一轮自动带 --resume 重拉（明确降级，见文档）。
+   */
   private runClaude(tab: HarnessTabMeta, prompt: string): Promise<HarnessSendResult> {
-    const bin = resolveHarnessBin('claude');
-    if (!bin) return Promise.reject(new Error(t('未找到 Claude Code（可设 NOMI_USE_MOCK_CLI=1）')));
-    const useNode = isScript(bin);
-    // 真实 CLI：stdio 权限通道（control_request ↔ control_response）；Mock 同样保留 stdin 以便测权限回传。
-    const argv = useNode
-      ? [bin, '-p', prompt, '--output-format', 'stream-json', '--verbose']
-      : [
-          '-p',
-          prompt,
-          '--output-format',
-          'stream-json',
-          '--input-format',
-          'stream-json',
-          '--verbose',
-          '--permission-prompt-tool',
-          'stdio',
-        ];
-    // Mock（.mjs）也收到续接参数，便于测试「打开历史会话」
-    if (tab.cliSessionId) argv.push('--resume', tab.cliSessionId);
-    return this.spawnCollect(tab, {
-      cmd: useNode ? process.execPath : bin,
-      argv,
-      parseLine: createClaudeParser(),
-      kind: 'claude',
-      keepStdin: true,
+    const live = this.ensureClaudeLive(tab);
+    return new Promise<HarnessSendResult>((resolve, reject) => {
+      if (live.turn) {
+        reject(new Error(t('上一轮尚未结束')));
+        return;
+      }
+      const turn: ClaudeTurnWaiter = {
+        resolve,
+        reject,
+        events: [],
+        text: '',
+        sessionId: tab.cliSessionId,
+        lastError: null,
+        settled: false,
+      };
+      live.turn = turn;
+      this.children.set(tab.id, live.child);
+      try {
+        this.writeClaudeUser(live, prompt);
+      } catch (e) {
+        live.turn = null;
+        this.children.delete(tab.id);
+        // 写失败：拆掉进程，下一轮重拉
+        this.teardownClaudeLive(tab.id);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      }
     });
+  }
+
+  private ensureClaudeLive(tab: HarnessTabMeta): ClaudeLiveSession {
+    const existing = this.claudeLive.get(tab.id);
+    if (
+      existing &&
+      existing.cwd === tab.cwd &&
+      !existing.child.killed &&
+      existing.child.exitCode === null &&
+      existing.child.signalCode === null
+    ) {
+      return existing;
+    }
+    if (existing) this.teardownClaudeLive(tab.id);
+
+    const bin = resolveHarnessBin('claude');
+    if (!bin) throw new Error(t('未找到 Claude Code（可设 NOMI_USE_MOCK_CLI=1）'));
+    const useNode = isScript(bin);
+    // 不把 prompt 放 argv：多轮都走 stdin NDJSON，进程可跨轮复用
+    const argv = [
+      '-p',
+      '--output-format',
+      'stream-json',
+      '--input-format',
+      'stream-json',
+      '--verbose',
+      '--permission-prompt-tool',
+      'stdio',
+    ];
+    if (tab.cliSessionId) argv.push('--resume', tab.cliSessionId);
+    const child: ChildProcessWithoutNullStreams = spawn(
+      useNode ? process.execPath : bin,
+      useNode ? [bin, ...argv] : argv,
+      {
+        cwd: tab.cwd,
+        env: buildCliEnv(process.env),
+        windowsHide: true,
+      },
+    );
+    const live: ClaudeLiveSession = {
+      child,
+      parseLine: createClaudeParser(),
+      buf: '',
+      turn: null,
+      cwd: tab.cwd,
+    };
+    this.claudeLive.set(tab.id, live);
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      live.buf += chunk.toString('utf8');
+      const parts = live.buf.split(/\r?\n/);
+      live.buf = parts.pop() ?? '';
+      for (const line of parts) this.onClaudeLine(tab.id, live, line, true);
+    });
+    child.stderr.on('data', (c) => {
+      this.d.logger.warn('harness claude stderr', String(c).slice(0, 500));
+    });
+    child.on('error', (e) => {
+      const turn = live.turn;
+      live.turn = null;
+      this.children.delete(tab.id);
+      this.claudeLive.delete(tab.id);
+      this.clearPermissionTimeouts(tab.id);
+      turn?.reject(e);
+    });
+    child.on('close', (code, signal) => {
+      if (live.buf.trim()) this.onClaudeLine(tab.id, live, live.buf, false);
+      live.buf = '';
+      const turn = live.turn;
+      live.turn = null;
+      this.children.delete(tab.id);
+      this.claudeLive.delete(tab.id);
+      this.clearPermissionTimeouts(tab.id);
+      if (!turn || turn.settled) return;
+      turn.settled = true;
+      if (signal && !turn.text) {
+        turn.reject(new Error(t('已中止')));
+        return;
+      }
+      if (code && code !== 0 && !turn.text) {
+        turn.reject(new Error(turn.lastError ?? t('{0} 退出码 {1}', 'claude', code)));
+        return;
+      }
+      turn.resolve({
+        text: turn.text || t('（无文本输出）'),
+        sessionId: turn.sessionId,
+        events: turn.events,
+      });
+    });
+    return live;
+  }
+
+  private writeClaudeUser(live: ClaudeLiveSession, prompt: string) {
+    if (!live.child.stdin.writable) throw new Error(t('Claude 进程 stdin 不可写'));
+    const payload = {
+      type: 'user',
+      message: { role: 'user', content: prompt },
+    };
+    live.child.stdin.write(`${JSON.stringify(payload)}\n`);
+  }
+
+  private writeClaudeControl(live: ClaudeLiveSession, request: Record<string, unknown>) {
+    if (!live.child.stdin.writable) return false;
+    const payload = {
+      type: 'control_request',
+      request_id: randomUUID(),
+      request,
+    };
+    try {
+      live.child.stdin.write(`${JSON.stringify(payload)}\n`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private onClaudeLine(tabId: string, live: ClaudeLiveSession, line: string, liveEmit: boolean) {
+    const turn = live.turn;
+    for (const ev of live.parseLine(line)) {
+      if (turn) {
+        turn.events.push(ev);
+        if (ev.type === 'text-delta' || ev.type === 'text') turn.text += ev.text;
+        if (ev.type === 'error') turn.lastError = ev.message;
+        if (ev.type === 'done') {
+          if (ev.text) turn.text = ev.text;
+          if (ev.sessionId) turn.sessionId = ev.sessionId;
+        }
+      }
+      if (liveEmit) this.emitEvent(tabId, ev);
+      if (ev.type === 'permission') {
+        this.armPermissionTimeout(tabId, ev.id);
+        const tab = this.tabs.get(tabId);
+        this.events.emit('permission-needed', {
+          tabId,
+          title: tab?.title ?? 'Claude Code',
+          backend: 'claude' as HarnessBackend,
+          summary: ev.summary,
+          background: this.activeTabId !== tabId || !anyWindowFocused(),
+        });
+      }
+      // 一轮 result：结束当前 Promise，但保持 stdin 打开供下一轮
+      if (ev.type === 'done' && turn && live.turn === turn) {
+        live.turn = null;
+        this.children.delete(tabId);
+        if (!turn.settled) {
+          turn.settled = true;
+          turn.resolve({
+            text: turn.text || t('（无文本输出）'),
+            sessionId: turn.sessionId,
+            events: turn.events,
+          });
+        }
+      }
+    }
+  }
+
+  /** 拆除 Claude 长驻进程（不 reject 当前 turn——由 close/kill 路径处理） */
+  private teardownClaudeLive(tabId: string) {
+    const live = this.claudeLive.get(tabId);
+    if (!live) return;
+    this.claudeLive.delete(tabId);
+    this.children.delete(tabId);
+    this.clearPermissionTimeouts(tabId);
+    const turn = live.turn;
+    live.turn = null;
+    const child = live.child;
+    try {
+      child.stdout.removeAllListeners();
+      child.stderr.removeAllListeners();
+      child.removeAllListeners();
+    } catch {
+      /* */
+    }
+    try {
+      if (child.stdin.writable) child.stdin.end();
+    } catch {
+      /* */
+    }
+    try {
+      if (!child.killed && child.exitCode === null) {
+        child.kill('SIGKILL');
+      }
+    } catch {
+      /* */
+    }
+    if (turn && !turn.settled) {
+      turn.settled = true;
+      turn.reject(new Error(t('已中止')));
+    }
   }
 
   private runCodex(tab: HarnessTabMeta, prompt: string): Promise<HarnessSendResult> {
@@ -765,7 +1000,7 @@ export class CliHarnessService {
       parseLine: (line: string) => HarnessEvent[];
       kind: CliBackend;
       env?: Record<string, string>;
-      /** Claude 权限通道需要保持 stdin 打开以回写 control_response；Codex/dsh 必须立刻 EOF */
+      /** 仅特殊 mock 需要保持 stdin；Codex/dsh 必须立刻 EOF。Claude 走 ensureClaudeLive */
       keepStdin?: boolean;
     },
   ): Promise<HarnessSendResult> {
@@ -989,6 +1224,25 @@ export class CliHarnessService {
     );
   }
 }
+
+/** Claude 长驻会话：一标签一进程，多轮共用 */
+type ClaudeTurnWaiter = {
+  resolve: (r: HarnessSendResult) => void;
+  reject: (e: Error) => void;
+  events: HarnessEvent[];
+  text: string;
+  sessionId: string | null;
+  lastError: string | null;
+  settled: boolean;
+};
+
+type ClaudeLiveSession = {
+  child: ChildProcessWithoutNullStreams;
+  parseLine: (line: string) => HarnessEvent[];
+  buf: string;
+  turn: ClaudeTurnWaiter | null;
+  cwd: string;
+};
 
 function isScript(bin: string) {
   return bin.endsWith('.mjs') || bin.endsWith('.js');

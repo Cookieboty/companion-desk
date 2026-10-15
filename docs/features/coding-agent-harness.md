@@ -144,13 +144,25 @@ Aggregation（多上游合并）仍为 **P2**。
 
 **进程模型：**
 
-| 后端        | 进程策略                                               | 输入                   | 输出               |
-| ----------- | ------------------------------------------------------ | ---------------------- | ------------------ |
-| Claude Code | 每会话一个长子进程（cwd 固定）                         | stdin NDJSON user 消息 | stdout stream-json |
-| Codex       | 每用户消息一次 `exec`（或 resume）；P1 可升 app-server | argv / stdin prompt    | stdout NDJSON      |
-| Nomi        | 无外部进程                                             | —                      | AIClient 事件      |
+| 后端        | 进程策略                                                                                                                                                                                                                                                                                                                            | 输入                                 | 输出               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------ |
+| Claude Code | **会话级长驻**：每标签一个 `claude -p --input-format stream-json --output-format stream-json --verbose --permission-prompt-tool stdio` 子进程（cwd 固定）；多轮向 stdin 写 user NDJSON，等 `result` 后**不**关 stdin；换 cwd / 后端 / 关标签 / 取消当前轮时拆除。进程异常退出则下一轮带 `--resume` 重拉（明确降级，非「永不掉线」） | stdin NDJSON user / control_response | stdout stream-json |
+| Codex       | 每用户消息一次 `exec --json`（或 `exec resume`）；P1 可升 app-server                                                                                                                                                                                                                                                                | argv / stdin prompt                  | stdout NDJSON      |
+| Nomi        | 无外部进程                                                                                                                                                                                                                                                                                                                          | —                                    | AIClient 事件      |
 
-**权限桥：** Claude Code 使用 `--permission-prompt-tool stdio`：`control_request`（`can_use_tool`）→ IPC → 对话区允许/拒绝卡片 → `control_response` 写回 stdin；120s 无操作自动拒绝。Codex / dsh 暂无交互式权限回传（exec/headless 自行决策）。看板娘气泡提醒仍走监视器完成/失败通道。
+**Claude 长驻说明（2026-10-15 对照 CLI 2.1.299）：**
+
+- 官方 print 模式支持 `--input-format stream-json` 保持 stdin 打开跨多轮；会话身份在启动时用 `--resume` 绑定，中途不能换会话（见 anthropics/claude-code#84060）。
+- Nomi 实现为**会话级进程复用**（一标签一进程），不是全局单例 daemon；中断发 `control_request{subtype:interrupt}` 后 `SIGKILL`，下一轮 `--resume`。
+- 若本机 Claude 在 stream-json 下仍每轮退出：harness 会在下一发送时自动重拉并带 `--resume`，功能不丢，只是少了「免冷启动」；以 mock 单测断言「同一 pid 跨两轮」为回归护栏。
+
+**权限桥：** Claude Code 使用 `--permission-prompt-tool stdio`：`control_request`（`can_use_tool`）→ IPC → 对话区允许/拒绝卡片 → `control_response` 写回 stdin；120s 无操作自动拒绝。长驻模式下权限通道与多轮共用同一 stdin。
+
+**Codex 交互权限（查证 2026-10-15，CLI 0.162.1）：**
+
+- `codex exec --json` 的 NDJSON 事件为 `thread.*` / `turn.*` / `item.*` 等，**没有**可回写的交互式 approval / permission 事件；`--approve-for-me` 为自动审批，`--dangerously-bypass-approvals-and-sandbox` 为跳过，均非 UI 桥。
+- 交互式审批存在于实验性 **`codex app-server`**（JSON-RPC：`ExecCommandApproval*` / `CommandExecutionRequestApproval*` / `FileChangeRequestApproval*` 等），**不属于**当前 P0 的 `exec` 路径。
+- **结论：P0 不对 Codex 做假权限 UI**；dsh headless 同样自行决策。看板娘气泡提醒仍走监视器完成/失败通道。P1 若接 app-server 再对标 Claude 权限桥。
 
 **安全：**
 
