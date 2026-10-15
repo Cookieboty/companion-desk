@@ -9,12 +9,12 @@
 
 ## 2. 现状（代码事实）
 
-| 能力         | 现状                                                                                                                          | 缺口                                                           |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 编程助手监视 | `AgentProgressService` 只读解析 `~/.claude`、`~/.codex`、Cursor 等本地会话 + 进程存活；日程面板「编程助手」标签展示与气泡提醒 | 无版本号、无安装路径、无更新动作                               |
-| 对话后端     | 固定走 `AIClient` → `ai-runtime`（Vercel AI SDK + ProviderStore）                                                             | 无法把一轮对话交给外部 CLI                                     |
-| 供应商       | Nomi 自己的 `ProviderStore`（safeStorage、任务路由、多 Key）                                                                  | 不写 `~/.claude/settings.json` / `~/.codex/config.toml`        |
-| 本地模型     | 本机管理面板 + llama.cpp / Ollama 标签                                                                                        | 可作无云 Key 的联调，与 CLI `--oss` / 第三方 base URL 尚未打通 |
+| 能力         | 现状                                                                                                                                     | 缺口                                                           |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 编程助手监视 | `AgentProgressService` 只读解析 `~/.claude`、`~/.codex`、Cursor 等本地会话 + 进程存活；设置 → 编程助手 →「监视与会话」标签展示与气泡提醒 | 无版本号、无安装路径、无更新动作                               |
+| 对话后端     | 固定走 `AIClient` → `ai-runtime`（Vercel AI SDK + ProviderStore）                                                                        | 无法把一轮对话交给外部 CLI                                     |
+| 供应商       | Nomi 自己的 `ProviderStore`（safeStorage、任务路由、多 Key）                                                                             | 不写 `~/.claude/settings.json` / `~/.codex/config.toml`        |
+| 本地模型     | 本机管理面板 + llama.cpp / Ollama 标签                                                                                                   | 可作无云 Key 的联调，与 CLI `--oss` / 第三方 base URL 尚未打通 |
 
 **设计原则（不可破）：**
 
@@ -95,7 +95,7 @@
 
 ### 4.2 版本检查与更新（看板娘）
 
-入口：日程 → 编程助手；托盘「编程助手」；Nomi 气泡「发现更新」。
+入口：设置 → 编程助手 → 对应端点（Claude Code / Codex / dsh）顶部的「版本」卡片；托盘「编程助手」；Nomi 气泡「发现更新」。
 
 对每个已检测工具卡片展示：`已安装版本` · `最新版本` · `安装方式`（npm / 原生 / homebrew / 未知）· `路径`。
 
@@ -109,7 +109,7 @@
 
 ### 4.3 CLI 供应商切换与本地路由
 
-设置 → **「供应商与模型」** 页（见 §13.4：一个页面，顶部按端点切换，Nomi / Claude Code / Codex / dsh 各自独立）：
+设置 → **「编程助手」** 页（见 §13.4 与 §14：一个页面，顶部按端点切换，Nomi / Claude Code / Codex / dsh 各自独立，外加「监视与会话」）：
 
 - 分栏：按端点（Claude Code | Codex | dsh）。
 - 档案列表：名称、base URL、model、**上游格式**、启用态；Key 走 **同一套 safeStorage**，不入明文 JSON。
@@ -221,7 +221,7 @@ Aggregation（多上游合并）仍为 **P2**。
 2. **登录**：仅 API Key / 已有登录态；**不在 Nomi 内做 OAuth**。
 3. **CLI 模式**：禁用 **全部** Nomi 工具。
 4. **默认后端**：保持 **Nomi**。
-5. **更新范围**：**Claude Code + Codex**；Cursor **仅检测**。
+5. **更新范围**：~~Claude Code + Codex；Cursor 仅检测~~ → 2026-10-15 验收后改为 **Claude Code + Codex + dsh 都可检测、安装、更新**（见 §14.2）；Cursor 仍**仅检测**。
 6. **工作目录**：对话级绑定（P0 用全局 harness cwd + 选目录按钮）。
 7. **三套供应商隔离**：Nomi `ai-providers.json`｜Claude CLI 档案｜Codex CLI 档案；各写各的路径。
 8. **本地路由**：非原生上游格式须「开启路由」后才能启用。
@@ -361,7 +361,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 | 新建对话 / 标签      | 侧栏「新对话」菜单、标签栏「+」菜单、BackendSwitcher「目录」按钮各一套 | 唯一的 `NewChatMenu` 组件（端点 + 图标 + 目录），侧栏与标签栏共用；快捷键 Mod+N（Nomi）/ Mod+T（CLI 标签）                                               |
 | 对话右键             | 侧栏：分叉 / 跨端分叉 / 删除；标签：只有 × 和双击改名                  | 唯一的 `ConversationMenu`：重命名 / 分叉为新对话 / 分叉到其他端 /（CLI）关闭标签 /（Nomi）删除对话；侧栏条目与顶部标签都能右键打开；方向键移动、Esc 关闭 |
 | 端点 / 目录 / 供应商 | 输入栏里三处分散控件 + 额外一条 cwd 条                                 | 一组 `EndpointControls`：端点 → 目录（CLI）→ 供应商 / 模型                                                                                               |
-| 供应商配置           | 「AI 供应商」设置页 + 编程助手面板（日程里内嵌）两处                   | 一个「供应商」页（§13.4）                                                                                                                                |
+| 供应商配置           | 「AI 供应商」设置页 + 编程助手面板（日程里内嵌）两处                   | 一个「编程助手」页（§13.4、§14）                                                                                                                         |
 
 约定：
 
@@ -387,7 +387,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 
 ### 13.4 「供应商」页：按端点分别配置
 
-设置 → 「供应商与模型」只有一个页面。顶部是端点切换（Nomi / Claude Code / Codex / dsh，选择会记住），每个端点是**完全独立**的一块，切换只是换视图，不改动任何配置：
+设置 →「编程助手」（原「供应商与模型」，旧深链仍可用）只有一个页面。顶部标签：Nomi / Claude Code / Codex / dsh / 监视与会话（选择会记住），每个端点是**完全独立**的一块，切换只是换视图，不改动任何配置。三个 CLI 端点与 Nomi 用**同一套**第三方供应商交互（见 §14.1）：
 
 - **说明**：配置写到哪里、与其它端点互相独立。Claude Code 只改 `~/.claude/settings.json` 的 env；Codex 只改 `~/.codex/config.toml` 与同目录 `auth.json` 的 `OPENAI_API_KEY`；dsh 只写 `$DSH_HOME/cordis.patch.yml` 里带标记的区块（密钥不落盘，启动时用环境变量注入）；Nomi 用自己的 `ai-providers.json`。以上都先备份、保留无关内容。
 - **当前使用**：供应商名称、**来源**（Nomi 档案库 / CLI 自带登录或默认配置）、上游格式、模型、**本地路由状态与原因**（直连：原生格式；已开启：非原生格式经本机路由转换；需要但未开启：提示去「高级」打开；dsh：无需路由）。
@@ -395,7 +395,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - **「高级」**：本地路由开关（Claude Code / Codex）、档案库与写入文件路径。dsh 的高级里只有说明（原生支持三种协议，无需路由）。
 - **任务路由**（对话 / 工具调用 / 摘要）只在 **Nomi** 区，沿用原有 `ProviderPanel`；CLI 端点没有任务路由。
 - 存储与 IPC 语义不变：`ai:cli-provider:*`（`upsert` / `remove` / `activate` / `deactivate` / `state` / 新增 `test`）、`ai:cli-route:*`。
-- 入口：设置 → 供应商与模型；输入栏供应商芯片的「管理」直接跳到对应端点；日程里的编程助手面板只保留一句指引。
+- 入口：设置 → 编程助手；输入栏供应商芯片的「管理」直接跳到对应端点。日程与提醒页**不再**有编程助手标签（§14.3）。
 
 ### 13.5 历史会话（Claude Code / Codex / dsh）
 
@@ -416,3 +416,45 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - **转录是尽力而为**：Claude 合并同一次回复的多个片段，跳过 `tool_result`、`isMeta`、子代理；Codex 只取 `response_item` 里的 `user` / `assistant` 消息并跳过环境 / 指令注入，函数调用记为工具名；dsh 只取 `source.kind = user` 的提问与 `assistant/message`（`.zstd` 用 Node 内置 `zlib.zstdDecompressSync`，不可用时回退系统 `zstd`）。解析不出来时标签是空的，并提示「没有解析到可显示的历史消息，仍可继续该会话」——续接本身不依赖转录。文件超过 12MB 时只读尾部并提示。
 - **测试**：夹具来自真实会话文件（`packages/electron/tests/fixtures/history/`，已裁掉超长指令）；覆盖三种解析器、分页（120 条 → 50/50/20）、增量、去重、cwd 缺失、转录失败、以及 mock CLI 的续接参数（`--resume` / `exec resume` / `--session-id`）。
 - **已知限制**：只支持这三个端点；没有对话内容搜索；dsh 的转录格式是内部格式（v4），升级后可能需要跟进解析器；Claude Code 的会话如果在终端里仍在运行，续接会和它同时写同一个文件。
+
+## 14. 验收反馈（2026-10-15，macOS 开发模式）
+
+### 14.1 编程助手页：三个 CLI 端点与 Nomi 同款第三方供应商交互
+
+- 设置里的「供应商与模型」改名为 **「编程助手」**，标签：`Nomi` · `Claude Code` · `Codex` · `dsh` · `监视与会话`（`CodingTab`，记在 `chatPrefs`）。旧入口 `providers`、`agents` 作为别名保留（`resolveSection`，`agents` 会落到「监视与会话」）。
+- Claude Code / Codex / dsh 与 Nomi 使用同样的视觉与流程：**卡片列表**（图标 · 名称 · 「使用中」徽标 · 上游格式 · 地址 · 模型 · 打码 Key）→ **添加供应商**打开预设模板网格（含「自定义」）→ 表单（名称、接口地址、API Key、模型、上游格式）→ 保存；每张卡片有 测速 / 编辑 / 删除（删除前确认）/ 启用。预设模板复用 Nomi 的预设；预设的协议若不是该 CLI 的原生格式，则默认选预设自己的协议并提示是否需要本地路由，「自定义」默认取 CLI 原生格式。
+- **默认是「CLI 自带登录 / 默认配置」**：列表第一张固定卡片，没有任何档案启用时它就是「当前」；启用某个档案后可随时「改用 CLI 自带登录/默认配置」。
+- **隔离不变**：四套档案库互相独立；本地路由仍在 Claude Code / Codex 各自的「高级」里；dsh 无需路由。
+- 档案新增 `presetId`（可选，旧档案没有时按地址推测品牌图标），仅用于显示品牌图标。
+
+### 14.2 版本检测、安装与更新（Claude Code / Codex / dsh）
+
+每个 CLI 端点页顶部有 **「版本」卡片**：状态（未安装 / 已安装 / 有新版本 / 已最新 / 运行时过旧）、已装版本、最新版本、位置，按钮「检查更新」与「安装 / 更新 / 重新安装」。
+
+- **流程**：计划（只读，`ai:cli-update:plan`）→ **确认对话框**（展示将执行的**完整命令**、需求检查、是否需要联网）→ 执行（`ai:cli-update:run`）→ 实时输出通过 `ai:cli-update:event` 推到日志区 → 结束后自动重新检测。出错时显示原因与日志，不静默。
+- **命令白名单**（只用 argv，不拼 shell 字符串；仅 Windows 的 `.cmd` 例外）：`npm install -g <包>@latest`、`claude update`、`codex update`；包名固定为 `@anthropic-ai/claude-code`（Node ≥ 22）、`@openai/codex`、`@deepseek-ai/dsh`（**Node ≥ 24**）。
+- **需求检查**：Node 版本不够、没有 npm、全局目录不可写，都会在确认框里以本地化原因拦住，不执行。
+- **不静默 sudo**：全局目录只读（如系统 Node）时，给出「安装到 `~/.local`（`--prefix`）」的备选方案并要求确认，绝不自动提权。
+- **dsh 现在可以安装与更新**（取代 §10 第 5 条与 §12.3 中「不负责安装」的旧决定）。
+- 已移除日程里的 `CliToolsBlock`。
+- 测试：`packages/electron/tests/unit/cli/CliInstallUpdate.test.ts`（注入 mock npm / CLI 的 probe 与 runner，覆盖计划、Node 过旧、只读前缀、流式事件、失败）与 `packages/ai-chat/tests/cliVersionCard.test.tsx`。
+
+### 14.3 监视与会话从日程页移出
+
+- 「日程与提醒」页只剩提醒、定时与日历，**移除「编程助手」标签**。
+- 原标签里的内容拆开：**版本**→ 各端点页（§14.2）；**监视开关、系统通知开关、已检测工具、立即扫描、会话列表（按端点筛选、打开标签）**→ 编程助手 →「监视与会话」；**通知 / 灵动岛的来源与样式设置**仍在「通知 / 灵动岛」，「监视与会话」里有一个按钮直达。
+- 快捷键 `Mod+Shift+D` 仍是「日程与提醒」。
+
+### 14.4 菜单栏图标消失（macOS，开发模式）
+
+**现象**：在开发模式里和模型互动（编程助手任务完成等）之后，菜单栏里的托盘图标与应用菜单消失，Dock 图标也可能消失。
+
+**根因**：灵动岛窗口在 macOS 上调用了 `setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })`。Electron 的这个调用默认会**切换进程类型**（普通应用 ↔ 菜单栏代理应用）：为了让窗口出现在全屏空间上，应用会短暂变成「没有 Dock / 菜单栏」的代理应用，再变回去，这一来一回就把状态栏图标和应用菜单弄丢了。而灵动岛窗口会在每次有编程助手事件（完成 / 失败）或几何变化时被创建、显示，所以「互动之后」才出现。
+
+**修复**（`IslandService.applyIslandWorkspaceBehavior`）：传 `skipTransformProcessType: true`，不再切换进程类型。同时加固托盘（`TrayManager`）：模块级强引用防回收、图标永远非空（缺图时用兜底图）、`activate` / `browser-window-focus` 时检查托盘是否还在，不在就重建（`ensureAlive`），`dispose` 幂等。
+**回归测试**：`packages/electron/tests/unit/core/trayLifecycle.test.ts`（断言灵动岛始终带 `skipTransformProcessType`、托盘被销毁后能重建、空图标不会被设置）。
+**已知限制**：根因来自代码与 Electron 行为分析，没有在真实 macOS 上复现过；需要在 macOS 开发模式上验收。
+
+### 14.5 端点图标
+
+Nomi 用 Nomi 应用标志；Codex 用 OpenAI 标志；dsh 用 DeepSeek 鲸鱼；Claude Code 保持原样。字形取自 lobe-icons（MIT，`@lobehub/icons-static-svg` 1.95.1，已随 `packages/ui/src/brand/icons.ts` 内置），数据在 `packages/ui/src/brand/endpointGlyphs.ts`，聊天窗口与灵动岛页面共用；署名见根目录 `THIRD_PARTY_NOTICES.md`。品牌标志归各自所有者所有，仅用于标识对应工具。

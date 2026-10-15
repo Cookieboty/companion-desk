@@ -24,7 +24,7 @@
 | `Ctrl/⌘+Shift+H` | 免按键对话开关  |
 | `Ctrl/⌘+Shift+M` | 记忆            |
 | `Ctrl/⌘+Shift+L` | 知识库          |
-| `Ctrl/⌘+Shift+D` | 日程 · 编程助手 |
+| `Ctrl/⌘+Shift+D` | 日程与提醒      |
 | `Ctrl/⌘+Shift+E` | 扩展 / MCP      |
 | `Ctrl/⌘+Shift+J` | 本机管理        |
 | `Ctrl/⌘+Shift+O` | 屏幕记忆        |

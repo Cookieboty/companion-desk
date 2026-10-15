@@ -21,7 +21,7 @@
 
 二选一：
 
-- **云端模型**：设置 →「供应商与模型」→「添加供应商」，选择预设（如 DeepSeek、OpenAI、Kimi），填入 API Key，点「获取模型」后勾选并设为默认。见 [供应商与 Token](features/providers.md)。
+- **云端模型**：设置 →「编程助手」→ Nomi →「添加供应商」，选择预设（如 DeepSeek、OpenAI、Kimi），填入 API Key，点「获取模型」后勾选并设为默认。见 [供应商与 Token](features/providers.md)。
 - **本地模型**：对话窗口 🏠（`Ctrl/⌘+Shift+J`）→ 下载一个推荐的小模型并启动，它会自动成为可用的供应商。见 [本地模型](features/local-models.md)。
 
 ## 常用快捷键
