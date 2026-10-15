@@ -31,6 +31,7 @@ import { AppTitleBar } from './components/TitleBar';
 import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
 import { HarnessTabsProvider, useHarnessTabs } from './contexts/HarnessTabsContext';
+import { useChatMode } from './hooks/useChatMode';
 import { desktopClient } from './services/desktopClient';
 import { providerClient } from './services/providerClient';
 import { screenClient, type ScreenState } from './services/screenClient';
@@ -48,6 +49,7 @@ import './App.css';
 const AiChatContent: React.FC = () => {
   const { state, actions } = useAiChat();
   const tabs = useHarnessTabs();
+  const { isDev } = useChatMode();
   const [tabRename, setTabRename] = useState(0);
   const [tabNew, setTabNew] = useState(0);
   const cliMessages = useMemo<ChatMessage[]>(
@@ -117,6 +119,12 @@ const AiChatContent: React.FC = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // 切到普通模式时若正停在 CLI 标签，回到主对话（后台标签继续跑）
+  useEffect(() => {
+    if (isDev) return;
+    if (tabs.isCliTab) void tabs.activate('main');
+  }, [isDev, tabs.isCliTab, tabs]);
+
   const [settings, setSettings] = useState<SettingsSection | null>(null);
   const openSettings = useCallback((sec: SettingsSection = 'general') => {
     setShowKb(false);
@@ -158,13 +166,28 @@ const AiChatContent: React.FC = () => {
       ext: () => setShowExt((v) => !v),
       local: () => setShowLocal((v) => !v),
       screen: () => setShowScreen((v) => !v),
-      newTab: () => setTabNew((n) => n + 1),
-      closeTab: () => tabs.activeTab && void tabs.close(tabs.activeTab.id),
-      nextTab: () => tabs.cycle(1),
-      prevTab: () => tabs.cycle(-1),
-      renameTab: () => setTabRename((n) => n + 1),
+      newTab: () => {
+        if (!isDev) return;
+        setTabNew((n) => n + 1);
+      },
+      closeTab: () => {
+        if (!isDev) return;
+        if (tabs.activeTab) void tabs.close(tabs.activeTab.id);
+      },
+      nextTab: () => {
+        if (!isDev) return;
+        tabs.cycle(1);
+      },
+      prevTab: () => {
+        if (!isDev) return;
+        tabs.cycle(-1);
+      },
+      renameTab: () => {
+        if (!isDev) return;
+        setTabRename((n) => n + 1);
+      },
     }),
-    [newChat, focusInput, tabs],
+    [newChat, focusInput, tabs, isDev],
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -172,12 +195,13 @@ const AiChatContent: React.FC = () => {
       // 正在设置页里录制新快捷键时不触发
       if ((e.target as HTMLElement | null)?.closest?.('[data-shortcut-recording="true"]')) return;
       // 标签：Ctrl+Tab / Ctrl+Shift+Tab（各平台都用 Ctrl）与 Mod+1…9
-      if (tabs.available && e.ctrlKey && e.key === 'Tab') {
+      if (isDev && tabs.available && e.ctrlKey && e.key === 'Tab') {
         e.preventDefault();
         tabs.cycle(e.shiftKey ? -1 : 1);
         return;
       }
       if (
+        isDev &&
         tabs.available &&
         (isMac() ? e.metaKey : e.ctrlKey) &&
         !e.shiftKey &&
@@ -201,7 +225,7 @@ const AiChatContent: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [bindings, shortcutActions, tabs]);
+  }, [bindings, shortcutActions, tabs, isDev]);
   // 快速视图：右侧抽屉 + 「在设置中打开」
   const drawerHost = useMemo(() => {
     const mk = (sec: SettingsSection): ModalHost => ({
@@ -295,11 +319,17 @@ const AiChatContent: React.FC = () => {
             </button>
           )}
         </ChatHeader>
-        <ChatTabs renameRequest={tabRename} newTabRequest={tabNew} mainLoading={state.isLoading} />
-        <CliTabInfo />
+        {isDev && (
+          <ChatTabs
+            renameRequest={tabRename}
+            newTabRequest={tabNew}
+            mainLoading={state.isLoading}
+          />
+        )}
+        {isDev && <CliTabInfo />}
         {/* 对话区域 */}
         <main className="chat-container">
-          {tabs.isCliTab ? (
+          {isDev && tabs.isCliTab ? (
             <>
               {cliMessages.length === 0 && !tabs.live[tabs.activeTab!.id] ? (
                 <div className="welcome-screen" data-testid="cli-tab-empty">
@@ -347,7 +377,7 @@ const AiChatContent: React.FC = () => {
         {/* 输入区域 */}
         <footer className="input-container">
           <MessageInput
-            {...(tabs.isCliTab
+            {...(isDev && tabs.isCliTab
               ? {
                   onSend: (text: string) => void tabs.send(text),
                   busyOverride:

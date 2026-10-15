@@ -1549,5 +1549,16 @@
   "打开标签": "Open tab",
   "{0} 正在处理，完成后可继续发送…": "{0} is working — you can send again when it finishes…",
   "{0} 排队中，等待其它标签完成…": "{0} is queued, waiting for other tabs to finish…",
-  "发给 {0}（{1}）…": "Message {0} ({1})…"
+  "发给 {0}（{1}）…": "Message {0} ({1})…",
+  "{0} (副本)": "{0} (copy)",
+  "[工具调用已省略]": "[tool call omitted]",
+  "以下是从「{0}」分叉带来的对话摘录，仅作上下文参考（并非本 CLI 的可续接会话）：": "Transcript forked from \"{0}\" for context only (not a resumable session on this CLI):",
+  "请基于以上上下文继续。": "Please continue from the context above.",
+  "普通": "Normal",
+  "开发": "Dev",
+  "对话模式": "Chat mode",
+  "普通模式：仅 Nomi 对话。切换到开发模式可使用 Claude Code / Codex / dsh 标签。": "Normal mode: Nomi chat only. Switch to Dev for Claude Code / Codex / dsh tabs.",
+  "开发模式：可用编程助手标签、后端切换与监视器联动。": "Dev mode: coding-agent tabs, backend switcher, and monitor integration.",
+  "{0} 运行中": "{0} running",
+  "有编程助手标签仍在后台运行": "Coding-agent tabs are still running in the background"
 }

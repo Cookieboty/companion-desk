@@ -2,6 +2,7 @@ import { t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
+import { useChatMode } from '../../hooks/useChatMode';
 import { extClient } from '../../services/extClient';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
@@ -69,6 +70,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { state, actions } = useAiChat();
+  const { isDev } = useChatMode();
   // 知识库问答模式（Ctrl/Cmd+Shift+K 切换），记住上次的选择
   const [kbMode, setKbMode] = useState(() => {
     try {
@@ -657,7 +659,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           <div className={styles.modelStatus}>
             {provOk ? (
               <>
-                <BackendSwitcher />
+                {isDev && <BackendSwitcher />}
                 <ProviderSwitcher
                   className={styles.currentModel}
                   onManage={() => onProvidersClick?.()}

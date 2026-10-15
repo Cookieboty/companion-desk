@@ -12,6 +12,7 @@ import { memClient } from '../../services/memClient';
 import { MAX_PINS, pinDef, pinHint, runPinCommand, togglePin, usePins } from '../../services/pins';
 import { schedClient } from '../../services/schedClient';
 import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
+import { ChatModeSwitch } from '../ChatModeSwitch';
 
 import styles from './index.module.css';
 
@@ -167,6 +168,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
   return (
     <header className={styles.header} data-testid="chat-header">
       <div className={styles.left} ref={leftRef} data-testid="header-pins">
+        <ChatModeSwitch />
         {shown.map((id) => {
           const d = pinDef(id)!;
           return (
