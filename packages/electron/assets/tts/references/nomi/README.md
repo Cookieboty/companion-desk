@@ -1,9 +1,20 @@
 # Nomi built-in Fish reference (`nomi`)
 
-Place a short, project-owned cute / kawaii Mandarin sample here for local fish-speech:
+Default local fish-speech reference id: `nomi`.
 
-- `sample.wav` — clear mono speech, ~5–15s, no third-party character voice
-- `sample.lab` — exact transcript of that audio (UTF-8)
+## Files
 
-When the local Fish server is running, Nomi’s default `referenceId` is `nomi`.
+- `sample.wav` — mono 44.1 kHz, ~8s cute Mandarin seed for zero-shot cloning
+- `sample.lab` — exact transcript (UTF-8)
+
+## Provenance (provisional seed)
+
+`sample.wav` was synthesized with Microsoft Edge neural TTS voice **zh-CN-XiaoyiNeural**
+(cartoon / lively), rate +5%, pitch +4Hz, for use as Nomi’s built-in cute seed.
+
+- Not a third-party anime/galgame character voice.
+- Treat as a **provisional** product seed: replace with a project-owned recording when you have one.
+- Shipping Edge-generated audio in an open-source app may be subject to Microsoft TTS / Online Services terms; keep an eye on redistribution rights for your release channel.
+- Fish Audio Community License still requires **Built with Fish Audio** when using fish-speech materials.
+
 Do not commit multi-GB model weights here. Do not add infringing character packs.
