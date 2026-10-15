@@ -5,12 +5,16 @@ import { t } from '@nomi-ai/ui';
 
 import type { ConversationBackend } from '../types/chat';
 
-export const ENDPOINT_SHORT: Record<ConversationBackend, string> = {
+/** 端点名称：统一为 Nomi / Claude Code / Codex / dsh（专有名词不翻译） */
+export const ENDPOINT_NAME: Record<ConversationBackend, string> = {
   nomi: 'Nomi',
-  claude: 'Claude',
+  claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
 };
+
+/** @deprecated 与 ENDPOINT_NAME 相同；保留给还未迁移的调用方 */
+export const ENDPOINT_SHORT = ENDPOINT_NAME;
 
 export const ENDPOINT_FULL: Record<ConversationBackend, () => string> = {
   nomi: () => t('Nomi'),

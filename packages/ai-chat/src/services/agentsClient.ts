@@ -39,7 +39,7 @@ export interface AgentWatchState {
 }
 
 export const AGENT_LABEL: Record<AgentKind, string> = {
-  codex: 'Codex CLI',
+  codex: 'Codex',
   claude: 'Claude Code',
   dsh: 'dsh',
   aider: 'Aider',

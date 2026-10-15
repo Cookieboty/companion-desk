@@ -13,15 +13,11 @@ import {
   type HarnessTabMeta,
 } from '../../services/harnessClient';
 import { formatCombo, useShortcutBindings } from '../../services/shortcuts';
+import { ENDPOINT_NAME } from '../../utils/endpointBadge';
 
 import styles from './index.module.css';
 
-const KIND_LABEL: Record<HarnessBackend, string> = {
-  nomi: 'Nomi',
-  claude: 'Claude',
-  codex: 'Codex',
-  dsh: 'dsh',
-};
+const KIND_LABEL = ENDPOINT_NAME;
 
 const CLI_BACKENDS: HarnessBackend[] = ['claude', 'codex', 'dsh'];
 
@@ -230,9 +226,9 @@ export const ChatTabs: React.FC<{
                   void tabs.create(b).catch(() => undefined);
                 }}
               >
-                <span>{b === 'claude' ? 'Claude Code' : KIND_LABEL[b]}</span>
+                <span>{ENDPOINT_NAME[b]}</span>
                 <span className={styles.menuHint}>
-                  {bins[b] === null ? t('未检测到') : b === tabs.lastBackend ? t('上次使用') : ''}
+                  {bins[b] === null ? t('未安装') : b === tabs.lastBackend ? t('上次使用') : ''}
                 </span>
               </button>
             ))}
@@ -284,7 +280,7 @@ export const CliTabLive: React.FC = () => {
   );
 };
 
-const CLI_LABEL: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', dsh: 'dsh' };
+const CLI_LABEL: Record<string, string> = ENDPOINT_NAME;
 
 /** CLI 标签的输入框提示：随运行状态与后端变化（不显示 Nomi 的「请先选择AI模型」） */
 export function cliTabPlaceholder(tab: { title: string; backend: string; status: string }): string {

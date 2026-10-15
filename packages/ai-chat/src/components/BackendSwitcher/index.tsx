@@ -93,14 +93,13 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
       data-testid="backend-switcher"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
       title={
-        hasMessages
-          ? t('切换后端将新建会话，当前对话保留（可用分叉复制历史）')
-          : t('切换对话后端（Claude / Codex / dsh 为 UI 转发）')
+        hasMessages ? t('切换后端将新建会话，当前对话保留（可用分叉复制历史）') : t('切换对话端点')
       }
     >
       <Select
         size="sm"
-        style={{ width: 'auto', maxWidth: 160 }}
+        style={{ width: 'auto', minWidth: 112, maxWidth: 220 }}
+        menuMinWidth={200}
         data-testid="backend-switch"
         aria-label={t('对话后端')}
         value={value}
@@ -110,25 +109,16 @@ export const BackendSwitcher: React.FC<{ className?: string }> = ({ className })
         }}
         options={(Object.keys(LABELS) as HarnessBackend[])
           .filter((k) => !tab || k !== 'nomi')
-          .map((k) => ({
-            value: k,
-            label: LABELS[k](),
-            description:
-              k === 'nomi'
-                ? t('自有 AI 与工具')
-                : k === 'claude'
-                  ? state.bins.claude
-                    ? t('转发到本机 Claude Code')
-                    : t('未检测到 claude')
-                  : k === 'codex'
-                    ? state.bins.codex
-                      ? t('转发到本机 Codex')
-                      : t('未检测到 codex')
-                    : state.bins.dsh
-                      ? t('转发到本机 dsh')
-                      : t('未检测到 dsh'),
-            disabled: k !== 'nomi' && !state.bins[k],
-          }))}
+          .map((k) => {
+            const missing = k !== 'nomi' && !state.bins[k];
+            return {
+              value: k,
+              label: LABELS[k](),
+              // 未安装的 CLI 置灰，只留一个很短的后缀
+              description: missing ? t('未安装') : undefined,
+              disabled: missing,
+            };
+          })}
       />
       {!tab && state.backend !== 'nomi' && (
         <button

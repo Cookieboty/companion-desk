@@ -228,7 +228,9 @@
 .newMenu {
   position: absolute;
   left: 8px;
-  right: 8px;
+  min-width: 200px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
   top: calc(100% + 4px);
   z-index: 40;
   padding: 6px;
