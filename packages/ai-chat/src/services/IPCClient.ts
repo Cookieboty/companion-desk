@@ -250,7 +250,7 @@ export class SdkIPCClient implements IPCClient {
 
   async saveMessage(message: ChatMessage): Promise<void> {
     this.store.maxMessages = (await this.getConfig()).maxHistoryLength;
-    this.store.append(message);
+    this.store.append(message, this.store.ensureCurrent());
   }
 
   async listConversations(): Promise<Array<Omit<ChatSession, 'messages'>>> {

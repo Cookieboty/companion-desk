@@ -438,7 +438,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [ipc]);
 
   useCliTabSync(refresh);
-  useEffect(refresh, [refresh, state.messages.length, tabs.state]);
+  // loading 变化时也刷新：首个会话在第一条消息保存时才创建，发送结束后需要让它出现在列表里
+  useEffect(refresh, [refresh, state.messages.length, state.isLoading, tabs.state]);
 
   useEffect(() => {
     if (!harnessClient.available()) return;
@@ -523,7 +524,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onNewChat();
       const store = ipc.conversationStore?.();
       if (store) {
-        const id = store.currentId();
+        const id = store.ensureCurrent();
         const m = store.get(id);
         if (m && m.backend !== 'nomi') store.updateMeta(id, { backend: 'nomi' });
       }
@@ -564,8 +565,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else {
       await ipc.deleteConversation?.(id);
       if (id === current) {
-        onNewChat();
-        await actions.loadChatHistory();
+        // store 已把当前会话切到同后端最近更新的会话；一个不剩则只清空消息区，不新建会话
+        if (ipc.currentConversationId?.()) await actions.loadChatHistory();
+        else await actions.clearChatHistory();
       }
     }
     refresh();

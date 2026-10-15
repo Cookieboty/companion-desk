@@ -35,6 +35,7 @@ vi.mock('../src/contexts/AiChatContext', () => ({
           removeByTabId: () => undefined,
           list: () => convs,
           currentId: () => currentId,
+          ensureCurrent: () => currentId ?? 'new',
           get: (id: string) => convs.find((x) => x.id === id),
           updateMeta: () => undefined,
           getMessages: (id: string) => (FIRST[id] ? [{ role: 'user', content: FIRST[id] }] : []),

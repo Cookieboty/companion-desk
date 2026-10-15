@@ -96,11 +96,16 @@ export class ConversationStore {
     return this.list().filter((c) => c.backend === backend);
   }
 
-  /** 当前会话 id；不存在时自动创建一个 Nomi 会话 */
-  currentId(): string {
+  /** 当前会话 id；不存在时返回 undefined（不隐式创建） */
+  currentId(): string | undefined {
     const id = this.read<string>(CURRENT_KEY);
     if (id && this.list().some((c) => c.id === id)) return id;
-    return this.create().id;
+    return undefined;
+  }
+
+  /** 取当前会话 id，没有则新建一个 Nomi 会话 */
+  ensureCurrent(): string {
+    return this.currentId() ?? this.create().id;
   }
 
   get(id: string): ConversationMeta | undefined {
@@ -136,7 +141,8 @@ export class ConversationStore {
     this.write(CURRENT_KEY, id);
   }
 
-  getMessages(id: string = this.currentId()): ChatMessage[] {
+  getMessages(id: string | undefined = this.currentId()): ChatMessage[] {
+    if (!id) return [];
     return this.read<ChatMessage[]>(messagesKey(id)) ?? [];
   }
 
@@ -145,14 +151,16 @@ export class ConversationStore {
     this.touch(id);
   }
 
-  append(message: ChatMessage, id: string = this.currentId()): void {
+  append(message: ChatMessage, id: string | undefined = this.currentId()): void {
+    if (!id) return;
     const next = [...this.getMessages(id), message];
     this.write(messagesKey(id), next.slice(-this.maxMessages));
     this.touch(id, message);
   }
 
   /** 清空会话消息（会话本身保留） */
-  clear(id: string = this.currentId()): void {
+  clear(id: string | undefined = this.currentId()): void {
+    if (!id) return;
     this.write(messagesKey(id), []);
     this.touch(id);
   }
@@ -251,12 +259,21 @@ export class ConversationStore {
   }
 
   delete(id: string): void {
-    this.write(
-      INDEX_KEY,
-      this.list().filter((c) => c.id !== id),
-    );
+    const removed = this.list().find((c) => c.id === id);
+    const remaining = this.list().filter((c) => c.id !== id);
+    this.write(INDEX_KEY, remaining);
     this.storage.removeItem(messagesKey(id));
-    if (this.read<string>(CURRENT_KEY) === id) this.storage.removeItem(CURRENT_KEY);
+    if (this.read<string>(CURRENT_KEY) !== id) return;
+    // 当前会话被删：优先切到同后端最近更新的会话；没有则留空（不隐式新建 / 不跨端跳）
+    const sameBackend = removed
+      ? remaining.filter((c) => c.backend === removed.backend)
+      : remaining;
+    const next = sameBackend.reduce<ConversationMeta | undefined>(
+      (acc, c) => (!acc || c.updatedAt > acc.updatedAt ? c : acc),
+      undefined,
+    );
+    if (next) this.write(CURRENT_KEY, next.id);
+    else this.storage.removeItem(CURRENT_KEY);
   }
 
   private touch(id: string, message?: ChatMessage): void {

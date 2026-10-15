@@ -10,10 +10,25 @@ import { setChatMode } from '../src/services/chatPrefs';
 import type { HarnessTabMeta, HarnessTabsState } from '../src/services/harnessClient';
 
 const updateMeta = vi.fn();
-const list = [
+const loadChatHistory = vi.fn(async () => undefined);
+const clearChatHistory = vi.fn(async () => undefined);
+let currentId: string | undefined = 'b';
+const list: Array<Record<string, unknown>> = [
   { id: 'a', name: '修复登录', backend: 'codex', createdAt: 1, updatedAt: Date.now(), tabId: 't1' },
   { id: 'b', name: '聊聊天气', backend: 'nomi', createdAt: 1, updatedAt: Date.now() - 1000 },
 ];
+// 与 ConversationStore.delete 一致：删当前项时切到同后端最近更新的会话，没有则留空
+const deleteConversation = vi.fn(async (id: string) => {
+  const i = list.findIndex((x) => x.id === id);
+  if (i < 0) return;
+  const removed = list.splice(i, 1)[0]!;
+  if (currentId === id) {
+    currentId = list
+      .filter((x) => x.backend === removed.backend)
+      .sort((x, y) => (y.updatedAt as number) - (x.updatedAt as number))[0]?.id as
+      string | undefined;
+  }
+});
 
 vi.mock('../src/contexts/AiChatContext', () => ({
   useAiChat: () => ({
@@ -21,17 +36,17 @@ vi.mock('../src/contexts/AiChatContext', () => ({
       messages: [],
       ipcClient: {
         listConversations: async () => list,
-        currentConversationId: () => 'b',
+        currentConversationId: () => currentId,
         conversationStore: () => ({
           updateMeta,
           upsertFromTab: () => undefined,
           list: () => [],
           removeByTabId: () => undefined,
         }),
-        deleteConversation: async () => undefined,
+        deleteConversation,
       },
     },
-    actions: {},
+    actions: { loadChatHistory, clearChatHistory },
   }),
 }));
 
@@ -73,6 +88,23 @@ function mockIpc() {
 beforeEach(() => {
   setChatMode('dev');
   updateMeta.mockClear();
+  loadChatHistory.mockClear();
+  clearChatHistory.mockClear();
+  deleteConversation.mockClear();
+  currentId = 'b';
+  list.splice(
+    0,
+    list.length,
+    {
+      id: 'a',
+      name: '修复登录',
+      backend: 'codex',
+      createdAt: 1,
+      updatedAt: Date.now(),
+      tabId: 't1',
+    },
+    { id: 'b', name: '聊聊天气', backend: 'nomi', createdAt: 1, updatedAt: Date.now() - 1000 },
+  );
 });
 afterEach(() => {
   cleanup();
@@ -107,6 +139,52 @@ describe('one conversation context menu', () => {
     fireEvent.contextMenu(r.getAllByTestId('history-item')[1]!);
     expect(r.getByTestId('conversation-delete')).toBeTruthy();
     expect(r.queryByTestId('conversation-close')).toBeNull();
+  });
+
+  it('deleting the current conversation loads another same-backend one instead of creating a new one', async () => {
+    mockIpc();
+    // 多一个更新的 Nomi 会话 c；删除当前 b 后应切到 c
+    list.push({
+      id: 'c',
+      name: '最新对话',
+      backend: 'nomi',
+      createdAt: 1,
+      updatedAt: Date.now() + 1000,
+    });
+    const onNewChat = vi.fn();
+    const r = render(
+      <HarnessTabsProvider>
+        <Sidebar collapsed={false} onToggle={() => undefined} onNewChat={onNewChat} />
+      </HarnessTabsProvider>,
+    );
+    await waitFor(() => expect(r.getAllByTestId('history-item')).toHaveLength(3));
+    fireEvent.contextMenu(
+      r.getByTestId('conversation-list').querySelector('[data-conversation-id="b"]')!,
+    );
+    fireEvent.click(r.getByTestId('conversation-delete'));
+    await waitFor(() => expect(deleteConversation).toHaveBeenCalledWith('b'));
+    await waitFor(() => expect(loadChatHistory).toHaveBeenCalled());
+    expect(clearChatHistory).not.toHaveBeenCalled();
+    expect(onNewChat).not.toHaveBeenCalled();
+  });
+
+  it('deleting the last Nomi conversation clears the pane without creating a new one', async () => {
+    mockIpc();
+    const onNewChat = vi.fn();
+    const r = render(
+      <HarnessTabsProvider>
+        <Sidebar collapsed={false} onToggle={() => undefined} onNewChat={onNewChat} />
+      </HarnessTabsProvider>,
+    );
+    await waitFor(() => expect(r.getAllByTestId('history-item')).toHaveLength(2));
+    fireEvent.contextMenu(
+      r.getByTestId('conversation-list').querySelector('[data-conversation-id="b"]')!,
+    );
+    fireEvent.click(r.getByTestId('conversation-delete'));
+    await waitFor(() => expect(deleteConversation).toHaveBeenCalledWith('b'));
+    await waitFor(() => expect(clearChatHistory).toHaveBeenCalled());
+    expect(loadChatHistory).not.toHaveBeenCalled();
+    expect(onNewChat).not.toHaveBeenCalled();
   });
 
   it('rename in the sidebar updates the Nomi conversation title and CLI tab title', async () => {

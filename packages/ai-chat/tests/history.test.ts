@@ -45,7 +45,7 @@ describe('ConversationStore', () => {
   it('persists messages per conversation and supports switching / clearing', () => {
     const storage = createMemoryStorage();
     const s = mk(storage);
-    const first = s.currentId();
+    const first = s.ensureCurrent();
     s.append(msg('1', 'user', 'first question'));
     const second = s.create().id;
     s.append(msg('2', 'user', 'other'));
@@ -80,12 +80,55 @@ describe('ConversationStore', () => {
     expect(s.getMessages().map((m) => m.content)).toEqual(['reply', 'a', 'b']);
   });
 
-  it('delete removes the conversation and resets current', () => {
+  it('delete: removing the current conversation switches to the same-backend most recent one', () => {
     const s = mk();
-    const id = s.currentId();
+    const a = s.create({ name: 'A', backend: 'nomi' }).id;
+    const b = s.create({ name: 'B', backend: 'nomi' }).id;
+    s.create({ name: 'C', backend: 'codex' });
+    s.updateMeta(a, { updatedAt: 5000 });
+    s.updateMeta(b, { updatedAt: 9000 });
+    s.switchTo(a);
+    s.delete(a);
+    expect(s.currentId()).toBe(b);
+  });
+
+  it('delete: no same-backend conversation left leaves current empty instead of cross-backend jump', () => {
+    const s = mk();
+    const a = s.create({ name: 'A', backend: 'nomi' }).id;
+    s.create({ name: 'C', backend: 'codex' });
+    s.switchTo(a);
+    s.delete(a);
+    expect(s.currentId()).toBeUndefined();
+    expect(s.list()).toHaveLength(1);
+  });
+
+  it('delete: removing the last conversation leaves no current instead of creating one', () => {
+    const s = mk();
+    const id = s.ensureCurrent();
     s.delete(id);
     expect(s.list()).toEqual([]);
-    expect(s.currentId()).not.toBe(id);
+    expect(s.currentId()).toBeUndefined();
+    // 读取 / 清空不存在的当前会话是安全的空操作
+    expect(s.getMessages()).toEqual([]);
+    s.clear();
+    expect(s.list()).toEqual([]);
+  });
+
+  it('delete: removing a non-current conversation keeps the current one', () => {
+    const s = mk();
+    const a = s.ensureCurrent();
+    const b = s.create().id;
+    s.delete(b);
+    expect(s.currentId()).toBe(a);
+  });
+
+  it('append without a current conversation is a no-op until ensureCurrent', () => {
+    const s = mk();
+    s.append(msg('1', 'user', 'lost'));
+    expect(s.list()).toEqual([]);
+    const id = s.ensureCurrent();
+    s.append(msg('2', 'user', 'kept'), id);
+    expect(s.getMessages(id).map((m) => m.content)).toEqual(['kept']);
   });
 
   it('tags migrated rows without backend as nomi', () => {
