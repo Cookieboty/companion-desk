@@ -3,7 +3,6 @@ import { Button, t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { cliUpdateClient, type CliInstallInfo } from '../../services/cliUpdateClient';
-import { CliProviderPanel } from '../CliProviderPanel';
 
 const KIND_LABEL = {
   claude: 'Claude Code',
@@ -113,7 +112,9 @@ export const CliToolsBlock: React.FC = () => {
           {log}
         </pre>
       )}
-      <CliProviderPanel />
+      <p style={{ margin: 0, fontSize: 12, opacity: 0.75 }} data-testid="cli-providers-moved">
+        {tr('供应商档案、上游格式与本地路由已合并到「设置 → 供应商与模型」，按端点分别配置。')}
+      </p>
     </div>
   );
 };

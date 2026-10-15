@@ -659,7 +659,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 <EndpointControls
                   className={styles.currentModel}
                   onManageNomi={() => onProvidersClick?.()}
-                  onManageCli={(b) => onSettingsClick?.('agents', b)}
+                  onManageCli={(b) => onSettingsClick?.('providers', b)}
                 />
               </>
             ) : state.models.filter((m) => m.enabled).length === 0 ? (

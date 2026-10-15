@@ -1,0 +1,210 @@
+.page {
+  display: grid;
+  gap: 16px;
+}
+.head {
+  display: grid;
+  gap: 8px;
+}
+.title {
+  margin: 0;
+  font-size: var(--cd-font-size-lg, 18px);
+}
+.sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cd-color-text-muted);
+}
+.tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--cd-color-border);
+  border-radius: 12px;
+  background: var(--cd-color-bg-subtle);
+  width: fit-content;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--cd-color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--cd-color-text);
+  background: var(--cd-color-hover);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--cd-color-accent);
+  outline-offset: 1px;
+}
+.tabOn {
+  background: var(--cd-color-surface);
+  border-color: var(--cd-color-border);
+  color: var(--cd-color-text);
+}
+.intro {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: var(--cd-color-bg-subtle);
+  font-size: 12.5px;
+  color: var(--cd-color-text-muted);
+}
+.intro p {
+  margin: 0;
+}
+.intro code,
+.code {
+  font-family: var(--cd-font-mono, monospace);
+  font-size: 12px;
+  color: var(--cd-color-text);
+}
+
+/* CLI 端点区 */
+.section {
+  display: grid;
+  gap: 14px;
+}
+.card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--cd-color-border);
+  border-radius: 12px;
+}
+.cardTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+.facts dt {
+  color: var(--cd-color-text-subtle);
+}
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--cd-color-border);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.rowActive {
+  border-color: var(--cd-color-accent);
+  background: rgba(var(--cd-accent-rgb), 0.07);
+}
+.rowMain {
+  flex: 1;
+  min-width: 180px;
+  display: grid;
+  gap: 2px;
+}
+.rowSub {
+  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+  overflow-wrap: anywhere;
+}
+.rowActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pill {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(var(--cd-accent-rgb), 0.18);
+}
+.pillWarn {
+  background: rgba(230, 184, 77, 0.25);
+}
+.pillOk {
+  background: rgba(62, 207, 142, 0.22);
+}
+.pillBad {
+  background: rgba(255, 107, 107, 0.22);
+}
+.form {
+  display: grid;
+  gap: 8px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+@media (max-width: 640px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.field {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--cd-color-text-muted);
+}
+.field input {
+  width: 100%;
+}
+.advanced {
+  border: 1px dashed var(--cd-color-border);
+  border-radius: 12px;
+  padding: 8px 14px;
+}
+.advanced > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 4px 0;
+}
+.advBody {
+  display: grid;
+  gap: 8px;
+  padding: 6px 0 4px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.paths {
+  margin: 0;
+  font-family: var(--cd-font-mono, monospace);
+  font-size: 11px;
+  color: var(--cd-color-text-subtle);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.empty {
+  font-size: 13px;
+  color: var(--cd-color-text-subtle);
+  padding: 6px 2px;
+}

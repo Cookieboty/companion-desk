@@ -8,6 +8,7 @@ import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
+import { cliProviderClient } from '../../services/cliProviderClient';
 import { providerClientAvailable } from '../../services/providerClient';
 import {
   ConfigPanel,
@@ -16,11 +17,11 @@ import {
   KnowledgePanel,
   LocalPanel,
   MemoryPanel,
-  ProviderPanel,
   SchedulePanel,
   ScreenPanel,
 } from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
+import { ProvidersPage } from '../ProvidersPage';
 
 import { AppIconSettings } from './AppIconSettings';
 import { CalendarSettings } from './CalendarSettings';
@@ -99,8 +100,8 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
       case 'shortcuts':
         return <ShortcutSettings />;
       case 'providers':
-        return providerClientAvailable() ? (
-          <ProviderPanel isVisible onClose={noop} />
+        return providerClientAvailable() || cliProviderClient.available() ? (
+          <ProvidersPage />
         ) : (
           <p className={styles.note}>{t('供应商管理仅在桌面应用中可用；模型配置见「通用」。')}</p>
         );
