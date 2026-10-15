@@ -185,3 +185,98 @@ describe('CliProviderBridge.deactivate (back to CLI default login)', () => {
     expect(auth.tokens).toEqual({ a: 1 });
   });
 });
+
+describe('CliProviderBridge.testProfile (测速)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const http = require('node:http') as typeof import('node:http');
+  const serve = (
+    handler: (
+      req: import('node:http').IncomingMessage,
+      res: import('node:http').ServerResponse,
+    ) => void,
+  ) =>
+    new Promise<{ url: string; close: () => void }>((resolve) => {
+      const srv = http.createServer(handler);
+      srv.listen(0, '127.0.0.1', () => {
+        const port = (srv.address() as { port: number }).port;
+        resolve({ url: `http://127.0.0.1:${port}`, close: () => srv.close() });
+      });
+    });
+
+  it('sends the key as the format-specific header and reports latency', async () => {
+    const seen: Record<string, string | string[] | undefined>[] = [];
+    const srv = await serve((req, res) => {
+      seen.push({ url: req.url, auth: req.headers.authorization, xkey: req.headers['x-api-key'] });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"data":[]}');
+    });
+    const b = new CliProviderBridge({ root: tmp('nomi-root-'), home: tmp('nomi-home-'), logger });
+    const oa = b.upsert({
+      kind: 'codex',
+      name: 'oa',
+      baseUrl: `${srv.url}/v1`,
+      model: 'm',
+      apiKey: 'sk-test',
+    });
+    const an = b.upsert({
+      kind: 'claude',
+      name: 'an',
+      baseUrl: srv.url,
+      model: 'm',
+      apiKey: 'sk-ant',
+      apiFormat: 'anthropic_messages',
+    });
+    const r1 = await b.testProfile(oa.id);
+    const r2 = await b.testProfile(an.id);
+    srv.close();
+    expect(r1.ok).toBe(true);
+    expect(typeof r1.latencyMs).toBe('number');
+    expect(seen[0]).toMatchObject({ url: '/v1/models', auth: 'Bearer sk-test' });
+    expect(r2.ok).toBe(true);
+    expect(seen[1]).toMatchObject({ url: '/v1/models', xkey: 'sk-ant' });
+  });
+
+  it('reports 401 as a key problem and never echoes the key', async () => {
+    const srv = await serve((_req, res) => {
+      res.writeHead(401);
+      res.end('bad key sk-secret');
+    });
+    const b = new CliProviderBridge({ root: tmp('nomi-root-'), home: tmp('nomi-home-'), logger });
+    const p = b.upsert({
+      kind: 'codex',
+      name: 'x',
+      baseUrl: srv.url,
+      model: 'm',
+      apiKey: 'sk-secret',
+    });
+    const r = await b.testProfile(p.id);
+    srv.close();
+    expect(r.ok).toBe(false);
+    expect(r.status).toBe(401);
+    expect(JSON.stringify(r)).not.toContain('sk-secret');
+    // 连接失败也不泄漏 key
+    const dead = b.upsert({
+      kind: 'codex',
+      name: 'd',
+      baseUrl: 'http://127.0.0.1:1',
+      model: 'm',
+      apiKey: 'sk-secret',
+    });
+    const r2 = await b.testProfile(dead.id);
+    expect(r2.ok).toBe(false);
+    expect(JSON.stringify(r2)).not.toContain('sk-secret');
+  });
+
+  it('treats 404 on /models as reachable', async () => {
+    const srv = await serve((_req, res) => {
+      res.writeHead(404);
+      res.end();
+    });
+    const b = new CliProviderBridge({ root: tmp('nomi-root-'), home: tmp('nomi-home-'), logger });
+    const p = b.upsert({ kind: 'codex', name: 'x', baseUrl: srv.url, model: 'm' });
+    const r = await b.testProfile(p.id);
+    srv.close();
+    expect(r.ok).toBe(true);
+    expect(r.note).toBeTruthy();
+  });
+});

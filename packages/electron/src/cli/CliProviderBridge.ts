@@ -92,6 +92,36 @@ function mask(key: string): string {
   return `${key.slice(0, 2)}••••${key.slice(-2)}`;
 }
 
+export interface CliProfileTestResult {
+  ok: boolean;
+  latencyMs: number;
+  status?: number;
+  error?: string;
+  note?: string;
+}
+
+/** 各上游格式的「列出模型」探测请求（只读 GET） */
+export function buildProbeRequest(
+  format: CliApiFormat,
+  baseUrl: string,
+  key: string,
+): { url: string; headers: Record<string, string> } {
+  const base = baseUrl.trim().replace(/\/+$/, '');
+  if (format === 'anthropic_messages') {
+    return {
+      url: /\/v1$/.test(base) ? `${base}/models` : `${base}/v1/models`,
+      headers: { 'anthropic-version': '2023-06-01', ...(key ? { 'x-api-key': key } : {}) },
+    };
+  }
+  if (format === 'gemini_generate_content') {
+    return {
+      url: /\/v1(beta)?$/.test(base) ? `${base}/models` : `${base}/v1beta/models`,
+      headers: key ? { 'x-goog-api-key': key } : {},
+    };
+  }
+  return { url: `${base}/models`, headers: key ? { authorization: `Bearer ${key}` } : {} };
+}
+
 const KINDS: readonly CliProviderKind[] = ['claude', 'codex', 'dsh'];
 
 function normalizeFormat(kind: CliProviderKind, raw: unknown): CliApiFormat {
@@ -276,6 +306,53 @@ export class CliProviderBridge {
       return { ok: true, backups };
     } catch (e) {
       return { ok: false, backups, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  /**
+   * 测速：对档案的上游发一次轻量的模型列表请求，只测连通性 / 鉴权 / 延迟，不发对话。
+   * Key 只在主进程里使用；错误信息里的 Key 会被抹掉。
+   */
+  async testProfile(id: string): Promise<CliProfileTestResult> {
+    const p = this.allProfiles().find((x) => x.id === id);
+    if (!p) throw new Error(t('档案不存在'));
+    const key = decrypt(p.keyEnc);
+    const req = buildProbeRequest(p.apiFormat, p.baseUrl, key);
+    const started = Date.now();
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const res = await fetch(req.url, { method: 'GET', headers: req.headers, signal: ctl.signal });
+      const latencyMs = Date.now() - started;
+      await res.arrayBuffer().catch(() => undefined);
+      if (res.status >= 200 && res.status < 300) return { ok: true, latencyMs, status: res.status };
+      if (res.status === 404 || res.status === 405) {
+        // 已连通，只是该上游没有模型列表接口
+        return {
+          ok: true,
+          latencyMs,
+          status: res.status,
+          note: t('已连通（该上游没有模型列表接口，无法校验 Key）'),
+        };
+      }
+      return {
+        ok: false,
+        latencyMs,
+        status: res.status,
+        error:
+          res.status === 401 || res.status === 403
+            ? t('Key 无效或无权限（HTTP {0}）', res.status)
+            : t('上游返回 HTTP {0}', res.status),
+      };
+    } catch (e) {
+      const msg = ctl.signal.aborted ? t('连接超时（8 秒）') : String((e as Error).message ?? e);
+      return {
+        ok: false,
+        latencyMs: Date.now() - started,
+        error: key ? msg.split(key).join('••••') : msg,
+      };
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -510,6 +587,7 @@ export class CliProviderBridge {
       return this.state();
     });
     handle('ai:cli-provider:activate', (id) => this.activate(String(id)));
+    handle('ai:cli-provider:test', (id) => this.testProfile(String(id)));
     handle('ai:cli-provider:deactivate-dsh', () => this.deactivateDsh());
     handle('ai:cli-provider:deactivate', (k) => {
       if (!KINDS.includes(k as CliProviderKind)) throw new Error(t('档案不存在'));

@@ -463,5 +463,9 @@
   "这一轮做完了": "This turn is done",
   "出错了": "Something went wrong",
   "排队中": "Queued",
-  "主对话标签不能写入 CLI 转录": "Cannot write a CLI transcript on the main chat tab"
+  "主对话标签不能写入 CLI 转录": "Cannot write a CLI transcript on the main chat tab",
+  "已连通（该上游没有模型列表接口，无法校验 Key）": "Reachable (this upstream has no model-list endpoint, so the key can't be verified)",
+  "Key 无效或无权限（HTTP {0}）": "Invalid key or no permission (HTTP {0})",
+  "上游返回 HTTP {0}": "Upstream returned HTTP {0}",
+  "连接超时（8 秒）": "Connection timed out (8 s)"
 }
