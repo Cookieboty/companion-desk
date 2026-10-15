@@ -64,9 +64,10 @@ def run(name):
     top=int(ys.min()); x0=int(xs.min()); x1=int(xs.max())+1
     bottom=min(h,cuffY+230)
     rgba=np.dstack([rgb,a*255]).astype(np.float32)
-    # feather bottom 80px into transparency (blend into the master sleeve)
+    # hard bottom edge (2px AA): the mesh sleeve is tapered to this sleeve's width, drawn over
+    # runs underneath, so the join reads as continuous cloth (no long washed-out fade)
     yy=np.arange(h)[:,None]
-    fe=np.clip((bottom-yy)/90.0,0,1); fe=fe*fe*(3-2*fe)
+    fe=np.clip((bottom-yy)/2.0,0,1); fe=fe*fe*(3-2*fe)
     rgba[...,3]*=fe
     crop=rgba[top:bottom,x0:x1]
     # centre of the sleeve at the bottom row (attach point)

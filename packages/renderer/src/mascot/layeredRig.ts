@@ -12,6 +12,7 @@ import { ACTIONS } from './rig/actions';
 import { drawBrow, drawFx, drawMouth } from './rig/fx';
 import {
   ARM_HAND_S,
+  armFrame,
   bodyShoulderFill,
   bodySideFill,
   drawArmPieces,
@@ -22,6 +23,7 @@ import {
   type HandPieceMeta,
 } from './rig/meshArm';
 import { HAND_NAMES, IDX, PARAM_DEFS, type ParamBag } from './rig/params';
+import type { RigImageSource } from './rig/rigTypes';
 
 export interface RigEyeMetrics {
   /** eye opening bbox in rig px */
@@ -1495,6 +1497,22 @@ export function drawRig(
     ctx.restore();
   };
   /** one arm: rest-arm stump seals body-noarm; mesh strip + hand while posed */
+  // both hands are the prayer shape: one joined piece at the chest centre, two sleeves converge
+  const prayerPair =
+    !!ex &&
+    (ex[IDX.lHand] | 0) === (ex[IDX.rHand] | 0) &&
+    HAND_NAMES[ex[IDX.rHand] | 0] === 'prayer' &&
+    ex[IDX.lOn] > 0.5 &&
+    ex[IDX.rOn] > 0.5;
+  const jointArms: {
+    fx: number;
+    fy: number;
+    fpsi: number;
+    himg: RigImageSource;
+    meta: HandPieceMeta;
+    sgn: number;
+    hs: number;
+  }[] = [];
   const drawArm = (side: 'l' | 'r') => {
     const name = side === 'l' ? 'arm-l' : 'arm-r';
     const on = side === 'l' ? lOn : rOn;
@@ -1520,6 +1538,7 @@ export function drawRig(
     const sgn = geom.sgn;
     const hand = ex[side === 'l' ? IDX.lHand : IDX.rHand] | 0;
     const hn = HAND_NAMES[hand];
+    const joint = hn === 'prayer' && prayerPair;
     const meta = hn ? rig.hands?.[hn] : undefined;
     const himg = hn ? imgs.get(`hand-${hn}`) : undefined;
     const ia = side === 'l' ? IDX.lA : IDX.rA;
@@ -1531,7 +1550,10 @@ export function drawRig(
       const nImg = imgs.get('body-noarm');
       const bOff = L['body'] ?? L['body-noarm'];
       if (bImg && nImg && bOff) {
-        const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]]);
+        // a strongly swung arm leaves only the shoulder cap behind (no ghost of the rest sleeve)
+        const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.35) / 0.5));
+        const fillR = Math.round((240 - 130 * swing) / 20) * 20;
+        const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
         if (f) {
           ctx.save();
           ctx.translate(0, lift * 0.5);
@@ -1553,27 +1575,44 @@ export function drawRig(
     const elbow = ex[ia + 1] * DEG;
     const wrist = ex[ia + 2] * DEG + elbow * 0.12;
     const hasHand = !!(meta && himg);
-    drawArmPieces(
-      ctx,
-      img,
-      geom,
-      pv,
-      off as [number, number],
-      {
-        a: ex[ia] * DEG - sgn * rot,
-        e: elbow,
-        w: wrist,
-        lift,
-        handAlpha: 1,
-        fore: ex[side === 'l' ? IDX.lF : IDX.rF],
-      },
-      // stop the mesh at the cuff so the hand piece owns the sleeve stub (no double cuff)
-      hasHand ? ARM_HAND_S + 8 : 1e9,
-    );
-    if (hasHand) {
-      const cuffW = Math.abs(geom.nmax - geom.nmin);
-      const hs = handScaleFor(meta!, cuffW);
+    const cuffW = Math.abs(geom.nmax - geom.nmin);
+    const hs = hasHand ? handScaleFor(meta!, cuffW) : 0;
+    const armP = {
+      a: ex[ia] * DEG - sgn * rot,
+      e: elbow,
+      w: wrist,
+      lift,
+      handAlpha: 1,
+      fore: hn === 'prayer' ? -1 : ex[side === 'l' ? IDX.lF : IDX.rF],
+      // taper the sleeve to the hand piece's sleeve and fold the wrist into the forearm so
+      // sleeve + cuff are one continuous cloth (no overhanging faded stub)
+      endW: hasHand ? hs * meta!.sleeveW * (joint ? 0.95 : 1.12) : undefined,
+      mergeMax: joint ? 1.3 : undefined,
+      hardEnd: joint,
+    };
+    const geomArgs = [img, geom, pv, off as [number, number]] as const;
+    if (hasHand && joint) {
+      // bilateral prayer: both sleeves rise to the chest centre; the single prayer piece is
+      // drawn once at their joint after both arms (see armsPass)
+      drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
+      jointArms.push({
+        fx: armFrame.hx,
+        fy: armFrame.hy,
+        fpsi: armFrame.hPsi,
+        himg: himg!,
+        meta: meta!,
+        sgn,
+        hs,
+      });
+    } else if (hasHand) {
+      // mesh, then the hand piece on top of it, then the sleeve end re-drawn over the piece's
+      // sleeve stub: it tapers to the stub's width and dissolves into it (cloth over cloth, no
+      // semi-transparent edge ever meets the background)
+      drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
       drawHandPiece(ctx, himg!, meta!, sgn, 1, hs);
+      drawArmPieces(ctx, ...geomArgs, { ...armP, fromS: ARM_HAND_S - 60 }, ARM_HAND_S + 4);
+    } else {
+      drawArmPieces(ctx, ...geomArgs, armP, 1e9);
     }
   };
   const armsPass = () => {
@@ -1592,8 +1631,21 @@ export function drawRig(
         }
       }
     }
+    jointArms.length = 0;
     drawArm('l');
     drawArm('r');
+    if (jointArms.length === 2) {
+      const [a, b] = jointArms;
+      const saved = { hx: armFrame.hx, hy: armFrame.hy, hPsi: armFrame.hPsi };
+      armFrame.hx = (a.fx + b.fx) / 2;
+      armFrame.hy = (a.fy + b.fy) / 2;
+      const wrap = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
+      armFrame.hPsi = (wrap(a.fpsi) + wrap(b.fpsi)) / 2;
+      drawHandPiece(ctx, a.himg, a.meta, 1, 1, (a.hs + b.hs) / 2, 40);
+      armFrame.hx = saved.hx;
+      armFrame.hy = saved.hy;
+      armFrame.hPsi = saved.hPsi;
+    }
   };
   part('badge', pose.badgeRot);
   const armFront = !!ex && ex[IDX.armFront] > 0.5 && warp;

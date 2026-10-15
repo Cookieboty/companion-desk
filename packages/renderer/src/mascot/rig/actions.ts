@@ -118,10 +118,11 @@ const P = {
   surprise: { r: [10, 62, 8], l: [10, 62, -8] },
   salute: { r: [14, 86, -18], l: [12, 82, -8] },
   heart: { r: [7, 84, 42], l: [5, 84, 40] },
-  chest: { r: [-40, 125, 60], l: [4, 78, 32] },
+  chest: { r: [-45, -65, -30], l: [4, 78, 32] },
   type: { r: [8, 88, 48], l: [6, 88, 46] },
   stretch: { r: [14, 66, -14], l: [12, 64, -10] },
-  pray: { r: [-46, 135, 45], l: [4, 84, 36] },
+  // bilateral 合十: both forearms come in to the chest centre; one joined prayer piece
+  pray: { r: [-57, -70, -42], l: [-57, -70, -42] },
   clap: { r: [7, 84, 36], l: [5, 82, 40] },
 } as const satisfies Record<string, { r: Pose; l: Pose }>;
 
@@ -232,8 +233,8 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.8,
     trigger: '感谢 / 拜托 / 祈祷', // i18n-ignore
     tracks: [
-      // prayer PNG already shows both palms — attach once on the right arm
-      ...arm('r', HAND.prayer, P.pray.r, 0.45, 2.2, 2.8, { ease: 'io' }),
+      // both arms rise symmetrically; the renderer draws ONE prayer piece at their joint
+      ...both(HAND.prayer, P.pray.r, P.pray.l, 0.45, 2.2, 2.8, { ease: 'io' }),
       hold('armFront', 0.35, 99, 1),
       T('headNod', [0, 0], [0.5, 10, 'io'], [2.0, 10], [2.8, 0]),
       hold('eyeL', 0.4, 2.4, EYE.closed),

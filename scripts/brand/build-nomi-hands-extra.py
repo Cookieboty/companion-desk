@@ -95,7 +95,7 @@ def build(name,ang,cut_frac,resize,sleeve_target,ext_extra,fade_k=0.5,hole_ymax=
     return dict(rr=rr,ra=ra,top=top,x0=x0,x1=x1,yc=yc,cuffY=cuffY,bot=bot,skin=skin)
 
 SKIN_T=np.array([248,222,208],np.float32)
-def make(name,ang,cut_frac,sleeve_final,stub_k=1.3,fade_k=0.5,out=OUT,hole_ymax=0,blur=0,hull_box=None,strict=False):
+def make(name,ang,cut_frac,sleeve_final,stub_k=1.3,fade_px=2,out=OUT,hole_ymax=0,blur=0,hull_box=None,strict=False):
     global STRICT; STRICT=strict
     d=build(name,ang,cut_frac,1,1,0,hole_ymax=hole_ymax,hull_box=hull_box)
     rr,ra,top,x0,x1,yc,cuffY=d['rr'],d['ra'],d['top'],d['x0'],d['x1'],d['yc'],d['cuffY']
@@ -143,14 +143,14 @@ def make(name,ang,cut_frac,sleeve_final,stub_k=1.3,fade_k=0.5,out=OUT,hole_ymax=
     # alpha edge: slight sharpen
     al=np.clip((al-0.5)*1.5+0.5,0,1)
     # bottom fade (fade_k * sleeve)
-    FL=fade_k*sleeve_final; yy=np.arange(nh)[:,None]
+    FL=max(fade_px,1); yy=np.arange(nh)[:,None]
     fe=np.clip((nh-yy)/FL,0,1); fe=fe*fe*(3-2*fe)
     a_f=al*fe
     rgba=np.dstack([crop,a_f*255]).astype(np.uint8); rgba[rgba[...,3]<3]=0
     Image.fromarray(rgba,'RGBA').save(f'{out}/hand-{name}.png',optimize=True)
     # meta
     cy=(cuffY-(top-mg))*r
-    row=al[int(nh-0.55*FL)] if int(nh-0.55*FL)<nh else al[-1]
+    row=al[nh-12]
     cc=np.nonzero(row>0.5)[0]
     info=dict(file=f'hands/hand-{name}.png',w=nw,h=nh,ax=float((cc.min()+cc.max())/2),ay=float(nh),sleeveW=float(cc.max()-cc.min()+1),cuffY=float(cy))
     return info
