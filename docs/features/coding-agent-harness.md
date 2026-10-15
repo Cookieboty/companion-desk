@@ -312,3 +312,21 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
   - Nomi 标签：实时状态优先于文件推断；由标签驱动的 CLI 会话不会在文件来源里重复出现。
   - 顶部按端点筛选（全部 / Nomi 标签 / dsh / Codex / Claude Code），标签条目有「打开标签」按钮直达。
 - **提醒**：后台端点完成或需要处理时，看板娘说一句并做动作（成功挥手、失败思考），灵动岛显示带端点徽标与状态图标（完成 / 失败 / 需要处理 / 运行中）的事件。
+
+### 12.5 普通 / 开发模式、端点隔离与分叉（HIGHLIGHT）
+
+- **对话模式**（顶栏左侧「普通 | 开发」，默认普通，localStorage `ai-chat:chatMode`）：
+  - **普通**：仅 Nomi。隐藏标签栏、后端切换器、Mod+T 等编程助手 chrome。后台 CLI 标签继续跑，模式控件显示「N 运行中」徽标；切回开发恢复标签栏与未读。
+  - **开发**：完整 chrome。选中 / 新建非 Nomi 会话会打开或聚焦对应 CLI 标签；Nomi 会话始终走主标签 + nomi 后端。
+- **会话归属**：每条 ConversationStore 元信息带 `backend: nomi|claude|codex|dsh` 与可选 `tabId`。旧行迁移为 `nomi`。侧栏列表不再混合身份——点 Nomi 只加载 Nomi；点 Claude 只聚焦该 Claude 标签。
+- **CLI 标签进侧栏**：创建 / 重命名 / 关闭 / 消息时同步一条 ConversationStore 元信息（消息仍在 `userData/harness/tabs/<id>.json`）。删除侧栏项会关闭对应标签（运行中仍走原确认）。
+- **切换后端**：有消息的会话不会静默改写身份。BackendSwitcher 会为新后端新建会话 / 标签；空会话可原地切换。跨端复制历史请用分叉。
+- **侧栏视图**（「全部 | 按端」，持久化）：
+  - 全部：所有会话 + 端点色标（与灵动岛一致：nomi 珊瑚 / claude 橙 / codex 蓝 / dsh 蓝紫）。
+  - 按端：先选端点芯片（未安装的 CLI 禁用），再只看该端。
+  - 「新对话」：普通 → 总是 Nomi；开发 + 按端 → 当前端；全部 → 弹出端点菜单。
+- **分叉**（侧栏右键 / Mod+Shift+F）：
+  1. **分叉为新对话**：同端复制可见消息，标题「原标题 (副本)」。
+  2. **分叉到其他端**：选目标端；复制 user/assistant 文本（工具调用压成短注）。CLI 目标写入 seed 转录或 preface，**不声称跨 CLI resume**。
+- **已知取舍**：主标签在开发模式下切到 CLI 会开新标签，避免 Nomi 历史被 CLI 污染；跨端分叉是上下文粘贴，不是会话续接。
+- **示意**：见 [`assets/chat-mode/`](./assets/chat-mode/)（storyboard SVG；headed e2e 截图可替换）。
