@@ -232,7 +232,8 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.8,
     trigger: '感谢 / 拜托 / 祈祷', // i18n-ignore
     tracks: [
-      ...both(HAND.prayer, P.pray.r, P.pray.l, 0.45, 2.2, 2.8, { ease: 'io' }),
+      // prayer PNG already shows both palms — attach once on the right arm
+      ...arm('r', HAND.prayer, P.pray.r, 0.45, 2.2, 2.8, { ease: 'io' }),
       hold('armFront', 0.35, 99, 1),
       T('headNod', [0, 0], [0.5, 10, 'io'], [2.0, 10], [2.8, 0]),
       hold('eyeL', 0.4, 2.4, EYE.closed),
@@ -402,7 +403,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.6,
     trigger: '表达喜欢 / 被夸奖 / 摸头', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.chest, P.heart.r, 0.45, 2.1, 2.6, {
+      ...arm('r', HAND.softfist, P.heart.r, 0.45, 2.1, 2.6, {
         oscW: [5, 1.8, 0],
         win: [0.6, 2.0],
       }),
