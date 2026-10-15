@@ -151,4 +151,19 @@ describe('CliHarnessService tabs', () => {
     h.setTabCwd(a.id, root);
     expect(h.listTabs().tabs.find((x) => x.id === a.id)!.cliSessionId).toBeNull();
   });
+
+  it('seeds messages on createTab for cross-endpoint fork', () => {
+    const h = mk();
+    const tab = h.createTab({
+      backend: 'claude',
+      title: 'Forked',
+      messages: [
+        { id: '1', role: 'user', content: 'prior q', timestamp: 1 },
+        { id: '2', role: 'assistant', content: 'prior a', timestamp: 2 },
+      ],
+    });
+    expect(h.tabMessages(tab.id).map((m) => m.content)).toEqual(['prior q', 'prior a']);
+    h.seedTabMessages(tab.id, [{ id: '3', role: 'user', content: 'only', timestamp: 3 }]);
+    expect(h.tabMessages(tab.id).map((m) => m.content)).toEqual(['only']);
+  });
 });

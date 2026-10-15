@@ -2,7 +2,12 @@ import { ClientAIClient } from '@nomi-ai/ai-sdk-client';
 import { t } from '@nomi-ai/ui';
 import { createLogger } from '@nomi-ai/ui';
 
-import { type ChatMessage, type ChatConfig, type ChatSession } from '../types/chat';
+import {
+  type ChatMessage,
+  type ChatConfig,
+  type ChatSession,
+  type ConversationBackend,
+} from '../types/chat';
 import { type AIModelConfig } from '../types/config';
 import { type IPCClient, type ElectronAPI } from '../types/ipc';
 
@@ -252,12 +257,42 @@ export class SdkIPCClient implements IPCClient {
     return this.store.list();
   }
 
-  async newConversation(name?: string): Promise<string> {
-    return this.store.create(name).id;
+  async newConversation(
+    name?: string,
+    opts?: { backend?: ConversationBackend; tabId?: string },
+  ): Promise<string> {
+    return this.store.create({ name, backend: opts?.backend, tabId: opts?.tabId }).id;
   }
 
   async switchConversation(id: string): Promise<void> {
     this.store.switchTo(id);
+  }
+
+  async updateConversation(
+    id: string,
+    patch: Partial<Pick<ChatSession, 'name' | 'backend' | 'tabId' | 'updatedAt'>>,
+  ) {
+    return this.store.updateMeta(id, patch);
+  }
+
+  async forkConversation(
+    id: string,
+    opts?: {
+      backend?: ConversationBackend;
+      tabId?: string;
+      name?: string;
+      messages?: ChatMessage[];
+    },
+  ) {
+    return this.store.fork(id, opts);
+  }
+
+  async deleteConversation(id: string): Promise<void> {
+    this.store.delete(id);
+  }
+
+  conversationStore() {
+    return this.store;
   }
 
   async getConfig(): Promise<ChatConfig> {
@@ -378,7 +413,7 @@ export class MockIPCClient implements IPCClient {
   }
 
   async listConversations(): Promise<Array<Omit<ChatSession, 'messages'>>> {
-    return [{ id: 'mock', name: t('Mock 对话'), createdAt: 0, updatedAt: 0 }];
+    return [{ id: 'mock', name: t('Mock 对话'), createdAt: 0, updatedAt: 0, backend: 'nomi' }];
   }
 
   async newConversation(): Promise<string> {

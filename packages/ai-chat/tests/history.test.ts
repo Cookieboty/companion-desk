@@ -87,6 +87,74 @@ describe('ConversationStore', () => {
     expect(s.list()).toEqual([]);
     expect(s.currentId()).not.toBe(id);
   });
+
+  it('tags migrated rows without backend as nomi', () => {
+    const storage = createMemoryStorage();
+    storage.setItem(
+      'ai-chat:conversations',
+      JSON.stringify([
+        { id: 'old1', name: 'legacy', createdAt: 1, updatedAt: 2 },
+        {
+          id: 'old2',
+          name: 'claude one',
+          createdAt: 1,
+          updatedAt: 3,
+          backend: 'claude',
+          tabId: 't1',
+        },
+      ]),
+    );
+    storage.setItem('ai-chat:conversation:old1', JSON.stringify([msg('1', 'user', 'hi')]));
+    storage.setItem('ai-chat:conversation:old2', JSON.stringify([]));
+    const s = new ConversationStore({ storage });
+    expect(s.get('old1')!.backend).toBe('nomi');
+    expect(s.get('old2')!.backend).toBe('claude');
+    expect(s.get('old2')!.tabId).toBe('t1');
+    expect(s.listByBackend('nomi').map((c) => c.id)).toEqual(['old1']);
+  });
+
+  it('creates with backend, forks same-backend, and upserts CLI tabs', () => {
+    let n = 0;
+    const s = new ConversationStore({
+      storage: createMemoryStorage(),
+      now: () => 1000 + n,
+      newId: () => `c${++n}`,
+    });
+    const a = s.create({ name: 'Nomi A', backend: 'nomi' });
+    s.append(msg('1', 'user', 'hello'));
+    s.append(msg('2', 'assistant', 'hi there'));
+    const forked = s.fork(a.id);
+    expect(forked.id).not.toBe(a.id);
+    expect(forked.backend).toBe('nomi');
+    expect(forked.name).toContain('副本');
+    expect(s.getMessages(forked.id).map((m) => m.content)).toEqual(['hello', 'hi there']);
+    expect(s.getMessages(a.id)).toHaveLength(2);
+
+    const cross = s.fork(a.id, { backend: 'codex', name: 'A on Codex', messages: [] });
+    expect(cross.backend).toBe('codex');
+    expect(s.getMessages(cross.id)).toEqual([]);
+
+    const tabMeta = s.upsertFromTab({
+      id: 'tab-uuid',
+      title: 'Codex',
+      backend: 'codex',
+      createdAt: 10,
+      updatedAt: 20,
+    });
+    expect(tabMeta.tabId).toBe('tab-uuid');
+    expect(tabMeta.backend).toBe('codex');
+    const again = s.upsertFromTab({
+      id: 'tab-uuid',
+      title: 'Codex renamed',
+      backend: 'codex',
+      createdAt: 10,
+      updatedAt: 30,
+    });
+    expect(again.id).toBe(tabMeta.id);
+    expect(again.name).toBe('Codex renamed');
+    s.removeByTabId('tab-uuid');
+    expect(s.findByTabId('tab-uuid')).toBeUndefined();
+  });
 });
 
 describe('SdkIPCClient · multi-turn', () => {

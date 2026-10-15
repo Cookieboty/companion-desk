@@ -1,4 +1,9 @@
-import { type ChatMessage, type ChatConfig, type ChatSession } from './chat';
+import {
+  type ChatMessage,
+  type ChatConfig,
+  type ChatSession,
+  type ConversationBackend,
+} from './chat';
 import { type AIModelConfig } from './config';
 
 export interface IPCClient {
@@ -29,8 +34,29 @@ export interface IPCClient {
 
   // 会话相关
   listConversations(): Promise<Array<Omit<ChatSession, 'messages'>>>;
-  newConversation(name?: string): Promise<string>;
+  newConversation(
+    name?: string,
+    opts?: { backend?: ConversationBackend; tabId?: string },
+  ): Promise<string>;
   switchConversation(id: string): Promise<void>;
+  /** 更新会话元信息（标题 / 后端 / tabId） */
+  updateConversation?(
+    id: string,
+    patch: Partial<Pick<ChatSession, 'name' | 'backend' | 'tabId' | 'updatedAt'>>,
+  ): Promise<Omit<ChatSession, 'messages'>>;
+  /** 同端或跨端分叉（复制可见消息） */
+  forkConversation?(
+    id: string,
+    opts?: {
+      backend?: ConversationBackend;
+      tabId?: string;
+      name?: string;
+      messages?: ChatMessage[];
+    },
+  ): Promise<Omit<ChatSession, 'messages'>>;
+  deleteConversation?(id: string): Promise<void>;
+  /** 暴露底层 store，供 CLI 标签同步侧栏（可选） */
+  conversationStore?(): import('../services/conversationStore').ConversationStore;
 
   // 配置相关
   getConfig(): Promise<ChatConfig>;

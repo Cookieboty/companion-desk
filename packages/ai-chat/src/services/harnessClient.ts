@@ -88,8 +88,14 @@ export const harnessClient = {
     bridge()?.on('ai:harness:changed', (p) => fn(p as HarnessState)) ?? (() => undefined),
   onEvent: (fn: (e: unknown) => void) => bridge()?.on('ai:harness:event', fn) ?? (() => undefined),
   tabs: () => call<HarnessTabsState>('tabs'),
-  createTab: (o: { backend: HarnessBackend; cwd?: string; title?: string }) =>
-    call<HarnessTabMeta>('tab-create', o),
+  createTab: (o: {
+    backend: HarnessBackend;
+    cwd?: string;
+    title?: string;
+    messages?: HarnessTabMessage[];
+  }) => call<HarnessTabMeta>('tab-create', o),
+  seedTabMessages: (id: string, messages: HarnessTabMessage[]) =>
+    call<HarnessTabMeta>('tab-seed', id, messages),
   closeTab: (id: string) => call<HarnessTabsState>('tab-close', id),
   renameTab: (id: string, title: string) => call<HarnessTabMeta>('tab-rename', id, title),
   activateTab: (id: string) => call<HarnessTabsState>('tab-activate', id),

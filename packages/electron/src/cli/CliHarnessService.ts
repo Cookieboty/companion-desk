@@ -290,7 +290,15 @@ export class CliHarnessService {
     };
   }
 
-  createTab(opts: { backend?: HarnessBackend; cwd?: string; title?: string } = {}): HarnessTabMeta {
+  createTab(
+    opts: {
+      backend?: HarnessBackend;
+      cwd?: string;
+      title?: string;
+      /** 分叉时预填的可见消息（不 resume CLI 会话） */
+      messages?: HarnessTabMessage[];
+    } = {},
+  ): HarnessTabMeta {
     const backend = opts.backend ?? 'claude';
     if (!isBackend(backend) || backend === 'nomi') {
       throw new Error(t('新标签只能绑定编程助手后端'));
@@ -312,8 +320,60 @@ export class CliHarnessService {
       updatedAt: now,
     };
     this.tabs.set(tab.id, tab);
-    this.messages.set(tab.id, []);
+    const seeded = Array.isArray(opts.messages)
+      ? opts.messages
+          .filter(
+            (m) =>
+              m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
+          )
+          .slice(-MAX_TAB_MESSAGES)
+          .map((m) => ({
+            id: m.id || randomUUID(),
+            role: m.role as 'user' | 'assistant',
+            content: String(m.content).slice(0, 100_000),
+            timestamp: typeof m.timestamp === 'number' ? m.timestamp : now,
+            ...(m.error ? { error: true as const } : {}),
+            ...(Array.isArray(m.tools) ? { tools: m.tools } : {}),
+          }))
+      : [];
+    this.messages.set(tab.id, seeded);
+    if (seeded.length) {
+      try {
+        fs.writeFileSync(this.messagesPath(tab.id), JSON.stringify(seeded), 'utf8');
+      } catch (e) {
+        this.d.logger.warn('harness tab seed write failed', e);
+      }
+      tab.updatedAt = seeded[seeded.length - 1]!.timestamp;
+    }
     this.activeTabId = tab.id;
+    this.changed();
+    return { ...tab };
+  }
+
+  /** 用可见消息覆盖标签转录（分叉 / 导入）；不改 cliSessionId */
+  seedTabMessages(id: string, messages: HarnessTabMessage[]): HarnessTabMeta {
+    const tab = this.requireTab(id);
+    if (id === MAIN_TAB_ID) throw new Error(t('主对话标签不能写入 CLI 转录'));
+    const seeded = (messages ?? [])
+      .filter(
+        (m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
+      )
+      .slice(-MAX_TAB_MESSAGES)
+      .map((m) => ({
+        id: m.id || randomUUID(),
+        role: m.role as 'user' | 'assistant',
+        content: String(m.content).slice(0, 100_000),
+        timestamp: typeof m.timestamp === 'number' ? m.timestamp : Date.now(),
+        ...(m.error ? { error: true as const } : {}),
+        ...(Array.isArray(m.tools) ? { tools: m.tools } : {}),
+      }));
+    this.messages.set(id, seeded);
+    try {
+      fs.writeFileSync(this.messagesPath(id), JSON.stringify(seeded), 'utf8');
+    } catch (e) {
+      this.d.logger.warn('harness tab seed write failed', e);
+    }
+    if (seeded.length) tab.updatedAt = seeded[seeded.length - 1]!.timestamp;
     this.changed();
     return { ...tab };
   }
@@ -716,7 +776,17 @@ export class CliHarnessService {
     handle('ai:harness:send', (p) => this.send(String(p ?? '')));
     handle('ai:harness:tabs', () => this.listTabs());
     handle('ai:harness:tab-create', (o) =>
-      this.createTab((o ?? {}) as { backend?: HarnessBackend; cwd?: string; title?: string }),
+      this.createTab(
+        (o ?? {}) as {
+          backend?: HarnessBackend;
+          cwd?: string;
+          title?: string;
+          messages?: HarnessTabMessage[];
+        },
+      ),
+    );
+    handle('ai:harness:tab-seed', (id, msgs) =>
+      this.seedTabMessages(String(id), (msgs ?? []) as HarnessTabMessage[]),
     );
     handle('ai:harness:tab-close', (id) => this.closeTab(String(id)));
     handle('ai:harness:tab-rename', (id, title) => this.renameTab(String(id), String(title)));
