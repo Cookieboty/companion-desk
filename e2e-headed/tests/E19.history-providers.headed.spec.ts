@@ -308,6 +308,14 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     );
     await shot(chat, '11-providers-claude-active');
 
+    // 版本卡片：点「更新」先弹确认框，展示完整命令，取消则什么都不执行
+    await chat.click('[data-testid="cli-version-action-claude"]');
+    await expect(chat.locator('[data-testid="cli-version-dialog-claude"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="cli-version-command"]')).not.toBeEmpty();
+    await shot(chat, '11b-claude-update-confirm');
+    await chat.click('[data-testid="cli-version-cancel"]');
+    await expect(chat.locator('[data-testid="cli-version-dialog-claude"]')).toHaveCount(0);
+
     // 其它端点互不影响：Codex 仍是自带登录
     await chat.click('[data-testid="providers-endpoint-codex"]');
     await expect(chat.locator('[data-testid="cli-ep-active"]')).toContainText(
@@ -323,6 +331,14 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
 
     // 回到对话：Claude 标签的输入栏只显示 Claude 自己启用的档案 + 模型；Codex 标签显示默认
     await chat.getByText('‹ 返回对话').click();
+
+    // 日程与提醒页不再有「编程助手」标签
+    await chat.click('[data-testid="open-sched-panel"]');
+    await expect(chat.locator('[data-testid="sched-panel"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="sched-panel"]').getByText('编程助手')).toHaveCount(0);
+    await shot(chat, '16-schedule-no-coding-tab');
+    await chat.keyboard.press('Escape');
+    await expect(chat.locator('[data-testid="sched-panel"]')).toHaveCount(0);
     await chat.locator('[data-testid="chat-tab-1"]').click();
     const chip = chat.locator('[data-testid="cli-provider-chip"]');
     await expect(chip).toHaveAttribute('data-backend', 'claude');
