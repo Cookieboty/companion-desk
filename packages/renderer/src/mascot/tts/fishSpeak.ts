@@ -1,5 +1,5 @@
 /**
- * Built-in Fish TTS playback in the renderer.
+ * TTS playback in the renderer (sherpa / Fish / any engine returning audio via IPC).
  * Calls main `tts:speak`, plays returned audio, drives lipSyncStore RMS when possible.
  * On failure returns false so callers fall back to Web Speech.
  * No preview / upload-clone UI — character binding uses built-in referenceId (e.g. nomi).
@@ -63,7 +63,13 @@ export function stopFishSpeak(): void {
   cleanupAudio();
 }
 
-function attachVolumeEnvelope(audio: HTMLAudioElement): void {
+/**
+ * Optional lip-sync analyser. Must NOT call createMediaElementSource unless the
+ * AudioContext is running: that API disconnects the element from the speakers,
+ * and a suspended context produces complete silence (common Electron race when
+ * resume() is fire-and-forget).
+ */
+async function attachVolumeEnvelope(audio: HTMLAudioElement): Promise<void> {
   try {
     if (!audioCtx) {
       const AC =
@@ -72,7 +78,13 @@ function attachVolumeEnvelope(audio: HTMLAudioElement): void {
       audioCtx = new AC();
     }
     const ctx = audioCtx;
-    void ctx.resume();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+    if (ctx.state !== 'running') {
+      // Leave the <audio> on its default output path so playback is still audible.
+      return;
+    }
     const source = ctx.createMediaElementSource(audio);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
@@ -93,7 +105,7 @@ function attachVolumeEnvelope(audio: HTMLAudioElement): void {
     };
     analyserRaf = requestAnimationFrame(tick);
   } catch {
-    /* Autoplay / CORS / already connected — lip sync optional */
+    /* Autoplay / CORS / already connected — lip sync optional; element keeps default output if we never connected */
   }
 }
 
@@ -147,7 +159,7 @@ export async function speakWithFish(text: string, opts: FishSpeakOptions = {}): 
       opts.onEnd?.();
     };
 
-    attachVolumeEnvelope(audio);
+    await attachVolumeEnvelope(audio);
     await audio.play();
     return true;
   } catch (err) {

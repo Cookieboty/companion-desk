@@ -10,9 +10,16 @@ import type { TTSConfig } from '@nomi-ai/types';
 import { DEFAULT_TTS_CONFIG } from '@nomi-ai/types';
 import { app, safeStorage } from 'electron';
 
+import { createMainLogger } from '../../utils/log';
 import { writePrivateFile } from '../../utils/privateFile';
 
-import { normalizeTtsConfig, validateTtsConfig } from './validateTtsConfig';
+import {
+  migrateTtsConfigProvider,
+  normalizeTtsConfig,
+  validateTtsConfig,
+} from './validateTtsConfig';
+
+const log = createMainLogger('FishTTS-config');
 
 const API_KEY_FILE = 'tts.fish.apiKey.bin';
 
@@ -34,7 +41,29 @@ export class FishTtsConfigStore {
       const raw = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<TTSConfig>;
       // Never keep apiKey from disk JSON
       const { apiKey: _drop, ...rest } = raw;
-      return normalizeTtsConfig(rest);
+      const { config, migrated } = migrateTtsConfigProvider(rest);
+      if (migrated) {
+        // Persist so next boot stays on sherpa; intentional Fish users with custom
+        // baseUrl/referenceId are not migrated (see isLegacyFishProductDefault).
+        // Write directly (avoid save→loadPublic→load recursion).
+        try {
+          log.info('migrated legacy fish-local product default → sherpa-theresa');
+          const toDisk: Record<string, unknown> = {
+            ...config,
+            lastModified: Date.now(),
+          };
+          delete toDisk.apiKey;
+          delete toDisk.hasApiKey;
+          delete toDisk.clearApiKey;
+          writePrivateFile(this.configPath(), JSON.stringify(toDisk, null, 2));
+        } catch (e) {
+          log.warn('TTS provider migration save failed; using in-memory sherpa default', {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+        return config;
+      }
+      return config;
     } catch {
       return { ...DEFAULT_TTS_CONFIG, lastModified: 0 };
     }

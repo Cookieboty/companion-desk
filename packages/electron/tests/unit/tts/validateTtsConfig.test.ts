@@ -1,6 +1,11 @@
 import { DEFAULT_TTS_CONFIG } from '@nomi-ai/types';
 
-import { normalizeTtsConfig, validateTtsConfig } from '../../../src/tts/fish/validateTtsConfig';
+import {
+  isLegacyFishProductDefault,
+  migrateTtsConfigProvider,
+  normalizeTtsConfig,
+  validateTtsConfig,
+} from '../../../src/tts/fish/validateTtsConfig';
 
 describe('validateTtsConfig', () => {
   it('accepts built-in sherpa defaults (sid 0, speed 1.0)', () => {
@@ -89,5 +94,32 @@ describe('validateTtsConfig', () => {
       promptText: 'hello',
     } as any);
     expect(cfg.provider).toBe('legacy');
+  });
+
+  it('migrates untouched fish-local product default to sherpa-theresa', () => {
+    expect(
+      isLegacyFishProductDefault({
+        provider: 'fish-local',
+        baseUrl: 'http://127.0.0.1:8080',
+        referenceId: 'nomi',
+        format: 'mp3',
+      }),
+    ).toBe(true);
+    expect(
+      isLegacyFishProductDefault({
+        provider: 'fish-local',
+        baseUrl: 'http://192.168.1.5:8080',
+        referenceId: 'nomi',
+      }),
+    ).toBe(false);
+    const { config, migrated } = migrateTtsConfigProvider({
+      provider: 'fish-local',
+      baseUrl: 'http://127.0.0.1:8080/',
+      referenceId: 'nomi',
+    });
+    expect(migrated).toBe(true);
+    expect(config.provider).toBe('sherpa-theresa');
+    expect(migrateTtsConfigProvider({ provider: 'fish-cloud' }).migrated).toBe(false);
+    expect(migrateTtsConfigProvider({ provider: 'sherpa-theresa' }).migrated).toBe(false);
   });
 });

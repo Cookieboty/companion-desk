@@ -27,9 +27,10 @@ Nomi 默认使用**内置离线语音**（[sherpa-onnx](https://github.com/k2-fs
 
 **行为**
 
-- 没有保存过配置时默认就是 `sherpa-theresa`；已保存过其它提供方的用户保持原选择。
-- 路由（`packages/electron/src/tts/ttsRouter.ts`）：`sherpa-theresa` → sherpa；`fish-*` → Fish；`legacy` → 遗留播放器；`system` / 关闭 → 系统语音。
-- **回退**：sherpa 模型缺失 / 原生库加载失败 / 合成出错，一律**回退系统语音**（Web Speech），不会自动改走 Fish；无需先打开设置试听。
+- 没有保存过配置时默认就是 `sherpa-theresa`。
+- **旧配置迁移**：磁盘上若仍是「未改过的」Fish 时代产品默认（`fish-local` + `nomi` + `http://127.0.0.1:8080`），加载时一次性改写为 `sherpa-theresa` 并写回；自定义过 Fish 地址/声线的配置保持原样。
+- 路由（`packages/electron/src/tts/ttsRouter.ts`）：`sherpa-theresa` → sherpa；`fish-*` → Fish，失败再试 sherpa；`legacy` → 遗留播放器；`system` / 关闭 → 系统语音。
+- **回退**：sherpa 模型缺失 / 原生库加载失败 / 合成出错 → **系统语音**（Web Speech）。Fish 不可达时优先走 sherpa，避免 Linux 等环境下系统语音无中文音色导致「完全没声」。
 - 角色说话时主进程分句合成并拼接成一段 WAV（`audio/wav`，22.05 kHz mono），经 IPC `tts:speak` 以 base64 返回；渲染层沿用原有播放 / 口型 / 打断逻辑。
 - **不提供**「上传我的音色 / 任意参考音频克隆」入口。产品内角色自己说话 ≠ Hosted Service；不要把本应用做成对外自助 TTS 平台。
 

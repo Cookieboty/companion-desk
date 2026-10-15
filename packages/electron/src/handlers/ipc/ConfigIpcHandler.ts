@@ -362,7 +362,21 @@ export class ConfigIpcHandler extends BaseIpcHandler {
     this.registerHandler('tts:speak', async (_, req: TTSSpeakRequest) => {
       this.validateArgs([req], 1, ['object']);
       try {
-        return await router.speak(req ?? { text: '' });
+        const result = await router.speak(req ?? { text: '' });
+        if (result.success) {
+          this.logger.info('tts:speak ok', {
+            via: result.via,
+            mimeType: result.mimeType,
+            audioBytes: result.audioBase64 ? Math.floor((result.audioBase64.length * 3) / 4) : 0,
+          });
+        } else {
+          this.logger.warn('tts:speak fallback', {
+            via: result.via,
+            fallbackToSystem: result.fallbackToSystem,
+            message: result.message,
+          });
+        }
+        return result;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error('tts:speak 失败', { error: errorMessage });

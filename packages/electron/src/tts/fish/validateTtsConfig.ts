@@ -73,6 +73,34 @@ function inferProvider(raw: Partial<TTSConfig>): TTSProvider {
   return DEFAULT_TTS_CONFIG.provider;
 }
 
+/**
+ * Pre-sherpa product default was fish-local + nomi @ 127.0.0.1:8080.
+ * Untouched copies of that default should move to sherpa-theresa so `pnpm dev`
+ * is not stuck on Fish (unreachable → silent Web Speech on many Linux setups).
+ * Custom Fish baseUrl / referenceId / cloud are left alone.
+ */
+export function isLegacyFishProductDefault(raw: Partial<TTSConfig> | null | undefined): boolean {
+  if (!raw || raw.provider !== 'fish-local') return false;
+  const base = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim().replace(/\/$/, '') : '';
+  if (base && base !== 'http://127.0.0.1:8080' && base !== 'http://localhost:8080') return false;
+  const ref = typeof raw.referenceId === 'string' ? raw.referenceId.trim() : '';
+  if (ref && ref !== 'nomi') return false;
+  if (raw.format != null && raw.format !== 'mp3') return false;
+  return true;
+}
+
+/** Apply one-shot provider migration; returns whether provider changed. */
+export function migrateTtsConfigProvider(raw: Partial<TTSConfig> | null | undefined): {
+  config: TTSConfig;
+  migrated: boolean;
+} {
+  const config = normalizeTtsConfig(raw);
+  if (isLegacyFishProductDefault(raw)) {
+    return { config: { ...config, provider: 'sherpa-theresa' }, migrated: true };
+  }
+  return { config, migrated: false };
+}
+
 export function validateTtsConfig(config: TTSConfig): TtsValidation {
   const errors: string[] = [];
 

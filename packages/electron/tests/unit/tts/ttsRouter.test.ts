@@ -80,12 +80,40 @@ describe('TtsRouter.speak', () => {
     expect(r).toMatchObject({ success: false, fallbackToSystem: false });
   });
 
-  it('routes Fish providers to Fish only when explicitly selected', async () => {
+  it('routes Fish providers to Fish when explicitly selected and reachable', async () => {
     const { router, sherpa, fish } = setup(cfg({ provider: 'fish-local' }));
     const r = await router.speak({ text: '你好', referenceId: 'nomi' });
     expect(r.via).toBe('fish');
     expect(fish.speak).toHaveBeenCalledWith({ text: '你好', referenceId: 'nomi' });
     expect(sherpa.synthesize).not.toHaveBeenCalled();
+  });
+
+  it('Fish failure → try sherpa before system speech (legacy fish-local configs)', async () => {
+    const { router, sherpa, fish } = setup(cfg({ provider: 'fish-local' }));
+    fish.speak.mockResolvedValueOnce({
+      success: false,
+      via: 'none',
+      fallbackToSystem: true,
+      message: 'Fish TTS unreachable',
+    });
+    const r = await router.speak({ text: '你好' });
+    expect(fish.speak).toHaveBeenCalled();
+    expect(sherpa.synthesize).toHaveBeenCalledWith('你好', { sid: 0, speed: 1.0 });
+    expect(r).toMatchObject({ success: true, via: 'sherpa', fallbackToSystem: false });
+  });
+
+  it('Fish and sherpa both fail → fallbackToSystem', async () => {
+    const { router, sherpa, fish } = setup(cfg({ provider: 'fish-local' }));
+    fish.speak.mockResolvedValueOnce({
+      success: false,
+      via: 'none',
+      fallbackToSystem: true,
+      message: 'Fish TTS unreachable',
+    });
+    sherpa.synthesize.mockRejectedValueOnce(new SherpaTtsError('not_ready', 'model missing'));
+    const r = await router.speak({ text: '你好' });
+    expect(r).toMatchObject({ success: false, fallbackToSystem: true });
+    expect(r.message).toMatch(/Fish TTS unreachable|model missing/);
   });
 
   it('system / disabled / legacy / empty text never synthesize', async () => {

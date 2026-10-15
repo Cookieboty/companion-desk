@@ -1,7 +1,7 @@
 /**
  * TTS 路由（纯逻辑，无 electron 依赖，便于单测）：
  *   sherpa-theresa（默认）→ 本地离线；失败 / 模型未就绪 → fallbackToSystem（渲染进程用 Web Speech）
- *   fish-local / fish-cloud（可选高级）→ Fish；失败 → fallbackToSystem
+ *   fish-local / fish-cloud（可选高级）→ Fish；失败 → 再试 sherpa → 仍失败才 fallbackToSystem
  *   legacy → 交给 legacy 播放器；system / 禁用 / 未知 → fallbackToSystem
  */
 import type { TTSConfig, TTSSpeakRequest, TTSSpeakResult } from '@nomi-ai/types';
@@ -60,7 +60,7 @@ export class TtsRouter {
       case 'sherpa':
         return this.speakSherpa(text, cfg);
       case 'fish':
-        return this.deps.fish.speak({ ...req, text });
+        return this.speakFishThenSherpa(req, text, cfg);
       case 'legacy':
         return {
           success: false,
@@ -71,6 +71,23 @@ export class TtsRouter {
       default:
         return system(cfg.enabled ? 'system provider' : 'tts disabled');
     }
+  }
+
+  /** Fish first; on failure try offline sherpa so old fish-local configs still have voice. */
+  private async speakFishThenSherpa(
+    req: TTSSpeakRequest,
+    text: string,
+    cfg: TTSConfig,
+  ): Promise<TTSSpeakResult> {
+    const fishResult = await this.deps.fish.speak({ ...req, text });
+    if (fishResult.success) return fishResult;
+    const sherpaResult = await this.speakSherpa(text, cfg);
+    if (sherpaResult.success) return sherpaResult;
+    // Prefer Fish's message (e.g. unreachable) when both fail; keep system fallback flag
+    if (fishResult.fallbackToSystem || sherpaResult.fallbackToSystem) {
+      return system(fishResult.message || sherpaResult.message || 'fish and sherpa failed');
+    }
+    return fishResult;
   }
 
   private async speakSherpa(text: string, cfg: TTSConfig): Promise<TTSSpeakResult> {
