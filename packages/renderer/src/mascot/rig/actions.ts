@@ -37,19 +37,27 @@ function arm(
   const ease = opts.ease ?? 'b';
   const win = opts.win ?? [t0, t1];
   const ret = opts.ret ?? t1 <= dur - 0.3;
-  // small counter-move before the lift (shoulder dips, elbow straightens a touch)
-  const ant = [Math.min(-4, -Math.abs(pose[0]) * 0.1), Math.min(-6, -Math.abs(pose[1]) * 0.05), 0];
+  // stronger anticipation (shoulder dip / elbow prep) so lifts don't pop from rest
+  const ant = [
+    Math.min(-6, -Math.abs(pose[0]) * 0.18),
+    Math.min(-10, -Math.abs(pose[1]) * 0.1),
+    Math.min(-4, -Math.abs(pose[2]) * 0.08),
+  ];
   const key = (i: number): Key[] => {
-    // the swing takes at least ~0.4 s (a faster lift reads as robotic), landing a bit after t0
-    const tAnt = Math.max(0.06, t0 * 0.3);
-    const tUp = Math.min(Math.max(t0, tAnt + 0.4), t1 - 0.05);
+    // swing ≥0.45s; land with a touch of overshoot then settle
+    const tAnt = Math.max(0.08, t0 * 0.35);
+    const tUp = Math.min(Math.max(t0, tAnt + 0.45), t1 - 0.08);
+    const overshoot = pose[i] * (pose[i] >= 0 ? 1.06 : 1.06);
     const keys: Key[] = [
       [0, 0],
       [tAnt, ant[i], 'o'],
-      [tUp, pose[i], ease],
+      [tUp, overshoot, ease],
+      [Math.min(tUp + 0.18, t1), pose[i], 'io'],
     ];
     if (ret) {
-      keys.push([t1, pose[i]], [dur, 0, 'io']);
+      // settle hold, then ease home with a soft undershoot so it doesn't hard-stop
+      const tDown = Math.min(dur, Math.max(t1, tUp + 0.25));
+      keys.push([t1, pose[i]], [tDown, pose[i] * 0.12, 'io'], [dur, 0, 'io']);
     } else keys.push([dur, pose[i]]);
     return keys;
   };
@@ -575,7 +583,7 @@ export const ACTIONS: readonly ActionDef[] = [
     tracks: [
       ...arm('r', HAND.fist, P.fistUp.r, 0.3, 1.8, 2.2, { oscA: [3, 3, 0], win: [0.5, 1.8] }),
       T('bodyY', [0, 0], [0.25, 3, 'io'], [0.4, -6, 'o'], [0.7, 0, 'io'], [2.2, 0]),
-      T('headRot', [0, 0], [0.4, 6], [1.8, 6], [2.2, 0]),
+      T('headRot', [0, 0], [0.45, 5, 'io'], [1.75, 5], [2.2, 0, 'io']),
       hold('eyeL', 0.2, 1.9, EYE.determined),
       hold('eyeR', 0.2, 1.9, EYE.determined),
       hold('mouth', 0.2, 1.9, MOUTH.grin),
@@ -630,13 +638,13 @@ export const ACTIONS: readonly ActionDef[] = [
       T(
         'bodyY',
         [0, 0],
-        [0.2, 4],
-        [0.4, -10, 'o'],
-        [0.65, 2, 'i'],
-        [0.9, -9, 'o'],
-        [1.2, 1, 'i'],
-        [1.5, -8, 'o'],
-        [1.8, 0],
+        [0.22, 3, 'io'],
+        [0.42, -9, 'o'],
+        [0.68, 1.5, 'io'],
+        [0.95, -8, 'o'],
+        [1.25, 0.8, 'io'],
+        [1.55, -6, 'o'],
+        [1.85, 0, 'io'],
         [2.6, 0],
       ),
       hold('eyeL', 0.2, 2.3, EYE.happy),
@@ -687,13 +695,13 @@ export const ACTIONS: readonly ActionDef[] = [
       T(
         'bodyY',
         [0, 0],
-        [0.1, 4],
-        [0.28, -14, 'o'],
-        [0.5, 2, 'i'],
-        [0.68, -9, 'o'],
-        [0.9, 1, 'i'],
-        [1.1, -4, 'o'],
-        [1.3, 0],
+        [0.12, 3, 'io'],
+        [0.32, -12, 'o'],
+        [0.52, 1.5, 'io'],
+        [0.72, -8, 'o'],
+        [0.95, 0.8, 'io'],
+        [1.15, -3, 'o'],
+        [1.35, 0, 'io'],
         [1.6, 0],
       ),
       T('shoulder', [0, 0], [0.28, -6, 'o'], [0.6, 0], [1.6, 0]),

@@ -106,8 +106,8 @@ function ease(code: number, x: number): number {
     case 3:
       return x * x * (3 - 2 * x);
     case 4: {
-      // back-out: ~8% overshoot
-      const c1 = 1.2;
+      // back-out: ~6% overshoot — reads lively without rubber-limb snap
+      const c1 = 1.12;
       const c3 = c1 + 1;
       const y = x - 1;
       return 1 + c3 * y * y * y + c1 * y * y;

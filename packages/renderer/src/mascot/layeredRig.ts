@@ -580,13 +580,13 @@ export class RigAnimator {
   private shiftS = new Spring(3.2, 1);
   private lean = new Spring(20, 0.92);
   private bobS = new Spring(110, 0.7);
-  private armL = new Spring(26, 0.32);
-  private armR = new Spring(24, 0.32);
-  private badge = new Spring(16, 0.16);
-  private strap = new Spring(22, 0.18);
-  private hairL = new Spring(48, 0.55);
-  private hairR = new Spring(48, 0.55);
-  private ribbon = new Spring(40, 0.5);
+  private armL = new Spring(32, 0.55);
+  private armR = new Spring(30, 0.55);
+  private badge = new Spring(22, 0.45);
+  private strap = new Spring(28, 0.5);
+  private hairL = new Spring(70, 0.85);
+  private hairR = new Spring(70, 0.85);
+  private ribbon = new Spring(70, 0.85);
   private browS = new Spring(18, 1);
   private cheekS = new Spring(14, 1);
   private nextHairFlick = 4;
@@ -742,9 +742,10 @@ export class RigAnimator {
       const drift = on > 0.5 ? on : 0;
       if (drift) {
         const sd = side === 'r' ? 0 : 7;
-        v[ia] += fbm(t * 0.55, 31 + sd) * 2.4 * drift;
-        v[ie] += fbm(t * 0.7, 32 + sd) * 3.2 * drift;
-        v[IDX[`${side}W`]] += fbm(t * 0.9, 33 + sd) * 4 * drift;
+        // tiny alive tremor only — large drift made sleeves look like paper flaps
+        v[ia] += fbm(t * 0.45, 31 + sd) * 0.9 * drift;
+        v[ie] += fbm(t * 0.55, 32 + sd) * 1.2 * drift;
+        v[IDX[`${side}W`]] += fbm(t * 0.7, 33 + sd) * 1.6 * drift;
       }
       const raised = on * Math.max(0, Math.min(1, v[ia] / 45));
       this.lift[side] = approach(this.lift[side], raised, 6, dt);
@@ -947,32 +948,31 @@ export class RigAnimator {
     const aY = (vY - this.prev.vY) * inv;
     this.prev = { headRot, headX, headY, torsoX, bodyY: bodyY + headY * 0.3, vX, vY };
 
-    // hair / bangs / ribbon share one soft follow-through (small lag, tiny asymmetry) so they
-    // read as one head of hair instead of independently flapping cutouts
-    const hairDrive = (-vHeadRot * 0.06 - vHeadX * 0.0009) * m;
-    const hairNoise = fbm(t * 0.4, 10) * 0.35 * DEG * m;
-    const hairRotL = this.hairL.step(hairDrive + flick * 0.25 + hairNoise, dt);
-    const hairRotR = this.hairR.step(hairDrive + flick * 0.3 + hairNoise * 0.85, dt);
-    const ribbonRot = this.ribbon.step(
-      hairDrive * 1.15 + hairNoise * 0.6 - vY * 0.01 * DEG * m,
-      dt,
-    );
+    // One shared hair angle (L/R/ribbon) so layers never peel into stacked cutouts.
+    // Tiny static asymmetry only — no independent noise per piece.
+    const hairDrive = (-vHeadRot * 0.045 - vHeadX * 0.0006) * m + flick * 0.12;
+    const hairNoise = fbm(t * 0.28, 10) * 0.12 * DEG * m; // shared whisper
+    const hairTarget = hairDrive + hairNoise;
     const lim = (v: number, l: number) => Math.max(-l, Math.min(l, v));
+    // keep secondary hair angles tiny so layers stay a single silhouette
+    const hairRotL = lim(this.hairL.step(hairTarget, dt), 2.5 * DEG);
+    const hairRotR = lim(this.hairR.step(hairTarget + 0.15 * DEG * m, dt), 2.5 * DEG);
+    const ribbonRot = lim(this.ribbon.step(hairTarget + 0.2 * DEG * m, dt), 3.5 * DEG);
     // Art-safe arm range (~5° idle; gestures up to ~8°)
     const armDrive = -aX * 0.00005 - torsoRot * 0.55;
     const armRotL = lim(
       this.armL.step(
-        (armDrive + g.armOut + fbm(t * 0.38, 13) * 0.4 * DEG + slump * 0.55 * DEG) * m,
+        (armDrive + g.armOut + fbm(t * 0.32, 13) * 0.18 * DEG + slump * 0.4 * DEG) * m,
         dt,
       ),
-      5.5 * DEG,
+      4.5 * DEG,
     );
     const armRotR = lim(
       this.armR.step(
-        (armDrive - g.armOut + g.armR + fbm(t * 0.4, 14) * 0.4 * DEG - slump * 0.55 * DEG) * m,
+        (armDrive - g.armOut + g.armR + fbm(t * 0.34, 14) * 0.18 * DEG - slump * 0.4 * DEG) * m,
         dt,
       ),
-      5.5 * DEG,
+      4.5 * DEG,
     );
     const hang = -torsoRot - aX * 0.0003 + aY * 0.00012;
     const badgeRot = lim(
@@ -1650,9 +1650,10 @@ export function drawRig(
   }
   ctx.restore();
 
-  // fringe sits above the eyes; micro brow-raise lifts bangs slightly (no second brow)
+  // fringe stays rigid with the head (brand-lock); micro brow-raise only. Side/ribbon share
+  // one spring so the silhouette still reads as one continuous head of hair.
   ctx.save();
-  ctx.translate(0, -2.2 * (pose.browRaise ?? 0));
+  ctx.translate(0, -1.0 * (pose.browRaise ?? 0));
   tintedLayer('bangs', 4);
   ctx.restore();
   // brow strokes (only while an action asks for them) read through the fringe

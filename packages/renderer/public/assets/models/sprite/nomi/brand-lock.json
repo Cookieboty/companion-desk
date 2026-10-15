@@ -6,7 +6,7 @@
     "layers/arm-l.png": "14dce4f9e02fd82273cc14de0baa8e9519452c62f55c9152d71807eb18dff8ba",
     "layers/arm-r.png": "c50c2fa326dd849496c95b3b4b60894e357df9e6a8e908871c8328416f485932",
     "layers/badge.png": "04a97af95f186ea5970a3da0a9a813c5b34b89723d3df705a4cde2e2da786736",
-    "layers/bangs.png": "8e6677cb0736b0b1a39ebe07ad1c9e53e83408465bd282dd649100ad4605a61d",
+    "layers/bangs.png": "33f0200a89409bfa1032e8c2ccf0bc5cce3bbf6c3d6e6a995d71ef1a7ea11129",
     "layers/body-noarm.png": "109eda944a1779fb82e157685fb31a7da9e32a7667e9c96b61198cf52ea077ce",
     "layers/body.png": "cea7cc0aff931afa66fa1295c4f1f268c53e739455c487721c5156a02ec06c80",
     "layers/clip.png": "451308e9ec4a701037d49277f5b0ea392d677db778627d970966aec379cd2711",
@@ -14,8 +14,8 @@
     "layers/earring.png": "295b43856380fb6478c07d494073fc4a2cb04c94da62ef6b32b14c3b17ea2b26",
     "layers/eye-white-l.png": "36f95c2307e6857478a51297b4f5b85f759d60627cfc822582a4ef8171b76385",
     "layers/eye-white-r.png": "c0bda07877873dd19fe1aa018a118806f5c7a8eb74178685fb3f0c849629dfe4",
-    "layers/hair-side-l.png": "f66b595cd94b82e3cc0e7f4d0028d96935c07ce5fb9fea035e91dc886c6878ff",
-    "layers/hair-side-r.png": "457757e77512293aafec80db03e82092f5f69b7e35b2ad5f44dba4baad0250cc",
+    "layers/hair-side-l.png": "13ae46592d13a26e477d06f5a52c03e5ccf8d7b032f4091a1b3120923339551d",
+    "layers/hair-side-r.png": "0de1ba428825443894ce53fe13c087adf828caab2d4d1db089faa138255781ae",
     "layers/hands/hand-fist.png": "2da2314b3d2f3ea45682719d8fbf6f34d63d68758f4772930a83f8c6ef3e35af",
     "layers/hands/hand-peace.png": "b7b547cf55abe9a256b0be6c082a8c5dc75320f357cafbc0eae7f4d6abcf032c",
     "layers/hands/hand-point.png": "ed56a571e382bf160988748279f5b763e09ed822b1afff38f101c7f879b36c3a",
@@ -31,7 +31,7 @@
     "layers/mouth-o.png": "94549dd9d8c6410f389ba1f1f5929dc680b08bfc25d08dab3722af2f432b67bd",
     "layers/mouth-open.png": "0655c92afccec93ecb10cd0ee48fabd31cb594125571a622ab19fcada3069f71",
     "layers/mouth.png": "1872288ca71226ad7188d1fee5c1dd3e11f64f66547c5f606fee4666d1cbe01c",
-    "layers/ribbon.png": "fcd46f69eb71a70d19ea9ca53fc2c95be7a5aa4749b03c91c9e1bd5a2acb93c9",
+    "layers/ribbon.png": "ed77e028ca31d611e88d6272e29d6a6a9099b92a3e26097a60b3473a814a8294",
     "layers/strap-r.png": "a845a1358d922592087d936aa7afc9e514d897bdeb996771e5236c84f7b0d2ab"
   }
 }
