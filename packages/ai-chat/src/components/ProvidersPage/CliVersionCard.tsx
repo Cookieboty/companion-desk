@@ -39,6 +39,8 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
   const [checking, setChecking] = useState(false);
   const [plan, setPlan] = useState<CliInstallPlan | null>(null);
   const [running, setRunning] = useState(false);
+  /** 当前正在安装 / 更新的端点（全局同时只有一个）；不是本卡片时也要禁用操作 */
+  const [busyKind, setBusyKind] = useState<CliUpdatableKind | null>(null);
   const [lines, setLines] = useState<string[]>([]);
   const [result, setResult] = useState<CliRunResult | null>(null);
   const [error, setError] = useState('');
@@ -75,6 +77,11 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
     void load(false);
     let alive = true;
     const off = cliUpdateClient.onEvent((e) => {
+      // 任意端点开始 / 结束都更新全局忙碌态（同一时刻只允许一个安装 / 更新）
+      if (e.phase === 'start') setBusyKind(e.kind);
+      else if (e.phase === 'done' || e.phase === 'error') {
+        setBusyKind((b) => (b === e.kind ? null : b));
+      }
       if (e.kind !== kind) return;
       if (e.phase === 'start') {
         setRunning(true);
@@ -83,7 +90,7 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
       } else if (e.phase === 'log') {
         setLines((l) => [...l.slice(-399), e.line]);
       } else {
-        // done / error：结果已由主进程保存，取快照并刷新版本
+        // done / error：结果已由主进程保存，取快照并刷新版本（confirm 不再重复刷新）
         void cliUpdateClient.job(kind).then((j) => {
           if (!alive) return;
           applyJob(j);
@@ -95,6 +102,12 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
       .job(kind)
       .then((j) => {
         if (alive && j) applyJob(j);
+      })
+      .catch(() => undefined);
+    cliUpdateClient
+      .busy()
+      .then((b) => {
+        if (alive) setBusyKind(b);
       })
       .catch(() => undefined);
     return () => {
@@ -110,6 +123,8 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
 
   const state = versionState(info);
   const name = NAME[kind];
+  // 别的端点正在装 / 更新时，本卡片操作一并禁用（全局同时只跑一个任务）
+  const otherBusy = Boolean(busyKind && busyKind !== kind);
 
   const openPlan = async (scope: CliInstallScope = 'global') => {
     setError('');
@@ -130,11 +145,10 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
     setLines([]);
     try {
       // 任务由主进程持有：这里的 Promise 即使因页面卸载而无人等待，任务也照常运行；
-      // 结束时由事件 / 快照恢复显示。同一端点重复调用会复用当前任务。
+      // 结束时由事件取快照、刷新版本（不在此重复 load(true)，避免一轮多余的 npm view）。
       const r = await cliUpdateClient.run(kind, scope);
       setResult(r);
       setRunning(false);
-      await load(true);
     } catch (e) {
       setResult({ ok: false, log: e instanceof Error ? e.message : String(e), version: null });
       setRunning(false);
@@ -195,7 +209,8 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
           <Button
             size="sm"
             variant={state === 'missing' || state === 'outdated' ? 'primary' : 'secondary'}
-            disabled={checking || running || !info}
+            disabled={checking || running || otherBusy || !info}
+            title={otherBusy ? t('已有安装 / 更新在进行') : undefined}
             data-testid={`cli-version-action-${kind}`}
             onClick={() => void openPlan()}
           >

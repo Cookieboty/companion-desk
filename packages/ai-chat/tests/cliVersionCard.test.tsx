@@ -261,6 +261,52 @@ describe('CliVersionCard · task survives unmount (state lives in the main proce
     expect(calls.some(([c]) => c === 'ai:cli-update:dismiss')).toBe(true);
   });
 
+  it('another endpoint running disables this card action, and finishing re-enables it', async () => {
+    const { emit } = setup({
+      'ai:cli-update:inspect': () => [info({ kind: 'dsh', path: '/x/dsh', version: '0.1.0' })],
+      'ai:cli-update:busy': () => null,
+    });
+    const r = render(<CliVersionCard kind="dsh" />);
+    const action = () => r.getByTestId('cli-version-action-dsh') as HTMLButtonElement;
+    await waitFor(() => expect(action().disabled).toBe(false));
+    emit({ kind: 'claude', mode: 'update', phase: 'start', argv: ['claude', 'update'] });
+    await waitFor(() => expect(action().disabled).toBe(true));
+    expect(action().title).toBe('已有安装 / 更新在进行');
+    emit({ kind: 'claude', mode: 'update', phase: 'done', version: '2.0' });
+    await waitFor(() => expect(action().disabled).toBe(false));
+  });
+
+  it('a successful run refreshes versions once via the done event, not again in confirm', async () => {
+    const inspect = vi.fn((refresh: unknown) => [
+      info({
+        kind: 'claude',
+        path: '/usr/bin/claude',
+        version: refresh === true ? '2.1.300' : '2.1.0',
+        latest: '2.1.300',
+        updateAvailable: refresh !== true,
+      }),
+    ]);
+    const { calls, emit } = setup({
+      'ai:cli-update:inspect': (refresh) => inspect(refresh),
+      'ai:cli-update:preview': () => plan({ kind: 'claude', mode: 'update' }),
+      'ai:cli-update:run': async () => {
+        emit({ kind: 'claude', mode: 'update', phase: 'done', version: '2.1.300' });
+        return { ok: true, log: '', version: '2.1.300', path: '/usr/bin/claude' };
+      },
+    });
+    const r = render(<CliVersionCard kind="claude" />);
+    await waitFor(() => r.getByTestId('cli-version-action-claude'));
+    fireEvent.click(r.getByTestId('cli-version-action-claude'));
+    await waitFor(() => r.getByTestId('cli-version-confirm'));
+    fireEvent.click(r.getByTestId('cli-version-confirm'));
+    await waitFor(() =>
+      expect(r.getByTestId('cli-version-installed-claude').textContent).toBe('2.1.300'),
+    );
+    const inspectCalls = calls.filter(([c]) => c === 'ai:cli-update:inspect');
+    expect(inspectCalls).toHaveLength(2); // 挂载时一次 false + done 事件一次 true
+    expect(inspectCalls.map(([, a]) => a[0])).toEqual([false, true]);
+  });
+
   it('shows a failed result from the snapshot on re-mount (error surfaced, not lost)', async () => {
     setup({
       'ai:cli-update:inspect': () => [info({ kind: 'dsh', path: '/x/dsh', version: '0.1.0' })],

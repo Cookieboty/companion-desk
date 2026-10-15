@@ -225,10 +225,11 @@ export const defaultRunner: CliRunner = (argv, onLine, { timeoutMs }) =>
 export class CliUpdateService {
   private cache: CliUpdateCache = { checkedAt: 0, latest: {} };
   private readonly cachePath: string;
-  private updating = false;
   /** 每个端点最近一次任务（运行中 / 已结束，直到用户关闭） */
   private readonly jobs = new Map<UpdatableCli, CliJobSnapshot>();
   private readonly inflight = new Map<UpdatableCli, Promise<CliRunResult>>();
+  /** 正在跑安装 / 更新的端点（同一时刻只允许一个，npm 全局操作并发会互相干扰） */
+  private busyWith: UpdatableCli | null = null;
   private readonly probe: CliProbe;
   private readonly runner: CliRunner;
 
@@ -460,6 +461,11 @@ export class CliUpdateService {
   run(kind: UpdatableCli, scope: CliInstallScope = 'global'): Promise<CliRunResult> {
     const cur = this.inflight.get(kind);
     if (cur) return cur;
+    // 另一个端点正在装 / 更新：直接拒绝，不留 running 占位任务（界面已禁用，这里是兜底）
+    if (this.busyWith && this.busyWith !== kind) {
+      return Promise.resolve({ ok: false, log: t('已有安装 / 更新在进行'), version: null });
+    }
+    this.busyWith = kind;
     this.jobs.set(kind, {
       kind,
       mode: 'update',
@@ -477,25 +483,27 @@ export class CliUpdateService {
       })
       .finally(() => {
         this.inflight.delete(kind);
+        this.busyWith = null;
       });
     this.inflight.set(kind, p);
     return p;
   }
 
+  /** 当前是否有安装 / 更新在跑（界面据此禁用所有端点的操作按钮） */
+  busyKind(): UpdatableCli | null {
+    return this.busyWith;
+  }
+
   private async runJob(kind: UpdatableCli, scope: CliInstallScope): Promise<CliRunResult> {
-    if (this.updating) return { ok: false, log: t('已有安装 / 更新在进行'), version: null };
     // 先占位再做（异步的）前置检查，避免两次点击同时通过
-    this.updating = true;
     let planned: Awaited<ReturnType<CliUpdateService['plan']>>;
     try {
       planned = await this.plan(kind, scope);
     } catch (e) {
-      this.updating = false;
       return { ok: false, log: e instanceof Error ? e.message : String(e), version: null };
     }
     const { plan, recipes } = planned;
     if (plan.blockers.length) {
-      this.updating = false;
       return { ok: false, log: plan.blockers.join('\n'), version: null };
     }
     {
@@ -570,8 +578,6 @@ export class CliUpdateService {
       this.finishJob(kind, { ok: false, log: msg, version: null });
       this.broadcast({ kind, mode: plan.mode, phase: 'error', message: msg });
       return { ok: false, log: msg, version: null };
-    } finally {
-      this.updating = false;
     }
   }
 
@@ -614,6 +620,7 @@ export class CliUpdateService {
       this.previewUpdate(toUpdatable(kind), toScope(scope)),
     );
     handle('ai:cli-update:job', (kind) => this.job(toUpdatable(kind)));
+    handle('ai:cli-update:busy', () => this.busyKind());
     handle('ai:cli-update:dismiss', (kind) => this.dismissJob(toUpdatable(kind)));
     handle('ai:cli-update:run', (kind, scope) => this.run(toUpdatable(kind), toScope(scope)));
   }

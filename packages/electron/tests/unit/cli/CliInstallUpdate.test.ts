@@ -262,6 +262,21 @@ describe('job state lives in the main process', () => {
     expect(g.calls()).toBeLessThanOrEqual(2); // 至多一轮命令（含一次回退），不会并发起第二个任务
   });
 
+  it('refuses another endpoint while one is running and leaves no placeholder job', async () => {
+    const g = gated();
+    const svc = make(probe(), g.runner);
+    const a = svc.run('codex');
+    await waitFor(() => g.calls() >= 1);
+    expect(svc.busyKind()).toBe('codex');
+    const rejected = await svc.run('claude');
+    expect(rejected.ok).toBe(false);
+    expect(svc.job('claude')).toBeNull(); // 不留 running 占位任务
+    expect(g.calls()).toBe(1); // claude 没有触发任何命令
+    g.release();
+    await a;
+    expect(svc.busyKind()).toBeNull();
+  });
+
   it('keeps the last result until dismissed, including failures', async () => {
     const svc = make(probe(), async () => ({ code: 1, output: 'EACCES: permission denied' }));
     const res = await svc.run('dsh');

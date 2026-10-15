@@ -94,6 +94,11 @@ export const cliUpdateClient = {
       ? j
       : null;
   },
+  /** 当前正在安装 / 更新的端点（同一时刻只允许一个），没有则 null */
+  busy: async (): Promise<CliUpdatableKind | null> => {
+    const b = await call<unknown>('busy');
+    return b === 'claude' || b === 'codex' || b === 'dsh' ? b : null;
+  },
   dismiss: (kind: CliUpdatableKind) => call<boolean>('dismiss', kind),
   onEvent: (fn: (e: CliUpdateEvent) => void) =>
     bridge()?.on('ai:cli-update:event', (p) => fn(p as CliUpdateEvent)) ?? (() => undefined),
