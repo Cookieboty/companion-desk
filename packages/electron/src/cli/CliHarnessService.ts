@@ -18,6 +18,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { t } from '../i18n';
 
+import { buildCliEnv } from './cliEnv';
 import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
 import { createDshParser, parseClaudeLine, parseCodexLine } from './streamParse';
 import type {
@@ -666,12 +667,8 @@ export class CliHarnessService {
       let lastError: string | null = null;
       const child: ChildProcessWithoutNullStreams = spawn(opts.cmd, opts.argv, {
         cwd: tab.cwd,
-        env: {
-          ...process.env,
-          NO_COLOR: '1',
-          ...opts.env,
-          // 不向 CLI 泄漏无关的 NOMI_* token；保留 PATH / HOME / 用户已有 ANTHROPIC_/OPENAI_
-        },
+        // 剔除 Nomi 内部变量；只有该后端自己的档案（opts.env）才会注入额外变量
+        env: buildCliEnv(process.env, opts.env),
         windowsHide: true,
       });
       this.children.set(tab.id, child);

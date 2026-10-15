@@ -91,6 +91,9 @@ export const cliProviderClient = {
       usedRouting: boolean;
       error?: string;
     }>('activate', id),
+  /** 停用该后端的档案，回到 CLI 自带登录 / 默认配置 */
+  deactivate: (kind: CliProviderKind) =>
+    call<{ ok: boolean; backups: string[]; error?: string }>('deactivate', kind),
   deactivateDsh: () => call<{ ok: boolean; backups: string[]; error?: string }>('deactivate-dsh'),
   onChanged: (fn: (s: CliProviderState) => void) =>
     bridge()?.on('ai:cli-provider:changed', (p) => fn(p as CliProviderState)) ?? (() => undefined),

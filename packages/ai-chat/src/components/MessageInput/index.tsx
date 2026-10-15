@@ -2,7 +2,6 @@ import { t as tr } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
-import { useChatMode } from '../../hooks/useChatMode';
 import { extClient } from '../../services/extClient';
 import { kbClient } from '../../services/kbClient';
 import { memClient } from '../../services/memClient';
@@ -19,9 +18,8 @@ import {
   type ImageAttachment,
 } from '../../services/screenClient';
 import { getBindings, matchShortcut } from '../../services/shortcuts';
-import { BackendSwitcher } from '../BackendSwitcher';
+import { EndpointControls } from '../EndpointControls';
 import { ErrorHint } from '../ErrorHint';
-import { ProviderSwitcher } from '../ProviderSwitcher';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
 
 import styles from './index.module.css';
@@ -43,7 +41,7 @@ interface MessageInputProps {
   onExtClick?: () => void;
   onLocalClick?: () => void;
   /** 打开统一设置页的某个分区 */
-  onSettingsClick?: (section?: string) => void;
+  onSettingsClick?: (section?: string, endpoint?: string) => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -70,7 +68,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { state, actions } = useAiChat();
-  const { isDev } = useChatMode();
   // 知识库问答模式（Ctrl/Cmd+Shift+K 切换），记住上次的选择
   const [kbMode, setKbMode] = useState(() => {
     try {
@@ -659,10 +656,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           <div className={styles.modelStatus}>
             {provOk ? (
               <>
-                {isDev && <BackendSwitcher />}
-                <ProviderSwitcher
+                <EndpointControls
                   className={styles.currentModel}
-                  onManage={() => onProvidersClick?.()}
+                  onManageNomi={() => onProvidersClick?.()}
+                  onManageCli={(b) => onSettingsClick?.('agents', b)}
                 />
               </>
             ) : state.models.filter((m) => m.enabled).length === 0 ? (

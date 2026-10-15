@@ -26,6 +26,8 @@ import {
   patchCodexAuth,
   patchCodexToml,
   patchDshYaml,
+  unpatchCodexAuth,
+  unpatchCodexToml,
 } from './configPatch';
 import {
   type CliApiFormat,
@@ -218,6 +220,58 @@ export class CliProviderBridge {
       }
       for (const x of this.data.dsh.profiles) x.active = false;
       this.saveKind('dsh');
+      this.broadcast();
+      return { ok: true, backups };
+    } catch (e) {
+      return { ok: false, backups, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  /**
+   * 停用某个后端的档案：只移除 Nomi 写入的连接字段，回到 CLI 自带登录 / 默认配置。
+   * 先备份；其余内容原样保留。
+   */
+  deactivate(kind: CliProviderKind): { ok: boolean; backups: string[]; error?: string } {
+    if (kind === 'dsh') return this.deactivateDsh();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const backups: string[] = [];
+    const active = this.data[kind].profiles.find((x) => x.active);
+    try {
+      if (kind === 'claude') {
+        const file = claudeSettingsPath(this.home);
+        if (fs.existsSync(file)) {
+          const b = backupFile(file, path.join(this.backupRoot, ts), 'claude-settings.json');
+          if (b) backups.push(b);
+          fs.writeFileSync(
+            file,
+            patchClaudeSettings(fs.readFileSync(file, 'utf8'), {
+              ANTHROPIC_API_KEY: undefined,
+              ANTHROPIC_BASE_URL: undefined,
+              ANTHROPIC_MODEL: undefined,
+            }),
+            'utf8',
+          );
+        }
+      } else {
+        const conf = codexConfigPath(this.home);
+        const auth = codexAuthPath(this.home);
+        if (fs.existsSync(conf)) {
+          const b = backupFile(conf, path.join(this.backupRoot, ts), 'codex-config.toml');
+          if (b) backups.push(b);
+          fs.writeFileSync(conf, unpatchCodexToml(fs.readFileSync(conf, 'utf8')), 'utf8');
+        }
+        if (fs.existsSync(auth)) {
+          const b = backupFile(auth, path.join(this.backupRoot, ts), 'codex-auth.json');
+          if (b) backups.push(b);
+          const next = unpatchCodexAuth(
+            fs.readFileSync(auth, 'utf8'),
+            active ? decrypt(active.keyEnc) || undefined : undefined,
+          );
+          if (next !== null) fs.writeFileSync(auth, next, 'utf8');
+        }
+      }
+      for (const x of this.data[kind].profiles) x.active = false;
+      this.saveKind(kind);
       this.broadcast();
       return { ok: true, backups };
     } catch (e) {
@@ -457,6 +511,10 @@ export class CliProviderBridge {
     });
     handle('ai:cli-provider:activate', (id) => this.activate(String(id)));
     handle('ai:cli-provider:deactivate-dsh', () => this.deactivateDsh());
+    handle('ai:cli-provider:deactivate', (k) => {
+      if (!KINDS.includes(k as CliProviderKind)) throw new Error(t('档案不存在'));
+      return this.deactivate(k as CliProviderKind);
+    });
     handle('ai:cli-provider:backups', () => this.listBackups());
     handle('ai:cli-provider:restore', (ts) => this.restoreBackup(String(ts)));
   }

@@ -125,8 +125,44 @@ export function patchCodexToml(raw: string | null, patch: CodexPatch): string {
   return out.join('\n');
 }
 
+/** 移除 Nomi 写入的 Codex 供应商段与 model_provider = "nomi"，其余原样保留 */
+export function unpatchCodexToml(raw: string | null, provider = 'nomi'): string {
+  const header = `[model_providers.${provider}]`;
+  const out: string[] = [];
+  let inTable = false;
+  let skipping = false;
+  for (const line of (raw ?? '').split(/\r?\n/)) {
+    const t = line.trim();
+    if (t.startsWith('[') && t.endsWith(']')) {
+      inTable = true;
+      skipping = t === header;
+      if (skipping) continue;
+    }
+    if (skipping) continue;
+    if (!inTable && new RegExp(`^model_provider\\s*=\\s*"${provider}"\\s*$`).test(t)) continue;
+    out.push(line);
+  }
+  while (out.length && out[out.length - 1] === '') out.pop();
+  return out.length ? `${out.join('\n')}\n` : '';
+}
+
 function escapeToml(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/** 仅当 auth.json 里的 OPENAI_API_KEY 等于 Nomi 写入的那个时才移除 */
+export function unpatchCodexAuth(
+  raw: string | null,
+  writtenKey: string | undefined,
+): string | null {
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw) as Record<string, unknown>;
+    if (writtenKey && obj.OPENAI_API_KEY === writtenKey) delete obj.OPENAI_API_KEY;
+    return `${JSON.stringify(obj, null, 2)}\n`;
+  } catch {
+    return raw;
+  }
 }
 
 export function patchCodexAuth(raw: string | null, apiKey: string | undefined): string {

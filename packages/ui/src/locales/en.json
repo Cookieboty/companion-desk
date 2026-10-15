@@ -1570,5 +1570,10 @@
   "会话不存在": "Conversation not found",
   "已分叉为「{0}」": "Forked as \"{0}\"",
   "已分叉到 {0}": "Forked to {0}",
-  "复制可见对话到新会话。跨 CLI 仅作上下文参考，不能续接原会话。": "Copies visible messages into a new chat. Across CLIs this is context only — not a resumed session."
+  "复制可见对话到新会话。跨 CLI 仅作上下文参考，不能续接原会话。": "Copies visible messages into a new chat. Across CLIs this is context only — not a resumed session.",
+  "{0} 供应商": "{0} provider",
+  "{0} 的供应商档案（独立于 Nomi）": "{0} provider profile (independent from Nomi)",
+  "未启用档案：沿用 {0} 自带的登录与默认配置": "No profile enabled: using {0}'s own login and default config",
+  "使用 CLI 自带登录/默认配置": "Use the CLI's own login / default config",
+  "供应商管理": "Manage providers"
 }

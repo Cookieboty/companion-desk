@@ -33,6 +33,7 @@ import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
 import { HarnessTabsProvider, useHarnessTabs } from './contexts/HarnessTabsContext';
 import { useChatMode } from './hooks/useChatMode';
+import { setProviderEndpoint } from './services/chatPrefs';
 import { desktopClient } from './services/desktopClient';
 import { forkCrossBackend, forkSameBackend } from './services/forkConversation';
 import { providerClient } from './services/providerClient';
@@ -46,6 +47,7 @@ import {
   type ShortcutId,
 } from './services/shortcuts';
 import type { ConversationBackend } from './types/chat';
+import { isConversationBackend } from './types/chat';
 import { type ChatMessage } from './types/chat';
 import './App.css';
 
@@ -468,7 +470,10 @@ const AiChatContent: React.FC = () => {
               : {})}
             onConfigClick={() => setShowConfig(true)}
             onProvidersClick={() => setShowProviders(true)}
-            onSettingsClick={(sec) => openSettings(sec as SettingsSection)}
+            onSettingsClick={(sec, endpoint) => {
+              if (isConversationBackend(endpoint)) setProviderEndpoint(endpoint);
+              openSettings(sec as SettingsSection);
+            }}
             onDesktopClick={() => setShowDesktop(true)}
             onKnowledgeClick={() => setShowKb(true)}
             onMemoryClick={() => setShowMem(true)}

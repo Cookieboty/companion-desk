@@ -1,0 +1,187 @@
+jest.unmock('fs');
+jest.unmock('path');
+jest.unmock('node:fs');
+jest.unmock('node:path');
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import { buildCliEnv, isNomiInternalEnv } from '../../../src/cli/cliEnv';
+import { CliHarnessService } from '../../../src/cli/CliHarnessService';
+import { CliProviderBridge } from '../../../src/cli/CliProviderBridge';
+import { claudeSettingsPath, codexAuthPath, codexConfigPath } from '../../../src/cli/configPatch';
+
+jest.mock('electron', () => ({
+  BrowserWindow: { getAllWindows: () => [] },
+  ipcMain: { removeHandler: () => undefined, handle: () => undefined },
+  dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
+  safeStorage: {
+    isEncryptionAvailable: () => false,
+    encryptString: (s: string) => Buffer.from(s),
+    decryptString: (b: Buffer) => b.toString('utf8'),
+  },
+}));
+
+const logger = { info() {}, warn() {} };
+const tmp = (p: string) => fs.mkdtempSync(path.join(os.tmpdir(), p));
+
+describe('buildCliEnv', () => {
+  it('drops Nomi internal variables but keeps the user environment', () => {
+    const env = buildCliEnv({
+      PATH: '/bin',
+      HOME: '/h',
+      OPENAI_API_KEY: 'user-own',
+      NOMI_USE_MOCK_CLI: '1',
+      NOMI_DSH_API_KEY: 'leak',
+      NOMI_MOCK_DELAY_MS: '5',
+      COMPANION_PROVIDER: 'amux',
+      IG_AI_PROFILE: 'waifu',
+      CD_LOCALE: 'zh',
+      MCP_SERVERS: '[]',
+    });
+    expect(env.PATH).toBe('/bin');
+    expect(env.OPENAI_API_KEY).toBe('user-own');
+    expect(env.NOMI_MOCK_DELAY_MS).toBe('5');
+    expect(env.NOMI_USE_MOCK_CLI).toBeUndefined();
+    expect(env.NOMI_DSH_API_KEY).toBeUndefined();
+    expect(env.COMPANION_PROVIDER).toBeUndefined();
+    expect(env.IG_AI_PROFILE).toBeUndefined();
+    expect(env.CD_LOCALE).toBeUndefined();
+    expect(env.MCP_SERVERS).toBeUndefined();
+    expect(env.NO_COLOR).toBe('1');
+  });
+
+  it('lets the backend own profile inject its variable', () => {
+    const env = buildCliEnv({ NOMI_DSH_API_KEY: 'stale' }, { NOMI_DSH_API_KEY: 'dsh-own' });
+    expect(env.NOMI_DSH_API_KEY).toBe('dsh-own');
+    expect(isNomiInternalEnv('NOMI_ANYTHING')).toBe(true);
+    expect(isNomiInternalEnv('NOMI_MOCK_X')).toBe(false);
+  });
+});
+
+describe('provider isolation: Nomi key never reaches CLI launches', () => {
+  const NOMI_KEY = 'sk-nomi-amux-SECRET';
+
+  it('spawned CLI sees no Nomi key / config; Codex store empty → no active profile', async () => {
+    // 模拟 Nomi 自有 ai-providers.json（含 Amux key）与 Nomi 相关环境变量
+    const userData = tmp('nomi-ud-');
+    fs.writeFileSync(
+      path.join(userData, 'ai-providers.json'),
+      JSON.stringify({ providers: [{ id: 'amux', apiKey: NOMI_KEY }] }),
+    );
+    const home = tmp('nomi-home-');
+    const bridge = new CliProviderBridge({
+      root: path.join(userData, 'cli-providers'),
+      home,
+      logger,
+    });
+    expect(bridge.state().profiles.filter((p) => p.kind === 'codex')).toHaveLength(0);
+    expect(bridge.dshEnv()).toEqual({});
+
+    // CLI 打印自己看到的环境，以及 ~/.codex 是否被写
+    const dir = tmp('nomi-envcli-');
+    const bin = path.join(dir, 'env-codex.mjs');
+    fs.writeFileSync(
+      bin,
+      [
+        "const emit = (o) => process.stdout.write(JSON.stringify(o) + '\\n');",
+        "emit({ type: 'thread.started', thread_id: 't1' });",
+        "emit({ type: 'item.completed', item: { id: 'i', type: 'agent_message', text: JSON.stringify(process.env) } });",
+        "emit({ type: 'turn.completed', usage: {} });",
+      ].join('\n'),
+    );
+    const saved = { ...process.env };
+    process.env.NOMI_CODEX_BIN = bin;
+    process.env.NOMI_PROVIDER_KEY = NOMI_KEY;
+    process.env.COMPANION_PROVIDER = 'amux';
+    process.env.NOMI_USE_MOCK_CLI = '0';
+    try {
+      const h = new CliHarnessService({
+        root: path.join(dir, 'root'),
+        logger,
+        defaultCwd: dir,
+        dshEnv: () => bridge.dshEnv(),
+      });
+      h.setBackend('codex');
+      const r = await h.send('hi');
+      const seen = JSON.parse(r.text) as Record<string, string>;
+      expect(JSON.stringify(seen)).not.toContain(NOMI_KEY);
+      expect(seen.COMPANION_PROVIDER).toBeUndefined();
+      expect(seen.NOMI_PROVIDER_KEY).toBeUndefined();
+      expect(fs.existsSync(codexConfigPath(home))).toBe(false);
+      expect(fs.existsSync(codexAuthPath(home))).toBe(false);
+      expect(fs.existsSync(claudeSettingsPath(home))).toBe(false);
+    } finally {
+      for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+      Object.assign(process.env, saved);
+    }
+  });
+
+  it('activating a Claude profile does not touch the Codex store or config', () => {
+    const home = tmp('nomi-home-');
+    const root = tmp('nomi-root-');
+    const b = new CliProviderBridge({ root, home, logger });
+    const p = b.upsert({
+      kind: 'claude',
+      name: 'C',
+      baseUrl: 'https://c.example',
+      model: 'm',
+      apiKey: 'sk-c',
+    });
+    expect(b.activate(p.id).ok).toBe(true);
+    expect(fs.existsSync(codexConfigPath(home))).toBe(false);
+    expect(b.state().profiles.filter((x) => x.kind === 'codex')).toHaveLength(0);
+  });
+});
+
+describe('CliProviderBridge.deactivate (back to CLI default login)', () => {
+  it('claude: removes only managed env keys', () => {
+    const home = tmp('nomi-home-');
+    const root = tmp('nomi-root-');
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.writeFileSync(claudeSettingsPath(home), JSON.stringify({ env: { KEEP: '1' }, theme: 'x' }));
+    const b = new CliProviderBridge({ root, home, logger });
+    const p = b.upsert({
+      kind: 'claude',
+      name: 'C',
+      baseUrl: 'https://c',
+      model: 'm',
+      apiKey: 'k',
+    });
+    b.activate(p.id);
+    const r = b.deactivate('claude');
+    expect(r.ok).toBe(true);
+    const s = JSON.parse(fs.readFileSync(claudeSettingsPath(home), 'utf8'));
+    expect(s.env).toEqual({ KEEP: '1' });
+    expect(s.theme).toBe('x');
+    expect(b.state().profiles.find((x) => x.id === p.id)?.active).toBe(false);
+  });
+
+  it('codex: removes nomi provider block and own key, keeps other content', () => {
+    const home = tmp('nomi-home-');
+    const root = tmp('nomi-root-');
+    fs.mkdirSync(path.join(home, '.codex'), { recursive: true });
+    fs.writeFileSync(codexConfigPath(home), '# mine\n[projects."/x"]\ntrust = true\n');
+    fs.writeFileSync(codexAuthPath(home), JSON.stringify({ tokens: { a: 1 } }));
+    const b = new CliProviderBridge({ root, home, logger });
+    const p = b.upsert({
+      kind: 'codex',
+      name: 'X',
+      baseUrl: 'https://x/v1',
+      model: 'gpt-x',
+      apiKey: 'sk-x',
+    });
+    expect(b.activate(p.id).ok).toBe(true);
+    expect(fs.readFileSync(codexConfigPath(home), 'utf8')).toContain('model_provider = "nomi"');
+    expect(b.deactivate('codex').ok).toBe(true);
+    const conf = fs.readFileSync(codexConfigPath(home), 'utf8');
+    expect(conf).not.toContain('model_provider');
+    expect(conf).not.toContain('[model_providers.nomi]');
+    expect(conf).toContain('# mine');
+    expect(conf).toContain('[projects."/x"]');
+    const auth = JSON.parse(fs.readFileSync(codexAuthPath(home), 'utf8'));
+    expect(auth.OPENAI_API_KEY).toBeUndefined();
+    expect(auth.tokens).toEqual({ a: 1 });
+  });
+});

@@ -77,3 +77,27 @@ export function setEndpointFilter(backend: ConversationBackend): void {
   write(ENDPOINT_FILTER_KEY, backend);
   listSubs.forEach((fn) => fn());
 }
+
+// ───── 供应商页当前端点（设置 → 供应商 顶部的端点切换） ─────
+const PROVIDER_ENDPOINT_KEY = 'ai-chat:providerEndpoint';
+const providerEpSubs = new Set<Listener>();
+
+export function getProviderEndpoint(): ConversationBackend {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return 'nomi';
+    const v = window.localStorage.getItem(PROVIDER_ENDPOINT_KEY);
+    return isConversationBackend(v) ? v : 'nomi';
+  } catch {
+    return 'nomi';
+  }
+}
+
+export function setProviderEndpoint(backend: ConversationBackend): void {
+  write(PROVIDER_ENDPOINT_KEY, backend);
+  providerEpSubs.forEach((fn) => fn());
+}
+
+export function subscribeProviderEndpoint(fn: Listener): () => void {
+  providerEpSubs.add(fn);
+  return () => void providerEpSubs.delete(fn);
+}
