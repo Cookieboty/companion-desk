@@ -5,6 +5,34 @@ Nomi ships installers for **Windows (NSIS)**, **macOS (DMG, x64+arm64)** and **L
 [GitHub Releases](https://github.com/Cookieboty/nomi-ai/releases). Installed apps update through
 `electron-updater` (same feed).
 
+## Formal installers · 正式安装包以 CI 为准
+
+**品牌官 / 用户拿到的 Win NSIS、Mac DMG、Linux AppImage，一律以 GitHub Actions artifact 或 tag 触发的 GitHub Release 为准。**
+
+| 来源                                                                     | 用途                                                       |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `CI` → job `build-electron` → artifact `installer-{linux,mac,win}-<sha>` | PR / push / `workflow_dispatch` 的可安装包（未签名也可测） |
+| tag `v*` → 同 job + `package:publish:*`                                  | 写入 GitHub Release，供 `electron-updater` 使用            |
+
+- Runner：**ubuntu-latest** → AppImage；**windows-latest** → NSIS `Nomi Setup *.exe`；**macos-latest** → DMG（x64+arm64）。
+- 各平台在 runner 上 `pnpm install` 会装上对应的 `sherpa-onnx-<os>-<arch>`；Mac 双架构额外由 `scripts/release/ensure-sherpa-platform.mjs` 补齐另一边 darwin 包。
+- **不要**在 Linux 开发机 / box 上用 wine 交叉打 Win/Mac 当正式产物（会打进错误平台的 sherpa 原生库，离线 TTS 不可用）。
+
+### 手动触发（Actions → CI → Run workflow）
+
+1. `package_only=true`：跳过 quality/e2e，只打安装包（应急）。
+2. `platforms`：`linux` / `mac` / `win` 逗号分隔；留空=三平台都打。
+3. 跑完后到该 run 的 Artifacts 下载 `installer-win-*` / `installer-mac-*` / `installer-linux-*`。
+
+### Tag 发版（附到 Release）
+
+```bash
+git tag -a v1.0.0 -m "Nomi 1.0.0"
+git push origin v1.0.0
+```
+
+Workflow 文件：[`.github/workflows/ci.yml`](../.github/workflows/ci.yml)。
+
 ---
 
 ## What users see · 用户侧
@@ -109,6 +137,40 @@ CSC_LINK=./devid.p12 CSC_KEY_PASSWORD=… APPLE_ID=… APPLE_APP_SPECIFIC_PASSWO
 ```
 
 ---
+
+## Local package (emergency only · 仅本机应急)
+
+> 正式包请走 CI。以下命令仅在对应 **原生 OS** 上应急自测；Linux 无法产出可用的 Win/Mac 离线 TTS 包。
+
+前置：Node ≥ 22.12、pnpm 9（`COREPACK_HOME` 可指向缓存目录）、仓库根目录。
+
+```bash
+export COREPACK_HOME="${COREPACK_HOME:-$HOME/.cache/corepack}"
+pnpm install --frozen-lockfile
+pnpm turbo run build
+
+# 离线 TTS 模型（~133MB；package 的 pre* 也会 sync）
+pnpm --filter @nomi-ai/electron run ensure-tts-model
+pnpm --filter @nomi-ai/electron run sync-tts-model
+
+# 补齐本靶场需要的 sherpa 原生包（Mac 会拉 darwin-x64 + darwin-arm64）
+node scripts/release/ensure-sherpa-platform.mjs linux   # 在 Linux 上
+# node scripts/release/ensure-sherpa-platform.mjs win  # 仅 Windows 真机
+# node scripts/release/ensure-sherpa-platform.mjs mac  # 仅 macOS 真机
+
+# 打包（脚本名见 packages/electron/package.json）
+pnpm package:prod:linux   # → dist/*.AppImage
+pnpm package:prod:win     # → dist/Nomi Setup *.exe（须在 Windows）
+pnpm package:prod:mac     # → dist/*.dmg（须在 macOS；prepackage 已跑 sync-tts-model）
+```
+
+等价（只跑 electron 包）：
+
+```bash
+pnpm --filter @nomi-ai/electron run package:prod:win
+pnpm --filter @nomi-ai/electron run package:prod:mac
+pnpm --filter @nomi-ai/electron run package:prod:linux
+```
 
 ## Local publish (maintainers)
 

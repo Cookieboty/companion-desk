@@ -7,6 +7,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      package_only:
+        description: 'Skip quality/e2e/dev-smoke; only build-electron (应急打正式安装包)'
+        type: boolean
+        default: false
+      platforms:
+        description: 'Comma list: linux,mac,win (empty = all)'
+        type: string
+        default: ''
 
 # 最小权限：所有 job 只读仓库内容；需要更多权限的 job 单独声明。
 permissions:
@@ -24,6 +33,7 @@ env:
 
 jobs:
   quality:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.package_only) }}
     name: quality (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -81,6 +91,7 @@ jobs:
   # E2E · headless（vitest，e2e/tests）
   # ---------------------------------------------------------------
   e2e-headless:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.package_only) }}
     name: e2e-headless (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -115,6 +126,7 @@ jobs:
   # ---------------------------------------------------------------
   # Linux 用 xvfb 虚拟显示；Windows runner 自带交互桌面，可直接跑 headed Electron。
   e2e-headed:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.package_only) }}
     name: e2e-headed (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -188,6 +200,7 @@ jobs:
   # 开发模式冒烟：全新 install 后跑 `pnpm dev`，等看板娘窗口 + VRM 模型 + 对话窗口 dev server 就绪后退出，
   # 防止开发启动链路（预构建、端口等待、preload 打包、Electron 二进制下载）再次悄悄坏掉。
   dev-smoke:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.package_only) }}
     name: dev-smoke (ubuntu-latest)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -246,12 +259,16 @@ jobs:
         run: pnpm run changelog:check
 
   # ---------------------------------------------------------------
-  # Electron 打包：三平台（AppImage / dmg / NSIS）每次都打，保证安装包可用；
+  # Electron 打包：三平台 runner 各打原生包（AppImage / DMG / NSIS）。
+  # 正式安装包以本 job 的 artifact / tag 时的 GitHub Release 为准；
+  # 不要在 Linux box 上用 wine 交叉打 Win/Mac 当正式产物（离线 TTS sherpa 原生库会对不上）。
   # 签名/公证：仅 tag 构建经 scripts/release/signing-env.mjs 门控注入 secret；其它事件不签名。
   # ---------------------------------------------------------------
   build-electron:
     name: build-electron (${{ matrix.os }})
     needs: [quality]
+    # package_only：quality 被 skip 时仍继续；quality 失败则拦住（非 package_only）
+    if: ${{ always() && (needs.quality.result == 'success' || needs.quality.result == 'skipped') }}
     # Tag builds publish installers to the GitHub Release (electron-updater feed).
     permissions:
       contents: write
@@ -263,25 +280,60 @@ jobs:
           - { os: macos-latest, script: 'package:prod:mac', artifact: mac }
           - { os: windows-latest, script: 'package:prod:win', artifact: win }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
+      - name: Optionally filter platforms (workflow_dispatch)
+        id: plat
+        shell: bash
+        run: |
+          want='${{ github.event.inputs.platforms }}'
+          art='${{ matrix.artifact }}'
+          if [ -z "$want" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          want_norm=$(echo "$want" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+          if echo ",${want_norm}," | grep -q ",${art},"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${art} (platforms filter: ${want})"
+          fi
+
       - name: Checkout
+        if: steps.plat.outputs.run == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup pnpm
+        if: steps.plat.outputs.run == 'true'
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
       - name: Setup Node.js
+        if: steps.plat.outputs.run == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.plat.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
+
+      # pnpm only installs optional sherpa natives for *this* OS/CPU.
+      # Mac DMG is dual-arch → also fetch the other darwin arch; never cross-OS.
+      - name: Ensure sherpa-onnx natives for target
+        if: steps.plat.outputs.run == 'true'
+        shell: bash
+        run: node scripts/release/ensure-sherpa-platform.mjs ${{ matrix.artifact }}
+
+      - name: Verify sherpa natives (fail if still missing)
+        if: steps.plat.outputs.run == 'true'
+        shell: bash
+        run: node scripts/release/ensure-sherpa-platform.mjs ${{ matrix.artifact }} --check
 
       # quality 作业已用相同 key 保存 turbo 缓存（needs: quality），这里直接命中，跳过重复构建
       - name: Turbo cache
+        if: steps.plat.outputs.run == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
@@ -290,6 +342,7 @@ jobs:
             turbo-${{ runner.os }}-
 
       - name: electron / electron-builder download cache
+        if: steps.plat.outputs.run == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -303,11 +356,22 @@ jobs:
           restore-keys: |
             electron-dl-${{ runner.os }}-
 
+      # Offline TTS weights (~133MB) staged by prepackage → sync-tts-model.mjs
+      - name: Cache sherpa TTS model
+        if: steps.plat.outputs.run == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: packages/electron/resources/tts-models
+          key: tts-model-vits-zh-hf-theresa-f337638c49689e1d
+          restore-keys: |
+            tts-model-vits-zh-hf-theresa-
+
       - name: Build workspaces
+        if: steps.plat.outputs.run == 'true'
         run: pnpm turbo run build --cache-dir=.turbo/cache
 
-      - name: electron-builder package (PR / push · no publish, unsigned)
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+      - name: electron-builder package (PR / push / dispatch · no publish, unsigned)
+        if: ${{ steps.plat.outputs.run == 'true' && !startsWith(github.ref, 'refs/tags/v') }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: pnpm run ${{ matrix.script }}
@@ -315,7 +379,7 @@ jobs:
       # 签名 / 公证门控：只有整组 secret 齐全才导出给 electron-builder（见 docs/RELEASE.md）。
       # 缺失或不完整 → 降级为未签名 / 不公证并给出 ::notice::，不会让发布失败。
       - name: Resolve signing / notarization env (tag)
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ steps.plat.outputs.run == 'true' && startsWith(github.ref, 'refs/tags/v') }}
         shell: bash
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -328,7 +392,7 @@ jobs:
         run: node scripts/release/signing-env.mjs ${{ matrix.artifact }}
 
       - name: electron-builder package + publish to GitHub Release (tag)
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ steps.plat.outputs.run == 'true' && startsWith(github.ref, 'refs/tags/v') }}
         env:
           # Default GITHUB_TOKEN works with contents:write on this repo.
           # Set repository secret GH_TOKEN (PAT, repo scope) only if the default token cannot create Releases.
@@ -339,11 +403,12 @@ jobs:
 
       # PR / push 也跑一遍门控脚本（无 secret → 预期 unsigned），保证脚本在三平台都能执行
       - name: Signing gate dry-run
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ steps.plat.outputs.run == 'true' && !startsWith(github.ref, 'refs/tags/v') }}
         shell: bash
         run: node scripts/release/signing-env.mjs ${{ matrix.artifact }}
 
       - name: Upload installer artifact
+        if: steps.plat.outputs.run == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: installer-${{ matrix.artifact }}-${{ github.sha }}
@@ -353,6 +418,8 @@ jobs:
             dist/*.AppImage
             dist/*.zip
             dist/*.blockmap
+            dist/*.nsis.7z
+            dist/*nsis*
             dist/latest*.yml
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 14 || 3 }}
