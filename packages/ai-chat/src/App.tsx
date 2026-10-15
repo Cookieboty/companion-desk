@@ -65,6 +65,10 @@ const AiChatContent: React.FC = () => {
     backend: ConversationBackend;
   } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // 切到普通模式时关掉已打开的「分叉到其他端」选择框
+  useEffect(() => {
+    if (!isDev) setForkCross(null);
+  }, [isDev]);
   useEffect(() => {
     if (!toast) return;
     const tid = window.setTimeout(() => setToast(null), 2400);
@@ -224,9 +228,9 @@ const AiChatContent: React.FC = () => {
       const meta = store?.get(id);
       if (!meta) return;
       if (mode === 'same') void runForkSame(id);
-      else setForkCross({ id, backend: meta.backend });
+      else if (isDev) setForkCross({ id, backend: meta.backend }); // 普通模式不允许分叉到其他端
     },
-    [state.ipcClient, runForkSame],
+    [state.ipcClient, runForkSame, isDev],
   );
 
   useEffect(() => {

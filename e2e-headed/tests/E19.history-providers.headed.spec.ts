@@ -449,11 +449,33 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
       chat.locator('[data-testid="history-item"][data-backend="nomi"]').first(),
     ).toBeVisible();
     await shot(chat, '18-sidebar-normal-mode');
+    // 普通模式：Nomi 对话不能分叉到其他端；同端「分叉为新对话」可用（更多 + 右键）
+    const nrow = chat.locator('[data-testid="conversation-row"]').first();
+    await nrow.locator('[data-testid="row-more"]').click();
+    const nmenu = chat.locator('[data-testid="conversation-context-menu"]');
+    await expect(nmenu.locator('[data-testid="fork-same"]')).toBeVisible();
+    await expect(nmenu.locator('[data-testid="fork-cross"]')).toHaveCount(0);
+    await shot(chat, '18b-normal-mode-more-menu-no-cross-fork');
+    await chat.keyboard.press('Escape');
+    await nrow.locator('[data-testid="history-item"]').click({ button: 'right' });
+    await expect(nmenu.locator('[data-testid="fork-same"]')).toBeVisible();
+    await expect(nmenu.locator('[data-testid="fork-cross"]')).toHaveCount(0);
+    await chat.keyboard.press('Escape');
     await chat.click('[data-testid="new-chat"]');
     await expect(chat.locator('[data-testid="new-chat-menu"]')).toHaveCount(0);
     // 切回开发模式：视图控件与历史恢复
     await chat.click('[data-testid="chat-mode-dev"]');
     await expect(chat.locator('[data-testid="list-view-all"]')).toBeVisible();
     await expect(chat.locator('[data-testid="cli-history"]')).toBeVisible();
+    // 开发模式：有「分叉到其他端」
+    await chat
+      .locator('[data-testid="conversation-row"]')
+      .first()
+      .locator('[data-testid="history-item"]')
+      .click({ button: 'right' });
+    await expect(
+      chat.locator('[data-testid="conversation-context-menu"] [data-testid="fork-cross"]'),
+    ).toBeVisible();
+    await chat.keyboard.press('Escape');
   });
 });

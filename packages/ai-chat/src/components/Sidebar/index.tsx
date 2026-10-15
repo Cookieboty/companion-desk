@@ -1199,7 +1199,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onDismiss={() => setCtx(null)}
               onRename={() => setRenamingId(ctx.id)}
               onFork={() => onForkRequest?.(ctx.id, 'same')}
-              onForkCross={() => onForkRequest?.(ctx.id, 'cross')}
+              // 跨端分叉只在开发模式提供；普通模式只有「分叉为新对话」（同端 Nomi）
+              onForkCross={isDev ? () => onForkRequest?.(ctx.id, 'cross') : undefined}
               onClose={meta?.tabId ? () => void removeItem(ctx.id) : undefined}
               onDelete={meta?.tabId ? undefined : () => void removeItem(ctx.id)}
             />
