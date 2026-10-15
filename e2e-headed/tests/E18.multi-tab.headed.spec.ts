@@ -49,6 +49,8 @@ async function launch(userData: string): Promise<{ app: ElectronApplication; cha
   );
   const chat = await chatWin;
   await chat.setViewportSize({ width: 1180, height: 780 }).catch(() => undefined);
+  // 默认普通模式会隐藏标签栏；多标签用例需先切到开发模式
+  await chat.locator('[data-testid="chat-mode-dev"]').click({ timeout: 30_000 });
   await chat.locator('[data-testid="chat-tabs"]').waitFor({ timeout: 30_000 });
   return { app, chat };
 }
