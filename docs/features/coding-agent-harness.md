@@ -400,7 +400,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 
 ### 13.4 「供应商」页：按端点分别配置
 
-设置 →「编程助手」（原「供应商与模型」，旧深链仍可用）只有一个页面。顶部标签：Nomi / Claude Code / Codex / dsh / 监视与会话（选择会记住），每个端点是**完全独立**的一块，切换只是换视图，不改动任何配置。三个 CLI 端点与 Nomi 用**同一套**第三方供应商交互（见 §14.1）：
+设置 →「编程助手」只有一个页面。顶部标签：Nomi / Claude Code / Codex / dsh / 监视与会话（选择会记住），每个端点是**完全独立**的一块，切换只是换视图，不改动任何配置。三个 CLI 端点与 Nomi 用**同一套**第三方供应商交互（见 §14.1）：
 
 - **说明**：配置写到哪里、与其它端点互相独立。Claude Code 只改 `~/.claude/settings.json` 的 env；Codex 只改 `~/.codex/config.toml` 与同目录 `auth.json` 的 `OPENAI_API_KEY`；dsh 只写 `$DSH_HOME/cordis.patch.yml` 里带标记的区块（密钥不落盘，启动时用环境变量注入）；Nomi 用自己的 `ai-providers.json`。以上都先备份、保留无关内容。
 - **当前使用**：供应商名称、**来源**（Nomi 档案库 / CLI 自带登录或默认配置）、上游格式、模型、**本地路由状态与原因**（直连：原生格式；已开启：非原生格式经本机路由转换；需要但未开启：提示去「高级」打开；dsh：无需路由）。
@@ -408,7 +408,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - **「高级」**：本地路由开关（Claude Code / Codex）、档案库与写入文件路径。dsh 的高级里只有说明（原生支持三种协议，无需路由）。
 - **任务路由**（对话 / 工具调用 / 摘要）只在 **Nomi** 区，沿用原有 `ProviderPanel`；CLI 端点没有任务路由。
 - 存储与 IPC 语义不变：`ai:cli-provider:*`（`upsert` / `remove` / `activate` / `deactivate` / `state` / 新增 `test`）、`ai:cli-route:*`。
-- 入口：设置 → 编程助手；输入栏供应商芯片的「管理」直接跳到对应端点。日程与提醒页**不再**有编程助手标签（§14.3）。
+- 入口：设置 → 编程助手；输入栏供应商芯片的「管理」直接跳到对应端点。「日程与日历」没有编程助手标签（§14.3）。
 
 ### 13.5 历史会话（Claude Code / Codex / dsh）
 
@@ -434,7 +434,7 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 
 ### 14.1 编程助手页：三个 CLI 端点与 Nomi 同款第三方供应商交互
 
-- 设置里的「供应商与模型」改名为 **「编程助手」**，标签：`Nomi` · `Claude Code` · `Codex` · `dsh` · `监视与会话`（`CodingTab`，记在 `chatPrefs`）。旧入口 `providers`、`agents` 作为别名保留（`resolveSection`，`agents` 会落到「监视与会话」）。
+- 设置里「编程助手」是一个页面，标签：`Nomi` · `Claude Code` · `Codex` · `dsh` · `监视与会话`（`CodingTab`，记在 `chatPrefs`）。
 - Claude Code / Codex / dsh 与 Nomi 使用同样的视觉与流程：**卡片列表**（图标 · 名称 · 「使用中」徽标 · 上游格式 · 地址 · 模型 · 打码 Key）→ **添加供应商**打开预设模板网格（含「自定义」）→ 表单（名称、接口地址、API Key、模型、上游格式）→ 保存；每张卡片有 测速 / 编辑 / 删除（删除前确认）/ 启用。预设模板复用 Nomi 的预设（只预填名称 / 地址 / 模型 / Key）；新建上游格式一律取该 CLI 端点原生默认（Claude=`anthropic_messages`，Codex / dsh=`openai_responses`），不被预设 protocol 改写；用户可再改格式，非原生时提示需本地路由。
 - **默认是「CLI 自带登录 / 默认配置」**：列表第一张固定卡片，没有任何档案启用时它就是「当前」；启用某个档案后可随时「改用 CLI 自带登录/默认配置」。
 - **隔离不变**：四套档案库互相独立；本地路由仍在 Claude Code / Codex 各自的「高级」里；dsh 无需路由。
@@ -454,11 +454,11 @@ _调研来源：本仓库 `packages/electron/src/agents/*`、官方 Claude Code 
 - 已移除日程里的 `CliToolsBlock`。
 - 测试：`packages/electron/tests/unit/cli/CliInstallUpdate.test.ts`（注入 mock npm / CLI 的 probe 与 runner，覆盖计划、Node 过旧、只读前缀、流式事件、失败）与 `packages/ai-chat/tests/cliVersionCard.test.tsx`。
 
-### 14.3 监视与会话从日程页移出
+### 14.3 监视与会话
 
-- 「日程与提醒」页只剩提醒、定时与日历，**移除「编程助手」标签**。
+- 「日程与日历」只含提醒、定时与日历，没有「编程助手」标签。
 - 原标签里的内容拆开：**版本**→ 各端点页（§14.2）；**监视开关、系统通知开关、已检测工具、立即扫描、会话列表（按端点筛选、打开标签）**→ 编程助手 →「监视与会话」；**通知 / 灵动岛的来源与样式设置**仍在「通知 / 灵动岛」，「监视与会话」里有一个按钮直达。
-- 快捷键 `Mod+Shift+D` 仍是「日程与提醒」。
+- 快捷键 `Mod+Shift+D` 是「日程与提醒」面板（设置里对应「日程与日历」）。
 
 ### 14.4 菜单栏图标消失（macOS，开发模式）
 
