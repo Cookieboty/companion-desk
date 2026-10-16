@@ -14,7 +14,6 @@
  *   elbow  +1 forearm keeps turning outward / up, −1 folds across the body
  */
 import { LM } from './armReach';
-import type { HandSide } from './armReach';
 
 export interface ArmTarget {
   hand: string;
@@ -108,4 +107,3 @@ export const ARM_TARGETS: Record<string, ArmTarget> = {
   // --- overhead
   stretchUp: { hand: 'rest', t: [640, 150], angle: -8, z: 0.2, elbow: 1, hint: [140, 100] },
 };
-
