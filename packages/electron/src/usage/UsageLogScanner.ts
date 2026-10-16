@@ -17,10 +17,12 @@ import {
   parseAiderChunk,
   parseClaudeChunk,
   parseCodexChunk,
+  parseCodexRateLimits,
   parseDshChunk,
   parseGeminiFile,
   type ParseState,
 } from './logParsers';
+import type { QuotaWindow } from './quota';
 import type { UsageRecord, UsageSource } from './types';
 import { RETENTION_MS, type Retention, type UsageLedger } from './UsageLedger';
 
@@ -48,6 +50,8 @@ export interface ScannerDeps {
   routeBusy?: (source: UsageSource) => boolean;
   /** 新增 / 更新了一条记录（预算 / 单任务提醒用） */
   onNew?: (r: UsageRecord) => void;
+  /** 读到 Codex 日志里的额度快照（只在日志里确实有时触发） */
+  onQuota?: (q: { ts: number; windows: QuotaWindow[]; plan?: string }) => void;
 }
 
 interface Found {
@@ -245,8 +249,11 @@ export class UsageLogScanner {
     switch (source) {
       case 'claude':
         return parseClaudeChunk(text);
-      case 'codex':
+      case 'codex': {
+        const q = parseCodexRateLimits(text);
+        if (q) this.d.onQuota?.(q);
         return parseCodexChunk(text, state);
+      }
       case 'dsh':
         return parseDshChunk(text, state);
       case 'aider':

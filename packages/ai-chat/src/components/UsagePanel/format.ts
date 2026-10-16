@@ -147,3 +147,20 @@ export function dateRange(date: string): { from: number; to: number } {
 
 /** 列表分隔符：中文用顿号，英文用逗号 */
 export const listSep = (): string => (getLocale() === 'en' ? ', ' : '、');
+
+/** 额度窗口名：300 分钟 → 5 小时窗口，10080 → 每周窗口；未知长度用 primary / secondary 兜底 */
+export function quotaWindowLabel(id: string, minutes?: number): string {
+  if (!minutes) return id === 'secondary' ? t('长周期窗口') : t('短周期窗口');
+  if (minutes === 10080) return t('每周窗口');
+  if (minutes < 60) return t('{0} 分钟窗口', Math.round(minutes));
+  if (minutes < 1440) return t('{0} 小时窗口', Number((minutes / 60).toFixed(1)));
+  return t('{0} 天窗口', Number((minutes / 1440).toFixed(1)));
+}
+
+/** 距重置还有多久：「约 2 小时后重置」 */
+export function resetText(resetAt: number, now: number): string {
+  const d = Math.max(0, resetAt - now);
+  if (d < 3_600_000) return t('约 {0} 分钟后重置', Math.max(1, Math.round(d / 60_000)));
+  if (d < 86_400_000) return t('约 {0} 小时后重置', Math.round(d / 3_600_000));
+  return t('约 {0} 天后重置', Math.round(d / 86_400_000));
+}

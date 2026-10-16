@@ -22,6 +22,7 @@ import { listSep } from './format';
 import styles from './index.module.css';
 import { Overview } from './Overview';
 import { Pricing } from './Pricing';
+import { QuotaCard } from './Quota';
 import type { Fx } from './shared';
 
 type Tab = 'overview' | 'details' | 'pricing' | 'budget';
@@ -180,6 +181,7 @@ export const UsagePanel: React.FC = () => {
               }}
             />
           )}
+          {tab === 'overview' && <QuotaCard />}
           {tab === 'details' && <Details fx={fx} range={detailRange} onRange={setDetailRange} />}
           {tab === 'pricing' && (
             <Pricing state={state} unpriced={data.summary.unpriced} onSettings={setSettings} />

@@ -12,6 +12,8 @@ import {
   formatTokens,
   heatLevels,
   presetRange,
+  quotaWindowLabel,
+  resetText,
   sessionUsageText,
   share,
 } from '../src/components/UsagePanel/format';
@@ -145,5 +147,24 @@ describe('parseAmount', () => {
     expect(parseAmount('-1')).toBeNull();
     expect(parseAmount('abc')).toBeNull();
     expect(parseAmount('1e9')).toBeNull();
+  });
+});
+
+describe('额度窗口文案', () => {
+  it('窗口名按分钟数命名；未知长度按 primary / secondary 兜底', () => {
+    expect(quotaWindowLabel('primary', 300)).toBe('5 小时窗口');
+    expect(quotaWindowLabel('secondary', 10080)).toBe('每周窗口');
+    expect(quotaWindowLabel('x', 30)).toBe('30 分钟窗口');
+    expect(quotaWindowLabel('x', 90)).toBe('1.5 小时窗口');
+    expect(quotaWindowLabel('x', 2880)).toBe('2 天窗口');
+    expect(quotaWindowLabel('primary')).toBe('短周期窗口');
+    expect(quotaWindowLabel('secondary')).toBe('长周期窗口');
+  });
+  it('距重置', () => {
+    const now = 1_000_000;
+    expect(resetText(now + 5 * 60_000, now)).toBe('约 5 分钟后重置');
+    expect(resetText(now + 10_000, now)).toBe('约 1 分钟后重置');
+    expect(resetText(now + 3 * 3_600_000, now)).toBe('约 3 小时后重置');
+    expect(resetText(now + 3 * 86_400_000, now)).toBe('约 3 天后重置');
   });
 });

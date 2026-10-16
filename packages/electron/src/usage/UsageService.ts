@@ -39,6 +39,7 @@ import {
   PRICING_TABLE_DATE,
   sanitizeCustomPrices,
 } from './pricing';
+import { QuotaRegistry, sanitizeWindows, type QuotaEntry, type QuotaWindow } from './quota';
 import type { SniffedUsage } from './sniff';
 import type { CustomPrice, Currency, UsageRecord, UsageSource } from './types';
 import { UsageLedger, type Retention } from './UsageLedger';
@@ -225,6 +226,10 @@ export class UsageService {
     string,
     { last: number; parts: Map<string, number>; alerted: boolean }
   >();
+  private readonly quotaPath: string;
+  /** Codex 日志里最近一次额度快照（落盘，重启后还能看到上次的） */
+  private codexQuota: { ts: number; windows: QuotaWindow[]; plan?: string } | null = null;
+  readonly quotaSources = new QuotaRegistry();
   private sessionCache: {
     ver: number;
     prices: unknown;
@@ -235,8 +240,22 @@ export class UsageService {
     fs.mkdirSync(d.root, { recursive: true });
     this.settingsPath = path.join(d.root, 'settings.json');
     this.alertsPath = path.join(d.root, 'alerts.json');
+    this.quotaPath = path.join(d.root, 'quota.json');
     this.load();
     this.loadAlerts();
+    this.loadQuota();
+    this.quotaSources.register({
+      id: 'codex',
+      label: 'Codex',
+      read: () =>
+        this.settings.enabled && this.settings.readToolLogs && this.codexQuota
+          ? {
+              windows: this.codexQuota.windows,
+              updatedAt: this.codexQuota.ts,
+              plan: this.codexQuota.plan,
+            }
+          : null,
+    });
     this.ledger = new UsageLedger({ root: d.root, logger: d.logger, now: d.now });
     this.scanner = new UsageLogScanner({
       ledger: this.ledger,
@@ -248,6 +267,7 @@ export class UsageService {
       clearedAt: () => this.settings.clearedAt,
       routeBusy: (s) => (this.routeInflight.get(s) ?? 0) > 0,
       onNew: (r) => this.afterRecord(r),
+      onQuota: (q) => this.setCodexQuota(q),
     });
     this.ledger.prune(this.settings.retention);
   }
@@ -281,6 +301,47 @@ export class UsageService {
     } catch {
       /* 没有记录 = 都还没提醒过 */
     }
+  }
+
+  private loadQuota(): void {
+    try {
+      const o = JSON.parse(fs.readFileSync(this.quotaPath, 'utf8')) as {
+        codex?: { ts?: unknown; windows?: unknown; plan?: unknown };
+      };
+      const c = o.codex;
+      if (c && typeof c.ts === 'number' && Array.isArray(c.windows)) {
+        const windows = sanitizeWindows(c.windows as QuotaWindow[], 0);
+        if (windows.length)
+          this.codexQuota = {
+            ts: c.ts,
+            windows,
+            ...(typeof c.plan === 'string' ? { plan: c.plan } : {}),
+          };
+      }
+    } catch {
+      /* 没有快照 */
+    }
+  }
+
+  private setCodexQuota(q: { ts: number; windows: QuotaWindow[]; plan?: string }): void {
+    if (this.codexQuota && q.ts < this.codexQuota.ts) return;
+    this.codexQuota = q;
+    try {
+      writePrivateFile(this.quotaPath, JSON.stringify({ codex: q }));
+    } catch (e) {
+      this.d.logger.warn('usage quota save failed', { e: String(e) });
+    }
+    this.changed();
+  }
+
+  /** 订阅额度：来源读不到就是「不可用」（面板显示「暂未返回可用额度」），从不估算 */
+  quota(): QuotaEntry[] {
+    return this.quotaSources.collect(this.now(), [
+      { id: 'claude', label: 'Claude Code' },
+      { id: 'codex', label: 'Codex' },
+      { id: 'dsh', label: 'dsh' },
+      { id: 'nomi', label: 'Nomi' },
+    ]);
   }
 
   private saveAlerts(): void {
@@ -737,6 +798,12 @@ export class UsageService {
     this.settings = { ...this.settings, clearedAt: this.now() };
     this.save();
     this.ledger.clear();
+    this.codexQuota = null;
+    try {
+      fs.rmSync(this.quotaPath, { force: true });
+    } catch {
+      /* 忽略 */
+    }
     this.changed();
   }
 
@@ -791,6 +858,7 @@ export class UsageService {
     handle('ai:usage:details', (q) => this.details(dq(q)));
     handle('ai:usage:csv', (q) => this.csv(dq(q)));
     handle('ai:usage:set-settings', (p) => this.setSettings((p ?? {}) as Partial<UsageSettings>));
+    handle('ai:usage:quota', () => this.quota());
     handle('ai:usage:scan', async () => {
       const r = await this.scan();
       return { ...r, ...this.state() };

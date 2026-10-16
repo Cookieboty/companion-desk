@@ -1901,5 +1901,21 @@
   "所有用量数据只保存在这台电脑上：不上传、不做云同步，也没有排行榜或分享入口。": "All usage data stays on this computer: nothing is uploaded or synced, and there is no leaderboard or sharing.",
   "累计 {0} Token": "{0} tokens in total",
   "预算与隐私": "Budget and privacy",
-  "{0}（部分模型未定价）": "{0} (some models unpriced)"
+  "{0}（部分模型未定价）": "{0} (some models unpriced)",
+  "窗口已重置，下次使用后更新": "Window reset; updates after next use",
+  "已用 {0}%": "{0}% used",
+  "订阅额度": "Subscription quota",
+  "尽力而为": "Best effort",
+  "更新于 {0}": "Updated {0}",
+  "暂未返回可用额度": "No usable quota returned yet",
+  "额度只来自这台电脑上已有的数据（如 Codex 写在会话日志里的额度快照）。需要账号凭据或未公开接口才能读取的额度，Nomi 不会去读取，也不会估算。": "Quota only comes from data already on this computer (such as the quota snapshot Codex writes into its session logs). Quota that needs account credentials or an unpublished API is not read by Nomi and is never estimated.",
+  "长周期窗口": "Long window",
+  "短周期窗口": "Short window",
+  "每周窗口": "Weekly window",
+  "{0} 分钟窗口": "{0}-minute window",
+  "{0} 小时窗口": "{0}-hour window",
+  "{0} 天窗口": "{0}-day window",
+  "约 {0} 分钟后重置": "Resets in ~{0} min",
+  "约 {0} 小时后重置": "Resets in ~{0} h",
+  "约 {0} 天后重置": "Resets in ~{0} d"
 }

@@ -175,6 +175,7 @@ const ROWS = {
 let calls: Array<[string, ...unknown[]]>;
 let state: typeof STATE;
 let emptyData = false;
+let quota: unknown[] = [];
 
 function install() {
   calls = [];
@@ -202,6 +203,8 @@ function install() {
         case 'ai:usage:set-settings':
           state = { ...state, settings: { ...state.settings, ...(a[0] as object) } };
           return state.settings;
+        case 'ai:usage:quota':
+          return quota;
         case 'ai:usage:clear':
           state = { ...state, records: 0 };
           return state;
@@ -216,6 +219,10 @@ function install() {
 
 beforeEach(() => {
   emptyData = false;
+  quota = [
+    { id: 'codex', label: 'Codex', status: 'unavailable', windows: [] },
+    { id: 'claude', label: 'Claude Code', status: 'unavailable', windows: [] },
+  ];
   install();
 });
 afterEach(() => {
@@ -471,5 +478,62 @@ describe('UsagePanel 预算与隐私', () => {
       expect((getByTestId('usage-clear') as HTMLButtonElement).disabled).toBe(true),
     );
     vi.unstubAllGlobals();
+  });
+});
+
+describe('UsagePanel 订阅额度', () => {
+  it('没有可用额度：每个工具都写「暂未返回可用额度」，不显示任何百分比', async () => {
+    const { findByTestId, getByTestId } = render(<UsagePanel />);
+    const card = await findByTestId('usage-quota-card');
+    expect(getByTestId('usage-quota-codex').getAttribute('data-status')).toBe('unavailable');
+    expect(card.textContent?.match(/暂未返回可用额度/g)).toHaveLength(2);
+    expect(card.querySelector('[role="progressbar"]')).toBeNull();
+    expect(card.textContent).not.toMatch(/已用 \d/);
+  });
+
+  it('有额度快照：显示窗口、已用百分比与重置时间；重置时间已过的窗口不显示百分比', async () => {
+    const now = Date.now();
+    quota = [
+      {
+        id: 'codex',
+        label: 'Codex',
+        status: 'ok',
+        plan: 'plus',
+        updatedAt: now - 120_000,
+        windows: [
+          { id: 'primary', usedPercent: 42, windowMinutes: 300, resetAt: now + 2 * 3_600_000 },
+          {
+            id: 'secondary',
+            usedPercent: 80,
+            windowMinutes: 10080,
+            resetAt: now - 1000,
+            expired: true,
+          },
+        ],
+      },
+      { id: 'claude', label: 'Claude Code', status: 'unavailable', windows: [] },
+    ];
+    const { findByTestId, getAllByTestId } = render(<UsagePanel />);
+    const card = await findByTestId('usage-quota-card');
+    const wins = getAllByTestId('usage-quota-window');
+    expect(wins).toHaveLength(2);
+    expect(wins[0]!.textContent).toContain('5 小时窗口');
+    expect(wins[0]!.textContent).toContain('已用 42%');
+    expect(wins[0]!.textContent).toContain('约 2 小时后重置');
+    expect(wins[0]!.querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow')).toBe(
+      '42',
+    );
+    expect(wins[1]!.textContent).toContain('每周窗口');
+    expect(wins[1]!.textContent).toContain('窗口已重置');
+    expect(wins[1]!.textContent).not.toContain('80%');
+    expect(card.textContent).toContain('plus');
+    expect(card.textContent?.match(/暂未返回可用额度/g)).toHaveLength(1); // 只剩 Claude Code
+  });
+
+  it('额度接口出错：卡片不显示，不影响其它内容', async () => {
+    quota = [];
+    const { findByTestId, queryByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-card-cost');
+    expect(queryByTestId('usage-quota-card')?.textContent ?? '').not.toMatch(/已用/);
   });
 });

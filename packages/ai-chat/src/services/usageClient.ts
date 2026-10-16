@@ -130,6 +130,26 @@ export interface UsageDetailResult {
   facets: { sources: string[]; models: string[]; sessions: Array<{ id: string; label: string }> };
 }
 
+/** 订阅额度的一个窗口（例如 5 小时 / 每周） */
+export interface UsageQuotaWindow {
+  id: string;
+  usedPercent: number;
+  windowMinutes?: number;
+  resetAt?: number;
+  /** 重置时间已过：这个百分比是上一个窗口的数据 */
+  expired?: boolean;
+}
+
+/** 一个工具 / 来源的额度；status = unavailable 时显示「暂未返回可用额度」 */
+export interface UsageQuotaEntry {
+  id: string;
+  label: string;
+  status: 'ok' | 'unavailable';
+  windows: UsageQuotaWindow[];
+  updatedAt?: number;
+  plan?: string;
+}
+
 interface AiBridge {
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
   on: (channel: string, fn: (payload: unknown) => void) => () => void;
@@ -160,6 +180,7 @@ export const usageClient = {
   setSettings: (p: Partial<UsageSettings>) => call<UsageSettings>('set-settings', p),
   scan: () => call<UsageState & { added: number; files: number }>('scan'),
   clear: () => call<UsageState>('clear'),
+  quota: () => call<UsageQuotaEntry[]>('quota'),
   onChanged: (fn: () => void) => bridge()?.on('ai:usage:changed', () => fn()) ?? (() => undefined),
 };
 

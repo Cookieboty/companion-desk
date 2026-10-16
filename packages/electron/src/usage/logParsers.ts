@@ -7,6 +7,7 @@
  */
 import path from 'node:path';
 
+import type { QuotaWindow } from './quota';
 import type { UsageRecord, UsageSource } from './types';
 
 export type ParseState = Record<string, unknown>;
@@ -146,6 +147,44 @@ export function parseCodexChunk(text: string, state: ParseState): UsageRecord[] 
     }
   }
   return out;
+}
+
+/**
+ * Codex 写在 token_count 事件里的额度快照（rate_limits.primary / secondary）：
+ * 只读日志里已有的字段；字段缺失 / 类型不对的窗口直接丢掉，返回最后一条有效快照。
+ * 重置时间：优先 resets_at（秒 / 毫秒时间戳），否则 事件时间 + resets_in_seconds。
+ */
+export function parseCodexRateLimits(
+  text: string,
+): { ts: number; windows: QuotaWindow[]; plan?: string } | null {
+  if (!text.includes('rate_limits')) return null;
+  let best: { ts: number; windows: QuotaWindow[]; plan?: string } | null = null;
+  for (const o of lines(text)) {
+    const p = obj(o.payload);
+    if (o.type !== 'event_msg' || p?.type !== 'token_count') continue;
+    const rl = obj(p.rate_limits);
+    if (!rl) continue;
+    const ts = parseTs(o.timestamp);
+    const windows: QuotaWindow[] = [];
+    for (const id of ['primary', 'secondary']) {
+      const w = obj(rl[id]);
+      const used = w?.used_percent;
+      if (!w || typeof used !== 'number' || !Number.isFinite(used) || used < 0) continue;
+      const minutes = num(w.window_minutes);
+      const at = parseTs(w.resets_at);
+      const inSec = num(w.resets_in_seconds);
+      const resetAt = at || (inSec && ts ? ts + inSec * 1000 : 0);
+      windows.push({
+        id,
+        usedPercent: Math.min(100, used),
+        ...(minutes ? { windowMinutes: minutes } : {}),
+        ...(resetAt ? { resetAt } : {}),
+      });
+    }
+    if (!windows.length) continue;
+    if (!best || ts >= best.ts) best = { ts, windows, plan: str(rl.plan_type) };
+  }
+  return best;
 }
 
 // ---------------------------------------------------------------- dsh
