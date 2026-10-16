@@ -293,67 +293,6 @@ export const ChatTabs: React.FC<{
   );
 };
 
-/** 运行中的实时进度气泡（含 Claude 权限确认卡） */
-export const CliTabLive: React.FC = () => {
-  const { activeTab, live, replyPermission } = useHarnessTabs();
-  if (!activeTab || activeTab.id === MAIN_TAB_ID) return null;
-  if (activeTab.status !== 'running' && activeTab.status !== 'queued') return null;
-  const l = live[activeTab.id];
-  return (
-    <div className={styles.live} data-testid="cli-tab-live" aria-live="polite">
-      {activeTab.status === 'queued' ? (
-        <span>{t('排队中：等待其它标签完成…')}</span>
-      ) : (
-        <>
-          {l?.permission && (
-            <div className={styles.perm} data-testid="cli-permission-card">
-              <span className={styles.permTitle}>{t('需要确认工具权限')}</span>
-              <span className={styles.permSummary}>{l.permission.summary}</span>
-              <div className={styles.permActions}>
-                <button
-                  type="button"
-                  data-testid="cli-permission-allow"
-                  onClick={() => void replyPermission(l.permission!.id, true)}
-                >
-                  {t('允许')}
-                </button>
-                <button
-                  type="button"
-                  data-testid="cli-permission-deny"
-                  onClick={() => void replyPermission(l.permission!.id, false)}
-                >
-                  {t('拒绝')}
-                </button>
-              </div>
-            </div>
-          )}
-          {l?.tools && l.tools.length > 0 && (
-            <ul className={styles.toolList} data-testid="cli-tool-timeline">
-              {l.tools.map((x, i) => (
-                <li
-                  key={`${x.name}-${i}`}
-                  data-status={x.status}
-                  data-testid={`cli-tool-${x.status}`}
-                >
-                  {x.status === 'start'
-                    ? t('正在使用工具：{0}', x.name)
-                    : x.status === 'error'
-                      ? t('工具失败：{0}', x.name)
-                      : t('工具完成：{0}', x.name)}
-                </li>
-              ))}
-            </ul>
-          )}
-          {!l?.tools?.length && l?.tool && (
-            <span className={styles.liveTool}>{t('正在使用工具：{0}', l.tool)}</span>
-          )}
-          <span>{l?.text || (l?.permission ? t('等待你的确认…') : t('思考中…'))}</span>
-        </>
-      )}
-    </div>
-  );
-};
-
 const CLI_LABEL: Record<string, string> = ENDPOINT_NAME;
 
 /** CLI 标签的输入框提示：随运行状态与后端变化（不显示 Nomi 的「请先选择AI模型」） */

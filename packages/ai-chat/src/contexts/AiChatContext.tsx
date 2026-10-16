@@ -14,7 +14,11 @@ import React, {
 
 import { desktopClient } from '../services/desktopClient';
 import { extClient } from '../services/extClient';
-import { harnessClient } from '../services/harnessClient';
+import {
+  harnessClient,
+  type HarnessTraceEvent,
+  type HarnessUsage,
+} from '../services/harnessClient';
 import { createIPCClient } from '../services/IPCClient';
 import { kbClient } from '../services/kbClient';
 import { ingestConversation, memoryContext } from '../services/memClient';
@@ -145,7 +149,16 @@ interface AiChatContextType {
   dispatch: React.Dispatch<AiChatAction>;
   actions: {
     sendMessage: (content: string) => Promise<void>;
-    sendStreamMessage: (content: string, images?: ImageAttachment[]) => Promise<void>;
+    sendStreamMessage: (
+      content: string,
+      images?: ImageAttachment[],
+      override?: { history: ChatMessage[] },
+    ) => Promise<void>;
+    /**
+     * 从某条用户消息重新来过（重新生成 / 编辑重发）：丢弃它及之后的消息，
+     * 用原文（或 newText）重新发送；运行中无操作。
+     */
+    resendFrom: (userMessageId: string, newText?: string) => Promise<void>;
     /** 停止当前流式生成：中止上游请求，已生成的内容落盘；没有进行中的流时无操作 */
     stopGeneration: () => void;
     askKnowledge: (content: string) => Promise<void>;
@@ -417,7 +430,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
 
   // 发送流式消息
   const sendStreamMessage = useCallback(
-    async (content: string, images?: ImageAttachment[]) => {
+    async (content: string, images?: ImageAttachment[], override?: { history: ChatMessage[] }) => {
       const s = stateRef.current;
       const client = s.ipcClient;
       // 发起时固定会话：之后无论用户切到哪个会话，这一轮都写回这里
@@ -458,7 +471,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
               }
             : {}),
         };
-        const history = s.messages;
+        const history = override?.history ?? s.messages;
         dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
         schedClient.activity();
 
@@ -473,6 +486,9 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
               content: r.text,
               timestamp: Date.now(),
               modelId: hs.backend === 'claude' ? 'claude-code' : hs.backend,
+              ...(r.trace?.length ? { trace: r.trace } : {}),
+              ...(r.durationMs !== undefined ? { durationMs: r.durationMs } : {}),
+              ...(r.usage ? { usage: r.usage } : {}),
             };
             if (turn.isActive()) dispatch({ type: 'ADD_MESSAGE', payload: done });
             await turn.save(userMessage);
@@ -498,29 +514,84 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         dispatch({ type: 'SET_STREAMING', payload: true });
 
         let accumulated = '';
-        await client.sendStreamMessage(
-          content,
-          s.currentModelId,
-          (chunk: string) => {
-            accumulated += chunk;
-            // 用户已切到别的会话：只累积，不动当前界面；回到本会话时补回整轮消息
-            if (turn.isActive()) {
-              dispatch({
-                type: 'UPSERT_MESSAGES',
-                payload: [userMessage, { ...aiMessage, content: accumulated }],
-              });
-            }
-          },
-          history,
-          [mem.text, skills].filter(Boolean).join('\n\n'),
-          images?.map((i) => ({ mime: i.mime, data: i.data })),
-          { reqId, signal: controller.signal },
-        );
+        const startedAt = Date.now();
+        const trace: HarnessTraceEvent[] = [];
+        let usage: HarnessUsage | undefined;
+        // 流式 UI 更新按帧合批：一帧内到达的文本 / 工具事件只 dispatch 一次（逐 chunk dispatch 会让整条消息列表重渲染）
+        let raf = 0;
+        let timer = 0;
+        const flushUi = () => {
+          if (raf) cancelAnimationFrame(raf);
+          if (timer) window.clearTimeout(timer);
+          raf = 0;
+          timer = 0;
+          // 用户已切到别的会话：只累积，不动当前界面；回到本会话时补回整轮消息
+          if (!turn.isActive()) return;
+          dispatch({
+            type: 'UPSERT_MESSAGES',
+            payload: [
+              userMessage,
+              {
+                ...aiMessage,
+                content: accumulated,
+                ...(trace.length ? { trace: [...trace] } : {}),
+              },
+            ],
+          });
+        };
+        const scheduleUi = () => {
+          if (raf || timer) return;
+          raf = requestAnimationFrame(flushUi);
+          timer = window.setTimeout(flushUi, 100);
+        };
+        try {
+          await client.sendStreamMessage(
+            content,
+            s.currentModelId,
+            (chunk: string) => {
+              accumulated += chunk;
+              scheduleUi();
+            },
+            history,
+            [mem.text, skills].filter(Boolean).join('\n\n'),
+            images?.map((i) => ({ mime: i.mime, data: i.data })),
+            {
+              reqId,
+              signal: controller.signal,
+              onTrace: (ev) => {
+                trace.push(ev);
+                scheduleUi();
+              },
+              onUsage: (u) => {
+                usage = { ...usage, ...u };
+              },
+            },
+          );
+        } catch (err) {
+          flushUi();
+          // 这一轮失败：保留已生成的部分与轨迹，作为「错误卡片」留在对话里（可重试），不进模型上下文
+          const failed: ChatMessage = {
+            ...aiMessage,
+            content: accumulated,
+            error: errorMessage(err),
+            durationMs: Date.now() - startedAt,
+            ...(trace.length ? { trace: [...trace] } : {}),
+          };
+          if (turn.isActive())
+            dispatch({ type: 'UPSERT_MESSAGES', payload: [userMessage, failed] });
+          await turn.save(userMessage);
+          await turn.save(failed);
+          throw err;
+        }
+        flushUi();
 
         const stopped = controller.signal.aborted;
         const finalAiMessage: ChatMessage = {
           ...aiMessage,
           content: accumulated,
+          durationMs: Date.now() - startedAt,
+          ...(trace.length ? { trace: [...trace] } : {}),
+          ...(usage ? { usage } : {}),
           ...(stopped ? { stopped: true } : {}),
         };
         if (turn.isActive()) {
@@ -538,6 +609,23 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
       }
     },
     [maybeIngest],
+  );
+
+  const resendFrom = useCallback(
+    async (userMessageId: string, newText?: string) => {
+      const s = stateRef.current;
+      if (s.isLoading) return;
+      const idx = s.messages.findIndex((m) => m.id === userMessageId && m.role === 'user');
+      if (idx < 0) return;
+      const target = s.messages[idx]!;
+      const kept = s.messages.slice(0, idx);
+      const store = s.ipcClient.conversationStore?.();
+      const convoId = s.ipcClient.currentConversationId?.();
+      if (store && convoId) store.setMessages(convoId, kept);
+      dispatch({ type: 'SET_MESSAGES', payload: kept });
+      await sendStreamMessage(newText ?? target.content, undefined, { history: kept });
+    },
+    [sendStreamMessage],
   );
 
   const stopGeneration = useCallback(() => {
@@ -651,6 +739,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     () => ({
       sendMessage,
       sendStreamMessage,
+      resendFrom,
       stopGeneration,
       askKnowledge,
       loadChatHistory,
@@ -665,6 +754,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
     [
       sendMessage,
       sendStreamMessage,
+      resendFrom,
       stopGeneration,
       askKnowledge,
       loadChatHistory,

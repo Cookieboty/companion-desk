@@ -10,6 +10,7 @@ import {
 } from '../types/chat';
 import { type AIModelConfig } from '../types/config';
 import { type IPCClient, type ElectronAPI, type StreamSendOptions } from '../types/ipc';
+import { chunkToTrace, chunkToUsage } from '../utils/chunkTrace';
 
 import { ConversationStore } from './conversationStore';
 import { buildProviderMessages } from './history';
@@ -250,6 +251,11 @@ export class SdkIPCClient implements IPCClient {
             onChunk?.((c as { content: string }).content);
           } else if (c.type === 'error') {
             throw new Error((c as { error: string }).error);
+          } else if (streamOpts?.onTrace || streamOpts?.onUsage) {
+            const ev = chunkToTrace(c);
+            if (ev) streamOpts.onTrace?.(ev);
+            const u = chunkToUsage(c);
+            if (u) streamOpts.onUsage?.(u);
           }
         }
       } catch (error) {

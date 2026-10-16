@@ -5,7 +5,8 @@ import { ModalHostContext, type ModalHost } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
-import { ChatTabs, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
+import { ChatTabs, cliTabPlaceholder } from './components/ChatTabs';
+import { CliConversation } from './components/CliConversation';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ForkTargetMenu } from './components/ForkMenu';
@@ -53,7 +54,6 @@ import {
 } from './services/shortcuts';
 import type { ConversationBackend } from './types/chat';
 import { isConversationBackend } from './types/chat';
-import { type ChatMessage } from './types/chat';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
@@ -76,26 +76,6 @@ const AiChatContent: React.FC = () => {
   }, [toast]);
   const [tabRename, setTabRename] = useState(0);
   const [tabNew, setTabNew] = useState(0);
-  const cliMessages = useMemo<ChatMessage[]>(
-    () =>
-      tabs.messages.map((m) => {
-        const toolsLine =
-          !m.error && m.tools && m.tools.length
-            ? `${m.tools.map((n) => `\`${n}\``).join(' · ')}
-
-`
-            : '';
-        return {
-          id: m.id,
-          role: m.role,
-          content: m.error ? '' : `${toolsLine}${m.content}`,
-          timestamp: m.timestamp,
-          modelId: m.role === 'assistant' ? tabs.activeTab?.backend : undefined,
-          ...(m.error ? { error: m.content } : {}),
-        };
-      }),
-    [tabs.messages, tabs.activeTab?.backend],
-  );
   const [showConfig, setShowConfig] = useState(false);
   const [showProviders, setShowProviders] = useState(false);
 
@@ -432,7 +412,9 @@ const AiChatContent: React.FC = () => {
         <main className="chat-container">
           {isDev && tabs.isCliTab ? (
             <>
-              {cliMessages.length === 0 && !tabs.live[tabs.activeTab!.id] ? (
+              {tabs.messages.length === 0 &&
+              !tabs.live[tabs.activeTab!.id] &&
+              tabs.activeTab!.status === 'idle' ? (
                 <div className="welcome-screen" data-testid="cli-tab-empty">
                   <div className="welcome-content">
                     <h2 className="welcome-title">{t('{0} · 新会话', tabs.activeTab!.title)}</h2>
@@ -442,9 +424,13 @@ const AiChatContent: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <MessageList messages={cliMessages} />
+                <CliConversation
+                  tab={tabs.activeTab!}
+                  messages={tabs.messages}
+                  live={tabs.live[tabs.activeTab!.id]}
+                  onPermission={(id, allow) => void tabs.replyPermission(id, allow)}
+                />
               )}
-              <CliTabLive />
             </>
           ) : state.messages.length === 0 ? (
             <div className="welcome-screen" data-testid="welcome-screen">
