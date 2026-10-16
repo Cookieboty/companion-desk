@@ -9,10 +9,20 @@ const aiChatAPI = {
   /** 平台：渲染层据此画一体化标题栏（macOS 红绿灯 / Windows·Linux 原生按钮 overlay） */
   platform: process.platform,
 
-  /** 窗口按钮：抽屉 / 模态打开时隐藏 macOS 红绿灯（其他平台主进程忽略） */
+  /**
+   * 窗口按钮：抽屉 / 模态打开时 macOS 隐藏红绿灯；Windows / Linux 调暗原生按钮并拦截窗口关闭
+   * （拦截时主进程发 close-blocked，渲染层据此关闭最上层抽屉）
+   */
   chrome: {
     setButtonsHidden: (hidden: boolean) =>
       ipcRenderer.send('window-chrome:set-buttons-hidden', hidden === true),
+    onCloseBlocked: (cb: () => void) => {
+      const h = () => cb();
+      ipcRenderer.on('window-chrome:close-blocked', h);
+      return () => {
+        ipcRenderer.removeListener('window-chrome:close-blocked', h);
+      };
+    },
   },
 
   /** 设置 → 应用图标（core/appIcon.ts） */

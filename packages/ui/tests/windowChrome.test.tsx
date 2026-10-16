@@ -76,17 +76,66 @@ describe('drawer vs. native window buttons (macOS traffic lights)', () => {
     expect(setHidden.mock.calls).toEqual([[true], [false]]);
   });
 
-  it('no IPC on Windows / Linux, and no crash without the bridge', () => {
+  it('Windows / Linux use the same channel (platform branching lives in the main process)', () => {
     for (const p of ['win32', 'linux']) {
+      setHidden.mockClear();
       setBridge(p);
       const release = hideWindowButtons();
+      expect(setHidden.mock.calls).toEqual([[true]]);
       release();
+      expect(setHidden.mock.calls).toEqual([[true], [false]]);
     }
-    expect(setHidden).not.toHaveBeenCalled();
+  });
+
+  it('no crash without the bridge or with an old preload', () => {
     delete (window as unknown as W).electronAPI;
     expect(() => hideWindowButtons()()).not.toThrow();
     (window as unknown as W).electronAPI = { platform: 'darwin' }; // 旧 preload：没有 chrome
     expect(() => hideWindowButtons()()).not.toThrow();
+    (window as unknown as W).electronAPI = {
+      platform: 'win32',
+      chrome: {
+        setButtonsHidden: () => {
+          throw new Error('x');
+        },
+        onCloseBlocked: () => {
+          throw new Error('y');
+        },
+      },
+    };
+    expect(() => hideWindowButtons()()).not.toThrow();
+  });
+
+  it('window close blocked by main (Windows / Linux) closes only the topmost drawer', () => {
+    let cb: (() => void) | undefined;
+    const unsub = vi.fn();
+    (window as unknown as W).electronAPI = {
+      platform: 'win32',
+      chrome: {
+        setButtonsHidden: setHidden,
+        onCloseBlocked: (f: () => void) => {
+          cb = f;
+          return unsub;
+        },
+      },
+    };
+    const outer = vi.fn();
+    const inner = vi.fn();
+    const { unmount } = render(
+      <>
+        <Drawer onClose={outer} />
+        <Modal open onClose={inner} title="confirm" data-testid="confirm">
+          x
+        </Modal>
+      </>,
+    );
+    expect(cb).toBeTypeOf('function');
+    cb!();
+    expect(inner).toHaveBeenCalledTimes(1);
+    expect(outer).not.toHaveBeenCalled();
+    unmount();
+    expect(unsub).toHaveBeenCalledTimes(1);
+    expect(setHidden).toHaveBeenLastCalledWith(false);
   });
 
   it('close stays reachable: X button, Esc and overlay click all close the drawer', () => {
