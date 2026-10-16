@@ -9,11 +9,14 @@ import {
   Mic,
   Pin,
   PinOff,
+  RotateCcw,
   Settings2,
   UserRound,
   Volume2,
   VolumeX,
   X,
+  ZoomIn,
+  ZoomOut,
   type LucideIcon,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -34,6 +37,7 @@ import { useMascot } from '@/contexts/MascotContext';
 import { useWaifuMessage } from '@/hooks/useWaifuMessage';
 import { nextModel } from '@/mascot/catalog';
 import { layoutStore, placeGutter, type GutterPlacement } from '@/mascot/layoutStore';
+import { scalePercent, scaleStore, useMascotScale } from '@/mascot/scaleStore';
 import { registerSpeechStopper } from '@/mascot/speechStop';
 import { MESSAGES } from '@/mascot/tips';
 import { MascotMicTool, toggleMascotHandsfree } from '@/mascot/voice/MascotVoice';
@@ -73,6 +77,7 @@ export const ToolBar: React.FC = () => {
   const [voiceMode, setVoiceMode] = useState<'fixed' | 'tts'>('fixed');
   const [prefs, setPrefs] = useState<ToolbarPrefs>(loadToolbarPrefs);
   const [menuOpen, setMenuOpen] = useState(false);
+  const size = useMascotScale();
   const [near, setNear] = useState(false);
   const [hoverWin, setHoverWin] = useState(process.env.NODE_ENV === 'development');
   const [focusWithin, setFocusWithin] = useState(false);
@@ -720,6 +725,49 @@ export const ToolBar: React.FC = () => {
                 data-testid="toolbar-compact"
               />
             </div>
+            {size && (
+              <div className={styles.menuRow} role="group" aria-label={tr('看板娘大小')}>
+                <span>{tr('大小')}</span>
+                <div className={styles.sizeCtl}>
+                  <button
+                    type="button"
+                    className={styles.miniBtn}
+                    aria-label={tr('缩小')}
+                    title={tr('缩小')}
+                    data-testid="toolbar-zoom-out"
+                    disabled={size.scale <= size.min + 1e-6}
+                    onClick={() => scaleStore.step(-1)}
+                  >
+                    <ZoomOut size={15} strokeWidth={1.75} aria-hidden />
+                  </button>
+                  <span className={styles.sizeValue} data-testid="toolbar-scale-value">
+                    {scalePercent(size.scale)}%
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.miniBtn}
+                    aria-label={tr('放大')}
+                    title={tr('放大')}
+                    data-testid="toolbar-zoom-in"
+                    disabled={size.scale >= size.max - 1e-6}
+                    onClick={() => scaleStore.step(1)}
+                  >
+                    <ZoomIn size={15} strokeWidth={1.75} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.miniBtn}
+                    aria-label={tr('重置大小')}
+                    title={tr('重置大小')}
+                    data-testid="toolbar-zoom-reset"
+                    disabled={Math.abs(size.scale - size.default) < 1e-6}
+                    onClick={() => scaleStore.reset()}
+                  >
+                    <RotateCcw size={15} strokeWidth={1.75} aria-hidden />
+                  </button>
+                </div>
+              </div>
+            )}
             <div className={styles.menuRow}>
               <span>{tr('配色')}</span>
               <div className={styles.swatches} role="radiogroup" aria-label={tr('工具栏配色')}>

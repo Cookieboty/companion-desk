@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type { VrmBackend } from '../backends/vrm';
 import { layoutStore } from '../layoutStore';
 import { mascotRegistry } from '../MascotBackend';
+import { onWindowResized } from '../windowResize';
 
 import { ClickClassifier, PatDetector } from './gestures';
 import { DragGate, HitHysteresis, hitRadius, inPaddedRects } from './pointerPolicy';
@@ -126,6 +127,11 @@ const MascotInteractionLayer: FC = () => {
     const api = window.electronAPI?.mascotWindow;
     interactionSettings.push();
     const classifier = new ClickClassifier((region, kind) => react(kind, region));
+    // 窗口被缩放：尽快重新上报包围盒（见 windowResize.ts）
+    const offResize = onWindowResized(() => {
+      s.geomAt = -1e9;
+      s.lastGeom = '';
+    });
 
     const offCursor = api?.onCursor((p) => {
       s.cursor = { x: p.x, y: p.y, inside: p.inside, fresh: true };
@@ -205,6 +211,7 @@ const MascotInteractionLayer: FC = () => {
     window.addEventListener('pointercancel', onCancel);
     window.addEventListener('blur', onCancel);
     return () => {
+      offResize();
       offCursor?.();
       offBody?.();
       offEvt?.();

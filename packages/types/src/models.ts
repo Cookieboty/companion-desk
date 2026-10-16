@@ -199,6 +199,17 @@ export interface ShapeRect {
   height: number;
 }
 
+/** 看板娘大小（主进程按屏幕可用区域夹紧，窗口随之调整，脚底中心不动） */
+export interface MascotScaleState {
+  scale: number;
+  min: number;
+  max: number;
+  hardMax: number;
+  default: number;
+  step: number;
+  window: { width: number; height: number };
+}
+
 export interface MascotWindowApi {
   /** process.platform（Linux 用窗口形状实现点击穿透） */
   platform: string;
@@ -212,6 +223,13 @@ export interface MascotWindowApi {
   dragEnd(): void;
   setConfig(cfg: Partial<MascotInteractionConfig>): void;
   wanderNow(): void;
+  scaleGet(): Promise<MascotScaleState>;
+  scaleSet(scale: number): Promise<MascotScaleState>;
+  scaleStep(dir: 1 | -1): Promise<MascotScaleState>;
+  /** Ctrl/⌘+滚轮：累计的 deltaY（向上滚 = 放大） */
+  scaleWheel(deltaY: number, deltaMode?: number): Promise<MascotScaleState>;
+  scaleReset(): Promise<MascotScaleState>;
+  onScale(cb: (s: MascotScaleState) => void): () => void;
   snapshot(): Promise<{
     body: { x: number; y: number; vx: number; vy: number; mode: string };
     ignoring: boolean;

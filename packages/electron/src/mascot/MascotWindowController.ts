@@ -1,7 +1,9 @@
+import type { MascotScaleState } from '@nomi-ai/types';
 import { type BrowserWindow, ipcMain, screen } from 'electron';
 
 import {
   advance,
+  areaUnder,
   anchorOnBoxChange,
   clampToWorld,
   pickWanderTarget,
@@ -13,6 +15,20 @@ import {
   type PhysicsEvent,
   type Rect,
 } from './desktopPhysics';
+import {
+  DEFAULT_MASCOT_SCALE,
+  MASCOT_BASE,
+  MASCOT_PAD,
+  MASCOT_SCALE_STEP,
+  MAX_MASCOT_SCALE,
+  MIN_MASCOT_SCALE,
+  fitMascotScale,
+  maxScaleForArea,
+  resizeMascotBounds,
+  roundMascotScale,
+  stepMascotScale,
+  wheelMascotScale,
+} from './mascotSize';
 
 export interface InteractionConfig {
   /** 透明区域点击穿透 */
@@ -34,6 +50,17 @@ export const DEFAULT_INTERACTION: InteractionConfig = {
   reactions: true,
   globalLook: true,
 };
+
+export interface MascotScaleHooks {
+  /** 用户偏好（持久化值） */
+  get(): number;
+  /** 用户操作后持久化（主进程防抖落盘） */
+  save(scale: number): void;
+  /** 状态变化后广播给其它窗口（设置页） */
+  changed?(state: MascotScaleState): void;
+  /** 允许调用缩放 IPC 的窗口；默认只有看板娘窗口自己 */
+  trusted?(sender: Electron.WebContents): boolean;
+}
 
 type Logger = { info(m: string, d?: unknown): void; warn(m: string, d?: unknown): void };
 
@@ -76,13 +103,28 @@ export class MascotWindowController {
     private readonly win: BrowserWindow,
     private readonly logger: Logger,
     private readonly rnd: () => number = Math.random,
+    private readonly scaleHooks?: MascotScaleHooks,
   ) {}
+
+  /** 生效缩放（窗口当前大小对应的 scale）与用户偏好（屏幕变小时只临时压低，不改写偏好） */
+  private scale = DEFAULT_MASCOT_SCALE;
+  private pref = DEFAULT_MASCOT_SCALE;
 
   start(): void {
     this.refreshDisplays();
+    {
+      const [w] = this.win.getSize();
+      this.scale = roundMascotScale((w - 2 * MASCOT_PAD.x) / MASCOT_BASE.width);
+      this.pref = this.scaleHooks?.get() ?? this.scale;
+    }
     const [x, y] = this.win.getPosition();
     this.body = { x, y, vx: 0, vy: 0, mode: 'idle' };
-    const onDisplays = () => this.refreshDisplays();
+    const onDisplays = () => {
+      this.refreshDisplays();
+      // 屏幕变小 / 拔掉外接屏：临时压低到可见范围；回到大屏后恢复偏好值
+      const want = fitMascotScale(this.pref, this.capNow());
+      if (want !== this.scale && !this.win.isDestroyed()) this.applyScale(want, false, true);
+    };
     screen.on('display-added', onDisplays);
     screen.on('display-removed', onDisplays);
     screen.on('display-metrics-changed', onDisplays);
@@ -111,6 +153,31 @@ export class MascotWindowController {
     on('mascot:drag-end', () => this.dragEnd());
     on('mascot:interaction-config', (_e, cfg) => this.setConfig(cfg));
     on('mascot:wander-now', () => this.startWander());
+
+    // 大小：Ctrl/⌘+滚轮、菜单、设置页滑块、快捷键
+    const handle = (ch: string, fn: (...a: unknown[]) => unknown) => {
+      ipcMain.removeHandler(ch);
+      ipcMain.handle(ch, (e, ...a) => {
+        const ok = this.scaleHooks?.trusted
+          ? this.scaleHooks.trusted(e.sender)
+          : e.sender === this.win.webContents;
+        return ok ? fn(...a) : this.scaleState();
+      });
+      this.disposers.push(() => ipcMain.removeHandler(ch));
+    };
+    handle('mascot:scale-get', () => this.scaleState());
+    handle('mascot:scale-set', (v) =>
+      num(v) === null ? this.scaleState() : this.setScale(num(v)!),
+    );
+    handle('mascot:scale-step', (d) =>
+      this.setScale(stepMascotScale(this.scale, d === -1 ? -1 : 1, this.capNow())),
+    );
+    handle('mascot:scale-wheel', (dy, mode) =>
+      num(dy) === null
+        ? this.scaleState()
+        : this.setScale(wheelMascotScale(this.scale, num(dy)!, num(mode) ?? 0, this.capNow())),
+    );
+    handle('mascot:scale-reset', () => this.setScale(DEFAULT_MASCOT_SCALE));
 
     // 只读快照（e2e / 调试）
     ipcMain.removeHandler('mascot:debug-snapshot');
@@ -144,6 +211,86 @@ export class MascotWindowController {
     if (!this.cfg.wander && this.body.mode === 'walking')
       this.body = { ...this.body, mode: 'idle', vx: 0 };
     this.logger.info('Nomi 互动设置', this.cfg);
+  }
+
+  /** 角色脚底所在显示器允许的最大缩放 */
+  private capNow(): number {
+    const [wx] = this.win.getPosition();
+    const [w] = this.win.getSize();
+    const cx = this.box ? wx + (this.box.left + this.box.right) / 2 : wx + w / 2;
+    return maxScaleForArea(this.workAreas.length ? areaUnder(this.workAreas, cx) : null);
+  }
+
+  scaleState(): MascotScaleState {
+    const [width, height] = this.win.isDestroyed() ? [0, 0] : this.win.getSize();
+    return {
+      scale: this.scale,
+      min: MIN_MASCOT_SCALE,
+      max: this.capNow(),
+      hardMax: MAX_MASCOT_SCALE,
+      default: DEFAULT_MASCOT_SCALE,
+      step: MASCOT_SCALE_STEP,
+      window: { width, height },
+    };
+  }
+
+  /** 用户设置大小：夹紧到屏幕范围、保持脚底中心不动、持久化、通知 */
+  setScale(raw: number): MascotScaleState {
+    return this.applyScale(fitMascotScale(raw, this.capNow()), true, true);
+  }
+
+  private applyScale(target: number, userPref: boolean, notify: boolean): MascotScaleState {
+    if (this.win.isDestroyed()) return this.scaleState();
+    if (userPref) this.pref = target;
+    if (target !== this.scale) {
+      const b = this.win.getBounds();
+      const from = this.scale;
+      const feet = this.box
+        ? { x: (this.box.left + this.box.right) / 2, y: this.box.bottom }
+        : null;
+      const nb = resizeMascotBounds({
+        bounds: b,
+        fromScale: from,
+        toScale: target,
+        box: this.box,
+        workAreas: this.workAreas,
+      });
+      try {
+        // Linux(GTK) 的不可缩放窗口会把尺寸提示锁死；程序化缩放时临时放开
+        const lock = process.platform === 'linux' && !this.win.isResizable();
+        if (lock) this.win.setResizable(true);
+        this.win.setBounds(nb);
+        if (lock) this.win.setResizable(false);
+      } catch (err) {
+        this.logger.warn('缩放看板娘窗口失败', { error: String(err) });
+        return this.scaleState();
+      }
+      const r = target / from;
+      if (this.box) {
+        const k = (v: number, pad: number, max: number) =>
+          Math.max(0, Math.min(max, pad + (v - pad) * r));
+        this.box = {
+          left: k(this.box.left, MASCOT_PAD.x, nb.width),
+          right: k(this.box.right, MASCOT_PAD.x, nb.width),
+          top: k(this.box.top, MASCOT_PAD.top, nb.height),
+          bottom: k(this.box.bottom, MASCOT_PAD.top, nb.height),
+        };
+      }
+      if (this.drag) {
+        // 拖拽中缩放：指针保持在角色同一位置
+        this.drag = { dx: this.drag.dx - (nb.x - b.x), dy: this.drag.dy - (nb.y - b.y) };
+      }
+      this.body = { ...this.body, x: nb.x, y: nb.y };
+      this.scale = target;
+      this.hitKnown = false;
+    }
+    const state = this.scaleState();
+    if (userPref) this.scaleHooks?.save(this.pref);
+    if (notify) {
+      this.send('mascot:scale-changed', state);
+      this.scaleHooks?.changed?.(state);
+    }
+    return state;
   }
 
   private refreshDisplays(): void {

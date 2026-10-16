@@ -20,6 +20,7 @@ import styles from './index.module.css';
 import { IslandSettings } from './IslandSettings';
 import { KnowledgeSection } from './KnowledgeSection';
 import { LanguageSettings } from './LanguageSettings';
+import { MascotSizeSettings } from './MascotSizeSettings';
 import { PinsSettings } from './PinsSettings';
 import { PrivacySection } from './PrivacySection';
 import { ScheduleSection } from './ScheduleSection';
@@ -94,6 +95,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, dee
           <>
             <LanguageSettings />
             <AppIconSettings />
+            <MascotSizeSettings />
             <UpdateSettings />
             <section className={styles.block}>
               <h2 className={styles.h2}>{t('新手引导')}</h2>
