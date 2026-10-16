@@ -1,11 +1,8 @@
-import { X } from 'lucide-react';
 import React, { createContext, useContext, useId, useRef } from 'react';
 
 import { cx } from './cx';
 import { t } from './i18n';
-import { Icon } from './icons';
 import { useFocusTrap } from './useFocusTrap';
-import { useWindowButtonsHidden } from './windowChrome';
 
 export interface ModalProps {
   open: boolean;
@@ -15,7 +12,7 @@ export interface ModalProps {
   size?: 'md' | 'lg';
   /** 点击遮罩关闭（默认 true） */
   closeOnOverlay?: boolean;
-  /** 关闭按钮的无障碍名称（默认「关闭」） */
+  /** 关闭按钮的无障碍名称（默认「关闭」；按钮可见文字固定为「关闭」） */
   closeLabel?: string;
   className?: string;
   bodyClassName?: string;
@@ -56,8 +53,6 @@ export const Modal: React.FC<ModalProps> = ({
   closeRef.current = onClose;
   // 焦点进入 / Tab 循环 / Esc 关闭最上层 / 关闭后焦点归还
   useFocusTrap(dialogRef, open && !inline, () => closeRef.current());
-  // 遮罩盖不住 macOS 原生红绿灯：打开期间让主进程临时隐藏，避免误点关闭整个窗口
-  useWindowButtonsHidden(open && !inline);
 
   if (!open) return null;
   const body = (
@@ -119,12 +114,11 @@ export const Modal: React.FC<ModalProps> = ({
           )}
           <button
             type="button"
-            className="cd-btn cd-btn--ghost cd-btn--sm cd-icon-btn"
+            className="cd-btn cd-btn--ghost cd-btn--sm cd-modal__close"
             aria-label={closeLabel}
-            title={closeLabel}
             onClick={onClose}
           >
-            <Icon icon={X} />
+            {t('关闭')}
           </button>
         </div>
         {body}

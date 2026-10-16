@@ -15,8 +15,6 @@ import {
   type UpdateInfo,
 } from 'electron-updater';
 
-import { allowWindowClose } from '../core/titleBar';
-
 import { type ILoggerService } from './LoggerService';
 
 export type UpdateStatus =
@@ -250,8 +248,6 @@ export class UpdateService {
     }
     this.logger.info('[updater] quitAndInstall');
     // isSilent=false, isForceRunAfter=true → relaunch after install
-    // quitAndInstall 会先关窗口再 before-quit：先放行，否则打开着抽屉时窗口关闭被拦截而无法安装
-    allowWindowClose();
     this.updater.quitAndInstall(false, true);
     return this.getState();
   }

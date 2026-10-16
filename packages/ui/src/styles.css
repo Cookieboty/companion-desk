@@ -253,7 +253,9 @@
 /* ---------- Modal / Dialog ---------- */
 .cd-modal-overlay {
   position: fixed;
-  inset: 0;
+  /* 从窗口标题栏下方开始：原生窗口按钮（红绿灯 / titleBarOverlay）与标题栏始终完整可见、可拖动，
+     不被遮罩模糊；--cd-titlebar-h 由对话窗口按平台设置，其余窗口（无标题栏）为 0 */
+  inset: var(--cd-titlebar-h, 0px) 0 0 0;
   z-index: var(--cd-z-modal);
   display: flex;
   align-items: center;
@@ -1215,13 +1217,6 @@
   justify-content: flex-end;
   align-items: stretch;
   padding: 0;
-  /* 比普通遮罩更实、更糊：盖住整窗（含顶部标题栏），不让背后的界面 / 窗口按钮「透」出来误导 */
-  background: color-mix(in srgb, var(--cd-color-bg) 68%, transparent);
-  backdrop-filter: blur(14px) saturate(0.85);
-  -webkit-backdrop-filter: blur(14px) saturate(0.85);
-  /* 抽屉遮罩覆盖顶部拖拽区：点击遮罩（含顶部一条）即关闭抽屉，而不是开始拖窗口 */
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 .cd-modal--drawer {
   width: min(560px, 92vw);
@@ -1252,6 +1247,13 @@
 }
 .cd-modal--drawer .cd-modal__title {
   flex: 1;
+}
+/* 紧凑文字关闭按钮（「关闭」两个字，代替图标） */
+.cd-modal__close {
+  flex: none;
+  min-width: 0;
+  padding-inline: var(--cd-space-2);
+  white-space: nowrap;
 }
 .cd-modal--drawer.cd-modal--lg {
   width: min(720px, 96vw);

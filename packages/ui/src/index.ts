@@ -34,7 +34,6 @@ export type { SkeletonProps } from './Skeleton';
 export * from './theme';
 export * from './i18n';
 export { useFocusTrap } from './useFocusTrap';
-export { hideWindowButtons, useWindowButtonsHidden } from './windowChrome';
 export { ErrorState, LoadingState } from './ErrorState';
 export type { ErrorStateProps } from './ErrorState';
 export { createLogger, isVerboseLogging, perfMark, setVerboseLogging } from './logger';

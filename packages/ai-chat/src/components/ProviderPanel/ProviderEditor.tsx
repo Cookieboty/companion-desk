@@ -615,7 +615,7 @@ export const ProviderEditor: React.FC<{
                       data-testid="draft-thinking"
                       checked={thinking}
                       onChange={setThinking}
-                      label={thinking ? t('开启') : t('关闭')}
+                      label={thinking ? t('已开启') : t('已关闭')}
                     />
                   )}
                 </FormField>

@@ -46,7 +46,7 @@ import { initAppIcon } from './appIcon';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
 import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
-import { allowWindowClose, applyTitleBarTheme, registerWindowChromeIpc } from './titleBar';
+import { applyTitleBarTheme } from './titleBar';
 import { TrayManager } from './TrayManager';
 import { WindowManager } from './WindowManager';
 
@@ -282,8 +282,6 @@ export class Application implements IApplication {
       // 界面主题（设置 → 通用 → 主题），对话窗口与看板娘同步
       const themes = new ThemeService(path.join(app.getPath('userData'), 'theme.json'));
       themes.registerIpc();
-      // 抽屉 / 模态打开时：macOS 隐藏红绿灯；Windows / Linux 调暗原生按钮并拦截关闭（防止误关整个窗口）
-      registerWindowChromeIpc(process.platform, () => themes.get().resolved);
       // 对话窗口一体化标题栏跟随主题（窗口底色 + Windows / Linux 原生按钮配色）
       this.windowManager.chromeTheme = () => themes.get().resolved;
       themes.onChange((st) => {
@@ -748,7 +746,6 @@ export class Application implements IApplication {
 
     // 应用退出前
     app.on('before-quit', async () => {
-      allowWindowClose(); // 退出流程中不再拦截窗口关闭
       await this.stop();
     });
 
