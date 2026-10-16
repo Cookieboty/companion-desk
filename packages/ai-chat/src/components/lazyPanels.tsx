@@ -17,6 +17,7 @@ import type { ProviderPanel as ProviderPanelT } from './ProviderPanel';
 import type { SchedulePanel as SchedulePanelT } from './SchedulePanel';
 import type { ScreenPanel as ScreenPanelT } from './ScreenPanel';
 import type { SettingsView as SettingsViewT } from './SettingsView';
+import type { UsagePanel as UsagePanelT } from './UsagePanel';
 
 type PropsOf<T> = T extends React.ComponentType<infer P> ? P : never;
 
@@ -111,4 +112,7 @@ export const ExtensionsPanel: React.FC<PropsOf<typeof ExtensionsPanelT>> = lazyP
 );
 export const LocalPanel: React.FC<PropsOf<typeof LocalPanelT>> = lazyPanel(() =>
   import('./LocalPanel').then((m) => m.LocalPanel),
+);
+export const UsagePanel: React.FC<PropsOf<typeof UsagePanelT>> = lazyComponent(() =>
+  import('./UsagePanel').then((m) => m.UsagePanel),
 );

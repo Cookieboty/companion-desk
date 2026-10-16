@@ -7,6 +7,7 @@ export type SettingsSection =
   | 'general'
   | 'shortcuts'
   | 'coding'
+  | 'usage'
   | 'voice'
   | 'kb'
   | 'memory'
@@ -28,6 +29,7 @@ export const SETTINGS_SECTIONS: Array<{
   { id: 'general', icon: SETTINGS_ICONS.general, label: '通用' },
   { id: 'shortcuts', icon: SETTINGS_ICONS.shortcuts, label: '快捷键' },
   { id: 'coding', icon: SETTINGS_ICONS.coding, label: '编程助手' },
+  { id: 'usage', icon: SETTINGS_ICONS.usage, label: '用量与费用' },
   { id: 'voice', icon: SETTINGS_ICONS.voice, label: '语音' },
   { id: 'kb', icon: SETTINGS_ICONS.kb, label: '知识库' },
   { id: 'memory', icon: SETTINGS_ICONS.memory, label: '记忆' },

@@ -16,6 +16,7 @@ import {
   Blocks,
   Brain,
   CalendarDays,
+  Coins,
   Cpu,
   Crop,
   Download,
@@ -54,6 +55,8 @@ export const SETTINGS_ICONS = {
   shortcuts: Keyboard,
   /** 编程助手：终端 */
   coding: SquareTerminal,
+  /** 用量与费用：硬币 */
+  usage: Coins,
   /** 语音：声波 */
   voice: AudioLines,
   /** 知识库：书库 */

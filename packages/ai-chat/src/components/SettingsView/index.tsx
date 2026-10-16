@@ -21,6 +21,7 @@ import {
   MemoryPanel,
   SchedulePanel,
   ScreenPanel,
+  UsagePanel,
 } from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
 import { ProvidersPage } from '../ProvidersPage';
@@ -107,6 +108,8 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         ) : (
           <p className={styles.note}>{t('编程助手设置仅在桌面应用中可用；模型配置见「通用」。')}</p>
         );
+      case 'usage':
+        return <UsagePanel />;
       case 'voice':
         return <VoiceSection />;
       case 'kb':
