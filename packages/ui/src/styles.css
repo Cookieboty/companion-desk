@@ -1181,6 +1181,13 @@
   justify-content: flex-end;
   align-items: stretch;
   padding: 0;
+  /* 比普通遮罩更实、更糊：盖住整窗（含顶部标题栏），不让背后的界面 / 窗口按钮「透」出来误导 */
+  background: color-mix(in srgb, var(--cd-color-bg) 68%, transparent);
+  backdrop-filter: blur(14px) saturate(0.85);
+  -webkit-backdrop-filter: blur(14px) saturate(0.85);
+  /* 抽屉遮罩覆盖顶部拖拽区：点击遮罩（含顶部一条）即关闭抽屉，而不是开始拖窗口 */
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 .cd-modal--drawer {
   width: min(560px, 92vw);

@@ -46,7 +46,7 @@ import { initAppIcon } from './appIcon';
 import { BootstrapManager } from './BootstrapManager';
 import { eventBus } from './EventBus';
 import { ServiceContainer, type IServiceContainer } from './ServiceContainer';
-import { applyTitleBarTheme } from './titleBar';
+import { applyTitleBarTheme, registerWindowChromeIpc } from './titleBar';
 import { TrayManager } from './TrayManager';
 import { WindowManager } from './WindowManager';
 
@@ -282,6 +282,8 @@ export class Application implements IApplication {
       // 界面主题（设置 → 通用 → 主题），对话窗口与看板娘同步
       const themes = new ThemeService(path.join(app.getPath('userData'), 'theme.json'));
       themes.registerIpc();
+      // 抽屉 / 模态打开时临时隐藏 macOS 红绿灯（防止误点关闭整个窗口）
+      registerWindowChromeIpc();
       // 对话窗口一体化标题栏跟随主题（窗口底色 + Windows / Linux 原生按钮配色）
       this.windowManager.chromeTheme = () => themes.get().resolved;
       themes.onChange((st) => {

@@ -84,6 +84,9 @@ export interface UpdateStateView {
 }
 
 export interface ElectronAPI {
+  platform?: string;
+  /** 抽屉 / 模态打开时隐藏 macOS 红绿灯（主进程在其他平台忽略） */
+  chrome?: { setButtonsHidden: (hidden: boolean) => void };
   updates?: {
     get: () => Promise<UpdateStateView>;
     check: () => Promise<UpdateStateView>;
