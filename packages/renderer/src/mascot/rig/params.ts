@@ -108,20 +108,23 @@ export const PARAM_DEFS: readonly ParamDef[] = [
   D('headX', 0, -40, 40, { rm: 0.4 }),
   D('gazeX', 0, -1, 1),
   D('gazeY', 0, -1, 1),
-  // arms: a = shoulder lift outward/up (deg), e = elbow bend (deg), w = wrist twist (deg)
+  // arms: a = shoulder swing outward/up (deg), e = elbow flexion (deg, + keeps turning out, − folds across the body), w = wrist (deg)
   D('rOn', 0, 0, 1),
   D('rA', 0, -110, 150),
-  D('rE', 0, -140, 230),
+  D('rE', 0, -175, 175),
   D('rW', 0, -90, 90),
   D('rHand', 0, 0, 9, { discrete: true }),
-  /** derived by the animator (never keyed): forearm foreshortening while the arm swings, 0..1 */
-  D('rF', 0, 0, 1),
+  /** reach toward the camera 0..1: foreshortens the upper arm and (more) the forearm */
+  D('rZ', 0, 0, 1),
+  /** hand-piece mix 0..1: the sleeve tapers into the cuff and the hand fades in (continuous, no pop) */
+  D('rMix', 0, 0, 1),
   D('lOn', 0, 0, 1),
   D('lA', 0, -110, 150),
-  D('lE', 0, -140, 230),
+  D('lE', 0, -175, 175),
   D('lW', 0, -90, 90),
   D('lHand', 0, 0, 9, { discrete: true }),
-  D('lF', 0, 0, 1),
+  D('lZ', 0, 0, 1),
+  D('lMix', 0, 0, 1),
   /** 1 = arms are drawn in front of the head (hand over face / chin) */
   D('armFront', 0, 0, 1, { discrete: true }),
   // face

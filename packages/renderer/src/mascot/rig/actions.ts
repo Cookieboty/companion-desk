@@ -10,9 +10,11 @@
  *  - First / last keys of a one-shot are the rest pose; the manager crossfades the weights.
  */
 import type { ActionDef, Ease, Key, Track } from './actionTypes';
+import { ARM_POSES } from './armPoses.generated';
+import type { ArmPose } from './armPoses.generated';
 import { BROW, EYE, HAND, MOUTH } from './params';
 
-type Pose = readonly [a: number, e: number, w: number];
+type Pose = ArmPose;
 
 const T = (p: string, ...k: Key[]): Track => ({ p, k });
 
@@ -21,10 +23,14 @@ const hold = (p: string, from: number, to: number, v: number): Track =>
   from <= 0 ? T(p, [0, v], [to, 0, 's']) : T(p, [0, 0], [from, v, 's'], [to, 0, 's']);
 
 /**
- * One arm: anticipation dip → lift (overshoot) → hold → lower back to rest. Actions that end before
- * `dur - 0.3` lower the arm on their own (real swing, foreshortened by the animator); held actions
- * and ones that run to the end keep the pose and let the manager cross-fade the sleeve back.
+ * One arm as a 2-bone chain: every joint (shoulder a, elbow e, wrist w, reach z) gets its own key
+ * list, staggered proximal → distal (the elbow trails the shoulder by ~50 ms, the wrist by ~100 ms),
+ * with a small anticipation dip, a touch of overshoot on arrival and a staggered return to rest.
+ * The poses are the IK solutions of armTargets.ts (hand centre on a named landmark), so the hand
+ * really lands on chin / cheek / hair / chest; `via` chains further targets (e.g. mouth → blow).
+ * `rMix`/`lMix` fades the hand piece + sleeve taper in/out continuously (no swap pop).
  */
+const JOINT_LAG = [0, 0.05, 0.1, 0.02] as const;
 function arm(
   side: 'r' | 'l',
   hand: number,
@@ -34,48 +40,56 @@ function arm(
   dur: number,
   opts: ArmOpts = {},
 ): Track[] {
-  const ease = opts.ease ?? 'b';
+  const ease = opts.ease ?? 'io';
   const win = opts.win ?? [t0, t1];
   const ret = opts.ret ?? t1 <= dur - 0.3;
-  // stronger anticipation (shoulder dip / elbow prep) so lifts don't pop from rest
-  const ant = [
-    Math.min(-6, -Math.abs(pose[0]) * 0.18),
-    Math.min(-10, -Math.abs(pose[1]) * 0.1),
-    Math.min(-4, -Math.abs(pose[2]) * 0.08),
-  ];
+  const tAnt = opts.fast ? 0.05 : Math.max(0.08, t0 * 0.35);
+  const tArr = Math.max(t0, tAnt + (opts.fast ? 0.28 : 0.45));
+  const via = opts.via ?? [];
+  const last = via.length ? via[via.length - 1][1] : pose;
   const key = (i: number): Key[] => {
-    // swing ≥0.45s; land with a touch of overshoot then settle
-    const tAnt = Math.max(0.08, t0 * 0.35);
-    const tUp = Math.min(Math.max(t0, tAnt + 0.45), t1 - 0.08);
-    const overshoot = pose[i] * (pose[i] >= 0 ? 1.06 : 1.06);
+    const lag = JOINT_LAG[i];
+    const ant =
+      i === 3 ? 0 : -Math.sign(pose[i] || 1) * Math.min(7, 1.5 + Math.abs(pose[i]) * 0.05);
+    const over = Math.max(-174, Math.min(174, pose[i] * (i === 3 ? 1 : 1.04)));
     const keys: Key[] = [
       [0, 0],
-      [tAnt, ant[i], 'o'],
-      [tUp, overshoot, ease],
-      [Math.min(tUp + 0.18, t1), pose[i], 'io'],
+      [tAnt, ant, 'o'],
+      [tArr + lag, over, ease],
+      [tArr + lag + 0.2, pose[i], 'io'],
     ];
+    for (const [tv, pv] of via) keys.push([tv + lag, pv[i], 'io']);
+    const hold1 = Math.max(t1, (via.length ? via[via.length - 1][0] : 0) + 0.2);
     if (ret) {
-      // settle hold, then ease home with a soft undershoot so it doesn't hard-stop
-      const tDown = Math.min(dur, Math.max(t1, tUp + 0.25));
-      keys.push([t1, pose[i]], [tDown, pose[i] * 0.12, 'io'], [dur, 0, 'io']);
-    } else keys.push([dur, pose[i]]);
+      const end = Math.min(dur, dur - 0.1 + lag);
+      keys.push([hold1, last[i]], [Math.max(hold1 + 0.2, end), 0, 'io']);
+      if (end < dur) keys.push([dur, 0]);
+    } else keys.push([dur, last[i]]);
     return keys;
   };
-  const tHandOn = Math.max(0.12, t0 * 0.55);
-  const tHandOff = ret ? Math.max(t1, dur - 0.35) : dur;
+  const mixKeys: Key[] = ret
+    ? [
+        [0, 0],
+        [tAnt, 0],
+        [Math.max(tAnt + 0.1, tArr - 0.1), 1, 'io'],
+        [Math.max(t1, dur - 0.45), 1],
+        [dur - 0.08, 0, 'io'],
+        [dur, 0],
+      ]
+    : [
+        [0, 0],
+        [tAnt, 0],
+        [Math.max(tAnt + 0.1, tArr - 0.1), 1, 'io'],
+        [dur, 1],
+      ];
   return [
     T(`${side}On`, [0, 1]),
-    // swap the hand shape after the lift starts and drop it before the arm fully rests
-    T(
-      `${side}Hand`,
-      [0, 0],
-      [tHandOn, hand, 's'],
-      [tHandOff, hand, 's'],
-      [Math.min(dur, tHandOff + 0.01), 0, 's'],
-    ),
+    T(`${side}Hand`, [0, hand]),
+    T(`${side}Mix`, ...mixKeys),
     { p: `${side}A`, k: key(0), osc: opts.oscA, oscWin: win },
     { p: `${side}E`, k: key(1), osc: opts.oscE, oscWin: win },
     { p: `${side}W`, k: key(2), osc: opts.oscW, oscWin: win },
+    T(`${side}Z`, ...key(3)),
   ];
 }
 type Osc = [amp: number, hz: number, phase?: number];
@@ -87,44 +101,27 @@ type ArmOpts = {
   ease?: Ease;
   /** lower the arm again before the action ends (default: when t1 <= dur - 0.3) */
   ret?: boolean;
+  /** snappy arrival (surprise, recoil …) */
+  fast?: boolean;
+  /** further targets after the first: [time the pose is reached, pose] */
+  via?: ReadonlyArray<readonly [number, Pose]>;
 };
+/** both arms with their own solved (mirrored) poses; `o` is shared so oscillations stay mirrored */
 const both = (
   hand: number,
-  r: Pose,
-  l: Pose,
+  p: { r: Pose; l: Pose },
   t0: number,
   t1: number,
   dur: number,
   o: ArmOpts = {},
-) => [...arm('r', hand, r, t0, t1, dur, o), ...arm('l', hand, l, t0, t1, dur, o)];
+) => [...arm('r', hand, p.r, t0, t1, dur, o), ...arm('l', hand, p.l, t0, t1, dur, o)];
 
 /** pulse: 0 → v → 0 over [from, to] */
 const pulse = (p: string, from: number, peak: number, to: number, v: number): Track =>
   T(p, [0, 0], [from, 0], [peak, v, 'o'], [to, 0, 'io']);
 
-// --- solved arm poses (right / left) -----------------------------------------------------------
-const P = {
-  // Mild on-canvas raises: long right sleeve exits the 960px frame past ~22° shoulder.
-  // Distal foreshortening + stump-locked mesh keep sleeve+hand continuous and visible.
-  // [shoulder°, elbow°, wrist°] — wrist authored, not left at 0 (flat PNG flap)
-  waveUp: { r: [12, 82, 18], l: [10, 85, -14] },
-  waveOut: { r: [14, 76, 22], l: [14, 76, -18] },
-  fistUp: { r: [14, 86, -10], l: [12, 88, -16] },
-  peaceUp: { r: [12, 82, 8], l: [10, 85, -10] },
-  thumb: { r: [8, 78, 22], l: [6, 78, 18] },
-  point: { r: [6, 82, 12], l: [4, 82, 10] },
-  chin: { r: [5, 92, 28], l: [3, 90, 24] },
-  cheeks: { r: [5, 90, 20], l: [5, 90, 20] },
-  surprise: { r: [10, 62, 8], l: [10, 62, -8] },
-  salute: { r: [14, 86, -18], l: [12, 82, -8] },
-  heart: { r: [7, 84, 42], l: [5, 84, 40] },
-  chest: { r: [-45, -65, -30], l: [4, 78, 32] },
-  type: { r: [8, 88, 48], l: [6, 88, 46] },
-  stretch: { r: [14, 66, -14], l: [12, 64, -10] },
-  // bilateral 合十: both forearms come in to the chest centre; one joined prayer piece
-  pray: { r: [-57, -70, -42], l: [-57, -70, -42] },
-  clap: { r: [7, 84, 36], l: [5, 82, 40] },
-} as const satisfies Record<string, { r: Pose; l: Pose }>;
+// --- arm poses: IK solutions (r = screen-right arm = the character's LEFT arm; l = its mirror) ----
+const P = ARM_POSES;
 
 export const ACTIONS: readonly ActionDef[] = [
   // ---- greet ---------------------------------------------------------------------------------
@@ -135,9 +132,9 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.3,
     trigger: '问候 / 早安 / 首次打开 / 用户说“你好”', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.wave, P.waveOut.r, 0.45, 1.85, 2.3, {
-        oscW: [18, 2.8, 0],
-        oscE: [4, 2.8, 1.4],
+      ...arm('r', HAND.wave, P.waveUp.r, 0.45, 1.85, 2.3, {
+        oscW: [16, 2.8, 0],
+        oscE: [6, 2.8, 1.4],
         win: [0.55, 1.85],
       }),
       pulse('headRot', 0.2, 0.7, 2.2, 7),
@@ -154,9 +151,9 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: '界面首次出现的轻招呼（点头 + 小幅挥手）', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.wave, P.waveUp.r, 0.35, 1.5, 1.9, {
-        oscW: [14, 3.1, 0],
-        oscE: [3, 3.1, 1.3],
+      ...arm('r', HAND.wave, P.waveOut.r, 0.35, 1.5, 1.9, {
+        oscW: [12, 3.1, 0],
+        oscE: [4, 3.1, 1.3],
         win: [0.45, 1.5],
       }),
       T('headNod', [0, 0], [0.3, 8, 'o'], [0.6, 0, 'io'], [0.95, 5, 'o'], [1.4, 0]),
@@ -214,7 +211,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 1.9,
     trigger: '收到指令 / “收到！”', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, P.salute.r, 0.35, 1.4, 1.9, {
+      ...arm('r', HAND.rest, P.temple.r, 0.35, 1.4, 1.9, {
         oscW: [3, 1.6, 0],
         win: [0.55, 1.35],
       }),
@@ -234,7 +231,7 @@ export const ACTIONS: readonly ActionDef[] = [
     trigger: '感谢 / 拜托 / 祈祷', // i18n-ignore
     tracks: [
       // both arms rise symmetrically; the renderer draws ONE prayer piece at their joint
-      ...both(HAND.prayer, P.pray.r, P.pray.l, 0.45, 2.2, 2.8, { ease: 'io' }),
+      ...both(HAND.prayer, P.pray, 0.45, 2.2, 2.8, { ease: 'io' }),
       hold('armFront', 0.35, 99, 1),
       T('headNod', [0, 0], [0.5, 10, 'io'], [2.0, 10], [2.8, 0]),
       hold('eyeL', 0.4, 2.4, EYE.closed),
@@ -250,7 +247,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.2,
     trigger: '确认 / 没问题 / OK', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.ok, P.thumb.r, 0.35, 1.8, 2.2),
+      ...arm('r', HAND.ok, P.okSide.r, 0.35, 1.8, 2.2),
       T('headNod', [0, 0], [0.4, 6, 'o'], [1.6, 6], [2.2, 0]),
       hold('eyeL', 0.3, 1.9, EYE.happy),
       hold('eyeR', 0.3, 1.9, EYE.happy),
@@ -270,7 +267,6 @@ export const ACTIONS: readonly ActionDef[] = [
     trigger: 'AI 思考中 / 长时间等待', // i18n-ignore
     tracks: [
       ...arm('r', HAND.rest, P.chin.r, 0.5, 3.4, 3.4, {
-        ease: 'io',
         oscW: [4, 1.1, 0],
         oscE: [2, 0.9, 0.5],
         win: [0.8, 99],
@@ -307,7 +303,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.2,
     trigger: '想到办法 / 找到答案', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.point, [10, 168, 0], 0.3, 1.8, 2.2),
+      ...arm('r', HAND.point, P.pointUp.r, 0.3, 1.8, 2.2),
       T('headNod', [0, 0], [0.2, -8, 'o'], [0.6, 0, 'io'], [2.2, 0]),
       hold('eyeL', 0.15, 1.7, EYE.wide),
       hold('eyeR', 0.15, 1.7, EYE.wide),
@@ -344,7 +340,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 0,
     trigger: '空闲随机 / 等待用户（手遮额头远眺）', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, [44, 178, -10], 0.5, 2.5, 3.0, { ease: 'io' }),
+      ...arm('r', HAND.rest, P.visor.r, 0.5, 2.5, 3.0),
       T('headRot', [0, 0], [0.6, -8, 'io'], [1.4, -8], [1.9, 8, 'io'], [2.5, 8], [3.0, 0]),
       T('headX', [0, 0], [0.6, -8, 'io'], [1.4, -8], [1.9, 8, 'io'], [2.5, 8], [3.0, 0]),
       T('gazeX', [0, 0], [0.6, -0.8, 'io'], [1.4, -0.8], [1.9, 0.8, 'io'], [2.5, 0.8], [3.0, 0]),
@@ -386,7 +382,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 0,
     trigger: '空闲随机（害羞地偷看用户）', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.cheeks.r, P.cheeks.l, 0.45, 2.2, 2.6, { ease: 'io' }),
+      ...both(HAND.rest, P.cheek, 0.45, 2.2, 2.6),
       hold('armFront', 0.3, 99, 1),
       T('headRot', [0, 0], [0.5, 6], [2.2, 6], [2.6, 0]),
       T('gazeX', [0, 0], [0.6, 0.7, 'io'], [1.6, 0.7], [2.0, 0.3], [2.6, 0]),
@@ -423,10 +419,8 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.4,
     trigger: '告别 / 感谢', // i18n-ignore
     tracks: [
-      T('rOn', [0, 1]),
-      T('rHand', [0, HAND.rest]),
-      T('rA', [0, 0], [0.3, -8], [0.9, -8], [1.3, 30, 'b'], [2.4, 30]),
-      T('rE', [0, 0], [0.3, 210], [0.9, 210], [1.3, 165, 'b'], [2.4, 165]),
+      // hand to the lips, then the arm sweeps out as the kiss leaves
+      ...arm('r', HAND.rest, P.mouth.r, 0.8, 2.0, 2.4, { via: [[1.45, P.blowOut.r]] }),
       hold('armFront', 0.2, 99, 1),
       T('headRot', [0, 0], [0.6, 9, 'o'], [2.0, 9], [2.4, 0]),
       hold('eyeL', 0.3, 2.0, EYE.happy),
@@ -443,7 +437,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.8,
     trigger: '被夸奖 / 被摸头太久', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.cheeks.r, P.cheeks.l, 0.5, 2.3, 2.8, { ease: 'io' }),
+      ...both(HAND.rest, P.cheek, 0.5, 2.3, 2.8),
       hold('armFront', 0.3, 99, 1),
       T('headRot', [0, 0], [0.6, -8, 'io'], [2.3, -8], [2.8, 0]),
       T('headNod', [0, 0], [0.6, 6, 'io'], [2.3, 6], [2.8, 0]),
@@ -464,7 +458,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.6,
     trigger: '尴尬 / 出错后的不好意思', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.cheeks.r, P.cheeks.l, 0.4, 2.2, 2.6, { ease: 'io' }),
+      ...both(HAND.rest, P.coverFace, 0.4, 2.2, 2.6),
       hold('armFront', 0.25, 99, 1),
       T('headNod', [0, 0], [0.5, 10, 'io'], [2.2, 10], [2.6, 0]),
       hold('eyeL', 0.3, 2.3, EYE.closed),
@@ -482,7 +476,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 3,
     trigger: '任务失败 / 出错（双手交叠在身前，轻轻低头）', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.type.r, P.type.l, 0.45, 2.3, 2.8, { ease: 'io' }),
+      ...both(HAND.rest, P.sorry, 0.45, 2.3, 2.8),
       hold('armFront', 0.3, 99, 1),
       T('headNod', [0, 0], [0.55, 14, 'io'], [2.3, 14], [2.8, 0]),
       T('bodyY', [0, 0], [0.55, 4, 'io'], [2.3, 4], [2.8, 0]),
@@ -501,7 +495,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 2,
     trigger: '拖入文件 / 突然的事件', // i18n-ignore
     tracks: [
-      ...both(HAND.wave, P.surprise.r, P.surprise.l, 0.2, 1.4, 1.8),
+      ...both(HAND.wave, P.surprise, 0.2, 1.4, 1.8, { fast: true }),
       T('bodyY', [0, 0], [0.12, -8, 'o'], [0.5, 0, 'io'], [1.8, 0]),
       T('headNod', [0, 0], [0.12, -10, 'o'], [0.6, 0], [1.8, 0]),
       T('scale', [0, 0], [0.12, -0.02, 'o'], [0.5, 0], [1.8, 0]),
@@ -519,7 +513,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 3.0,
     trigger: '长时间失败 / 无聊', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.chest, P.chest.r, 0.6, 2.5, 3.0, { ease: 'io' }),
+      ...arm('r', HAND.chest, P.chest.r, 0.6, 2.5, 3.0),
       hold('armFront', 0.4, 99, 1),
       T('headNod', [0, 0], [0.8, 8, 'io'], [2.0, 12, 'io'], [3.0, 0]),
       T('shoulder', [0, 0], [0.6, -6, 'o'], [1.6, 4, 'io'], [3.0, 0]),
@@ -537,7 +531,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.4,
     trigger: '做对难题 / 任务一次成功', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.thumbsup, P.thumb.r, 0.4, 2.0, 2.4),
+      ...arm('r', HAND.thumbsup, P.thumbChest.r, 0.4, 2.0, 2.4),
       T('headNod', [0, 0], [0.4, -8, 'io'], [2.0, -8], [2.4, 0]),
       T('headRot', [0, 0], [0.4, -6], [2.0, -6], [2.4, 0]),
       hold('eyeL', 0.3, 2.1, EYE.half),
@@ -554,7 +548,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 3.0,
     trigger: '被批评 / 反复失败', // i18n-ignore
     tracks: [
-      ...both(HAND.fist, P.cheeks.r, P.cheeks.l, 0.5, 2.5, 3.0, { ease: 'io' }),
+      ...both(HAND.fist, P.cheekPaw, 0.5, 2.5, 3.0),
       hold('armFront', 0.3, 99, 1),
       T('headNod', [0, 0], [0.6, 9, 'io'], [2.5, 9], [3.0, 0]),
       T('headRot', [0, 0], [0.6, 5], [2.5, 5], [3.0, 0]),
@@ -640,7 +634,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.2,
     trigger: '鼓励用户 / 开始新任务', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.fist, P.fistUp.r, 0.3, 1.8, 2.2, { oscA: [3, 3, 0], win: [0.5, 1.8] }),
+      ...arm('r', HAND.fist, P.fistUp.r, 0.3, 1.8, 2.2, { oscE: [5, 3, 0], win: [0.5, 1.8] }),
       T('bodyY', [0, 0], [0.25, 3, 'io'], [0.4, -6, 'o'], [0.7, 0, 'io'], [2.2, 0]),
       T('headRot', [0, 0], [0.45, 5, 'io'], [1.75, 5], [2.2, 0, 'io']),
       hold('eyeL', 0.2, 1.9, EYE.determined),
@@ -690,7 +684,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 3,
     trigger: '任务全部完成 / 里程碑', // i18n-ignore
     tracks: [
-      ...both(HAND.wave, P.waveUp.r, P.waveUp.l, 0.3, 2.2, 2.6, {
+      ...both(HAND.wave, P.waveHigh, 0.3, 2.2, 2.6, {
         oscW: [10, 3.2, 0],
         win: [0.6, 2.2],
       }),
@@ -721,15 +715,13 @@ export const ACTIONS: readonly ActionDef[] = [
     trigger: '夸奖 / 用户完成目标', // i18n-ignore
     tracks: [
       ...arm('r', HAND.rest, P.clap.r, 0.35, 2.0, 2.4, {
-        ease: 'io',
-        oscE: [7, 3.6, 0],
+        oscE: [9, 3.6, 0],
         oscW: [8, 3.6, 0.2],
         win: [0.5, 2.0],
       }),
       ...arm('l', HAND.rest, P.clap.l, 0.35, 2.0, 2.4, {
-        ease: 'io',
-        oscE: [7, 3.6, Math.PI],
-        oscW: [8, 3.6, Math.PI + 0.2],
+        oscE: [9, 3.6, 0],
+        oscW: [8, 3.6, 0.2],
         win: [0.5, 2.0],
       }),
       hold('armFront', 0.25, 99, 1),
@@ -811,7 +803,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.4,
     trigger: '被摸头 / 撒娇', // i18n-ignore
     tracks: [
-      ...both(HAND.fist, P.cheeks.r, P.cheeks.l, 0.4, 2.0, 2.4, { ease: 'io' }),
+      ...both(HAND.fist, P.cheekPaw, 0.4, 2.0, 2.4),
       hold('armFront', 0.25, 99, 1),
       T('headRot', [0, 0], [0.4, 10, 'b'], [1.2, -8, 'io'], [2.0, 10, 'io'], [2.4, 0]),
       hold('eyeL', 0.2, 2.1, EYE.happy),
@@ -833,8 +825,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: '工具运行中 / 正在写代码', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.type.r, P.type.l, 0.5, 2.4, 2.4, {
-        ease: 'io',
+      ...both(HAND.rest, P.type, 0.5, 2.4, 2.4, {
         oscW: [8, 4.2, 0],
         oscE: [3, 5.1, 1],
         win: [0.6, 99],
@@ -875,7 +866,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 0,
     trigger: '长时间空闲 / 久坐提醒', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, P.stretch.r, P.stretch.l, 0.9, 2.3, 3.2, { ease: 'io' }),
+      ...both(HAND.rest, P.stretchUp, 0.9, 2.3, 3.2),
       T('bodyY', [0, 0], [0.9, 4], [1.6, -6, 'io'], [2.3, -6], [3.2, 0]),
       T('headNod', [0, 0], [0.9, -9, 'io'], [2.3, -9], [3.2, 0]),
       hold('eyeL', 0.7, 2.6, EYE.closed),
@@ -894,7 +885,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: '深夜 / 长时间无操作 / 说晚安', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.wave, [20, 160, 0], 0.5, 1.8, 3.4, {
+      ...arm('r', HAND.wave, P.waveOut.r, 0.5, 1.8, 3.4, {
         oscW: [10, 2.2, 0],
         win: [0.8, 1.8],
         ret: false,
@@ -1014,10 +1005,9 @@ export const ACTIONS: readonly ActionDef[] = [
     trigger: '被夸奖 / 被问到私人问题', // i18n-ignore
     tracks: [
       // right hand rises beside the cheek (armFront), fingers fidget on the hair, head dips toward it
-      ...arm('r', HAND.rest, [-58, -132, 6], 0.7, 2.7, 3.4, {
-        ease: 'io',
+      ...arm('r', HAND.rest, P.hairTouch.r, 0.7, 2.7, 3.4, {
         oscW: [9, 1.7, 0],
-        oscE: [5, 1.7, 1.2],
+        oscE: [4, 1.7, 1.2],
         win: [1.2, 2.6],
       }),
       // the lock stirs with the fingers (in phase with the wrist)
@@ -1054,7 +1044,7 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.2,
     trigger: '不确定 / 无能为力', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, [7, 60, 16], [7, 60, -16], 0.35, 1.7, 2.2, { ease: 'io' }),
+      ...both(HAND.rest, P.shrug, 0.35, 1.7, 2.2),
       T('shoulder', [0, 0], [0.15, 3, 'o'], [0.5, -16, 'b'], [1.5, -14, 'io'], [2.1, 0, 'io']),
       T('headRot', [0, 0], [0.5, 7, 'b'], [1.5, 6, 'io'], [2.1, 0]),
       T('headNod', [0, 0], [0.5, 4], [1.5, 3], [2.1, 0]),
@@ -1073,9 +1063,9 @@ export const ACTIONS: readonly ActionDef[] = [
     dur: 2.8,
     trigger: '热情欢迎 / 久别重逢', // i18n-ignore
     tracks: [
-      ...both(HAND.wave, P.waveOut.r, P.waveOut.l, 0.45, 2.3, 2.8, {
-        oscW: [20, 3, 0],
-        oscE: [5, 3, 1.4],
+      ...both(HAND.wave, P.waveUp, 0.45, 2.3, 2.8, {
+        oscW: [18, 3, 0],
+        oscE: [6, 3, 1.4],
         win: [0.8, 2.3],
       }),
       // the sway rides the waves (same 1.5 Hz half-beat) so the whole body greets, not just the arms
@@ -1117,8 +1107,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 1,
     trigger: '深度思考 / 规划任务中', // i18n-ignore
     tracks: [
-      ...arm('r', HAND.rest, [-48, -132, -10], 0.6, 3.6, 3.6, {
-        ease: 'io',
+      ...arm('r', HAND.rest, P.chinThink.r, 0.6, 3.6, 3.6, {
         oscW: [3, 0.8, 0],
         win: [1.2, 99],
       }),
@@ -1190,7 +1179,7 @@ export const ACTIONS: readonly ActionDef[] = [
       T('scale', [0, 0], [0.1, -0.04, 'o'], [0.6, -0.025, 'io'], [2.2, 0]),
       T('headNod', [0, 0], [0.1, -10, 'o'], [0.6, -5], [1.5, -3], [2.2, 0]),
       T('bodyY', [0, 0], [0.09, -7, 'o'], [0.4, 2, 'io'], [2.4, 0]),
-      ...both(HAND.rest, P.surprise.r, P.surprise.l, 0.12, 1.5, 2.4, { ease: 'o' }),
+      ...both(HAND.rest, P.surprise, 0.12, 1.5, 2.4, { fast: true }),
       hold('armFront', 0.12, 99, 1),
       hold('eyeL', 0.05, 1.7, EYE.wide),
       hold('eyeR', 0.05, 1.7, EYE.wide),
@@ -1242,8 +1231,7 @@ export const ACTIONS: readonly ActionDef[] = [
         [2.2, 0, 'io'],
       ),
       T('headRot', [0, 0], [0.5, -6, 'o'], [0.95, 6, 'io'], [1.3, -4, 'o'], [1.8, 2], [2.3, 0]),
-      ...both(HAND.fist, P.fistUp.r, P.fistUp.l, 0.3, 1.9, 2.6, {
-        ease: 'b',
+      ...both(HAND.fist, P.fistUp, 0.3, 1.9, 2.6, {
         oscE: [6, 3.2, 0],
         win: [0.6, 1.9],
       }),
@@ -1321,7 +1309,7 @@ export const ACTIONS: readonly ActionDef[] = [
     priority: 0,
     trigger: '久坐提醒 / 长时间空闲', // i18n-ignore
     tracks: [
-      ...both(HAND.rest, [118, 18, -4], [118, 18, 4], 0.8, 3.0, 4.0, { ease: 'io' }),
+      ...both(HAND.rest, P.stretchUp, 0.8, 3.0, 4.0),
       // arms up, then bend through the waist to one side, back through center, to the other, and rest
       T(
         'spine',
@@ -1368,7 +1356,6 @@ export const ACTIONS: readonly ActionDef[] = [
     trigger: '鼓励用户 / 开始大任务', // i18n-ignore
     tracks: [
       ...arm('r', HAND.fist, P.fistUp.r, 0.4, 2.0, 2.6, {
-        ease: 'b',
         oscE: [5, 4, 0],
         win: [0.9, 1.6],
       }),

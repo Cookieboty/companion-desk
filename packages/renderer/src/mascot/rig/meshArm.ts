@@ -8,21 +8,22 @@
  * pieces. When no gesture is active the animator draws the untouched master arm layer instead.
  */
 
+import {
+  ARM_BEND_MAX as ARM_BEND_MAX_LOCAL,
+  ARM_WRIST_MERGE as ARM_WRIST_MERGE_LOCAL,
+  ARM_DISSOLVE_S0,
+  ARM_TAPER_S0,
+  ARM_TAPER_S1,
+  ArmChain,
+  type ArmFrame,
+  type ArmGeom,
+  HAND_BASE,
+  HAND_CUFF_W,
+  smooth01,
+} from './armKin';
 import type { RigImageSource } from './rigTypes';
 
-export interface ArmGeom {
-  layer: string;
-  /** +1 right arm (outward = +x), −1 left arm */
-  sgn: 1 | -1;
-  /** spine tilt from vertical (rad, magnitude) */
-  theta: number;
-  /** spine origin in layer-local px */
-  s0: [number, number];
-  smin: number;
-  smax: number;
-  nmin: number;
-  nmax: number;
-}
+export * from './armKin';
 
 export interface HandPieceMeta {
   file: string;
@@ -33,31 +34,33 @@ export interface HandPieceMeta {
   ay: number;
   sleeveW: number;
   cuffY: number;
-  /** optional size multiplier applied after the cuff-width fit (default 1) */
+  /** palm-normalising multiplier on HAND_BASE (default 1) */
   k?: number;
+  /** native chirality of the artwork: the character's left / right hand, S = symmetric */
+  side?: 'L' | 'R' | 'S';
+  cx?: number;
+  cy?: number;
 }
 
 export interface ArmDrawParams {
-  /** shoulder lift outward/up (rad) incl. idle sway */
+  /** shoulder swing (rad, + = outward / up) incl. idle sway */
   a: number;
-  /** elbow bend (rad) */
+  /** elbow flexion (rad) */
   e: number;
-  /** wrist twist (rad) */
+  /** wrist (rad) */
   w: number;
+  /** reach toward the camera 0..1 (foreshortens the limb) */
+  z: number;
   /** shoulder vertical lift (rig px, from breathing) */
   lift: number;
-  /** hand piece alpha 0..1 */
-  handAlpha: number;
-  /** ignored (compat) */
-  fore?: number;
   /**
    * Target sleeve width (rig px) at the wrist. When set the mesh tapers to it and the wrist
    * bend is folded into the forearm itself, so the sleeve is one continuous cloth that ends
    * exactly under the hand piece's sleeve (no rigid rotated stub, no soft fade needed).
    */
   endW?: number;
-  /** with endW: bend the forearm so the hand frame ends at exactly this angle (rad) */
-  wristTo?: number;
+  /** 0..1 how far the sleeve has tapered towards `endW` (follows the hand piece fade-in) */
+  mix?: number;
   /** compute the hand frame only (no pixels) so the hand piece can be drawn first */
   dry?: boolean;
   /** draw only the mesh rows beyond this s (re-draw the sleeve end over the hand piece) */
@@ -67,21 +70,6 @@ export interface ArmDrawParams {
   /** merged mode without the dissolve: the sleeve end is cut hard and tucked under the piece */
   hardEnd?: boolean;
 }
-
-/** Spine arc-length of the shoulder joint, the elbow, and where the hand piece attaches. */
-export const ARM_ELBOW_S = 335;
-export const ARM_BEND_LEN = 120;
-export const ARM_HAND_S = 470;
-export const HAND_SCALE = 0.42;
-/** s where the sleeve taper starts / has finished (merged wrist mode) */
-export const ARM_TAPER_S0 = 300;
-export const ARM_TAPER_S1 = ARM_HAND_S - 30;
-/** merged mode: the mesh dissolves into the hand piece's sleeve over this s range */
-/** max wrist angle (rad) folded into the sleeve itself in merged mode */
-/** elbow bend limit (rad) */
-export const ARM_BEND_MAX = 2.4;
-export const ARM_WRIST_MERGE = 0.6;
-export const ARM_DISSOLVE_S0 = ARM_HAND_S - 12;
 
 const MAX_ROWS = 40;
 const COLS = 6;
@@ -94,11 +82,6 @@ const dstX = new Float64Array(MAX_ROWS * (COLS + 1));
 const dstY = new Float64Array(MAX_ROWS * (COLS + 1));
 const srcX = new Float64Array(MAX_ROWS * (COLS + 1));
 const srcY = new Float64Array(MAX_ROWS * (COLS + 1));
-
-const smooth01 = (x: number) => {
-  const c = x < 0 ? 0 : x > 1 ? 1 : x;
-  return c * c * (3 - 2 * c);
-};
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -226,13 +209,23 @@ const profAt = (pr: ArmProfile, arr: Float32Array, s: number): number => {
   return arr[i] + (arr[i + 1] - arr[i]) * (f - i);
 };
 
-export interface ArmFrame {
-  /** hand attach point (rig px), direction of the forearm (rad, canvas rotation from straight down) */
-  hx: number;
-  hy: number;
-  hPsi: number;
+export const armFrame: ArmFrame = { hx: 0, hy: 0, hPsi: 0 };
+
+const chains = new WeakMap<object, ArmChain>();
+/** One reusable chain per arm layer image (the pose is re-set every call). */
+export function chainFor(
+  key: object,
+  g: ArmGeom,
+  pivot: readonly [number, number],
+  off: readonly [number, number],
+): ArmChain {
+  let c = chains.get(key);
+  if (!c || c.sgn !== g.sgn || c.theta !== g.theta) {
+    c = new ArmChain(g, pivot, off);
+    chains.set(key, c);
+  }
+  return c;
 }
-export const armFrame: ArmFrame & { fore: number } = { hx: 0, hy: 0, hPsi: 0, fore: 1 };
 
 /**
  * Build rows + draw the strip. `pivot` is the shoulder pivot and `off` the layer offset, both in rig px.
@@ -247,117 +240,40 @@ export function drawArmStrip(
   p: ArmDrawParams,
   sEnd: number,
 ): void {
+  const merged = p.endW !== undefined;
+  const mix = merged ? Math.max(0, Math.min(1, p.mix ?? 1)) : 0;
+  const ch = chainFor(img as object, g, pivot, off);
+  ch.set(p.a, p.e, p.w, p.z, p.lift, merged ? (p.mergeMax ?? ARM_WRIST_MERGE_LOCAL) : 0);
   const sgn = g.sgn;
-  const sinT = Math.sin(g.theta);
-  const cosT = Math.cos(g.theta);
-  const u0x = sgn * sinT;
-  const u0y = cosT;
-  const w0x = cosT;
-  const w0y = -sgn * sinT;
-  // pivot in (s, n)
-  const plx = pivot[0] - off[0] - g.s0[0];
-  const ply = pivot[1] - off[1] - g.s0[1];
-  const sp = plx * u0x + ply * u0y;
-  const np = plx * w0x + ply * w0y;
+  const { u0x, u0y, w0x, w0y, b0, b1, bendLen } = ch;
+  const bend = Math.max(-ARM_BEND_MAX_LOCAL, Math.min(ARM_BEND_MAX_LOCAL, p.e));
+  const absBend = Math.abs(bend);
+  const innerSign = sgn * (bend >= 0 ? 1 : -1);
 
   // rows
   let n = 0;
   const smin = g.smin;
   const se = Math.min(sEnd, g.smax);
-  const b0 = ARM_ELBOW_S - ARM_BEND_LEN / 2;
-  const b1 = ARM_ELBOW_S + ARM_BEND_LEN / 2;
   const push = (s: number) => {
     if (n < MAX_ROWS && s > (n ? rowS[n - 1] + 1 : -1e9) && s <= se + 0.001) rowS[n++] = s;
   };
   push(smin);
-  for (const s of [60, 120, 180, 230]) if (s > smin && s < b0) push(s);
-  for (let s = b0; s <= b1 + 0.1; s += ARM_BEND_LEN / 8) push(s);
-  for (let s = b1 + 30; s < (p.endW !== undefined ? ARM_DISSOLVE_S0 - 4 : se - 6); s += 30) push(s);
-  if (p.endW !== undefined) for (let s = ARM_DISSOLVE_S0; s < se; s += 4) push(s);
+  for (const s of [60, 120, 180, 230, 280]) if (s > smin && s < b0 - 20) push(s);
+  for (let s = b0; s <= b1 + 0.1; s += bendLen / 9) push(s);
+  for (let s = b1 + 30; s < (merged ? ARM_DISSOLVE_S0 - 4 : se - 6); s += 30) push(s);
+  if (merged) for (let s = ARM_DISSOLVE_S0; s < se; s += 4) push(s);
   push(se);
 
-  const bend = Math.max(-ARM_BEND_MAX, Math.min(ARM_BEND_MAX, p.e));
-  const absBend = Math.abs(bend);
-  const innerSign = sgn * (bend >= 0 ? 1 : -1);
-  const sgnRot = -sgn;
-  // Raise-driven foreshortening: compress distal length so a lifted cuff stays on-canvas
-  // without scaling the shoulder away from the body-noarm hole.
-  // fore < 0 switches foreshortening off (arm reaching across the chest, e.g. prayer)
-  const raise =
-    (p.fore ?? 0) < 0
-      ? 0
-      : Math.max(
-          Math.min(1, Math.abs(p.a) / 0.55),
-          Math.min(1, absBend / 1.4) * 0.55,
-          Math.min(1, p.fore ?? 0),
-        );
-  const lenAt = (s: number) => {
-    if (s <= b0) return 1;
-    const t = smooth01((s - b0) / Math.max(60, ARM_HAND_S - b0));
-    return 1 - raise * 0.75 * t;
-  };
-  // Keep the proximal stump locked to the body-noarm hole; blend shoulder angle in
-  // before the elbow so a raise does not open a green wedge at the jacket seam.
-  const stump = Math.max(smin + 20, 90);
-  const shoulderBlendOf = (s: number) => smooth01((s - stump) / Math.max(40, b0 - stump));
-  const merged = p.endW !== undefined;
-  const phi0 = (s: number) =>
-    sgnRot * (p.a * shoulderBlendOf(s) + bend * smooth01((s - b0) / ARM_BEND_LEN));
-  // merged mode: the wrist angle is folded into the last stretch of the forearm
-  let wEff = 0;
-  let wRest = 0;
-  const wS0 = ARM_TAPER_S1 - 110;
-  const phiOf = (s: number) =>
-    phi0(s) + (merged ? sgnRot * wEff * smooth01((s - wS0) / (ARM_TAPER_S1 - wS0)) : 0);
-  // spine integration from the pivot
-  const phiP = phiOf(sp);
-  const wx = w0x * Math.cos(phiP) - w0y * Math.sin(phiP);
-  const wy = w0x * Math.sin(phiP) + w0y * Math.cos(phiP);
-  const pxP = pivot[0] - np * wx;
-  const pyP = pivot[1] + p.lift - np * wy;
-  // find row nearest to sp to anchor; integrate outward in both directions
-  const ux = (phi: number) => u0x * Math.cos(phi) - u0y * Math.sin(phi);
-  const uy = (phi: number) => u0x * Math.sin(phi) + u0y * Math.cos(phi);
-  // integrate with fine steps; distal steps shrink with raise (foreshorten)
-  const pos = (s: number, out: number[]) => {
-    let x = pxP;
-    let y = pyP;
-    const dir = s >= sp ? 1 : -1;
-    const steps = Math.max(1, Math.ceil(Math.abs(s - sp) / 6));
-    const h = (s - sp) / steps;
-    for (let i = 0; i < steps; i++) {
-      const sm = sp + h * (i + 0.5);
-      const ph = phiOf(sm);
-      const ls = lenAt(sm);
-      x += ux(ph) * h * ls;
-      y += uy(ph) * h * ls;
-    }
-    out[0] = x;
-    out[1] = y;
-    return dir;
-  };
   const tmp = [0, 0];
-  if (merged) {
-    pos(ARM_HAND_S, tmp);
-    const plain = phi0(ARM_HAND_S) - sgn * g.theta + Math.PI + sgnRot * p.w;
-    const psiT = p.wristTo ?? keepOnCanvas(tmp[0], tmp[1], plain);
-    let d = (psiT - Math.PI + sgn * g.theta - phi0(ARM_HAND_S)) / sgnRot;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    // fold at most ARM_WRIST_MERGE of the wrist angle into the sleeve; the hand piece takes the rest
-    const mm = p.mergeMax ?? ARM_WRIST_MERGE;
-    wEff = Math.max(-mm, Math.min(mm, d));
-    wRest = d - wEff;
-  }
   for (let i = 0; i < n; i++) {
     const s = rowS[i];
-    pos(s, tmp);
+    ch.pos(s, tmp);
     rowPx[i] = tmp[0];
     rowPy[i] = tmp[1];
-    rowPhi[i] = phiOf(s);
+    rowPhi[i] = ch.phiOf(s);
     // curvature magnitude (rad / px) of the bend at s
-    const x = (s - b0) / ARM_BEND_LEN;
-    rowK[i] = x > 0 && x < 1 ? (absBend * 6 * x * (1 - x)) / ARM_BEND_LEN : 0;
+    const x = (s - b0) / bendLen;
+    rowK[i] = x > 0 && x < 1 ? (absBend * 6 * x * (1 - x)) / bendLen : 0;
   }
   const prof = merged ? armProfile(img, g) : null;
   // mesh vertices
@@ -373,7 +289,7 @@ export function drawArmStrip(
       const m = nn * innerSign;
       if (m > 0 && rowK[i] > 0) ne = (m / (1 + m * rowK[i])) * innerSign;
       if (merged) {
-        const mt = smooth01((rowS[i] - ARM_TAPER_S0) / (ARM_TAPER_S1 - ARM_TAPER_S0));
+        const mt = smooth01((rowS[i] - ARM_TAPER_S0) / (ARM_TAPER_S1 - ARM_TAPER_S0)) * mix;
         const sw0 = prof ? profAt(prof, prof.w, rowS[i]) : Math.abs(g.nmax - g.nmin);
         const nc = prof ? profAt(prof, prof.c, rowS[i]) : (g.nmin + g.nmax) / 2;
         // squeeze the *real* sleeve silhouette to the hand piece's sleeve width, centred on the spine
@@ -395,7 +311,8 @@ export function drawArmStrip(
         const sm = (rowS[i] + rowS[i + 1]) / 2;
         if (!p.hardEnd)
           ctx.globalAlpha =
-            prevA * (1 - smooth01((sm - ARM_DISSOLVE_S0) / Math.max(1, se - ARM_DISSOLVE_S0)));
+            prevA *
+            (1 - mix * smooth01((sm - ARM_DISSOLVE_S0) / Math.max(1, se - ARM_DISSOLVE_S0)));
       }
       for (let j = 0; j < COLS; j++) {
         const a = i * (COLS + 1) + j;
@@ -437,49 +354,30 @@ export function drawArmStrip(
       }
       ctx.globalAlpha = prevA;
     }
-  // hand frame at ARM_HAND_S
-  pos(ARM_HAND_S, tmp);
-  armFrame.hx = tmp[0];
-  armFrame.hy = tmp[1];
-  armFrame.hPsi =
-    phiOf(ARM_HAND_S) - sgn * g.theta + Math.PI + (merged ? sgnRot * wRest : sgnRot * p.w);
-  armFrame.fore = 1 - raise * 0.75;
-  // Soft canvas keep: blend wrist toward an on-canvas aim instead of hard-replacing hPsi.
-  if (!merged) armFrame.hPsi = keepOnCanvas(armFrame.hx, armFrame.hy, armFrame.hPsi);
+  ch.hand(armFrame);
 }
 
-/** Soft canvas keep: blend the hand angle toward an on-canvas aim when the fingertips would leave the frame. */
-function keepOnCanvas(hx: number, hy: number, psi: number): number {
-  const handLen = 300;
-  const tipX = hx + Math.sin(psi) * handLen;
-  const tipY = hy - Math.cos(psi) * handLen;
-  const margin = 48;
-  const ox = tipX > 960 - margin || tipX < margin || tipY < margin || tipY > 1120 - margin;
-  if (!ox) return psi;
-  const tx = Math.max(140, Math.min(820, hx - Math.sign(hx - 480 || 1) * 70));
-  const ty = Math.max(140, Math.min(980, hy - 140));
-  const aim = Math.atan2(tx - hx, hy - ty);
-  let d = aim - psi;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return psi + d * 0.65;
+/** Scale of the hand (skin) part of a piece; every variant is fitted to the same palm size. */
+export function handScaleFor(meta: HandPieceMeta): number {
+  return HAND_BASE * (meta.k ?? 1);
 }
 
-/** Draw a hand piece at the attach frame (call right after drawArmStrip). */
-/** Scale a hand piece so its authored sleeve width matches the live cuff. */
-export function handScaleFor(meta: HandPieceMeta, cuffWidth: number): number {
-  // Hands read oversized vs head/torso on Windows; bias small vs cuff width.
-  const sw = Math.max(40, meta.sleeveW || 160);
-  return Math.max(0.28, Math.min(0.48, (cuffWidth * 0.5) / sw)) * (meta.k ?? 1);
-}
+/** Sleeve-end width the mesh tapers to (matches the rendered stub of every hand piece). */
+export const sleeveEndWidth = (): number => HAND_CUFF_W * 1.06;
 
+/**
+ * Draw a hand piece at the attach frame (call right after drawArmStrip). The piece is drawn in two
+ * slices: the hand (skin) at the palm-normalised scale and the sleeve stub below the cuff line at the
+ * common cuff width, so a cuff never changes size when the gesture (hand shape) changes.
+ */
 export function drawHandPiece(
   ctx: Ctx,
   img: RigImageSource,
   meta: HandPieceMeta,
-  sgn: 1 | -1,
+  /** −1 mirrors the piece (it depicts the other hand than this arm's own) */
+  flip: 1 | -1,
   alpha: number,
-  scale = HAND_SCALE,
+  scale = HAND_BASE,
   /** keep only this many source px of sleeve below the cuff line (bilateral prayer joint) */
   keepBelowCuff?: number,
 ): void {
@@ -489,16 +387,33 @@ export function drawHandPiece(
   ctx.save();
   ctx.translate(armFrame.hx, armFrame.hy);
   ctx.rotate(armFrame.hPsi);
-  ctx.scale(sgn * scale, scale);
-  // Nudge up the sleeve so cuffY sits on the mesh cuff (hand arts include a sleeve stub)
-  const cuffLift = Math.max(0, (meta.ay - (meta.cuffY || meta.ay * 0.6)) * 0.2);
-  if (keepBelowCuff !== undefined) {
-    const yb = Math.min(meta.ay, (meta.cuffY || meta.ay * 0.6) + keepBelowCuff);
-    ctx.drawImage(img, 0, 0, meta.w, yb, -meta.ax, -yb, meta.w, yb);
-  } else {
-    ctx.translate(0, cuffLift);
-    ctx.drawImage(img, -meta.ax, -meta.ay);
+  const cuffY = meta.cuffY || meta.ay * 0.6;
+  const sxCuff = HAND_CUFF_W / Math.max(40, meta.sleeveW || 160);
+  // sleeve slice scale in x; keeps the stub's centre line on the arm axis
+  const yb = keepBelowCuff !== undefined ? Math.min(meta.ay, cuffY + keepBelowCuff) : meta.ay;
+  // overlap one source row so the two slices never leave a hairline
+  const cut = Math.round(cuffY);
+  const cuffLift = keepBelowCuff !== undefined ? 0 : Math.max(0, (meta.ay - cuffY) * 0.2);
+  ctx.translate(0, cuffLift * scale);
+  // stub (below the cuff line): widens from the hand's own rim to the common cuff width
+  const rows = Math.max(1, yb - cut);
+  const N = Math.max(4, Math.min(12, Math.round(rows / 16)));
+  for (let i = 0; i < N; i++) {
+    const y0 = cut + (rows * i) / N;
+    const y1 = cut + (rows * (i + 1)) / N;
+    const sx = scale + (sxCuff - scale) * smooth01((i + 0.5) / N);
+    ctx.save();
+    ctx.scale(flip * sx, scale);
+    const sy0 = Math.max(cut - 1, Math.floor(y0) - (i ? 1 : 0));
+    const sh = Math.min(meta.ay, Math.ceil(y1)) - sy0;
+    ctx.drawImage(img, 0, sy0, meta.w, sh, -meta.ax, sy0 - meta.ay, meta.w, sh);
+    ctx.restore();
   }
+  // hand
+  ctx.save();
+  ctx.scale(flip * scale, scale);
+  ctx.drawImage(img, 0, 0, meta.w, cut, -meta.ax, -meta.ay, meta.w, cut);
+  ctx.restore();
   ctx.restore();
   ctx.globalAlpha = prev;
 }

@@ -9,6 +9,7 @@
 
 import { ActionManager } from './rig/actionManager';
 import { ACTIONS } from './rig/actions';
+import { handFlips } from './rig/armReach';
 import { drawBrow, drawFx, drawMouth } from './rig/fx';
 import {
   ARM_HAND_S,
@@ -18,6 +19,7 @@ import {
   drawArmPieces,
   drawHandPiece,
   handScaleFor,
+  sleeveEndWidth,
   shoulderPlug,
   type ArmGeom,
   type HandPieceMeta,
@@ -628,16 +630,17 @@ export class RigAnimator {
       ['bodyY', 121, 0.6],
       ['shoulder', 144, 0.6],
       ['scale', 100, 0.7],
-      ['rA', 196, 0.5],
-      ['rE', 196, 0.5],
-      ['rW', 225, 0.45],
-      ['lA', 196, 0.5],
-      ['lE', 196, 0.5],
-      ['lW', 225, 0.45],
+      ['rA', 190, 0.62],
+      ['rE', 160, 0.52],
+      ['rW', 215, 0.4],
+      ['rZ', 150, 0.9],
+      ['lZ', 150, 0.9],
+      ['lA', 190, 0.62],
+      ['lE', 160, 0.52],
+      ['lW', 215, 0.4],
     ] as const
   ).map(([n, k, z]) => ({ idx: IDX[n], sp: new Spring(k, z) }));
-  private armPrev = { rA: 0, rE: 0, lA: 0, lE: 0 };
-  private foreS = { r: 0, l: 0 };
+  private lastHand = { r: 0, l: 0 };
   private lift = { r: 0, l: 0 };
   private eyeMixL: EyeMix = { cl: 0, happy: 0, slope: 0, scale: 1, lidAlpha: 0 };
   private eyeMixR: EyeMix = { cl: 0, happy: 0, slope: 0, scale: 1, lidAlpha: 0 };
@@ -726,45 +729,30 @@ export class RigAnimator {
     const busy = this.actions.busy();
     if (!busy || rm) {
       for (const e of this.sprung) e.sp.reset(v[e.idx]);
-      this.foreS.r = this.foreS.l = this.lift.r = this.lift.l = 0;
-      this.armPrev.rA = v[IDX.rA];
-      this.armPrev.rE = v[IDX.rE];
-      this.armPrev.lA = v[IDX.lA];
-      this.armPrev.lE = v[IDX.lE];
-      v[IDX.rF] = 0;
-      v[IDX.lF] = 0;
+      this.lift.r = this.lift.l = 0;
+      this.lastHand.r = this.lastHand.l = 0;
       return;
     }
     for (const e of this.sprung) {
       const d = PARAM_DEFS[e.idx];
       v[e.idx] = Math.max(d.min, Math.min(d.max, e.sp.step(v[e.idx], dt)));
     }
-    const inv = dt > 0 ? 1 / dt : 0;
     for (const side of ['r', 'l'] as const) {
       const on = v[IDX[`${side}On`]];
       const ia = IDX[`${side}A`];
-      const ie = IDX[`${side}E`];
-      const prevA = this.armPrev[`${side}A`];
-      const prevE = this.armPrev[`${side}E`];
-      const speed = (Math.abs(v[ie] - prevE) + 0.5 * Math.abs(v[ia] - prevA)) * inv;
-      this.armPrev[`${side}A`] = v[ia];
-      this.armPrev[`${side}E`] = v[ie];
-      const speedFore = Math.max(0, Math.min(1, (speed - 40) / 300));
-      // held raised poses also foreshorten so the cuff stays on-canvas
-      const raiseFore = Math.max(
-        Math.min(1, Math.abs(v[ia]) / 40),
-        Math.min(1, Math.abs(v[ie]) / 110) * 0.5,
-      );
-      const target = Math.max(speedFore, raiseFore * 0.9) * (on > 0.01 ? 1 : 0);
-      this.foreS[side] = approach(this.foreS[side], target, target > this.foreS[side] ? 28 : 9, dt);
-      v[IDX[`${side}F`]] = this.foreS[side];
+      const ih = IDX[`${side}Hand`];
+      // the hand shape is a discrete code; keep the last one while its mix (cuff taper + fade) is
+      // still non-zero so a fading action never drops the hand piece in a single frame
+      if ((v[ih] | 0) !== 0) this.lastHand[side] = v[ih] | 0;
+      else if (v[IDX[`${side}Mix`]] > 0.002) v[ih] = this.lastHand[side];
+      else this.lastHand[side] = 0;
       // a held arm is never perfectly still
       const drift = on > 0.5 ? on : 0;
       if (drift) {
         const sd = side === 'r' ? 0 : 7;
         // tiny alive tremor only — large drift made sleeves look like paper flaps
         v[ia] += fbm(t * 0.45, 31 + sd) * 0.9 * drift;
-        v[ie] += fbm(t * 0.55, 32 + sd) * 1.2 * drift;
+        v[IDX[`${side}E`]] += fbm(t * 0.55, 32 + sd) * 1.2 * drift;
         v[IDX[`${side}W`]] += fbm(t * 0.7, 33 + sd) * 1.6 * drift;
       }
       const raised = on * Math.max(0, Math.min(1, v[ia] / 45));
@@ -1668,6 +1656,7 @@ export function drawRig(
     meta: HandPieceMeta;
     sgn: number;
     hs: number;
+    mix: number;
   }[] = [];
   const drawArm = (side: 'l' | 'r') => {
     const name = side === 'l' ? 'arm-l' : 'arm-r';
@@ -1727,22 +1716,22 @@ export function drawRig(
     } else {
       part(name, rot, lift);
     }
-    // Wrist gently follows elbow so flaps read as a forearm, not a hinged PNG.
     const elbow = ex[ia + 1] * DEG;
-    const wrist = ex[ia + 2] * DEG + elbow * 0.12;
-    const hasHand = !!(meta && himg);
-    const cuffW = Math.abs(geom.nmax - geom.nmin);
-    const hs = hasHand ? handScaleFor(meta!, cuffW) : 0;
+    const wrist = ex[ia + 2] * DEG;
+    const zReach = ex[side === 'l' ? IDX.lZ : IDX.rZ];
+    const mix = ex[side === 'l' ? IDX.lMix : IDX.rMix];
+    const hasHand = !!(meta && himg) && mix > 0.002;
+    const hs = hasHand ? handScaleFor(meta!) : 0;
     const armP = {
       a: ex[ia] * DEG - sgn * rot,
       e: elbow,
       w: wrist,
+      z: zReach,
       lift,
-      handAlpha: 1,
-      fore: hn === 'prayer' ? -1 : ex[side === 'l' ? IDX.lF : IDX.rF],
-      // taper the sleeve to the hand piece's sleeve and fold the wrist into the forearm so
+      mix,
+      // taper the sleeve to the common cuff width and fold the wrist into the forearm so
       // sleeve + cuff are one continuous cloth (no overhanging faded stub)
-      endW: hasHand ? hs * meta!.sleeveW * (joint ? 0.95 : 1.12) : undefined,
+      endW: hasHand ? sleeveEndWidth() * (joint ? 0.95 : 1) : undefined,
       mergeMax: joint ? 1.3 : undefined,
       hardEnd: joint,
     };
@@ -1759,13 +1748,14 @@ export function drawRig(
         meta: meta!,
         sgn,
         hs,
+        mix,
       });
     } else if (hasHand) {
       // mesh, then the hand piece on top of it, then the sleeve end re-drawn over the piece's
       // sleeve stub: it tapers to the stub's width and dissolves into it (cloth over cloth, no
       // semi-transparent edge ever meets the background)
       drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
-      drawHandPiece(ctx, himg!, meta!, sgn, 1, hs);
+      drawHandPiece(ctx, himg!, meta!, handFlips(hn, side) ? -1 : 1, mix, hs);
       drawArmPieces(ctx, ...geomArgs, { ...armP, fromS: ARM_HAND_S - 60 }, ARM_HAND_S + 4);
     } else {
       drawArmPieces(ctx, ...geomArgs, armP, 1e9);
@@ -1797,7 +1787,7 @@ export function drawRig(
       armFrame.hy = (a.fy + b.fy) / 2;
       const wrap = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
       armFrame.hPsi = (wrap(a.fpsi) + wrap(b.fpsi)) / 2;
-      drawHandPiece(ctx, a.himg, a.meta, 1, 1, (a.hs + b.hs) / 2, 40);
+      drawHandPiece(ctx, a.himg, a.meta, 1, (a.mix + b.mix) / 2, (a.hs + b.hs) / 2, 40);
       armFrame.hx = saved.hx;
       armFrame.hy = saved.hy;
       armFrame.hPsi = saved.hPsi;

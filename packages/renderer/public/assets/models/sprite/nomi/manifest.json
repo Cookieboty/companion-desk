@@ -26,7 +26,7 @@
     ],
     "anchors": {
       "neck": [
-        474.0,
+        474,
         395.52
       ],
       "eyeL": [
@@ -50,7 +50,7 @@
         291.9
       ],
       "hairL": [
-        342.0,
+        342,
         295.2
       ],
       "hairR": [
@@ -58,11 +58,11 @@
         295.2
       ],
       "ribbon": [
-        626.0,
-        213.0
+        626,
+        213
       ],
       "headTop": [
-        474.0,
+        474,
         97.19999999999999
       ],
       "irisL": [
@@ -74,12 +74,12 @@
         256.59
       ],
       "tailL": [
-        368.0,
-        326.0
+        368,
+        326
       ],
       "tailR": [
-        580.0,
-        326.0
+        580,
+        326
       ]
     },
     "layers": {
@@ -201,7 +201,7 @@
     "eyes": {
       "l": {
         "x0": 397.44,
-        "x1": 441.0,
+        "x1": 441,
         "top": 245.7,
         "bottom": 272.76,
         "lash": 3.96,
@@ -251,83 +251,118 @@
         "file": "hands/hand-wave.png",
         "w": 285,
         "h": 675,
-        "ax": 155.0,
-        "ay": 675.0,
-        "sleeveW": 198.0,
-        "cuffY": 445.0
+        "ax": 155,
+        "ay": 675,
+        "sleeveW": 198,
+        "cuffY": 445,
+        "side": "L",
+        "k": 1,
+        "cx": 153,
+        "cy": 184
       },
       "fist": {
         "file": "hands/hand-fist.png",
         "w": 238,
         "h": 487,
         "ax": 113.5,
-        "ay": 487.0,
-        "sleeveW": 195.0,
-        "cuffY": 257.0
+        "ay": 487,
+        "sleeveW": 195,
+        "cuffY": 257,
+        "side": "R",
+        "k": 0.92,
+        "cx": 123,
+        "cy": 79
       },
       "thumbsup": {
         "file": "hands/hand-thumbsup.png",
         "w": 205,
         "h": 480,
         "ax": 99.5,
-        "ay": 480.0,
-        "sleeveW": 159.0,
-        "cuffY": 250.0
+        "ay": 480,
+        "sleeveW": 159,
+        "cuffY": 250,
+        "side": "R",
+        "k": 1,
+        "cx": 121,
+        "cy": 89
       },
       "point": {
         "file": "hands/hand-point.png",
         "w": 190,
         "h": 583,
         "ax": 91.5,
-        "ay": 583.0,
-        "sleeveW": 163.0,
-        "cuffY": 353.0
+        "ay": 583,
+        "sleeveW": 163,
+        "cuffY": 353,
+        "side": "R",
+        "k": 1,
+        "cx": 91,
+        "cy": 164
       },
       "rest": {
         "file": "hands/hand-rest.png",
         "w": 250,
         "h": 574,
-        "ax": 101.0,
-        "ay": 574.0,
-        "sleeveW": 168.0,
-        "cuffY": 344.0
+        "ax": 101,
+        "ay": 574,
+        "sleeveW": 168,
+        "cuffY": 344,
+        "side": "R",
+        "k": 0.95,
+        "cx": 142,
+        "cy": 122
       },
       "peace": {
         "file": "hands/hand-peace.png",
         "w": 200,
         "h": 558,
-        "ax": 87.0,
-        "ay": 558.0,
-        "sleeveW": 148.0,
-        "cuffY": 328.0
+        "ax": 87,
+        "ay": 558,
+        "sleeveW": 148,
+        "cuffY": 328,
+        "side": "L",
+        "k": 1,
+        "cx": 114,
+        "cy": 134
       },
       "prayer": {
         "file": "hands/hand-prayer.png",
         "w": 202,
         "h": 539,
         "ax": 100.5,
-        "ay": 539.0,
-        "sleeveW": 184.0,
+        "ay": 539,
+        "sleeveW": 184,
         "cuffY": 297.9,
-        "k": 1.2
+        "k": 1.15,
+        "side": "S",
+        "cx": 101,
+        "cy": 114
       },
       "ok": {
         "file": "hands/hand-ok.png",
         "w": 342,
         "h": 702,
         "ax": 139.5,
-        "ay": 702.0,
-        "sleeveW": 184.0,
-        "cuffY": 460.0
+        "ay": 702,
+        "sleeveW": 184,
+        "cuffY": 460,
+        "side": "L",
+        "k": 0.92,
+        "cx": 167,
+        "cy": 217
       },
       "chest": {
         "file": "hands/hand-chest.png",
         "w": 242,
         "h": 655,
         "ax": 123.5,
-        "ay": 655.0,
-        "sleeveW": 184.0,
-        "cuffY": 413.1
+        "ay": 655,
+        "sleeveW": 184,
+        "cuffY": 413.1,
+        "side": "R",
+        "k": 0.95,
+        "cx": 135,
+        "cy": 178
       }
     },
     "arms": {
@@ -337,7 +372,7 @@
         "theta": 0.17821,
         "s0": [
           189.61,
-          0.0
+          0
         ],
         "smin": -8.6,
         "smax": 694.2,
@@ -350,7 +385,7 @@
         "theta": 0.17853,
         "s0": [
           66.75,
-          0.0
+          0
         ],
         "smin": -8.7,
         "smax": 694.1,

@@ -5,14 +5,7 @@ import {
   compileAction,
   sampleTrack,
 } from './actionTypes';
-import { PARAM_COUNT, PARAM_DEFS, PARAM_INDEX, ParamBag } from './params';
-
-/** 1 = right-arm parameter, 2 = left-arm parameter, 0 = other (frozen while an arm fades out) */
-const ARM_SIDE = new Uint8Array(PARAM_COUNT);
-for (const n of ['rA', 'rE', 'rW', 'rHand']) ARM_SIDE[PARAM_INDEX[n]] = 1;
-for (const n of ['lA', 'lE', 'lW', 'lHand']) ARM_SIDE[PARAM_INDEX[n]] = 2;
-const R_ON = PARAM_INDEX.rOn;
-const L_ON = PARAM_INDEX.lOn;
+import { PARAM_COUNT, PARAM_DEFS, ParamBag } from './params';
 
 export interface PlayOptions {
   /** override the action priority */
@@ -247,24 +240,12 @@ export class ActionManager {
       v[p] = PARAM_DEFS[p].def;
       best[p] = 0;
     }
-    // an arm that is only fading out (no live action drives it) keeps its pose while its sleeve
-    // cross-fades back to the rest arm, instead of swinging down through the canvas edge
-    let rLive = false;
-    let lLive = false;
-    for (const inst of this.active) {
-      if (inst.out) continue;
-      for (const tr of inst.a.tracks) {
-        if (tr.idx === R_ON) rLive = true;
-        else if (tr.idx === L_ON) lLive = true;
-      }
-    }
     for (const inst of this.active) {
       const w0 = inst.w * inst.w * (3 - 2 * inst.w);
       if (w0 <= 0) continue;
       for (const tr of inst.a.tracks) {
         const pd = PARAM_DEFS[tr.idx];
-        const side = ARM_SIDE[tr.idx];
-        const w = inst.out && ((side === 1 && !rLive) || (side === 2 && !lLive)) ? 1 : w0;
+        const w = w0;
         let val = sampleTrack(tr, inst.t);
         if (tr.oscAmp !== 0 && !rm && inst.t >= tr.oscFrom && inst.t <= tr.oscTo)
           val += tr.oscAmp * Math.sin(tr.oscW * inst.t + tr.oscPh);
