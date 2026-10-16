@@ -1002,6 +1002,16 @@ export class CliHarnessService {
           background: this.activeTabId !== tabId || !anyWindowFocused(),
         });
       }
+      // 一轮失败（result.is_error / error 事件）：结束当前 Promise，进程保持长驻供下一轮
+      if (ev.type === 'error' && turn && live.turn === turn) {
+        live.turn = null;
+        this.children.delete(tabId);
+        if (!turn.settled) {
+          turn.settled = true;
+          turn.reject(new Error(ev.message));
+        }
+        continue;
+      }
       // 一轮 result：结束当前 Promise，但保持 stdin 打开供下一轮
       if (ev.type === 'done' && turn && live.turn === turn) {
         live.turn = null;

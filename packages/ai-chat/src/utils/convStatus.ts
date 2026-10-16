@@ -81,7 +81,8 @@ export function deriveStatus(args: {
     return { kind: 'tool', label: `${d.verb}${d.target ? ' ' : ''}`, detail: d.target };
   }
   const last = items[items.length - 1];
-  if (last?.type === 'thinking' && last.running) return { kind: 'thinking', label: t('思考中') };
+  if (last?.type === 'thinking' && last.running)
+    return { kind: 'thinking', label: t('模型正在推理…') };
   if ((!live || (live.firstEventAt === undefined && !live.text)) && !items.length)
     return { kind: 'first-token', label: t('等待模型响应…') };
   if (live?.text.trim()) return { kind: 'writing', label: t('正在生成回复') };

@@ -149,6 +149,16 @@ async function runOnce(_prompt) {
 
   const firstToken = Number(process.env.NOMI_MOCK_FIRST_TOKEN_MS || 0);
   if (firstToken > 0) await new Promise((r) => setTimeout(r, firstToken));
+  if (process.env.NOMI_MOCK_FAIL === '1') {
+    emit({
+      type: 'result',
+      subtype: 'error_during_execution',
+      is_error: true,
+      session_id: sessionId,
+      result: 'Mock: 429 rate limit exceeded',
+    });
+    return;
+  }
   if (process.env.NOMI_MOCK_TOOLS === 'rich') await richScenario();
   if (process.env.NOMI_MOCK_TOOLS === 'stress') await stressScenario();
 

@@ -23,6 +23,21 @@ describe('streamParse', () => {
     expect(done[0]).toMatchObject({ type: 'done', sessionId: 's1', text: '完' });
   });
 
+  it('treats a failed claude result (is_error / error subtype) as an error, not a reply', () => {
+    const a = parseClaudeLine(
+      JSON.stringify({ type: 'result', is_error: true, result: 'API Error: 429', session_id: 's' }),
+    );
+    expect(a).toEqual([{ type: 'error', message: 'API Error: 429' }]);
+    const b = parseClaudeLine(
+      JSON.stringify({ type: 'result', subtype: 'error_max_turns', session_id: 's' }),
+    );
+    expect(b[0]).toMatchObject({ type: 'error' });
+    const ok = parseClaudeLine(
+      JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'ok' }),
+    );
+    expect(ok[0]).toMatchObject({ type: 'done', text: 'ok' });
+  });
+
   it('parses claude control_request can_use_tool as permission', () => {
     const ev = parseClaudeLine(
       JSON.stringify({

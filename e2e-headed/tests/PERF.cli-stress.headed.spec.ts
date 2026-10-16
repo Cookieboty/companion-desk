@@ -127,10 +127,25 @@ test('stress: thousands of tool calls + long markdown stream, then 50 tab switch
       const [r, mm, mainMem, long] = await Promise.all([
         metrics(cdp, gc),
         metrics(mascotCdp, gc).catch(() => null),
-        app!.evaluate(() => {
+        app!.evaluate((_electron, forceGc) => {
+          if (forceGc) {
+            // 主进程强制 GC：区分「真实保留」与「V8 尚未回收」
+            try {
+              const g = (globalThis as { gc?: () => void }).gc;
+              if (g) g();
+              else {
+                const v8 = process.getBuiltinModule('v8') as typeof import('node:v8');
+                const vm = process.getBuiltinModule('vm') as typeof import('node:vm');
+                v8.setFlagsFromString('--expose-gc');
+                (vm.runInNewContext('gc') as () => void)();
+              }
+            } catch {
+              /* 取不到 gc 时退回未强制的读数 */
+            }
+          }
           const m = process.memoryUsage();
           return { rss: m.rss / 1048576, heap: m.heapUsed / 1048576 };
-        }),
+        }, gc),
         chat.evaluate(() => {
           const l = (window as unknown as { __perf: { long: number[] } }).__perf.long;
           return { sum: l.reduce((a, b) => a + b, 0), n: l.length, max: Math.max(0, ...l) };

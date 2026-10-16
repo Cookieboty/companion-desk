@@ -131,7 +131,11 @@ export function parseClaudeLine(line: string): HarnessEvent[] {
     const text = typeof j.result === 'string' ? j.result : '';
     const sid = typeof j.session_id === 'string' ? j.session_id : undefined;
     const usage = parseUsage(j.usage, { costUsd: j.total_cost_usd, durationMs: j.duration_ms });
-    out.push(withOpt({ type: 'done', text, sessionId: sid } as HarnessEvent, { usage }));
+    const failed =
+      j.is_error === true || (typeof j.subtype === 'string' && j.subtype.startsWith('error'));
+    // 失败的一轮（限流 / 上下文超限 / 执行出错）不当作正常回答：按错误处理，界面显示错误卡片并可重试
+    if (failed) out.push({ type: 'error', message: text || String(j.subtype ?? t('Claude 错误')) });
+    else out.push(withOpt({ type: 'done', text, sessionId: sid } as HarnessEvent, { usage }));
   } else if (type === 'system' && j.subtype === 'api_retry') {
     out.push(
       withOpt({ type: 'status', kind: 'retry' } as HarnessEvent, {
