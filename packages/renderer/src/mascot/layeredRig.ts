@@ -116,6 +116,8 @@ export interface RigPose {
   /** torso weight shift / lean (rig px, rad), pivoting at the hips */
   torsoX: number;
   torsoRot: number;
+  /** waist bend: curved lean of everything above the belt line (rad, +clockwise) */
+  spine: number;
   /** whole-figure scale (jump back = slightly smaller) */
   figureScale: number;
   /** shoulder lift, negative = up (rig px) */
@@ -136,6 +138,11 @@ export interface RigPose {
   hairRotL: number;
   hairRotR: number;
   ribbonRot: number;
+  /** collar tails (two-stage chains): swing of the whole lock and extra lagging bend toward the tip, rad */
+  tailL: number;
+  tailLTip: number;
+  tailR: number;
+  tailRTip: number;
   /** vertical eye scale, 1 open … 0 closed (legacy squash rigs) */
   eyeOpen: number;
   /** upper-lid descent, 0 open … 1 closed */
@@ -591,6 +598,15 @@ export class RigAnimator {
   private hairL = new Spring(70, 0.85);
   private hairR = new Spring(70, 0.85);
   private ribbon = new Spring(70, 0.85);
+  // collar tails: root spring + a second spring chasing it (lag → whip-like follow-through)
+  private tailLS = new Spring(46, 0.3);
+  private tailLT = new Spring(34, 0.26);
+  private tailRS = new Spring(46, 0.3);
+  private tailRT = new Spring(34, 0.26);
+  // waist bend: the figure follows the keyed lean through a soft spring (overshoot), the head chases it
+  private spineS = new Spring(58, 0.62);
+  private spineHead = new Spring(40, 0.38);
+  private prevSpine = 0;
   private browS = new Spring(18, 1);
   private cheekS = new Spring(14, 1);
   private nextHairFlick = 4;
@@ -921,9 +937,15 @@ export class RigAnimator {
       av[IDX.torsoX];
     const bodyY =
       (g.bodyY + slump * 3 + Math.max(-7, Math.min(7, intentY * 0.48))) * m + av[IDX.bodyY];
+    // waist bend (keyed lean → spring) + head lag so the head follows the spine like a whip
+    const spineTarget = av[IDX.spine] * DEG;
+    const spine = this.spineS.step(spineTarget, dt);
+    const headLag = (this.spineHead.step(spine, dt) - spine) * 0.7 * m;
+    const vSpine = dt > 0 ? (spine - this.prevSpine) / dt : 0;
+    this.prevSpine = spine;
     // richer breath: chest scale + head lift + shoulders
     const bodyScaleY = 1 + breath * 0.0072;
-    const headRot = intentRot * 0.56;
+    const headRot = intentRot * 0.56 + headLag;
     const headX = intentX * 0.48;
     const headY = intentY * 0.58 - breath * 1.35;
     const tiltSh = (torsoRot / DEG) * 1.85;
@@ -962,6 +984,25 @@ export class RigAnimator {
     const hairRotL = lim(this.hairL.step(hairTarget, dt), 2.5 * DEG);
     const hairRotR = lim(this.hairR.step(hairTarget + 0.15 * DEG * m, dt), 2.5 * DEG);
     const ribbonRot = lim(this.ribbon.step(hairTarget + 0.2 * DEG * m, dt), 3.5 * DEG);
+    // collar tails hang from the head: they lag the head's rotation / acceleration and flare on bounces
+    const tailGust = fbm(t * 0.37, 41) * 0.55 * DEG * m;
+    const tailBase =
+      (-headRot * 0.42 -
+        vSpine * 0.16 -
+        vHeadRot * 0.03 -
+        vHeadX * 0.0011 -
+        torsoRot * 0.3 +
+        g.headRot * 0.1) *
+        m +
+      tailGust;
+    const flare = Math.max(-1, Math.min(1, -aY * 0.00003)) * 3.2 * DEG * m;
+    const tl1 = this.tailLS.step(lim(tailBase + flare + av[IDX.tailL] * DEG, 24 * DEG), dt);
+    const tr1 = this.tailRS.step(
+      lim(tailBase - flare + 0.12 * DEG * m + av[IDX.tailR] * DEG, 24 * DEG),
+      dt,
+    );
+    const tl2 = this.tailLT.step(tl1, dt);
+    const tr2 = this.tailRT.step(tr1, dt);
     // Art-safe arm range (~5° idle; gestures up to ~8°)
     const armDrive = -aX * 0.00005 - torsoRot * 0.55;
     const armRotL = lim(
@@ -1011,6 +1052,7 @@ export class RigAnimator {
       bodyScaleY,
       torsoX,
       torsoRot,
+      spine,
       figureScale: 1 + g.scale * m + av[IDX.scale],
       shoulderL: shL,
       shoulderR: shR,
@@ -1029,6 +1071,10 @@ export class RigAnimator {
       hairRotL,
       hairRotR,
       ribbonRot,
+      tailL: tl1,
+      tailLTip: lim((tl2 - tl1) * 1.6, 9 * DEG),
+      tailR: tr1,
+      tailRTip: lim((tr2 - tr1) * 1.6, 9 * DEG),
       eyeOpen: happy > 0.5 ? 1 : eyeOpen,
       lidClose,
       eyeScale: s.eyeScale,
@@ -1088,8 +1134,8 @@ export const RIG_LAYERS = [
   'mouth-open',
   'mouth-o',
   'mouth-frown',
-  'hair-side-l',
-  'hair-side-r',
+  'hair-tail-l',
+  'hair-tail-r',
   'ribbon',
   'bangs',
   'clip',
@@ -1242,6 +1288,82 @@ function lidStroke(
   ctx.restore();
 }
 
+/** below this the waist bend is skipped entirely (idle never pays for the scratch pass) */
+const SPINE_MIN = 0.0015;
+/** the bent figure is rendered once at this multiple of rig px, then re-sliced along the spine */
+export const SPINE_SCRATCH_SCALE = 1.25;
+/** spine curve: fixed below the belt line, fully leaning from the chest up (rig px from the top) */
+const SPINE_BELT = 0.94;
+const SPINE_CHEST = 0.46;
+const SPINE_STRIP = 4;
+let spineCanvas: HTMLCanvasElement | OffscreenCanvas | undefined;
+
+/**
+ * Waist bend. The upright figure is painted once into a scratch (the normal pipeline, `spine = 0`),
+ * then re-composited as horizontal strips of its own pixels chained up the spine: every strip is a
+ * rigid rotation whose angle grows smoothly from 0 at the belt line to `pose.spine` at the chest, so
+ * the torso curves while the head, face and every brand part stay rigid on top.
+ */
+function drawBent(
+  ctx: CanvasRenderingContext2D,
+  rig: RigManifest,
+  imgs: RigImages,
+  pose: RigPose,
+): void {
+  const [W, H] = rig.size;
+  const K = SPINE_SCRATCH_SCALE;
+  const w = Math.round(W * K);
+  const h = Math.round(H * K);
+  if (!spineCanvas) {
+    spineCanvas =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(w, h)
+        : Object.assign(document.createElement('canvas'), { width: w, height: h });
+  }
+  if (spineCanvas.width !== w || spineCanvas.height !== h) {
+    spineCanvas.width = w;
+    spineCanvas.height = h;
+  }
+  const sc = spineCanvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (!sc) return;
+  sc.setTransform(1, 0, 0, 1, 0, 0);
+  sc.clearRect(0, 0, w, h);
+  sc.setTransform(K, 0, 0, K, 0, 0);
+  drawRig(sc, rig, imgs, { ...pose, spine: 0 });
+  sc.setTransform(1, 0, 0, 1, 0, 0);
+
+  const src = spineCanvas as CanvasImageSource;
+  const yBelt = H * SPINE_BELT;
+  const yChest = H * SPINE_CHEST;
+  ctx.save();
+  // fixed block below the belt
+  ctx.drawImage(src, 0, yBelt * K, w, h - yBelt * K, 0, yBelt, W, H - yBelt);
+  let jx = W / 2;
+  let jy = yBelt;
+  const n = Math.max(1, Math.round((yBelt - yChest) / SPINE_STRIP));
+  const sh = (yBelt - yChest) / n;
+  for (let i = 0; i < n; i++) {
+    const yb = yBelt - i * sh; // strip bottom (source rig y)
+    const t = (i + 0.5) / n;
+    const a = pose.spine * (t * t * (3 - 2 * t));
+    ctx.save();
+    ctx.translate(jx, jy);
+    ctx.rotate(a);
+    ctx.translate(-W / 2, -yb);
+    // one extra source px on the top edge: the next strip overlaps it, so no seam can open
+    ctx.drawImage(src, 0, (yb - sh - 1) * K, w, (sh + 1) * K, 0, yb - sh - 1, W, sh + 1);
+    ctx.restore();
+    jx += Math.sin(a) * sh;
+    jy -= Math.cos(a) * sh;
+  }
+  // chest and everything above (neck, head, hair, arms raised overhead) is one rigid block
+  ctx.translate(jx, jy);
+  ctx.rotate(pose.spine);
+  ctx.translate(-W / 2, -yChest);
+  ctx.drawImage(src, 0, 0, w, yChest * K, 0, 0, W, yChest);
+  ctx.restore();
+}
+
 /**
  * Paint one frame. `ctx` must already be transformed so that 1 unit = 1 rig px.
  */
@@ -1251,6 +1373,10 @@ export function drawRig(
   imgs: RigImages,
   pose: RigPose,
 ): void {
+  if (Math.abs(pose.spine) > SPINE_MIN) {
+    drawBent(ctx, rig, imgs, pose);
+    return;
+  }
   const A = rig.anchors;
   const L = rig.layers;
   const P = rig.pivots ?? {};
@@ -1291,6 +1417,36 @@ export function drawRig(
     ctx.translate(-p[0], -p[1]);
     fn();
     ctx.restore();
+  };
+  /**
+   * Hanging lock: horizontal strips of the part rotate about the root pivot by an angle that grows
+   * toward the tip (`swing` over the whole lock + `tip` extra, quadratic). Each strip is a rigid
+   * rotation of the part's own pixels (overlapped by one source px so no seam opens).
+   */
+  const bendLayer = (name: string, pv: [number, number], swing: number, tip: number) => {
+    const img = imgs.get(name);
+    const off = L[name];
+    if (!img || !off) return;
+    const k = off[2] ?? 1;
+    if (Math.abs(swing) < 4e-4 && Math.abs(tip) < 4e-4) {
+      layer(name);
+      return;
+    }
+    const botY = off[1] + img.height * k;
+    const span = Math.max(1, botY - pv[1]);
+    const strip = Math.max(2, Math.round(3 / k));
+    for (let sy = 0; sy < img.height; sy += strip) {
+      const sh = Math.min(strip + 1, img.height - sy);
+      const ry = off[1] + (sy + sh / 2) * k;
+      const t = clamp01((ry - pv[1]) / span);
+      const ang = swing * (0.35 + 0.65 * t) + tip * t * t;
+      ctx.save();
+      ctx.translate(pv[0], pv[1]);
+      ctx.rotate(ang);
+      ctx.translate(-pv[0], -pv[1]);
+      ctx.drawImage(img, 0, sy, img.width, sh, off[0], off[1] + sy * k, img.width * k, sh * k);
+      ctx.restore();
+    }
   };
   /** white + iris hard-clipped to the eye-white alpha (and a tight oval) at native res */
   const composeEye = (side: 'l' | 'r') => {
@@ -1659,6 +1815,10 @@ export function drawRig(
   ctx.rotate(pose.headRot);
   ctx.translate(-neck[0], -neck[1]);
 
+  // collar tails hang BEHIND the head (single owner of the side-lock tips); they bend from the root
+  if (A.tailL) bendLayer('hair-tail-l', A.tailL, pose.tailL, pose.tailLTip);
+  if (A.tailR) bendLayer('hair-tail-r', A.tailR, pose.tailR, pose.tailRTip);
+
   // tint only the head's own pixels (source-atop on scratch canvases)
   tintedLayer('head', 0);
   tintedLayer('crown', 5);
@@ -1770,8 +1930,6 @@ export function drawRig(
   // official N hair clip rides on top of the fringe (brand part, never deformed)
   layer('clip');
   // secondary motion layers (hang from their roots)
-  if (A.hairL) pivot(A.hairL, () => layer('hair-side-l'), pose.hairRotL);
-  if (A.hairR) pivot(A.hairR, () => layer('hair-side-r'), pose.hairRotR);
   if (A.ribbon) pivot(A.ribbon, () => layer('ribbon'), pose.ribbonRot);
   layer('earring');
 
@@ -1870,7 +2028,7 @@ const union = (rects: Array<RigRect | null>): RigRect | null => {
   };
 };
 
-const HEAD_LAYERS = ['head', 'crown', 'bangs', 'hair-side-l', 'hair-side-r', 'ribbon'];
+const HEAD_LAYERS = ['head', 'crown', 'bangs', 'hair-tail-l', 'hair-tail-r', 'ribbon'];
 const BODY_LAYERS = ['body', 'arm-l', 'arm-r', ...HEAD_LAYERS];
 
 /**

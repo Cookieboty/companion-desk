@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   RigAnimator,
+  SPINE_SCRATCH_SCALE,
   drawRig,
   type RigImages,
   type RigManifest,
@@ -34,8 +35,8 @@ const BRAND_LAYERS = [
   'head',
   'crown',
   'bangs',
-  'hair-side-l',
-  'hair-side-r',
+  'hair-tail-l', // collar hair locks (HD, behind the head)
+  'hair-tail-r',
   'ribbon', // orange bow of the N hairclip
   'clip', // N hairclip
   'earring',
@@ -77,6 +78,8 @@ describe('brand lock: files', () => {
 type M = [number, number, number, number, number, number];
 interface DrawCall {
   name: string;
+  /** a horizontal strip of the layer (bent hair / waist) rather than the whole image */
+  strip?: boolean;
   m: M;
   w: number;
   h: number;
@@ -90,7 +93,7 @@ const mul = (p: M, q: M): M => [
   p[0] * q[4] + p[2] * q[5] + p[4],
   p[1] * q[4] + p[3] * q[5] + p[5],
 ];
-function fakeCtx(calls: DrawCall[]) {
+function fakeCtx(calls: DrawCall[], unscale = 1) {
   let m: M = [1, 0, 0, 1, 0, 0];
   const stack: Array<{ m: M; a: number }> = [];
   const st = { globalAlpha: 1 } as Record<string, unknown> & { globalAlpha: number };
@@ -115,12 +118,16 @@ function fakeCtx(calls: DrawCall[]) {
     getTransform: () => ({ a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }),
     drawImage: (img: { __name?: string; width: number; height: number }, ...a: number[]) => {
       if (!img.__name) return;
-      const [dx = 0, dy = 0, dw, dh] = a;
-      const sx = dw !== undefined ? dw / img.width : 1;
-      const sy = dh !== undefined ? dh / img.height : 1;
+      // 9-arg form (strip draws): (sx, sy, sw, sh, dx, dy, dw, dh)
+      const strip = a.length >= 8;
+      const [dx = 0, dy = 0, dw, dh] = strip ? a.slice(4) : a;
+      const sx = dw !== undefined ? dw / (strip ? a[2] : img.width) : 1;
+      const sy = dh !== undefined ? dh / (strip ? a[3] : img.height) : 1;
+      const cm = mul(m, [sx, 0, 0, sy, dx - (strip ? a[0] * sx : 0), dy - (strip ? a[1] * sy : 0)]);
       calls.push({
         name: img.__name,
-        m: mul(m, [sx, 0, 0, sy, dx, dy]),
+        strip,
+        m: unscale === 1 ? cm : mul([unscale, 0, 0, unscale, 0, 0], cm),
         w: img.width,
         h: img.height,
         alpha: st.globalAlpha,
@@ -164,12 +171,19 @@ const rig = manifest.rig;
 const imgs = fakeImages(rig);
 
 // the rig composes eyes / arm fades on scratch canvases: give it throw-away fake ones
+// the waist-bend pass paints the upright figure into one big scratch: record that one
+const SPINE_SINK: DrawCall[] = [];
 class FakeOffscreen {
-  private readonly g = fakeCtx([]);
+  private readonly g: CanvasRenderingContext2D;
   constructor(
     public width: number,
     public height: number,
-  ) {}
+  ) {
+    this.g =
+      width === Math.round(rig.size[0] * SPINE_SCRATCH_SCALE)
+        ? fakeCtx(SPINE_SINK, 1 / SPINE_SCRATCH_SCALE)
+        : fakeCtx([]);
+  }
   getContext() {
     return this.g;
   }
@@ -178,8 +192,9 @@ class FakeOffscreen {
 
 function frameCalls(pose: ReturnType<RigAnimator['step']>): DrawCall[] {
   const calls: DrawCall[] = [];
+  SPINE_SINK.length = 0;
   drawRig(fakeCtx(calls), rig, imgs, pose);
-  return calls;
+  return [...calls, ...SPINE_SINK];
 }
 
 const BASE_INPUT = {
@@ -259,6 +274,20 @@ describe('brand lock: every action keeps the artwork rigid', () => {
                 Math.hypot(head.m[0], head.m[1]) / (rig.layers.head[2] ?? 1),
             ),
           ).toBeLessThan(0.01);
+        }
+        // collar hair locks: every strip is a rigid rotation (bend ≤ ~0.5 rad from the head), no squash
+        for (const n of ['hair-tail-l', 'hair-tail-r']) {
+          const cs = calls.filter((x) => x.name === n);
+          expect(cs.length, `${id}@${k}: ${n} drawn`).toBeGreaterThan(0);
+          for (const c of cs) {
+            const [A, B, C, D] = c.m;
+            expect(Math.abs(Math.atan2(B, A) - rot), `${id}@${k}: ${n} bend`).toBeLessThan(0.5);
+            expect(
+              Math.abs(Math.hypot(A, B) / Math.hypot(C, D) - 1),
+              `${id}@${k}: ${n} squash`,
+            ).toBeLessThan(0.06);
+            expect(c.alpha).toBeGreaterThanOrEqual(0.999);
+          }
         }
         // hair clip / ribbon stay inside the canvas
         for (const n of ['clip', 'ribbon', 'earring']) {

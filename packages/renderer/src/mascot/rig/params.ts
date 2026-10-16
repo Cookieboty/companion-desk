@@ -95,8 +95,13 @@ export const PARAM_DEFS: readonly ParamDef[] = [
   D('bodyY', 0, -40, 40, { rm: 0.3 }),
   D('torsoRot', 0, -10, 10, { rm: 0.3 }),
   D('torsoX', 0, -40, 40, { rm: 0.3 }),
+  /** waist bend (deg): the upper body leans from the belt line with a smooth spine curve, head follows with lag */
+  D('spine', 0, -14, 14, { rm: 0.3 }),
   D('scale', 0, -0.08, 0.08, { rm: 0.3 }),
   D('shoulder', 0, -30, 30, { rm: 0.4 }),
+  /** direct kick of the collar hair tails (deg): a hand brushing / toying with the lock */
+  D('tailL', 0, -30, 30, { rm: 0.4 }),
+  D('tailR', 0, -30, 30, { rm: 0.4 }),
   // head
   D('headRot', 0, -30, 30, { rm: 0.5 }),
   D('headNod', 0, -20, 24, { rm: 0.5 }),
