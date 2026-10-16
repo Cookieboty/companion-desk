@@ -106,7 +106,7 @@ export const CodingMonitor: React.FC<{
               )}
             </p>
             <p className={styles.hint}>
-              {tr('灵动岛样式、通知类型与免打扰在「通知 / 灵动岛」和「日程与提醒」里设置。')}{' '}
+              {tr('灵动岛样式、通知类型与免打扰在「通知 / 灵动岛」和「日程与日历」里设置。')}{' '}
               {onOpenNotify && (
                 <Button
                   size="sm"

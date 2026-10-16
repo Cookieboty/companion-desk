@@ -4,14 +4,13 @@
  */
 import { t, Icon } from '@nomi-ai/ui';
 import { ModalHostContext } from '@nomi-ai/ui';
-import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
 import { ChevronLeft } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { cliProviderClient } from '../../services/cliProviderClient';
 import { providerClientAvailable } from '../../services/providerClient';
 import { AppIcon } from '../AppIcons';
-import { ConfigPanel, ExtensionsPanel, LocalPanel, ScreenPanel, UsagePanel } from '../lazyPanels';
+import { ConfigPanel, ExtensionsPanel, LocalPanel, UsagePanel } from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
 import { ProvidersPage } from '../ProvidersPage';
 
@@ -24,28 +23,19 @@ import { PinsSettings } from './PinsSettings';
 import { PrivacySection } from './PrivacySection';
 import { ScheduleSection } from './ScheduleSection';
 import {
+  LOCAL_MANAGE_TABS,
   SECTION_TABS,
   SETTINGS_SECTIONS,
   tabOf as pickTab,
   type SettingsSection,
   type SettingsTab,
 } from './sections';
+import { SensesSection } from './SensesSection';
 import { ShortcutSettings } from './ShortcutSettings';
 import { ThemeSettings } from './ThemeSettings';
 import { UpdateSettings } from './UpdateSettings';
 
 export { SETTINGS_SECTIONS, type SettingsSection, type SettingsTab };
-
-const VoiceSection: React.FC = () => {
-  const v = useVoice('chat');
-  if (!v.api) return <p className={styles.note}>{t('语音服务不可用（仅在桌面应用中提供）。')}</p>;
-  return (
-    <section className={styles.block} data-testid="settings-voice">
-      <h2 className={styles.h2}>{t('语音输入')}</h2>
-      <VoiceSettingsPanel api={v.api} config={v.config} onRefresh={() => void v.refresh()} />
-    </section>
-  );
-};
 
 interface Props {
   section: SettingsSection;
@@ -66,10 +56,13 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, dee
   const [tabs, setTabs] = useState<TabState>(() =>
     deepLink?.tab && section in SECTION_TABS ? { [section]: deepLink.tab } : {},
   );
-  useEffect(() => {
+  // 新的深链接（App 每次跳转传一个新对象）：在渲染期同步到对应分区的标签
+  const [seenLink, setSeenLink] = useState(deepLink);
+  if (deepLink !== seenLink) {
+    setSeenLink(deepLink);
     if (deepLink?.tab && section in SECTION_TABS)
       setTabs((p) => ({ ...p, [section]: deepLink.tab }));
-  }, [deepLink, section]);
+  }
   const tabOf = <S extends keyof typeof SECTION_TABS>(s: S) =>
     pickTab(s, tabs[s]) ?? (SECTION_TABS[s][0].id as (typeof SECTION_TABS)[S][number]['id']);
   const setTab = (s: keyof typeof SECTION_TABS, tab: string) =>
@@ -130,29 +123,26 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, dee
         );
       case 'usage':
         return <UsagePanel />;
-      case 'voice':
-        return <VoiceSection />;
+      case 'senses':
+        return <SensesSection tab={tabOf('senses')} onTab={(x) => setTab('senses', x)} />;
       case 'knowledge':
         return <KnowledgeSection tab={tabOf('knowledge')} onTab={(x) => setTab('knowledge', x)} />;
       case 'schedule':
         return <ScheduleSection tab={tabOf('schedule')} onTab={(x) => setTab('schedule', x)} />;
       case 'notify':
         return <IslandSettings />;
-      case 'screen':
-        return <ScreenPanel isVisible onClose={noop} />;
       case 'ext':
         return <ExtensionsPanel isVisible onClose={noop} />;
       case 'local':
         return (
           <LocalPanel
-            key={localTab ?? 'models'}
+            key={localTab ?? 'first'}
             isVisible
             onClose={noop}
-            initialTab={localTab ?? 'models'}
+            initialTab={localTab}
+            tabs={[...LOCAL_MANAGE_TABS]}
           />
         );
-      case 'updates':
-        return <UpdateSettings />;
       case 'privacy':
         return (
           <PrivacySection

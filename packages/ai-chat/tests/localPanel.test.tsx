@@ -149,4 +149,27 @@ describe('localClient helpers', () => {
     };
     expect(collectConversations(s)).toEqual({ 'ai-chat:conversations': [1] });
   });
+
+  it('tabs 属性限制可见标签：只给日历时不显示标签条；不含日历时没有日历标签', async () => {
+    mockIpc();
+    const cal = render(<LocalPanel isVisible onClose={() => undefined} tabs={['calendar']} />);
+    expect(cal.queryAllByRole('tab')).toHaveLength(0);
+    expect(cal.getByRole('heading', { name: '日历' })).toBeTruthy();
+    cal.unmount();
+    const rest = render(
+      <LocalPanel
+        isVisible
+        onClose={() => undefined}
+        tabs={['clipboard', 'export', 'models', 'ollama']}
+      />,
+    );
+    expect(rest.getAllByRole('tab').map((x) => x.textContent)).toEqual([
+      '剪贴板',
+      '数据导出',
+      '本机小模型（辅助）',
+      'Ollama（可选）',
+    ]);
+    expect(rest.getByTestId('local-panel')).toBeTruthy();
+    expect(rest.getByRole('heading', { name: '本机管理' })).toBeTruthy();
+  });
 });

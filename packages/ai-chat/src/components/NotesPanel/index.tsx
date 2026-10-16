@@ -1,5 +1,5 @@
 import { t as tr } from '@nomi-ai/ui';
-import { Badge, Button, EmptyState, Input, Textarea } from '@nomi-ai/ui';
+import { Badge, Button, EmptyState, Input, Modal, Textarea } from '@nomi-ai/ui';
 import { NotebookPen } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -7,8 +7,33 @@ import { desktopClient, type NoteMetaView, type NoteView } from '../../services/
 
 import styles from './index.module.css';
 
-/** 笔记：本地 markdown 笔记库（userData/desktop/notes）。搜索 / 新建 / 编辑 / 删除（进回收站，可撤销）。 */
-export const NotesTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }) => {
+interface Props {
+  isVisible: boolean;
+  onClose: () => void;
+}
+
+/**
+ * 笔记：本地 markdown 笔记库（userData/desktop/notes）。搜索 / 新建 / 编辑 / 删除（进回收站，可撤销）。
+ * 笔记会被知识库一起索引，所以放在「知识与记忆」里（设置页标签 / 顶栏快速视图都有）。
+ */
+export const NotesPanel: React.FC<Props> = ({ isVisible, onClose }) => {
+  const [msg, setMsg] = useState('');
+  if (!isVisible) return null;
+  return (
+    <Modal open onClose={onClose} title={tr('笔记')} size="lg" data-testid="notes-panel">
+      <div className={styles.stack}>
+        {msg && (
+          <div className={styles.msg} role="status" data-testid="notes-msg">
+            {msg}
+          </div>
+        )}
+        <NotesBody onMsg={setMsg} />
+      </div>
+    </Modal>
+  );
+};
+
+const NotesBody: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }) => {
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<Array<NoteMetaView & { snippet?: string }>>([]);
   const [edit, setEdit] = useState<Partial<NoteView> | null>(null);

@@ -1,7 +1,7 @@
 /**
- * 设置 → 隐私与权限：合并原「隐私与数据」「桌面权限」两个分区。
- * 「隐私与数据」= 数据只在本机的说明 + 管理 / 导出 / 清除的快捷入口（落点与旧「隐私与数据」一致，是第一个标签）；
- * 「桌面权限」= 文件夹授权、笔记、提醒、工具权限、隐私开关与操作记录（原桌面能力面板，交互不变）。
+ * 设置 → 隐私与权限：
+ * 「隐私与数据」= 数据只在本机的说明 + 管理 / 导出 / 清除的快捷入口（第一个标签）；
+ * 「桌面权限」= 文件夹授权、工具权限、云端与仅本地开关与操作记录（桌面能力面板）。
  */
 import { t } from '@nomi-ai/ui';
 import React from 'react';
@@ -52,7 +52,11 @@ export const PrivacySection: React.FC<{
             >
               {t('管理记忆')}
             </button>
-            <button type="button" className="cd-btn cd-btn--sm" onClick={() => go('screen')}>
+            <button
+              type="button"
+              className="cd-btn cd-btn--sm"
+              onClick={() => go('senses', 'screen')}
+            >
               {t('屏幕记忆与排除')}
             </button>
             <button type="button" className="cd-btn cd-btn--sm" onClick={() => onTab('desktop')}>

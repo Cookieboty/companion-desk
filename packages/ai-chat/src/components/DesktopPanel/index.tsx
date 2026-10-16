@@ -19,15 +19,13 @@ import {
 } from '../../services/desktopClient';
 
 import styles from './index.module.css';
-import { NotesTab } from './NotesTab';
-import { RemindersTab } from './RemindersTab';
 
 interface Props {
   isVisible: boolean;
   onClose: () => void;
 }
 
-type Tab = 'folders' | 'notes' | 'reminders' | 'tools' | 'privacy' | 'log';
+type Tab = 'folders' | 'tools' | 'cloud' | 'log';
 
 const DECISION_LABEL: Record<string, string> = {
   auto: '自动',
@@ -92,10 +90,8 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           onChange={(v) => setTab(v as Tab)}
           items={[
             { value: 'folders', label: tr('授权文件夹') },
-            { value: 'notes', label: tr('笔记') },
-            { value: 'reminders', label: tr('提醒') },
             { value: 'tools', label: tr('工具权限') },
-            { value: 'privacy', label: tr('隐私') },
+            { value: 'cloud', label: tr('云端与仅本地') },
             { value: 'log', label: tr('操作记录') },
           ]}
         />
@@ -169,8 +165,6 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           </div>
         )}
 
-        {tab === 'notes' && <NotesTab onMsg={setMsg} />}
-        {tab === 'reminders' && <RemindersTab onMsg={setMsg} />}
         {tab === 'tools' && state && (
           <table className={styles.table} data-testid="desktop-tools">
             <thead>
@@ -229,8 +223,8 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
           </table>
         )}
 
-        {tab === 'privacy' && state && (
-          <div className={styles.stack} data-testid="desktop-privacy">
+        {tab === 'cloud' && state && (
+          <div className={styles.stack} data-testid="desktop-cloud">
             <Switch
               checked={state.localOnly}
               onChange={(v) => void desktopClient.setLocalOnly(v)}

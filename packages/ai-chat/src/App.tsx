@@ -9,15 +9,14 @@ import { ChatTabs, CliTabLive, cliTabPlaceholder } from './components/ChatTabs';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ForkTargetMenu } from './components/ForkMenu';
+import type { HubTab } from './components/HubPanel';
 import {
   ConfigPanel,
   DesktopPanel,
   ExtensionsPanel,
-  KnowledgePanel,
+  HubPanel,
   LocalPanel,
-  MemoryPanel,
   ProviderPanel,
-  SchedulePanel,
   ScreenPanel,
   SettingsView,
   prefetchPanels,
@@ -27,6 +26,7 @@ import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
 import {
+  LOCAL_MANAGE_TABS,
   SETTINGS_SECTIONS,
   type SettingsSection,
   type SettingsTab,
@@ -122,9 +122,8 @@ const AiChatContent: React.FC = () => {
   const [showDesktop, setShowDesktop] = useState(false);
   // 托盘「桌面能力…」→ 打开桌面能力面板
   useEffect(() => desktopClient.onOpenPanel(() => setShowDesktop(true)), []);
-  const [showKb, setShowKb] = useState(false);
-  const [showMem, setShowMem] = useState(false);
-  const [showSched, setShowSched] = useState(false);
+  const [showHub, setShowHub] = useState(false);
+  const [hubTab, setHubTab] = useState<HubTab>('memory');
   const [showScreen, setShowScreen] = useState(false);
   const [showExt, setShowExt] = useState(false);
   const [showLocal, setShowLocal] = useState(false);
@@ -161,9 +160,7 @@ const AiChatContent: React.FC = () => {
   const [settingsLink, setSettingsLink] = useState<{ tab?: SettingsTab } | undefined>();
   const openSettings = useCallback((sec: SettingsSection = 'general', tab?: SettingsTab) => {
     setSettingsLink(tab ? { tab } : undefined);
-    setShowKb(false);
-    setShowMem(false);
-    setShowSched(false);
+    setShowHub(false);
     setShowScreen(false);
     setShowExt(false);
     setShowLocal(false);
@@ -265,9 +262,7 @@ const AiChatContent: React.FC = () => {
       focusInput,
       settings: () => setSettings((s) => (s ? null : 'general')),
       sidebar: () => setSidebarCollapsed((v) => !v),
-      kb: () => setShowKb((v) => !v),
-      memory: () => setShowMem((v) => !v),
-      schedule: () => setShowSched((v) => !v),
+      hub: () => setShowHub((v) => !v),
       ext: () => setShowExt((v) => !v),
       local: () => setShowLocal((v) => !v),
       screen: () => setShowScreen((v) => !v),
@@ -338,10 +333,7 @@ const AiChatContent: React.FC = () => {
       onOpenSettings: () => openSettings(sec, tab),
     });
     return {
-      kb: mk('knowledge', 'kb'),
-      memory: mk('knowledge', 'memory'),
-      schedule: mk('schedule', 'reminders'),
-      screen: mk('screen'),
+      screen: mk('senses', 'screen'),
       ext: mk('ext'),
       desktop: mk('privacy', 'desktop'),
       local: mk('local'),
@@ -405,9 +397,7 @@ const AiChatContent: React.FC = () => {
       {/* 主内容区域 */}
       <div className="main-content">
         <ChatHeader
-          onMemory={() => setShowMem(true)}
-          onKnowledge={() => setShowKb(true)}
-          onSchedule={() => setShowSched(true)}
+          onHub={() => setShowHub(true)}
           onExt={() => setShowExt(true)}
           onLocal={() => setShowLocal(true)}
           onSettings={() => openSettings()}
@@ -503,9 +493,7 @@ const AiChatContent: React.FC = () => {
               openSettings(sec);
             }}
             onDesktopClick={() => setShowDesktop(true)}
-            onKnowledgeClick={() => setShowKb(true)}
-            onMemoryClick={() => setShowMem(true)}
-            onScheduleClick={() => setShowSched(true)}
+            onHubClick={() => setShowHub(true)}
             onScreenClick={() => setShowScreen(true)}
             onExtClick={() => setShowExt(true)}
             onLocalClick={() => setShowLocal(true)}
@@ -520,15 +508,13 @@ const AiChatContent: React.FC = () => {
       <ModalHostContext.Provider value={drawerHost.desktop}>
         <DesktopPanel isVisible={showDesktop} onClose={() => setShowDesktop(false)} />
       </ModalHostContext.Provider>
-      <ModalHostContext.Provider value={drawerHost.kb}>
-        <KnowledgePanel isVisible={showKb} onClose={() => setShowKb(false)} />
-      </ModalHostContext.Provider>
-      <ModalHostContext.Provider value={drawerHost.memory}>
-        <MemoryPanel isVisible={showMem} onClose={() => setShowMem(false)} />
-      </ModalHostContext.Provider>
-      <ModalHostContext.Provider value={drawerHost.schedule}>
-        <SchedulePanel isVisible={showSched} onClose={() => setShowSched(false)} />
-      </ModalHostContext.Provider>
+      <HubPanel
+        isVisible={showHub}
+        onClose={() => setShowHub(false)}
+        tab={hubTab}
+        onTab={setHubTab}
+        onOpenSettings={openSettings}
+      />
       <ModalHostContext.Provider value={drawerHost.screen}>
         <ScreenPanel isVisible={showScreen} onClose={() => setShowScreen(false)} />
       </ModalHostContext.Provider>
@@ -536,7 +522,11 @@ const AiChatContent: React.FC = () => {
         <ExtensionsPanel isVisible={showExt} onClose={() => setShowExt(false)} />
       </ModalHostContext.Provider>
       <ModalHostContext.Provider value={drawerHost.local}>
-        <LocalPanel isVisible={showLocal} onClose={() => setShowLocal(false)} />
+        <LocalPanel
+          isVisible={showLocal}
+          onClose={() => setShowLocal(false)}
+          tabs={[...LOCAL_MANAGE_TABS]}
+        />
       </ModalHostContext.Provider>
       <ForkTargetMenu
         open={!!forkCross}

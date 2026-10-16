@@ -6,11 +6,9 @@ import { t } from '@nomi-ai/ui';
 import type { LucideIcon } from 'lucide-react';
 import {
   AudioLines,
-  BellRing,
   Blocks,
   BookOpen,
   Bot,
-  Brain,
   Cpu,
   Crop,
   LibraryBig,
@@ -41,9 +39,7 @@ export const PIN_POOL: PinDef[] = [
   { id: 'handsfree', icon: Mic, label: '免按键语音', sc: 'handsFree' },
   { id: 'voice', icon: AudioLines, label: '语音设置', shortcut: 'F2 说话' },
   { id: 'model', icon: Bot, label: '供应商与模型' },
-  { id: 'kbm', icon: LibraryBig, label: '知识库管理', sc: 'kb' },
-  { id: 'memory', icon: Brain, label: '长期记忆', sc: 'memory' },
-  { id: 'schedule', icon: BellRing, label: '日程与提醒', sc: 'schedule' },
+  { id: 'hub', icon: LibraryBig, label: '知识 · 记忆 · 日程', sc: 'hub' },
   { id: 'screen', icon: Monitor, label: '屏幕记忆', sc: 'screen' },
   { id: 'ext', icon: Blocks, label: '扩展 / MCP', sc: 'ext' },
   { id: 'desktop', icon: ShieldCheck, label: '桌面权限' },

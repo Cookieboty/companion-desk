@@ -37,9 +37,8 @@ interface MessageInputProps {
   onConfigClick?: () => void;
   onProvidersClick?: () => void;
   onDesktopClick?: () => void;
-  onKnowledgeClick?: () => void;
-  onMemoryClick?: () => void;
-  onScheduleClick?: () => void;
+  /** 打开「知识 · 记忆 · 日程」快速视图 */
+  onHubClick?: () => void;
   onScreenClick?: () => void;
   onExtClick?: () => void;
   onLocalClick?: () => void;
@@ -55,9 +54,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onConfigClick,
   onProvidersClick,
   onDesktopClick,
-  onKnowledgeClick,
-  onMemoryClick,
-  onScheduleClick,
+  onHubClick,
   onScreenClick,
   onExtClick,
   onLocalClick,
@@ -367,31 +364,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       show: cv.v.available,
     },
     {
-      id: 'kbm',
-      icon: <AppIcon icon={FEATURE_ICONS.kbManage} />,
-      label: tr('知识库管理'),
-      hint: '⌘/Ctrl+Shift+L',
-      testId: 'open-kb-panel',
-      run: () => onKnowledgeClick?.(),
-      show: !!onKnowledgeClick && kbAvailable,
-    },
-    {
-      id: 'memory',
-      icon: <AppIcon icon={FEATURE_ICONS.memory} />,
-      label: tr('长期记忆'),
+      id: 'hub',
+      icon: <AppIcon icon={FEATURE_ICONS.hub} />,
+      label: tr('知识 · 记忆 · 日程'),
       hint: '⌘/Ctrl+Shift+M',
-      testId: 'open-mem-panel',
-      run: () => onMemoryClick?.(),
-      show: !!onMemoryClick && memClient.available(),
-    },
-    {
-      id: 'schedule',
-      icon: <AppIcon icon={FEATURE_ICONS.schedule} />,
-      label: tr('日程 · 提醒 · 编程助手'),
-      hint: '⌘/Ctrl+Shift+D',
-      testId: 'open-sched-panel',
-      run: () => onScheduleClick?.(),
-      show: !!onScheduleClick && schedClient.available(),
+      testId: 'open-hub-panel',
+      run: () => onHubClick?.(),
+      show: !!onHubClick && (kbAvailable || memClient.available() || schedClient.available()),
     },
     {
       id: 'screen',

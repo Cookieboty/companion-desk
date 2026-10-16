@@ -8,9 +8,7 @@ import {
   Ellipsis,
   Pin,
   Settings2,
-  BellRing,
   Blocks,
-  Brain,
   Cpu,
   LibraryBig,
   Settings,
@@ -30,18 +28,15 @@ import { ChatModeSwitch } from '../ChatModeSwitch';
 import styles from './index.module.css';
 
 const I: Record<string, LucideIcon> = {
-  memory: Brain,
-  kb: LibraryBig,
-  sched: BellRing,
+  hub: LibraryBig,
   ext: Blocks,
   local: Cpu,
   settings: Settings,
 };
 
 interface Props {
-  onMemory: () => void;
-  onKnowledge: () => void;
-  onSchedule: () => void;
+  /** 知识 · 记忆 · 日程 快速视图 */
+  onHub: () => void;
   onExt: () => void;
   onLocal: () => void;
   onSettings: () => void;
@@ -55,31 +50,13 @@ export const ChatHeader: React.FC<Props> = (p) => {
   const bindings = useShortcutBindings();
   const items = [
     {
-      k: 'memory',
-      tip: t('记忆'),
-      key: formatCombo(bindings.memory),
-      id: 'open-mem-panel',
-      pin: 'memory',
-      on: p.onMemory,
-      show: memClient.available(),
-    },
-    {
-      k: 'kb',
-      tip: t('知识库'),
-      key: formatCombo(bindings.kb),
-      id: 'open-kb-panel',
-      pin: 'kbm',
-      on: p.onKnowledge,
-      show: kbClient.available(),
-    },
-    {
-      k: 'sched',
-      tip: t('日程与提醒'),
-      key: formatCombo(bindings.schedule),
-      id: 'open-sched-panel',
-      pin: 'schedule',
-      on: p.onSchedule,
-      show: schedClient.available(),
+      k: 'hub',
+      tip: t('知识 · 记忆 · 日程'),
+      key: formatCombo(bindings.hub),
+      id: 'open-hub-panel',
+      pin: 'hub',
+      on: p.onHub,
+      show: memClient.available() || kbClient.available() || schedClient.available(),
     },
     {
       k: 'ext',
@@ -92,7 +69,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'local',
-      tip: t('本机管理（日历 · 剪贴板 · 小模型）'),
+      tip: t('本机管理（剪贴板 · 导出 · 小模型）'),
       key: formatCombo(bindings.local),
       id: 'open-local-panel',
       pin: 'local',

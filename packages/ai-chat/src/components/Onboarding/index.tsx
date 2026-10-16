@@ -268,7 +268,9 @@ export const Onboarding: React.FC<{ onDone: (skipped: boolean) => void }> = ({ o
                 </button>
               ))}
             </div>
-            <p className={styles.note}>{t('点一下就能试听；之后可在「设置 → 语音」细调。')}</p>
+            <p className={styles.note}>
+              {t('点一下就能试听；之后可在「设置 → 语音与屏幕」细调。')}
+            </p>
           </>
         );
       case 'persona':

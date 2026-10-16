@@ -27,9 +27,9 @@ import {
   type SchedTask,
   type TaskResult,
 } from '../../services/schedClient';
-import { RemindersTab } from '../DesktopPanel/RemindersTab';
 
 import styles from './index.module.css';
+import { RemindersTab } from './RemindersTab';
 
 type Tab = 'reminders' | 'tasks' | 'proactive' | 'quiet';
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));

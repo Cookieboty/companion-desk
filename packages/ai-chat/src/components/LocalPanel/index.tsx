@@ -81,8 +81,11 @@ export const LocalPanel: React.FC<{
   isVisible: boolean;
   onClose: () => void;
   initialTab?: Tab;
-}> = ({ isVisible, onClose, initialTab }) => {
-  const [tab, setTab] = useState<Tab>(initialTab ?? 'calendar');
+  /** 只显示这些标签（默认全部）；设置页把「日历」与「本机管理」拆开用 */
+  tabs?: Tab[];
+}> = ({ isVisible, onClose, initialTab, tabs: only }) => {
+  const shown = TABS.filter((x) => !only || only.includes(x));
+  const [tab, setTab] = useState<Tab>(initialTab ?? shown[0] ?? 'calendar');
   const [st, setSt] = useState<LocalState | null>(null);
   const [prog, setProg] = useState<Record<string, Progress>>({});
   const [err, setErr] = useState('');
@@ -1023,26 +1026,36 @@ export const LocalPanel: React.FC<{
         if (confirm) return setConfirm(null);
         onClose();
       }}
-      title={t('本地中心（日历 / 剪贴板；本机小模型为辅助）')}
+      title={
+        shown.length === 1 && shown[0] === 'calendar'
+          ? t('日历')
+          : !shown.includes('calendar')
+            ? t('本机管理')
+            : t('本地中心（日历 / 剪贴板；本机小模型为辅助）')
+      }
       size="lg"
       data-testid="local-panel"
     >
       <div className={styles.stack}>
-        <Tabs<Tab>
-          items={[
-            { value: 'calendar', label: t('日历') },
-            { value: 'clipboard', label: t('剪贴板') },
-            { value: 'export', label: t('数据导出') },
-            {
-              value: 'models',
-              label: running ? t('本机小模型 · 运行中') : t('本机小模型（辅助）'),
-            },
-            { value: 'ollama', label: t('Ollama（可选）') },
-          ]}
-          value={tab}
-          onChange={setTab}
-          aria-label={t('本地中心')}
-        />
+        {shown.length > 1 && (
+          <Tabs<Tab>
+            items={(
+              [
+                { value: 'calendar', label: t('日历') },
+                { value: 'clipboard', label: t('剪贴板') },
+                { value: 'export', label: t('数据导出') },
+                {
+                  value: 'models',
+                  label: running ? t('本机小模型 · 运行中') : t('本机小模型（辅助）'),
+                },
+                { value: 'ollama', label: t('Ollama（可选）') },
+              ] as Array<{ value: Tab; label: string }>
+            ).filter((x) => shown.includes(x.value))}
+            value={tab}
+            onChange={setTab}
+            aria-label={t('本地中心')}
+          />
+        )}
         {err && <ErrorState data-testid="local-error" detail={err} onRetry={() => void load()} />}
         {!st && !err && <LoadingState rows={3} />}
         {st && tab === 'models' && models}

@@ -61,7 +61,7 @@
   "取消提醒「{0}」": "Cancel reminder “{0}”",
   "文件内容": "File contents",
   "{0}将发送给「{1}」进行处理，可以吗？": "{0} will be sent to “{1}” for processing. OK?",
-  "这是第一次把本地{0}发送给云端模型「{1}」。\n{2}会离开本机，由该服务商处理。\n可以在「桌面能力 → 隐私」里开启「仅本地模型可读文件」。": "This is the first time local {0} will be sent to the cloud model “{1}”.\n{2} will leave this device and be processed by that provider.\nYou can turn on “Only local models can read files” in “Desktop abilities → Privacy”.",
+  "这是第一次把本地{0}发送给云端模型「{1}」。\n{2}会离开本机，由该服务商处理。\n可以在「桌面能力 → 云端与仅本地」里开启「仅本地模型可读文件」。": "This is the first time local {0} will be sent to the cloud model “{1}”.\n{2} will leave this device and be processed by that provider.\nYou can turn on “Only local models can read files” in “Desktop abilities → Cloud vs local-only”.",
   "无法移回：{0}": "Couldn't move back: {0}",
   "无法恢复：{0}": "Couldn't restore: {0}",
   "文件已不存在：{0}": "File no longer exists: {0}",

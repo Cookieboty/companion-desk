@@ -302,7 +302,7 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
             </p>
             {!st.ocrReady && (
               <Notice tone="warning">
-                {tr('需要先在「知识库 → OCR」下载中文 / 英文识别语言包（Ctrl/⌘+Shift+L）。')}
+                {tr('需要先在「知识与记忆 → 知识库 → OCR」下载中文 / 英文识别语言包。')}
               </Notice>
             )}
             {(msg || st.lastSkip) && (

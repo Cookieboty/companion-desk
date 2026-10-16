@@ -36,7 +36,7 @@ describe('SettingsView', () => {
     const onClose = vi.fn();
     const { getByTestId } = render(<Harness onClose={onClose} />);
     for (const s of SETTINGS_SECTIONS) expect(getByTestId(`settings-nav-${s.id}`)).toBeTruthy();
-    expect(SETTINGS_SECTIONS.map((s) => s.label)).toContain('本机小模型（辅助）');
+    expect(SETTINGS_SECTIONS.map((s) => s.label)).toContain('本机管理');
     expect(getByTestId('settings-privacy')).toBeTruthy();
     fireEvent.click(getByTestId('settings-nav-general'));
     expect(getByTestId('settings-nav-general').getAttribute('aria-current')).toBe('page');
@@ -69,11 +69,13 @@ describe('SettingsView 合并后的标签页分区', () => {
     expect(r.getByTestId(`${page}-tab-data`).getAttribute('aria-controls')).toBe(panel.id);
   });
 
-  it('深链接标签：desktop / memory / calendar 分别落在对应标签', () => {
+  it('深链接标签：desktop / memory / notes / calendar / screen 分别落在对应标签', () => {
     const cases: Array<[SettingsSection, SettingsTab, string]> = [
       ['privacy', 'desktop', 'settings-privacy-page'],
       ['knowledge', 'memory', 'settings-knowledge'],
+      ['knowledge', 'notes', 'settings-knowledge'],
       ['schedule', 'calendar', 'settings-schedule'],
+      ['senses', 'screen', 'settings-senses'],
     ];
     for (const [section, tab, page] of cases) {
       const r = render(<Harness onClose={() => undefined} start={section} deepLink={{ tab }} />);
@@ -95,12 +97,42 @@ describe('SettingsView 合并后的标签页分区', () => {
     expect(s.getByTestId('settings-calendar')).toBeTruthy();
   });
 
-  it('旧分区导航项已合并：不再有 kb / memory / calendar / desktop 导航', () => {
+  it('菜单只有合并后的 11 个分区', () => {
     const r = render(<Harness onClose={() => undefined} />);
-    for (const id of ['kb', 'memory', 'calendar', 'desktop'])
-      expect(r.queryByTestId(`settings-nav-${id}`)).toBeNull();
-    for (const id of ['knowledge', 'schedule', 'privacy'])
-      expect(r.getByTestId(`settings-nav-${id}`)).toBeTruthy();
+    const ids = r
+      .getAllByTestId(/^settings-nav-/)
+      .map((e) => e.getAttribute('data-testid')!.replace('settings-nav-', ''));
+    expect(ids).toEqual([
+      'general',
+      'shortcuts',
+      'coding',
+      'usage',
+      'senses',
+      'knowledge',
+      'schedule',
+      'notify',
+      'ext',
+      'local',
+      'privacy',
+    ]);
+  });
+
+  it('语音与屏幕：默认「语音」，可切到「屏幕」', () => {
+    const r = render(<Harness onClose={() => undefined} start="senses" />);
+    expect(r.getByTestId('settings-senses').getAttribute('data-tab')).toBe('voice');
+    fireEvent.click(r.getByTestId('settings-senses-tab-screen'));
+    expect(r.getByTestId('settings-senses').getAttribute('data-tab')).toBe('screen');
+  });
+
+  it('知识与记忆有「笔记」标签；桌面权限里不再有笔记 / 提醒', () => {
+    const k = render(<Harness onClose={() => undefined} start="knowledge" />);
+    expect(k.getByTestId('settings-knowledge-tab-notes').textContent).toBe('笔记');
+    cleanup();
+    const p = render(
+      <Harness onClose={() => undefined} start="privacy" deepLink={{ tab: 'desktop' }} />,
+    );
+    expect(p.queryByRole('tab', { name: '笔记' })).toBeNull();
+    expect(p.queryByRole('tab', { name: '提醒' })).toBeNull();
   });
 });
 

@@ -18,7 +18,7 @@ import {
   Coins,
   Cpu,
   Crop,
-  Download,
+  Eye,
   Keyboard,
   LibraryBig,
   Monitor,
@@ -55,22 +55,20 @@ export const SETTINGS_ICONS = {
   coding: SquareTerminal,
   /** 用量与费用：硬币 */
   usage: Coins,
-  /** 语音：声波 */
-  voice: AudioLines,
-  /** 知识与记忆：大脑（知识库 / 长期记忆合并） */
+  /** 语音与屏幕：眼睛（Nomi 听你说、看你的屏幕） */
+  senses: Eye,
+  /** 知识与记忆：大脑 */
   knowledge: Brain,
-  /** 日程与日历：响铃（提醒 / 日历接入合并） */
+  /** 日程与日历：响铃 */
   schedule: BellRing,
   /** 通知 / 灵动岛：顶部面板 */
   notify: PanelTop,
-  screen: Monitor,
   /** 扩展 / MCP：积木模块 */
   ext: Blocks,
-  /** 本机小模型：芯片 */
+  /** 本机管理：芯片（剪贴板 / 数据导出 / 本机小模型） */
   local: Cpu,
-  /** 权限与隐私：盾牌（桌面权限 / 隐私与数据合并） */
+  /** 隐私与权限：盾牌 */
   privacy: ShieldCheck,
-  updates: Download,
 } as const;
 
 /** 输入框「更多」菜单等功能入口 */
@@ -80,9 +78,8 @@ export const FEATURE_ICONS = {
   model: Bot,
   settings: Settings,
   voice: AudioLines,
-  kbManage: LibraryBig,
-  memory: Brain,
-  schedule: BellRing,
+  /** 知识 · 记忆 · 日程 快速视图 */
+  hub: LibraryBig,
   screen: Monitor,
   ext: Blocks,
   desktop: ShieldCheck,
