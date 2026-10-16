@@ -4,7 +4,8 @@
  * 没有写权限时不会偷偷提权，只提供「改装到用户目录」或自行在终端处理。
  * 进度与日志来自主进程按行推送的事件；失败原因原样展示。
  */
-import { Button, Modal, Notice, t } from '@nomi-ai/ui';
+import { Button, Modal, Notice, t, Icon } from '@nomi-ai/ui';
+import { CircleCheck, CircleX } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -303,6 +304,11 @@ export const CliVersionCard: React.FC<{ kind: CliUpdatableKind }> = ({ kind }) =
                     data-testid={`cli-version-req-${r.id}`}
                     data-ok={r.ok ? '1' : '0'}
                   >
+                    <Icon
+                      icon={r.ok ? CircleCheck : CircleX}
+                      size={14}
+                      className={styles.reqIcon}
+                    />
                     {r.label} — {r.detail}
                   </li>
                 ))}

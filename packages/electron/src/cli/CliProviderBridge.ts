@@ -10,9 +10,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { BrowserWindow, ipcMain, safeStorage } from 'electron';
+import { BrowserWindow, safeStorage } from 'electron';
 
 import { t } from '../i18n';
+import { guardedHandle } from '../security/guardedIpc';
+import { writePrivateFile } from '../utils/privateFile';
 
 import {
   backupFile,
@@ -443,6 +445,8 @@ export class CliProviderBridge {
       };
     }
     const useRoute = needs;
+    // 本地路由令牌：CLI 请求本地路由时必须携带（路由不再接受任意来源的匿名请求）
+    const routeKey = route?.authToken() ?? 'nomi-route';
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     const backups: string[] = [];
     try {
@@ -466,11 +470,12 @@ export class CliProviderBridge {
         const raw = fs.existsSync(settings) ? fs.readFileSync(settings, 'utf8') : null;
         const baseUrl = useRoute ? (route?.cliBaseUrl('claude') ?? p.baseUrl) : p.baseUrl;
         const next = patchClaudeSettings(raw, {
-          ANTHROPIC_API_KEY: useRoute ? 'nomi-route' : key || undefined,
+          ANTHROPIC_API_KEY: useRoute ? routeKey : key || undefined,
           ANTHROPIC_BASE_URL: baseUrl || undefined,
           ANTHROPIC_MODEL: p.model || undefined,
         });
-        fs.writeFileSync(settings, next, 'utf8');
+        // settings.json 里有 API Key / 路由令牌：仅当前用户可读写
+        writePrivateFile(settings, next);
       } else {
         const conf = codexConfigPath(this.home);
         const auth = codexAuthPath(this.home);
@@ -494,11 +499,7 @@ export class CliProviderBridge {
           }),
           'utf8',
         );
-        fs.writeFileSync(
-          auth,
-          patchCodexAuth(rawAuth, useRoute ? 'nomi-route' : key || undefined),
-          'utf8',
-        );
+        writePrivateFile(auth, patchCodexAuth(rawAuth, useRoute ? routeKey : key || undefined));
       }
       for (const x of this.data[p.kind].profiles) x.active = x.id === id;
       this.saveKind(p.kind);
@@ -574,16 +575,8 @@ export class CliProviderBridge {
   }
 
   registerIpc(): void {
-    const handle = (ch: string, fn: (...a: unknown[]) => unknown) => {
-      ipcMain.removeHandler(ch);
-      ipcMain.handle(ch, async (_e, ...a) => {
-        try {
-          return await fn(...a);
-        } catch (err) {
-          return { __error: { message: err instanceof Error ? err.message : String(err) } };
-        }
-      });
-    };
+    const handle = (ch: string, fn: (...a: unknown[]) => unknown) =>
+      guardedHandle(ch, fn, { owner: 'CliProviderBridge' });
     handle('ai:cli-provider:state', () => this.state());
     handle('ai:cli-provider:upsert', (p) => this.upsert(p as CliProviderInput));
     handle('ai:cli-provider:remove', (id) => {

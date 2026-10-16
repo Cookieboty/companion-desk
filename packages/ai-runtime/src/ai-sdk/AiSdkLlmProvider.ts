@@ -123,15 +123,26 @@ export function splitPrompt(messages: ChatMessage[]): {
 }
 
 function usageOf(
-  u: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined,
+  u:
+    | {
+        inputTokens?: number;
+        outputTokens?: number;
+        totalTokens?: number;
+        inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number };
+      }
+    | undefined,
 ): ChatUsage | undefined {
   if (!u) return undefined;
   const promptTokens = u.inputTokens ?? 0;
   const completionTokens = u.outputTokens ?? 0;
+  const cacheReadTokens = u.inputTokenDetails?.cacheReadTokens;
+  const cacheWriteTokens = u.inputTokenDetails?.cacheWriteTokens;
   return {
     promptTokens,
     completionTokens,
     totalTokens: u.totalTokens ?? promptTokens + completionTokens,
+    ...(cacheReadTokens ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens ? { cacheWriteTokens } : {}),
   };
 }
 
@@ -324,7 +335,7 @@ export class AiSdkLlmProvider implements LLMProvider {
           };
         } else if (part.type === 'finish') {
           const u = usageOf(part.totalUsage);
-          if (u) yield { type: 'usage', usage: u };
+          if (u) yield { type: 'usage', usage: u, model: this.resolveModel(request) };
           yield { type: 'done', finishReason: finishOf(part.finishReason) };
         } else if (part.type === 'error') {
           yield {

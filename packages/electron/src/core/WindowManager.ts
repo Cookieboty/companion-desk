@@ -56,6 +56,8 @@ export class WindowManager implements IWindowManager {
   chromeTheme: () => ChromeTheme = () => 'ink';
   private mainWindow: BrowserWindow | null = null;
   private aiChatWindow: BrowserWindow | null = null;
+  /** 正在创建中的 AI 对话窗口（并发 createAiChatWindow 共用） */
+  private aiChatWindowPromise?: Promise<BrowserWindow>;
   private ttsConfigWindow: BrowserWindow | null = null;
   private logger: ILoggerService;
   private configService: IConfigService;
@@ -130,7 +132,14 @@ export class WindowManager implements IWindowManager {
       this.aiChatWindow.show();
       return this.aiChatWindow;
     }
+    // 创建过程是异步的（await createWindow / 加载页面）：并发调用共用同一次创建，避免开出两个窗口
+    this.aiChatWindowPromise ??= this.buildAiChatWindow().finally(() => {
+      this.aiChatWindowPromise = undefined;
+    });
+    return this.aiChatWindowPromise;
+  }
 
+  private async buildAiChatWindow(): Promise<BrowserWindow> {
     try {
       const primaryDisplay = screen.getPrimaryDisplay();
       const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;

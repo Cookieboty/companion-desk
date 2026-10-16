@@ -157,7 +157,7 @@ async function statAll(paths: Array<{ path: string; dirId?: string }>): Promise<
   return out;
 }
 
-function zstdDecode(buf: Buffer): Promise<string> {
+export function zstdDecode(buf: Buffer): Promise<string> {
   const native = (zlib as unknown as { zstdDecompressSync?: (b: Buffer) => Buffer })
     .zstdDecompressSync;
   if (native) {

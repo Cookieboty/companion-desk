@@ -211,3 +211,8 @@
 .userMessage .contentText {
   color: var(--cd-color-text);
 }
+.stoppedNote {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--cd-color-text-subtle);
+}
