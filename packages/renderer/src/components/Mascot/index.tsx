@@ -20,6 +20,7 @@ import { useMascot } from '@/contexts/MascotContext';
 import { useFileDropSummarize } from '@/hooks/useFileDropSummarize';
 import { useMascotTips } from '@/hooks/useMascotTips';
 import MascotDriver from '@/mascot/MascotDriver';
+import { isRiveExperimentEnabled } from '@/mascot/riveFlag';
 import { characterBox } from '@/mascot/spriteLayout';
 
 // three / VRM 体积较大：按需加载
@@ -30,6 +31,8 @@ function vrmBoxStyle(): React.CSSProperties {
 }
 
 const SpriteCanvas = lazy(() => import('../SpriteMascot/SpriteCanvas'));
+// EXPERIMENTAL (docs/brand/rive-eval.md): only loaded when the hidden flag is on
+const RiveCanvas = lazy(() => import('../RiveMascot/RiveCanvas'));
 const MascotAIBridge = lazy(() => import('@/mascot/MascotAIBridge'));
 const MascotVoiceBridge = lazy(() => import('@/mascot/voice/MascotVoice'));
 
@@ -40,6 +43,7 @@ const MascotVoiceBridge = lazy(() => import('@/mascot/voice/MascotVoice'));
 export const MascotHost: React.FC = () => {
   const { currentModel } = useMascot();
   const aiReady = useMemo(() => isAiIpcReady(), []);
+  const riveExperiment = useMemo(() => isRiveExperimentEnabled(), []);
   useMascotTips();
   useFileDropSummarize('mascot-canvas');
 
@@ -76,7 +80,11 @@ export const MascotHost: React.FC = () => {
               currentModel.path.endsWith('manifest.json') ||
               currentModel.tags?.includes('sprite') ? (
                 // symmetric margins are built into the sprite layout (spriteLayout.ts)
-                <SpriteCanvas manifestPath={currentModel.path} transparent />
+                riveExperiment ? (
+                  <RiveCanvas />
+                ) : (
+                  <SpriteCanvas manifestPath={currentModel.path} transparent />
+                )
               ) : (
                 // user / store VRM: same character box as Nomi (half size, room for bubble + toolbar)
                 <div style={vrmBoxStyle()}>

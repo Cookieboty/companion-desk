@@ -441,6 +441,9 @@ importers:
       '@react-three/fiber':
         specifier: ^9.8.1
         version: 9.8.1(@types/react@19.3.0)(immer@11.1.21)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+      '@rive-app/canvas-lite':
+        specifier: 2.44.2
+        version: 2.44.2
       '@types/three':
         specifier: ^0.186.0
         version: 0.186.0
@@ -1816,6 +1819,9 @@ packages:
         optional: true
       react-native:
         optional: true
+
+  '@rive-app/canvas-lite@2.44.2':
+    resolution: {integrity: sha512-E5isW6ARdDV642nd+25hYTAO9dpe0xNIEbEsufPYCaRt1tcWZGd+pQnivjYAN2V8VUVp97f56s0jMMsUPHL0nQ==}
 
   '@rolldown/binding-android-arm-eabi@1.2.13':
     resolution: {integrity: sha512-Vu/NICrgdRvUOeaJZIyB2FP63s6fO/4ud5l8dXmxDx9yDyn+mN0y+gsvsVviSli+T361Aqo0h46EuMoobrwawA==}
@@ -6991,6 +6997,8 @@ snapshots:
       - '@types/react'
       - immer
 
+  '@rive-app/canvas-lite@2.44.2': {}
+
   '@rolldown/binding-android-arm-eabi@1.2.13':
     optional: true
 
@@ -7499,7 +7507,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.6.1)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.2': {}
 
