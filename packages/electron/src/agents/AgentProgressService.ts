@@ -58,6 +58,7 @@ export const DEFAULT_AGENT_WATCH: AgentWatchSettings = {
     codex: true,
     claude: true,
     dsh: true,
+    grok: true,
     aider: true,
     cline: true,
     continue: true,
@@ -151,6 +152,8 @@ type Deps = {
   platform?: NodeJS.Platform;
   /** dsh 家目录（默认 DSH_HOME 或 ~/.dsh） */
   dshHome?: string;
+  /** Grok 家目录（默认 GROK_HOME 或 ~/.grok） */
+  grokHome?: string;
   /** 测试注入：被 flock 持有的 inode；null = 无法判断 */
   lockedInodes?: () => Set<number> | null;
   /** 免打扰中：定时汇总不弹（结束 / 权限提示不受影响） */
@@ -167,7 +170,7 @@ type Deps = {
 export interface WatchedTab {
   id: string;
   title: string;
-  backend: 'nomi' | 'claude' | 'codex' | 'dsh';
+  backend: 'nomi' | 'claude' | 'codex' | 'dsh' | 'grok';
   cwd: string;
   cliSessionId: string | null;
   status: 'idle' | 'queued' | 'running' | 'error';
@@ -202,6 +205,7 @@ const LABEL: Record<AgentKind, string> = {
   codex: 'Codex',
   claude: 'Claude Code',
   dsh: 'dsh',
+  grok: 'Grok',
   aider: 'Aider',
   cline: 'Cline',
   continue: 'Continue',
@@ -289,6 +293,7 @@ export function sanitizeAgentWatch(raw: unknown, base = DEFAULT_AGENT_WATCH): Ag
       codex: b(tools.codex, true),
       claude: b(tools.claude, true),
       dsh: b(tools.dsh, true),
+      grok: b(tools.grok, true),
       aider: b(tools.aider, true),
       cline: b(tools.cline, true),
       continue: b(tools.continue, true),
@@ -319,6 +324,7 @@ export class AgentProgressService {
   private procsAt = 0;
   private procRefreshing = false;
   private readonly dshHome: string;
+  private readonly grokHome: string;
   /** 本轮 tick 的 flock 快照（dsh）；null = 无法判断 */
   private dshLocks: Set<number> | null = null;
   private tabs: () => WatchedTab[] = () => [];
@@ -331,6 +337,11 @@ export class AgentProgressService {
       (process.env.DSH_HOME?.trim()
         ? path.resolve(process.env.DSH_HOME)
         : path.join(this.home, '.dsh'));
+    this.grokHome =
+      d.grokHome ??
+      (process.env.GROK_HOME?.trim()
+        ? path.resolve(process.env.GROK_HOME)
+        : path.join(this.home, '.grok'));
     this.now = d.now ?? (() => Date.now());
     this.pollMs = d.pollMs ?? 8_000;
     this.digestMs = d.digestMs ?? DIGEST_INTERVAL_MS;
@@ -419,6 +430,7 @@ export class AgentProgressService {
     if (fs.existsSync(path.join(h, '.codex'))) found.push('codex');
     if (fs.existsSync(path.join(h, '.claude'))) found.push('claude');
     if (fs.existsSync(path.join(this.dshHome, 'sessions'))) found.push('dsh');
+    if (fs.existsSync(path.join(this.grokHome, 'sessions'))) found.push('grok');
     if (
       fs.existsSync(path.join(h, '.aider')) ||
       fs.existsSync(path.join(h, '.aider.chat.history.md'))
@@ -458,6 +470,13 @@ export class AgentProgressService {
           (n) => n === 'session.lock' || /^session\.v\d+\.jsonl/.test(n),
           2,
         ),
+      );
+    }
+    if (tools.grok) {
+      // ~/.grok/sessions/<cwd>/<uuid>/updates.jsonl — 用 mtime 推断活跃；细解析见用量模块
+      add(
+        'grok',
+        listFiles(path.join(this.grokHome, 'sessions'), (n) => n === 'updates.jsonl', 3),
       );
     }
     if (tools.gemini)
@@ -543,6 +562,18 @@ export class AgentProgressService {
         detail: lockHeld ? tr('运行中') : undefined,
       };
       return { key: `dsh:${id}`, kind, path: filePath, mtime, info, lockHeld };
+    } else if (kind === 'grok') {
+      // 会话目录名即 uuid；不深读 ACP 内容（用量走 updates.jsonl 解析器）
+      const dir = path.dirname(filePath);
+      const id = path.basename(dir);
+      let cwd: string | undefined;
+      try {
+        cwd = decodeURIComponent(path.basename(path.dirname(dir)));
+      } catch {
+        cwd = path.basename(path.dirname(dir));
+      }
+      info = { phase: 'working', sessionId: id, cwd };
+      return { key: `grok:${id}`, kind, path: filePath, mtime, info };
     } else if (kind === 'gemini') {
       info = parseGeminiSession(readSlice(filePath, 'head', 4 * 1024 * 1024));
     } else if (kind === 'cursor') {
@@ -1064,6 +1095,7 @@ const ENDPOINT_LABEL: Record<WatchedTab['backend'], string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
+  grok: 'Grok',
 };
 
 /** Nomi 标签 → 监视视图条目 */
@@ -1126,7 +1158,7 @@ function finishSummary(label: string, title: string, ok: boolean, detail?: strin
 }
 
 /** 有会话级用量日志的工具 */
-const USAGE_KINDS = new Set<string>(['claude', 'codex', 'dsh']);
+const USAGE_KINDS = new Set<string>(['claude', 'codex', 'dsh', 'grok']);
 /** 等「本次花费」最多这么久，超时就照常播报 */
 const COST_WAIT_MS = 3000;
 const BUBBLE_MAX = 140;

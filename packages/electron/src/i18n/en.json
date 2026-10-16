@@ -533,5 +533,7 @@
   "本次约用 {0} Token（模型未定价，费用未计）。": "This task used about {0} tokens (model unpriced, cost not counted).",
   "本次约用 {0} Token，已计价部分约 {1}。": "This task used about {0} tokens; the priced part is about {1}.",
   "本次约用 {0} Token，花费约 {1}。": "This task used about {0} tokens and cost about {1}.",
-  "本地路由只能监听 127.0.0.1 / localhost / ::1（收到 {0}）": "The local route can only listen on 127.0.0.1 / localhost / ::1 (got {0})"
+  "本地路由只能监听 127.0.0.1 / localhost / ::1（收到 {0}）": "The local route can only listen on 127.0.0.1 / localhost / ::1 (got {0})",
+  "未找到 Grok（可设 NOMI_USE_MOCK_CLI=1）": "Grok not found (set NOMI_USE_MOCK_CLI=1 for the mock CLI)",
+  "Grok 错误": "Grok error"
 }

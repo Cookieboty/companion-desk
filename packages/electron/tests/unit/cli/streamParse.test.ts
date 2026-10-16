@@ -1,9 +1,11 @@
 import {
   createClaudeParser,
   createDshParser,
+  createGrokParser,
   parseClaudeLine,
   parseCodexLine,
   parseDshLine,
+  parseGrokLine,
 } from '../../../src/cli/streamParse';
 
 describe('streamParse', () => {
@@ -158,6 +160,43 @@ describe('createDshParser', () => {
     });
     expect(j({ type: 'tool_result', callId: 'zz', status: 'completed' })[0]).toMatchObject({
       name: 'tool',
+    });
+  });
+});
+
+describe('parseGrokLine', () => {
+  const p = (o: unknown) => parseGrokLine(JSON.stringify(o));
+  it('maps text, tools, end, error; ignores thought/usage', () => {
+    expect(p({ type: 'text', data: 'hi' })).toEqual([{ type: 'text-delta', text: 'hi' }]);
+    expect(
+      p({
+        type: 'tool_call',
+        toolCallId: 'c1',
+        toolName: 'read_file',
+        status: 'in_progress',
+      }),
+    ).toEqual([{ type: 'tool', name: 'read_file', status: 'start', detail: 'c1' }]);
+    expect(p({ type: 'tool_call_update', toolCallId: 'c1', status: 'completed' })[0]).toMatchObject(
+      { type: 'tool', status: 'done', detail: 'c1' },
+    );
+    expect(p({ type: 'end', sessionId: 's1', stopReason: 'end_turn' })).toEqual([
+      { type: 'done', text: '', sessionId: 's1' },
+    ]);
+    expect(p({ type: 'error', message: 'boom' })).toEqual([{ type: 'error', message: 'boom' }]);
+    expect(p({ type: 'thought', data: 'hmm' })).toEqual([]);
+    expect(p({ type: 'usage', usage: {} })).toEqual([]);
+    expect(parseGrokLine('not json')).toEqual([]);
+  });
+});
+
+describe('createGrokParser', () => {
+  it('pairs tool_call_update with the tool_call name', () => {
+    const p = createGrokParser();
+    const j = (o: unknown) => p(JSON.stringify(o));
+    j({ type: 'tool_call', toolCallId: 'a', toolName: 'bash', status: 'in_progress' });
+    expect(j({ type: 'tool_call_update', toolCallId: 'a', status: 'completed' })[0]).toMatchObject({
+      name: 'bash',
+      status: 'done',
     });
   });
 });

@@ -1,5 +1,5 @@
 /**
- * 对话后端：Nomi | Claude Code | Codex | dsh，按「标签」并发运行。
+ * 对话后端：Nomi | Claude Code | Codex | dsh | Grok，按「标签」并发运行。
  *
  * - 标签 'main'：原有对话，后端可为 Nomi 或任一 CLI；消息由渲染层存进 Nomi 历史。
  *   旧的单会话接口（state / setBackend / setCwd / send）都作用于它。
@@ -22,7 +22,12 @@ import { guardedHandle } from '../security/guardedIpc';
 import { buildCliEnv } from './cliEnv';
 import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
 import { killProcessTree } from './processTree';
-import { createClaudeParser, createDshParser, parseCodexLine } from './streamParse';
+import {
+  createClaudeParser,
+  createDshParser,
+  createGrokParser,
+  parseCodexLine,
+} from './streamParse';
 import type {
   HarnessBackend,
   HarnessEvent,
@@ -44,7 +49,7 @@ const MAX_RECENT_CWDS = 8;
 /** 权限卡超时：与桌面能力一致，默认拒绝 */
 const PERMISSION_TIMEOUT_MS = 120_000;
 
-const BACKENDS: readonly HarnessBackend[] = ['nomi', 'claude', 'codex', 'dsh'];
+const BACKENDS: readonly HarnessBackend[] = ['nomi', 'claude', 'codex', 'dsh', 'grok'];
 
 function isBackend(v: unknown): v is HarnessBackend {
   return typeof v === 'string' && (BACKENDS as readonly string[]).includes(v);
@@ -55,6 +60,7 @@ const BACKEND_TITLE: Record<HarnessBackend, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
+  grok: 'Grok',
 };
 
 function mockDir(): string {
@@ -129,6 +135,8 @@ export class CliHarnessService {
       defaultCwd?: string;
       /** 启动 dsh 时注入的额外环境变量（例如启用档案的 NOMI_DSH_API_KEY） */
       dshEnv?: () => Record<string, string>;
+      /** 启动 Grok 时注入的额外环境变量（例如启用档案写入的 XAI_API_KEY） */
+      grokEnv?: () => Record<string, string>;
     },
   ) {
     this.home = d.home ?? os.homedir();
@@ -308,6 +316,7 @@ export class CliHarnessService {
         claude: resolveHarnessBin('claude'),
         codex: resolveHarnessBin('codex'),
         dsh: resolveHarnessBin('dsh'),
+        grok: resolveHarnessBin('grok'),
       },
     };
   }
@@ -630,7 +639,9 @@ export class CliHarnessService {
           ? await this.runClaude(tab, text)
           : backend === 'dsh'
             ? await this.runDsh(tab, text)
-            : await this.runCodex(tab, text);
+            : backend === 'grok'
+              ? await this.runGrok(tab, text)
+              : await this.runCodex(tab, text);
       if (result.sessionId && tab.backend === backend) tab.cliSessionId = result.sessionId;
       tab.status = 'idle';
       // 去重保序：同一 tool_use 后出现的 done/error 覆盖开始态标签
@@ -991,6 +1002,42 @@ export class CliHarnessService {
       argv: useNode ? [bin, ...argv] : argv,
       parseLine: createDshParser(),
       kind: 'dsh',
+      env: extraEnv,
+      asNode: useNode,
+    });
+  }
+
+  /**
+   * Grok Build 无头模式：`grok -p <prompt> --output-format streaming-json --no-auto-update [--yolo]`。
+   * 续接：`--resume <sessionId>`。权限在接管场景默认 `--yolo`（与 Codex/dsh 一致：UI 侧不弹交互确认；
+   * 真实权限事件格式未在真机验证，见文档「未验证」）。
+   * 官方：docs.x.ai/build/cli/headless-scripting 。
+   */
+  private runGrok(tab: HarnessTabMeta, prompt: string): Promise<HarnessSendResult> {
+    const bin = resolveHarnessBin('grok');
+    if (!bin) return Promise.reject(new Error(t('未找到 Grok（可设 NOMI_USE_MOCK_CLI=1）')));
+    const useNode = isScript(bin);
+    const argv = [
+      '-p',
+      prompt.startsWith('-') ? ` ${prompt}` : prompt,
+      '--output-format',
+      'streaming-json',
+      '--no-auto-update',
+      '--yolo',
+    ];
+    if (tab.cliSessionId) argv.push('--resume', tab.cliSessionId);
+    if (tab.cwd) argv.push('--cwd', tab.cwd);
+    let extraEnv: Record<string, string> = {};
+    try {
+      extraEnv = this.d.grokEnv?.() ?? {};
+    } catch (e) {
+      this.d.logger.warn('harness grok env failed', e);
+    }
+    return this.spawnCollect(tab, {
+      cmd: useNode ? process.execPath : bin,
+      argv: useNode ? [bin, ...argv] : argv,
+      parseLine: createGrokParser(),
+      kind: 'grok',
       env: extraEnv,
       asNode: useNode,
     });

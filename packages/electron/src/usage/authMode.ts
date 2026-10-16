@@ -12,7 +12,7 @@
  *   以及 env 里的 ANTHROPIC_API_KEY / AUTH_TOKEN / BASE_URL / 云厂商开关 → API；
  *   Codex：<CODEX_HOME 或 ~/.codex>/config.toml 的 forced_login_method / 自定义 model_provider；
  *   日志里有带套餐的 rate_limits → 订阅。绝不打开 auth.json / .credentials.json / 系统钥匙串。
- * - dsh（DeepSeek 官方接口 / 自配供应商）与 Nomi 对话都走 API Key：固定 API。
+ * - dsh / Grok（官方接口 / 自配供应商）与 Nomi 对话都走 API Key：固定 API（Grok 订阅额度接口未文档化，暂不探测）。
  */
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
@@ -226,7 +226,8 @@ export class AuthModeDetector {
 
   /** 同 detect，同时带上身份指纹 / 套餐（来自同一次官方命令输出，不额外起进程） */
   detectFull(id: string): Promise<AuthInfo> {
-    if (id === 'nomi' || id === 'dsh') return Promise.resolve({ mode: 'api', fp: null });
+    if (id === 'nomi' || id === 'dsh' || id === 'grok')
+      return Promise.resolve({ mode: 'api', fp: null });
     if (id !== 'claude' && id !== 'codex') return Promise.resolve({ mode: 'unknown', fp: null });
     const hit = this.cache.get(id);
     if (hit && this.now() - hit.at < TTL_MS) return Promise.resolve(hit.info);

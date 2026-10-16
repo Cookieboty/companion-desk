@@ -1,16 +1,22 @@
 /** 编程助手 CLI 接入 · 共享类型 */
 
-import type { ClaudeApiFormat, CodexApiFormat, CliApiFormat, DshApiFormat } from './formats';
+import type {
+  ClaudeApiFormat,
+  CodexApiFormat,
+  CliApiFormat,
+  DshApiFormat,
+  GrokApiFormat,
+} from './formats';
 
-export type HarnessBackend = 'nomi' | 'claude' | 'codex' | 'dsh';
+export type HarnessBackend = 'nomi' | 'claude' | 'codex' | 'dsh' | 'grok';
 
-export type CliKind = 'claude' | 'codex' | 'dsh' | 'cursor';
+export type CliKind = 'claude' | 'codex' | 'dsh' | 'grok' | 'cursor';
 
 /** 拥有独立供应商档案库的 CLI */
-export type CliProviderKind = 'claude' | 'codex' | 'dsh';
+export type CliProviderKind = 'claude' | 'codex' | 'dsh' | 'grok';
 
 /** 支持版本更新的 CLI */
-export type UpdatableCli = 'claude' | 'codex' | 'dsh';
+export type UpdatableCli = 'claude' | 'codex' | 'dsh' | 'grok';
 
 export interface CliInstallInfo {
   kind: CliKind;
@@ -20,7 +26,7 @@ export interface CliInstallInfo {
   installMethod: 'npm' | 'native' | 'unknown';
   updateAvailable: boolean;
   updateSupported: boolean;
-  /** 可在应用内一键安装（未安装时）：Claude Code / Codex / dsh */
+  /** 可在应用内一键安装（未安装时）：Claude Code / Codex / dsh / Grok */
   installSupported?: boolean;
   /** 运行时问题（目前仅 dsh：PATH 上的 Node 低于 24） */
   runtimeWarning?: { nodeVersion: string | null; required: number } | null;
@@ -48,7 +54,7 @@ export interface CliProviderInput {
   name: string;
   baseUrl: string;
   model: string;
-  apiFormat?: ClaudeApiFormat | CodexApiFormat | DshApiFormat;
+  apiFormat?: ClaudeApiFormat | CodexApiFormat | DshApiFormat | GrokApiFormat;
   apiKey?: string;
   presetId?: string;
 }
@@ -148,7 +154,7 @@ export interface CliRunResult {
 
 /** 安装 / 更新任务快照（主进程按端点持有；界面重新挂载时先取它） */
 export interface CliJobSnapshot {
-  kind: 'claude' | 'codex' | 'dsh';
+  kind: 'claude' | 'codex' | 'dsh' | 'grok';
   mode: 'install' | 'update';
   scope: 'global' | 'user';
   status: 'running' | 'done' | 'error';

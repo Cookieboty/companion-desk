@@ -214,3 +214,86 @@ export function createDshParser(): (line: string) => HarnessEvent[] {
       return name ? { ...ev, name } : ev;
     });
 }
+
+/**
+ * Grok Build `--output-format streaming-json`（官方 headless 文档，2026-10）：
+ * NDJSON，每行一个 type 字段：text / thought / tool_call / tool_call_update /
+ * usage / plan / end / error（其它类型静默跳过）。
+ * 字段名按文档：text.data、tool_call.toolName / toolCallId / status、
+ * end.sessionId、error.message。无法识别的行静默跳过，不编造格式。
+ */
+export function parseGrokLine(line: string): HarnessEvent[] {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('{')) return [];
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const type = String(j.type ?? '');
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  switch (type) {
+    case 'text': {
+      const data = str(j.data) || str(j.text);
+      return data ? [{ type: 'text-delta', text: data }] : [];
+    }
+    case 'tool_call': {
+      const name = str(j.toolName) || str(j.title) || str(j.kind) || 'tool';
+      const id = str(j.toolCallId) || str(j.id);
+      const status = str(j.status);
+      if (status === 'completed' || status === 'failed' || status === 'error') {
+        return [
+          {
+            type: 'tool',
+            name,
+            status: status === 'completed' ? 'done' : 'error',
+            detail: id || undefined,
+          },
+        ];
+      }
+      return [{ type: 'tool', name, status: 'start', detail: id || undefined }];
+    }
+    case 'tool_call_update': {
+      const id = str(j.toolCallId) || str(j.id);
+      const status = str(j.status);
+      if (!status) return [];
+      if (status === 'in_progress' || status === 'pending') return [];
+      return [
+        {
+          type: 'tool',
+          name: str(j.toolName) || str(j.title) || 'tool',
+          status: status === 'completed' ? 'done' : 'error',
+          detail: id || undefined,
+        },
+      ];
+    }
+    case 'end':
+      return [{ type: 'done', text: str(j.text), sessionId: str(j.sessionId) || undefined }];
+    case 'error':
+      return [{ type: 'error', message: str(j.message) || t('Grok 错误') }];
+    case 'thought':
+    case 'usage':
+    case 'plan':
+    case 'available_commands':
+      return [];
+    default:
+      return [];
+  }
+}
+
+/** 有状态的 Grok 解析器：tool_call_update 可能不带 toolName，按 toolCallId 补回。 */
+export function createGrokParser(): (line: string) => HarnessEvent[] {
+  const names = new Map<string, string>();
+  return (line) =>
+    parseGrokLine(line).map((ev) => {
+      if (ev.type !== 'tool' || !ev.detail) return ev;
+      if (ev.status === 'start') {
+        names.set(ev.detail, ev.name);
+        return ev;
+      }
+      const name = names.get(ev.detail);
+      if (name) names.delete(ev.detail);
+      return name && ev.name === 'tool' ? { ...ev, name } : ev;
+    });
+}

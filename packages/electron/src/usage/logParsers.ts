@@ -291,6 +291,72 @@ export function parseDshChunk(text: string, state: ParseState): UsageRecord[] {
   return out;
 }
 
+// ---------------------------------------------------------------- Grok Build
+
+/**
+ * `$GROK_HOME/sessions/<cwd>/<uuid>/updates.jsonl`：只计 `sessionUpdate === "turn_completed"`
+ * 且带 usage 的行（与公开资料 / ccusage 描述一致；官方 headless 文档确认 sessions 目录与 streaming-json，
+ * 字段名以本地样本与社区文档为准，真机未逐字段核对 → 见调研结论）。
+ *
+ * 口径：inputTokens **含**缓存（OpenAI 风格）→ 拆成 uncached = input - cacheRead - cacheWrite；
+ * reasoningTokens 是 output 子集，不另加。
+ */
+export function parseGrokChunk(text: string, state: ParseState): UsageRecord[] {
+  const out: UsageRecord[] = [];
+  for (const o of lines(text)) {
+    // ACP 风格：params.update.sessionUpdate 或顶层 sessionUpdate
+    const params = obj(o.params) ?? obj(o);
+    const update = obj(params?.update) ?? params;
+    const sessionUpdate =
+      str(update?.sessionUpdate) ?? str(params?.sessionUpdate) ?? str(o.sessionUpdate);
+    if (sessionUpdate !== 'turn_completed') {
+      // 顺带记下模型（summary / modelUsage）
+      const mu = obj(update?.modelUsage) ?? obj(params?.modelUsage);
+      if (mu) {
+        const keys = Object.keys(mu);
+        if (keys[0]) state.model = keys[0];
+      }
+      const mid = str(update?.model) ?? str(params?.model) ?? str(o.model);
+      if (mid) state.model = mid;
+      const sid = str(o.sessionId) ?? str(params?.sessionId) ?? str(update?.sessionId);
+      if (sid) state.sid = sid;
+      continue;
+    }
+    const usage = obj(update?.usage) ?? obj(params?.usage) ?? obj(o.usage);
+    if (!usage) continue;
+    const cacheRead = num(usage.cachedReadTokens ?? usage.cacheReadTokens);
+    const cacheWrite = num(usage.cacheCreationTokens ?? usage.cacheWriteTokens);
+    const inputRaw = num(usage.inputTokens);
+    // input 含缓存：拆出未命中部分（夹负为 0）
+    const input = Math.max(0, inputRaw - cacheRead - cacheWrite);
+    const output = num(usage.outputTokens);
+    const rec = { input, output, cacheRead, cacheWrite };
+    if (empty(rec)) continue;
+    const meta = obj(params?._meta);
+    const promptId =
+      str(update?.prompt_id) ??
+      str(update?.promptId) ??
+      str(params?.prompt_id) ??
+      str(meta?.promptId) ??
+      String(num(o.seq) || parseTs(o.timestamp ?? o.time ?? update?.timestamp));
+    const sid = (state.sid as string | undefined) ?? str(o.sessionId) ?? 'unknown';
+    const modelFromUsage = obj(update?.modelUsage) ?? obj(params?.modelUsage);
+    const modelKeys = modelFromUsage ? Object.keys(modelFromUsage) : [];
+    out.push({
+      key: `grok:${sid}:${promptId}`,
+      ts: parseTs(o.timestamp ?? o.time ?? update?.timestamp),
+      source: 'grok',
+      via: 'log',
+      provider: 'xai',
+      model: modelKeys[0] ?? (state.model as string | undefined) ?? 'unknown',
+      ...rec,
+      session: sid === 'unknown' ? undefined : sid,
+      project: base(state.cwd),
+    });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- Gemini CLI
 
 /**
@@ -624,6 +690,7 @@ export const LOG_SOURCES: UsageSource[] = [
   'claude',
   'codex',
   'dsh',
+  'grok',
   'gemini',
   'qwen',
   'opencode',

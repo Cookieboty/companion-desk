@@ -214,6 +214,7 @@ const SOURCE_LABEL: Record<string, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
+  grok: 'Grok',
   gemini: 'Gemini CLI',
   qwen: 'Qwen Code',
   opencode: 'OpenCode',
@@ -518,6 +519,7 @@ export class UsageService {
       { id: 'claude', label: 'Claude Code' },
       { id: 'codex', label: 'Codex' },
       { id: 'dsh', label: 'dsh' },
+      { id: 'grok', label: 'Grok' },
       { id: 'nomi', label: 'Nomi' },
     ]);
   }
@@ -528,7 +530,7 @@ export class UsageService {
    */
   async quotaView(): Promise<QuotaEntry[]> {
     const modes: Record<string, AuthMode> = {};
-    for (const id of ['claude', 'codex', 'dsh', 'nomi']) {
+    for (const id of ['claude', 'codex', 'dsh', 'grok', 'nomi']) {
       const info = await this.auth.detectFull(id).catch(() => null);
       modes[id] = info?.mode ?? 'unknown';
       if (id === 'claude' && info) this.observeClaudeIdentity(info.fp);

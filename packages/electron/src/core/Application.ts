@@ -396,6 +396,7 @@ export class Application implements IApplication {
         logger: this.logger as never,
         defaultCwd: app.getPath('documents'),
         dshEnv: () => getCliProviderBridge()?.dshEnv() ?? {},
+        grokEnv: () => getCliProviderBridge()?.grokEnv() ?? {},
       });
       harness.registerIpc();
       this.lifecycle.register({ name: 'cli-harness', stop: () => harness.dispose() });

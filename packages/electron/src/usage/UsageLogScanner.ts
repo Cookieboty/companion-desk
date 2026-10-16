@@ -18,6 +18,7 @@ import {
   codexHomeDir,
   copilotDir,
   geminiDir,
+  grokHomeDir,
   kimiDirs,
   opencodeDir,
   qwenDir,
@@ -28,6 +29,7 @@ import {
   parseCodexChunk,
   parseCodexRateLimits,
   parseDshChunk,
+  parseGrokChunk,
   parseGeminiFile,
   parseKimiChunk,
   parseQwenChunk,
@@ -54,6 +56,7 @@ export interface ScannerDeps {
   ledger: UsageLedger;
   home?: string;
   dshHome?: string;
+  grokHome?: string;
   /** 环境变量（测试注入）：CODEX_HOME / KIMI_HOME / OPENCODE_HOME … 默认 process.env */
   env?: NodeJS.ProcessEnv;
   now?: () => number;
@@ -149,6 +152,7 @@ const tick = () => new Promise<void>((r) => setImmediate(r));
 export class UsageLogScanner {
   private readonly home: string;
   private readonly dshHome: string;
+  private readonly grokHome: string;
   private readonly env: NodeJS.ProcessEnv;
   private running = false;
 
@@ -160,6 +164,7 @@ export class UsageLogScanner {
       (process.env.DSH_HOME?.trim()
         ? path.resolve(process.env.DSH_HOME)
         : path.join(this.home, '.dsh'));
+    this.grokHome = d.grokHome ?? grokHomeDir(this.home, this.env);
   }
 
   private now(): number {
@@ -173,6 +178,7 @@ export class UsageLogScanner {
     if (fs.existsSync(this.claudeDir())) out.push('claude');
     if (fs.existsSync(this.codexDir())) out.push('codex');
     if (fs.existsSync(path.join(this.dshHome, 'sessions'))) out.push('dsh');
+    if (fs.existsSync(path.join(this.grokHome, 'sessions'))) out.push('grok');
     if (fs.existsSync(geminiDir(h, this.env))) out.push('gemini');
     if (fs.existsSync(qwenDir(h, this.env))) out.push('qwen');
     if (fs.existsSync(this.opencodeDb())) out.push('opencode');
@@ -238,6 +244,12 @@ export class UsageLogScanner {
       'dsh',
       'whole',
       dshFiles.filter((f) => f.path.endsWith('.zstd')),
+    );
+    // Grok Build：sessions/<cwd>/<uuid>/updates.jsonl（turn_completed + usage）
+    add(
+      'grok',
+      'jsonl',
+      walk(path.join(this.grokHome, 'sessions'), (n) => n === 'updates.jsonl', 4, since),
     );
     // Gemini：chats/session-*.json(l)；subagent 在 chats/<父id>/<子id>.jsonl（要递归）
     add(
@@ -346,6 +358,8 @@ export class UsageLogScanner {
       }
       case 'dsh':
         return parseDshChunk(text, state);
+      case 'grok':
+        return parseGrokChunk(text, state);
       case 'qwen':
         return parseQwenChunk(text);
       case 'kimi':
@@ -371,6 +385,15 @@ export class UsageLogScanner {
     }
     const state: ParseState = { ...(cur?.state ?? {}) };
     if (f.source === 'kimi' && !state.sid) state.sid = kimiSessionId(f.path);
+    if (f.source === 'grok' && !state.sid) {
+      // .../sessions/<cwd>/<uuid>/updates.jsonl
+      state.sid = path.basename(path.dirname(f.path));
+      try {
+        state.cwd = decodeURIComponent(path.basename(path.dirname(path.dirname(f.path))));
+      } catch {
+        /* keep encoded */
+      }
+    }
     const startOffset = cur?.offset ?? 0;
     let offset = startOffset; // 已处理到的位置（只落在完整行末尾）
     let readPos = startOffset;
