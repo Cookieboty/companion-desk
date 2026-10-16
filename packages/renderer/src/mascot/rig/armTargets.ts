@@ -11,6 +11,8 @@ export interface ArmTarget {
   z: number;
   elbow?: 1 | -1;
   hint?: readonly [number, number];
+  /** elbow flexion cap |e| in degrees (default ARM_ELBOW_MAX_DEG = 100); hands closing at the chest need a little more */
+  eMax?: number;
 }
 
 const at = (p: readonly [number, number], dx = 0, dy = 0): [number, number] => [
@@ -23,14 +25,14 @@ export const ARM_TARGETS: Record<string, ArmTarget> = {
   waveUp: { hand: 'wave', t: [700, 240], angle: 0, z: 0.85, elbow: 1, hint: [50, 120] },
   waveHigh: { hand: 'wave', t: [680, 230], angle: 4, z: 0.85, elbow: 1, hint: [55, 120] },
   fistUp: { hand: 'fist', t: [775, 330], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
-  fistLow: { hand: 'fist', t: [770, 345], angle: 0, z: 0.3, elbow: 1, hint: [40, 115] },
+  fistLow: { hand: 'fist', t: [770, 345], angle: 0, z: 0.5, elbow: 1, hint: [40, 115] },
   peaceUp: { hand: 'peace', t: [775, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
-  okSide: { hand: 'ok', t: [780, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
+  okSide: { hand: 'ok', t: [780, 320], angle: 0, z: 0.5, elbow: 1, hint: [45, 115] },
   thumb: { hand: 'thumbsup', t: [780, 325], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
-  thumbChest: { hand: 'thumbsup', t: [496, 560], angle: -10, z: 0.5, elbow: -1, hint: [0, -150] },
+  thumbChest: { hand: 'thumbsup', t: [496, 560], angle: -10, z: 0.9, elbow: -1, hint: [20, -95], eMax: 104 },
   point: { hand: 'point', t: [780, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
   pointUp: { hand: 'point', t: [760, 280], angle: 4, z: 0.3, elbow: 1, hint: [55, 115] },
-  surprise: { hand: 'wave', t: [780, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
+  surprise: { hand: 'wave', t: [800, 340], angle: 0, z: 0.7, elbow: 1, hint: [45, 95] },
   shrug: { hand: 'rest', t: [780, 320], angle: 15, z: 0.3, elbow: 1, hint: [45, 115] },
   chin: { hand: 'rest', t: at(LM.chinR, 8, 20), angle: 18, z: 0.4, elbow: -1, hint: [-40, -100] },
   chinThink: { hand: 'rest', t: at(LM.chinR, 12, 12), angle: 24, z: 0.4, elbow: -1, hint: [-40, -100] },
@@ -41,12 +43,12 @@ export const ARM_TARGETS: Record<string, ArmTarget> = {
   visor: { hand: 'rest', t: [590, 250], angle: -45, z: 0.35, hint: [105, 105] },
   coverFace: { hand: 'rest', t: [520, 340], angle: -8, z: 0.45, hint: [-40, -100] },
   mouth: { hand: 'rest', t: at(LM.mouth, 45, 28), angle: -30, z: 0.45, elbow: -1, hint: [-20, -100] },
-  blowOut: { hand: 'rest', t: [670, 340], angle: 25, z: 0.3, hint: [55, 100] },
-  chest: { hand: 'chest', t: [490, 580], angle: -72, z: 0.5, elbow: -1, hint: [0, -150] },
-  heart: { hand: 'rest', t: [490, 570], angle: -60, z: 0.5, elbow: -1, hint: [0, -150] },
-  sorry: { hand: 'rest', t: [490, 650], angle: -40, z: 0.45, elbow: -1, hint: [0, -100] },
-  type: { hand: 'rest', t: [495, 700], angle: -62, z: 0.4, elbow: -1, hint: [0, -110] },
-  clap: { hand: 'rest', t: [500, 580], angle: -74, z: 0.5, elbow: -1, hint: [0, -150] },
-  pray: { hand: 'prayer', t: [488, 540], angle: -7, z: 0.5, elbow: -1, hint: [-20, -80] },
+  blowOut: { hand: 'rest', t: [670, 340], angle: 25, z: 0.5, hint: [55, 100] },
+  chest: { hand: 'chest', t: [490, 580], angle: -72, z: 0.9, elbow: -1, hint: [20, -95], eMax: 104 },
+  heart: { hand: 'rest', t: [490, 570], angle: -60, z: 0.9, elbow: -1, hint: [20, -95], eMax: 104 },
+  sorry: { hand: 'rest', t: [490, 650], angle: -40, z: 0.8, elbow: -1, hint: [20, -95], eMax: 104 },
+  type: { hand: 'rest', t: [495, 700], angle: -62, z: 0.8, elbow: -1, hint: [20, -90] },
+  clap: { hand: 'rest', t: [494, 575], angle: -64, z: 0.9, elbow: -1, hint: [20, -95], eMax: 104 },
+  pray: { hand: 'prayer', t: [488, 540], angle: -7, z: 0.9, elbow: -1, hint: [20, -95], eMax: 104 },
   stretchUp: { hand: 'rest', t: [640, 180], angle: -8, z: 0.15, elbow: 1, hint: [120, 85] },
 };

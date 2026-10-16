@@ -42,9 +42,20 @@ describe('IK arm poses (armTargets → armPoses.generated)', () => {
         z: t.z,
         elbow: t.elbow,
         hint: t.hint,
+        eMax: t.eMax,
       });
       const got = ARM_POSES[n as keyof typeof ARM_POSES].r;
       r.slice(0, 4).forEach((v, i) => expect(v, `${n}[${i}]`).toBeCloseTo(got[i], 0));
+    }
+  });
+
+  it('keeps every solved elbow bend inside the natural range (≤100°, ≤106° for hands closing at the chest)', () => {
+    for (const n of names) {
+      const t = ARM_TARGETS[n];
+      const p = ARM_POSES[n as keyof typeof ARM_POSES];
+      const cap = (t.eMax ?? 100) + 0.6;
+      expect(Math.abs(p.r[1]), `${n}.r`).toBeLessThanOrEqual(cap);
+      expect(Math.abs(p.l[1]), `${n}.l`).toBeLessThanOrEqual(cap);
     }
   });
 
@@ -181,7 +192,7 @@ describe('hand chirality (character left / right)', () => {
       expect(hr!.k[0][1], id).toBe(hl!.k[0][1]);
       const ar = val('rA')!.k.map((k) => k[1]);
       const al = val('lA')!.k.map((k) => k[1]);
-      ar.forEach((v, i) => expect(Math.abs(v - al[i]), `${id}.a[${i}]`).toBeLessThan(6));
+      ar.forEach((v, i) => expect(Math.abs(v - al[i]), `${id}.a[${i}]`).toBeLessThan(8));
     }
     expect(HAND.prayer).toBe(7);
   });

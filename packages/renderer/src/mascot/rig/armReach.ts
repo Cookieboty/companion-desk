@@ -10,7 +10,7 @@
  * (sgn +1, hands drawn as their native chirality); `l` is on the screen left = the character's RIGHT arm.
  */
 
-import { ARM_BEND_MAX, ARM_ELBOW_S, ARM_HAND_S, ARM_WRIST_MERGE, ArmChain, type ArmGeom, HAND_BASE } from './armKin';
+import { ARM_ELBOW_S, ARM_HAND_S, ARM_WRIST_MERGE, ArmChain, type ArmGeom, HAND_BASE } from './armKin';
 
 const DEG = Math.PI / 180;
 
@@ -155,7 +155,12 @@ export interface ReachOpts {
   hint?: readonly [number, number];
   /** a pose to stay close to (the mirrored arm of a bilateral action): wins over `hint` */
   near?: readonly [number, number];
+  /** largest elbow flexion |e| (deg) the solution may use (default ARM_ELBOW_MAX_DEG) */
+  eMax?: number;
 }
+
+/** natural elbow flexion limit for solved poses; deeper reaches foreshorten (z) / lift the shoulder instead */
+export const ARM_ELBOW_MAX_DEG = 100;
 
 /** the posed elbow must stay on the canvas (rig 960×1120) with a margin */
 export const ELBOW_BOX = [62, 60, 890, 1060] as const;
@@ -170,6 +175,7 @@ function reachExact(
 ): { pose: ReachPose; cost: number } | null {
   const ch = chainOf(side);
   const z = o.z ?? 0;
+  const eLim = (o.eMax ?? ARM_ELBOW_MAX_DEG) * DEG;
   const angle = (o.angle ?? 0) * DEG;
   const sgnRot = ch.sgnRot;
   const f = HAND_FIT[hand];
@@ -217,7 +223,7 @@ function reachExact(
   for (let i = 0; i < AN; i++)
     for (let j = 0; j < EN; j++) {
       const d = grid[i * EN + j];
-      if (d > 60) continue;
+      if (d > 60 || Math.abs(eOf(j)) > eLim + 1e-6) continue;
       if (o.elbow && Math.sign(eOf(j)) !== o.elbow) continue;
       let isMin = true;
       for (let di = -1; di <= 1 && isMin; di++)
@@ -256,7 +262,7 @@ function reachExact(
         de *= 0.2 / m;
       }
       a = Math.max(-1.9, Math.min(2.6, a + da));
-      e = Math.max(-ARM_BEND_MAX, Math.min(ARM_BEND_MAX, e + de));
+      e = Math.max(-eLim, Math.min(eLim, e + de));
       w = wFor(a, e);
       fe = err(a, e, w);
       if (Math.hypot(fe[0], fe[1]) < 0.1) break;

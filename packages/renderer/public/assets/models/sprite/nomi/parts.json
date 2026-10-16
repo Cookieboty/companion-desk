@@ -1040,7 +1040,7 @@
             0
           ],
           "size": [
-            188,
+            187,
             465
           ]
         },
@@ -1070,7 +1070,7 @@
             "n1": 92,
             "thick": 6,
             "edgeLo": -42.31,
-            "edgeHi": 36.4
+            "edgeHi": 33.96
           }
         }
       }
@@ -1085,7 +1085,7 @@
     "stump": 90,
     "shoulderZone": 110,
     "zUpper": 0.7,
-    "zFore": 0.3,
+    "zFore": 0.45,
     "handBase": 0.36,
     "cuffWidth": 96
   },

@@ -42,7 +42,7 @@ export const ARM_WRIST_MERGE = 0.6;
 export const ARM_DISSOLVE_S0 = ARM_HAND_S - 12;
 /** foreshortening of the upper arm / forearm at z = 1 */
 export const ARM_Z_UPPER = 0.7;
-export const ARM_Z_FORE = 0.3;
+export const ARM_Z_FORE = 0.45;
 /** the top of the sleeve (shoulder cap) stays seated on the torso; the swing blends in below it */
 export const ARM_STUMP = 90;
 /** length of the shoulder bend zone below the stump (sleeve px): the upper arm is rigid beyond it */
@@ -220,7 +220,7 @@ export class ArmChain {
 }
 
 /** the visible rig canvas and the margins the arm must keep while it is posed (rig px) */
-export const ARM_STAGE = { w: 960, h: 1120, elbow: 30, hand: 36, palm: 160 } as const;
+export const ARM_STAGE = { w: 960, h: 1120, elbow: 40, hand: 60, palm: 160 } as const;
 
 /**
  * Smallest reach z ≥ `z` for which the posed elbow and the hand (palm centre) stay on the canvas.

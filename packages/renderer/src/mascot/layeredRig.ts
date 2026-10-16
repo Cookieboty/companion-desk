@@ -9,6 +9,7 @@
 
 import { ActionManager } from './rig/actionManager';
 import { ACTIONS } from './rig/actions';
+import { ARM_STAGE } from './rig/armKin';
 import { handFlips } from './rig/armReach';
 import { drawBrow, drawFx, drawMouth } from './rig/fx';
 import {
@@ -20,6 +21,7 @@ import {
   chainFor,
   safeReach,
   handForeshorten,
+  handFitScale,
   drawArmPieces,
   drawHandPiece,
   handScaleFor,
@@ -1643,6 +1645,9 @@ export function drawRig(
   const lOn = ex ? ex[IDX.lOn] : 0;
   const warp = (rOn > 0.001 || lOn > 0.001) && imgs.has('body-noarm');
   pivot([W / 2, H], () => layer(warp ? 'body-noarm' : 'body'), 0, 1, pose.bodyScaleY);
+  const HAND_LOW_Y = 640;
+  const PRAY_GAP_MEET = 305;
+  const PRAY_GAP_APART = 380;
   const part = (name: string, rot: number, lift = 0, alpha = 1) => {
     const pv = P[name];
     if (!pv || !imgs.has(name)) return;
@@ -1707,7 +1712,7 @@ export function drawRig(
       const bOff = L['body'] ?? L['body-noarm'];
       if (bImg && nImg && bOff) {
         // a strongly swung arm leaves only the shoulder cap behind (no ghost of the rest sleeve)
-        const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.35) / 0.5));
+        const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.1) / 0.4));
         const fillR = Math.round((240 - 180 * swing) / 20) * 20;
         const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
         if (f) {
@@ -1718,7 +1723,8 @@ export function drawRig(
         }
       }
     }
-    const stump = shoulderPlug(img, geom);
+    const plugSwing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.1) / 0.4));
+    const stump = shoulderPlug(img, geom, Math.round((120 - 36 * plugSwing) / 12) * 12);
     if (stump) {
       ctx.save();
       ctx.translate(0, lift);
@@ -1780,7 +1786,16 @@ export function drawRig(
       });
     } else if (hasHand) {
       drawSleeve();
-      drawHandPiece(ctx, himg!, meta!, handFlips(hn, side) ? -1 : 1, mix, hs);
+      drawHandPiece(
+        ctx,
+        himg!,
+        meta!,
+        handFlips(hn, side) ? -1 : 1,
+        // a hand sinking past the belt on the way back to rest must not hang as a translucent ghost
+        // over the dark trousers: it drops out before the sleeve does
+        armFrame.hy > HAND_LOW_Y ? smooth(0.55, 0.95, mix) : mix,
+        hs * handFitScale(meta!, hs, ARM_STAGE.w, ARM_STAGE.h),
+      );
       // soft mesh tip only when the continuous sleeve is in use (hinge cuff is already open)
       if (!hinge) {
         drawArmPieces(ctx, ...geomArgs, { ...armP, fromS: ARM_HAND_S - 60 }, ARM_HAND_S + 4);
@@ -1800,8 +1815,11 @@ export function drawRig(
       const shoulder = P['arm-r'] ?? P['arm-l'];
       if (bodyImg && noarmImg && bodyOff && shoulder) {
         const fill = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], shoulder);
-        if (fill) {
+        // the notch only exists while the arm hangs: a raised arm leaves open air under it
+        const shSwing = ex && rOn > 0.001 ? Math.min(1, Math.max(0, (Math.abs(ex[IDX.rA] * DEG) - 0.2) / 0.5)) : 0;
+        if (fill && shSwing < 0.999) {
           ctx.save();
+          ctx.globalAlpha = 1 - shSwing * shSwing * (3 - 2 * shSwing);
           ctx.drawImage(fill as CanvasImageSource, bodyOff[0], bodyOff[1]);
           ctx.restore();
         }
@@ -1817,7 +1835,11 @@ export function drawRig(
       armFrame.hy = (a.fy + b.fy) / 2;
       const wrap = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
       armFrame.hPsi = (wrap(a.fpsi) + wrap(b.fpsi)) / 2;
-      drawHandPiece(ctx, a.himg, a.meta, 1, (a.mix + b.mix) / 2, (a.hs + b.hs) / 2, 40);
+      // the joined piece only exists while the two hands actually meet: far apart (arms still low, or
+      // on the way down) it would hang as a ghost at the midpoint
+      const gap = Math.hypot(a.fx - b.fx, a.fy - b.fy);
+      const meet = 1 - smooth(PRAY_GAP_MEET, PRAY_GAP_APART, gap);
+      drawHandPiece(ctx, a.himg, a.meta, 1, smooth(0.5, 0.9, (a.mix + b.mix) / 2) * meet, (a.hs + b.hs) / 2, 40);
       armFrame.hx = saved.hx;
       armFrame.hy = saved.hy;
       armFrame.hPsi = saved.hPsi;

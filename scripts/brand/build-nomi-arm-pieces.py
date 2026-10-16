@@ -20,6 +20,7 @@ import math
 import sys
 from pathlib import Path
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -130,9 +131,84 @@ def mirror_back(f: np.ndarray, s: np.ndarray, ux: float, uy: float) -> np.ndarra
     return np.where(back, m, f)
 
 
+def soften_strap_r(a: np.ndarray) -> np.ndarray:
+    """Right master only: the dark armband + hanging pouch + cord sit right above the elbow, and a
+    rigid hinge cuts the pouch into stubs. Keep the official band but as a soft, fully attached cuff
+    strap (feathered edges, toned colour, ends exactly on the sleeve silhouette); drop the pouch + cord
+    (their pixels are replaced by the surrounding sleeve fabric so the silhouette stays continuous).
+    Coordinates are master-layer px (262x678)."""
+    h, w = a.shape[:2]
+    rgb = a[..., :3].copy()
+    al = a[..., 3].copy()
+
+    def poly(pts):
+        m = np.zeros((h, w), np.uint8)
+        cv2.fillPoly(m, [np.array(pts, np.int32)], 255)
+        return m > 0
+
+    pouch = poly([(104, 176), (168, 186), (182, 310), (178, 334), (128, 336), (108, 306)])
+    cord = poly([(88, 136), (104, 136), (124, 198), (106, 202)])
+    band = poly([(77, 251), (112, 232), (128, 226), (143, 262), (80, 303)])
+    lum = rgb.astype(np.float32) @ np.array([0.3, 0.59, 0.11], np.float32)
+    dark_cord = cord & (lum < 130)
+    dark_cord |= pouch & (lum < 105) & ~band
+    # sleeve silhouette (right edge) through the pouch rows: straight from the clean rows above/below
+    ys = np.arange(h)
+    edge = 117.0 + (ys - 186.0) * (158.0 - 117.0) / (324.0 - 186.0)
+    xs = np.arange(w)[None, :]
+    inside_sleeve = xs <= edge[:, None] + 0.5
+    kill = (pouch | dark_cord) & ~band
+    hole = (pouch | band | dark_cord)
+    # fabric under everything we replace: Telea inpaint from the clean sleeve around it
+    src = rgb.copy()
+    msk = hole.astype(np.uint8) * 255
+    msk = cv2.dilate(msk, np.ones((5, 5), np.uint8))
+    fabric = cv2.inpaint(src, msk, 6, cv2.INPAINT_TELEA)
+    out_rgb = rgb.copy()
+    out_al = al.copy()
+    fill = hole & inside_sleeve
+    out_rgb[fill] = fabric[fill]
+    # the inpaint can still drag dark pouch edge pixels in at the border: pull anything darker than
+    # fabric (outside the band) back to the clean fabric tone of that row
+    flum = out_rgb.astype(np.float32) @ np.array([0.3, 0.59, 0.11], np.float32)
+    for y in range(180, 336):
+        ex = int(edge[y])
+        seg = rgb[y, max(0, ex - 40):ex - 14]
+        sl = flum[y, max(0, ex - 40):ex - 14]
+        good = seg[sl > 190]
+        if not len(good):
+            continue
+        ref = good.mean(axis=0)
+        row = fill[y] & (flum[y] < 185) & ~band[y]
+        out_rgb[y][row] = ref
+    out_al[fill] = 255
+    out_al[(pouch | dark_cord) & ~inside_sleeve] = 0
+    # thin outline along the rebuilt right edge (the sleeve's own line colour, sampled below the pouch)
+    edge_col = (176, 145, 134)
+    for y in range(186, 329):
+        x = int(round(edge[y]))
+        for dx in (0, 1):
+            if 0 <= x + dx < w and pouch[y, min(x + dx, w - 1)]:
+                out_rgb[y, x + dx] = edge_col
+                out_al[y, x + dx] = 255
+    # soft band: feathered mask, toned colour (official dark pixels lifted toward a warm grey)
+    bm = (band & inside_sleeve).astype(np.float32)
+    bm = cv2.GaussianBlur(bm, (0, 0), 2.0)
+    bm = np.clip(bm * 1.15, 0, 1) * (out_al > 0)
+    orig_band = rgb.astype(np.float32)
+    toned = orig_band * 0.5 + np.array([120, 102, 96], np.float32) * 0.5
+    out = out_rgb.astype(np.float32) * (1 - bm[..., None]) + toned * bm[..., None]
+    res = a.copy()
+    res[..., :3] = np.clip(out + 0.5, 0, 255).astype(np.uint8)
+    res[..., 3] = out_al
+    return res
+
+
 def cut(side: str, geom: dict):
     src = Image.open(MODEL / f'layers/arm-{side}.png').convert('RGBA')
     a = np.array(src)
+    if side == 'r':
+        a = soften_strap_r(a)
     h, w = a.shape[:2]
     th, sgn = geom['theta'], geom['sgn']
     ux, uy = sgn * math.sin(th), math.cos(th)

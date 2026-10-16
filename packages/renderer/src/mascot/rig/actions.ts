@@ -44,7 +44,12 @@ function arm(
   opts: ArmOpts = {},
 ): Track[] {
   // the elbow range is ±126°; solved targets may sit a hair beyond it
-  const pose = pose0.map((v, k) => (k === 1 ? Math.max(-125.9, Math.min(125.9, v)) : v)) as unknown as Pose;
+  // an elbow oscillation (clap, wave …) swings ±amp around its key: centre it so the deepest swing
+  // lands on the solved pose and the elbow never folds past its natural range
+  const eShift = opts.oscE ? Math.min(opts.oscE[0], Math.max(0, Math.abs(pose0[1]) - 60)) : 0;
+  const pose = pose0.map((v, k) =>
+    k === 1 ? Math.max(-125.9, Math.min(125.9, v - Math.sign(v) * eShift)) : v,
+  ) as unknown as Pose;
   const ease = opts.ease ?? 'io';
   const win = opts.win ?? [t0, t1];
   const ret = opts.ret ?? t1 <= dur - 0.3;
@@ -52,6 +57,7 @@ function arm(
   const tArr = Math.max(t0, tAnt + (opts.fast ? 0.28 : 0.45));
   const via = opts.via ?? [];
   const last = via.length ? via[via.length - 1][1] : pose;
+  const raised = last[0] > 60 && last[1] > 0;
   const key = (i: number): Key[] => {
     const lag = JOINT_LAG[i];
     const tLift = Math.max(tAnt + 0.1, tArr + lag);
@@ -71,8 +77,9 @@ function arm(
         const end = dur;
         keys.push(
           [hold1, last[3]],
-          [hold1 + 0.12, zb, 'io'],
-          [end - 0.12, zb * 0.6, 'io'],
+          [hold1 + 0.08, raised ? 1 : zb, 'io'],
+          ...(raised ? ([[end - 0.2, 1, 'io']] as Key[]) : []),
+          [end - 0.12, raised ? 0.7 : zb * 0.6, 'io'],
           [end, 0, 'io'],
         );
       } else keys.push([dur, last[3]]);
@@ -85,7 +92,9 @@ function arm(
       i === 0
         ? -dip * Math.sign(pose[1] || 1) * (pose[1] < 0 ? 0.35 : 1)
         : -Math.sign(pose[i] || 1) * Math.min(7, 1.5 + Math.abs(pose[i]) * 0.05);
-    const over = Math.max(-124, Math.min(124, pose[i] * 1.04));
+    // a touch of overshoot on arrival — none for a deep elbow (it would fold past its natural range)
+    const ovAmt = i === 1 ? Math.max(-6, Math.min(3, (92 - Math.abs(pose[i])) * 0.5)) : Math.abs(pose[i]) * 0.04;
+    const over = Math.max(-124, Math.min(124, pose[i] + Math.sign(pose[i]) * ovAmt));
     const keys: Key[] = [
       [0, 0],
       [i === 0 ? tAnt + 0.12 : tAnt, ant, 'o'],
@@ -99,7 +108,8 @@ function arm(
       const end = Math.min(dur, dur - 0.04 - lag);
       const tEnd = Math.max(hold1 + 0.2, end);
       keys.push([hold1, last[i]]);
-      if (i === 0 && last[1] > 0) keys.push([hold1 + (tEnd - hold1) * 0.55, -dip * 0.8, 'io']);
+      const span = tEnd - hold1;
+      if (i === 0 && last[1] > 0) keys.push([hold1 + span * 0.55, -dip * 0.8, 'io']);
       keys.push([tEnd, 0, i === 0 ? 'io' : FALL_EASE[i]]);
       if (end < dur) keys.push([dur, 0]);
     } else keys.push([dur, last[i]]);
@@ -110,7 +120,7 @@ function arm(
         [0, 0],
         [tAnt, 0],
         [Math.max(tAnt + 0.1, tArr - 0.1), 1, 'io'],
-        [Math.max(t1, dur - 0.3), 1],
+        [Math.max(t1, dur - (raised ? 0.16 : pose[3] >= 0.8 ? 0.18 : 0.3)), 1],
         [dur - 0.03, 0, 'io'],
         [dur, 0],
       ]

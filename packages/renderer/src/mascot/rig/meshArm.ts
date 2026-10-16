@@ -476,6 +476,32 @@ export function handScaleFor(meta: HandPieceMeta): number {
 export const sleeveEndWidth = (): number => HAND_CUFF_W * 1.06;
 
 /**
+ * Scale (0.5..1) that keeps the whole hand (wrist → fingertips) inside the visible canvas: an arm
+ * passing through the wide-open pose mid-gesture would otherwise push its fingers past the edge.
+ * Exactly 1 for every solved pose (they sit well inside), so it only acts on in-between frames.
+ */
+export function handFitScale(meta: HandPieceMeta, scale: number, w: number, h: number, margin = 22): number {
+  const len = meta.ay * scale;
+  const dx = Math.sin(armFrame.hPsi);
+  const dy = -Math.cos(armFrame.hPsi);
+  let k = 1;
+  if (dx > 1e-3) k = Math.min(k, (w - margin - armFrame.hx) / (len * dx));
+  else if (dx < -1e-3) k = Math.min(k, (armFrame.hx - margin) / (-len * dx));
+  if (dy > 1e-3) k = Math.min(k, (h - margin - armFrame.hy) / (len * dy));
+  else if (dy < -1e-3) k = Math.min(k, (armFrame.hy - margin) / (-len * dy));
+  k = Math.max(0.5, Math.min(1, k));
+  // at the 0.5 floor the fingertips can still reach the edge: nudge the attach point inward
+  // (a few px at most, only on the in-between frames of a very wide pass) so the hand stays whole
+  const tipX = armFrame.hx + len * k * dx;
+  const tipY = armFrame.hy + len * k * dy;
+  const sx = tipX > w - margin ? w - margin - tipX : tipX < margin ? margin - tipX : 0;
+  const sy = tipY > h - margin ? h - margin - tipY : tipY < margin ? margin - tipY : 0;
+  armFrame.hx += sx;
+  armFrame.hy += sy;
+  return k;
+}
+
+/**
  * Draw a hand piece at the attach frame (call right after drawArmStrip). The piece is drawn in two
  * slices: the hand (skin) at the palm-normalised scale and the sleeve stub below the cuff line at the
  * common cuff width, so a cuff never changes size when the gesture (hand shape) changes.
@@ -535,12 +561,19 @@ export function drawHandPiece(
 
 export const drawArmPieces = drawArmStrip;
 
-const plugCache = new WeakMap<object, CanvasImageSource | null>();
+const plugCache = new WeakMap<object, Record<number, CanvasImageSource | null>>();
 const PLUG_CUT = 120;
 
 /** Upper-sleeve-only cut of the master arm, used to plug the body-noarm shoulder hole. */
-export function shoulderPlug(img: RigImageSource, g: ArmGeom): CanvasImageSource | null {
-  let cached = plugCache.get(img as object);
+export function shoulderPlug(
+  img: RigImageSource,
+  g: ArmGeom,
+  /** sleeve px kept below the pivot row (smaller while the arm is raised: only the shoulder cap stays) */
+  cut: number = PLUG_CUT,
+): CanvasImageSource | null {
+  const store = plugCache.get(img as object) ?? {};
+  plugCache.set(img as object, store);
+  let cached = store[cut];
   if (cached !== undefined) return cached;
   try {
     const iw = (img as { width: number }).width;
@@ -560,12 +593,12 @@ export function shoulderPlug(img: RigImageSource, g: ArmGeom): CanvasImageSource
     const out = new Uint8ClampedArray(src.data);
     // Keep upper sleeve through near-elbow so the body-noarm void stays sealed when the
     // mesh rotates away. Soft feather over ~50px so it does not read as a second cuff.
-    const cut = PLUG_CUT;
+    const feather = Math.min(50, cut * 0.45);
     for (let y = 0; y < ih; y++)
       for (let x = 0; x < iw; x++) {
         const k = (y * iw + x) * 4 + 3;
         if (!out[k]) continue;
-        const t = (sOf(x, y) - (cut - 50)) / 50;
+        const t = (sOf(x, y) - (cut - feather)) / feather;
         const f = t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * (3 - 2 * t);
         out[k] = Math.round(out[k] * f);
       }
@@ -578,7 +611,7 @@ export function shoulderPlug(img: RigImageSource, g: ArmGeom): CanvasImageSource
   } catch {
     cached = null;
   }
-  plugCache.set(img as object, cached);
+  store[cut] = cached;
   return cached;
 }
 
@@ -928,7 +961,7 @@ export function drawArmHinge(
   const wl = Math.hypot(wv[0], wv[1]) || 1;
   const outerAng = f.dirU - (sg * Math.PI) / 2;
   const outerPlus = Math.cos(outerAng) * wv[0] + Math.sin(outerAng) * wv[1] > 0;
-  const R = (outerPlus ? eHi : -eLo) * wl + 1.5;
+  const R = (outerPlus ? eHi : -eLo) * wl - 1.8;
   const half = (px: number, py: number, dx: number, dy: number, grow: number) => {
     // region (p - elbow)·d ≥ -grow
     const ox = f.elbow[0] - dx * grow;
@@ -965,13 +998,28 @@ export function drawArmHinge(
 
   // outline of the rounded outer corner, in the sleeve's own line colour
   ctx.save();
-  ctx.strokeStyle = 'rgba(78, 54, 46, 0.92)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(112, 82, 72, 0.9)';
+  ctx.lineWidth = 1.7;
   ctx.lineCap = 'round';
   ctx.beginPath();
   const a0 = f.dirU - (sg * Math.PI) / 2;
-  ctx.arc(f.elbow[0], f.elbow[1], R - 1.6, a0, a0 + turn, sg < 0);
+  ctx.arc(f.elbow[0], f.elbow[1], R - 0.9, a0, a0 + turn, sg < 0);
   ctx.stroke();
+  // the line continues a few px along each straight sleeve edge and fades out (no abrupt start/end)
+  const tail = (ang: number, dx: number, dy: number) => {
+    const sx = f.elbow[0] + Math.cos(ang) * (R - 0.9);
+    const sy = f.elbow[1] + Math.sin(ang) * (R - 0.9);
+    const gr = ctx.createLinearGradient(sx, sy, sx + dx * 16, sy + dy * 16);
+    gr.addColorStop(0, 'rgba(112, 82, 72, 0.9)');
+    gr.addColorStop(1, 'rgba(112, 82, 72, 0)');
+    ctx.strokeStyle = gr;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + dx * 16, sy + dy * 16);
+    ctx.stroke();
+  };
+  tail(a0, -uU[0], -uU[1]);
+  tail(a0 + turn, uF[0], uF[1]);
   ctx.restore();
 
   ch.hand(armFrame);
