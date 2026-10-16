@@ -124,6 +124,19 @@ describe('SettingsView 合并后的标签页分区', () => {
     expect(r.getByTestId('settings-senses').getAttribute('data-tab')).toBe('screen');
   });
 
+  it('隐私页「屏幕记忆与排除」跳到 语音与屏幕 → 屏幕 → 隐私与排除；从侧栏再进入则回到默认', async () => {
+    const r = render(<Harness onClose={() => undefined} />);
+    fireEvent.click(r.getByText('屏幕记忆与排除'));
+    expect(r.getByTestId('settings-senses').getAttribute('data-tab')).toBe('screen');
+    const inner = await r.findByRole('tab', { name: '隐私与排除' });
+    expect(inner.getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(r.getByTestId('settings-nav-general'));
+    fireEvent.click(r.getByTestId('settings-nav-senses'));
+    fireEvent.click(r.getByTestId('settings-senses-tab-screen'));
+    const again = await r.findByRole('tab', { name: '隐私与排除' });
+    expect(again.getAttribute('aria-selected')).toBe('false');
+  });
+
   it('知识与记忆有「笔记」标签；桌面权限里不再有笔记 / 提醒', () => {
     const k = render(<Harness onClose={() => undefined} start="knowledge" />);
     expect(k.getByTestId('settings-knowledge-tab-notes').textContent).toBe('笔记');

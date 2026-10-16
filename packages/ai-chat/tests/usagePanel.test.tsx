@@ -4,6 +4,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UsagePanel } from '../src/components/UsagePanel';
+import { priceSyncMessage } from '../src/components/UsagePanel/Pricing';
 
 const summary = (over = {}) => ({
   costUsd: 12.5,
@@ -227,6 +228,15 @@ function install() {
           return state;
         case 'ai:usage:scan':
           return { ...state, added: 0, files: 0 };
+        case 'ai:usage:price-sync':
+          state = {
+            ...state,
+            pricing: {
+              ...state.pricing,
+              sync: { count: 321, fetchedAt: NOW, checkedAt: NOW, tableDate: '2026-10-16' },
+            },
+          };
+          return { ...state, result: { ok: true, status: 'updated', count: 321, skipped: 2 } };
       }
       return null;
     }),
@@ -405,6 +415,30 @@ describe('UsagePanel 明细 / 价格', () => {
       ]);
     });
     await waitFor(() => expect(getByText('已保存')).toBeTruthy());
+  });
+
+  it('价格：打开面板不联网；点「同步价格」才调用，并显示价格表日期 / 上次同步 / 隐私说明', async () => {
+    const { findByTestId, getByRole, getByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-card-cost');
+    fireEvent.click(getByRole('tab', { name: '价格' }));
+    await findByTestId('usage-pricing');
+    expect(getByTestId('usage-price-sync').textContent).toContain('不上传任何用量');
+    expect(getByTestId('usage-sync-status').textContent).toContain('尚未同步');
+    expect(calls.some((c) => c[0] === 'ai:usage:price-sync')).toBe(false);
+    fireEvent.click(getByTestId('usage-sync-prices'));
+    await waitFor(() =>
+      expect(calls.filter((c) => c[0] === 'ai:usage:price-sync')).toHaveLength(1),
+    );
+    await waitFor(() => expect(getByTestId('usage-sync-result').textContent).toContain('321'));
+    expect(getByTestId('usage-sync-status').textContent).toContain('2026-10-16');
+    expect(getByTestId('usage-sync-status').textContent).toContain('321');
+  });
+
+  it('价格：同步失败时提示原因并说明继续使用已有价格', () => {
+    expect(priceSyncMessage({ ok: false, reason: 'network' })).toContain('继续使用已有价格');
+    expect(priceSyncMessage({ ok: true, status: 'not-modified', count: 3, skipped: 0 })).toContain(
+      '最新',
+    );
   });
 
   it('价格：缺少输入 / 输出价时拒绝保存并提示', async () => {

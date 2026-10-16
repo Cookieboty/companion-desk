@@ -4,7 +4,7 @@
  * 未定价的模型：token 照常统计，但不计入费用总额，并单独列出（提示去补价）。
  */
 import { costUsd, findPrice } from './pricing';
-import type { CustomPrice, UsageRecord } from './types';
+import type { CustomPrice, PriceEntry, UsageRecord } from './types';
 
 export type RangeId = 'today' | '7d' | '30d' | '90d';
 
@@ -62,10 +62,10 @@ export function rangeOf(id: RangeId, now: number): RangeSpec {
 
 export type PriceOf = (model: string) => ReturnType<typeof findPrice>;
 
-export function makePriceOf(custom: CustomPrice[]): PriceOf {
+export function makePriceOf(custom: CustomPrice[], synced: PriceEntry[] = []): PriceOf {
   const cache = new Map<string, ReturnType<typeof findPrice>>();
   return (model) => {
-    if (!cache.has(model)) cache.set(model, findPrice(model, custom));
+    if (!cache.has(model)) cache.set(model, findPrice(model, custom, synced));
     return cache.get(model)!;
   };
 }

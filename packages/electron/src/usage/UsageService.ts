@@ -44,6 +44,7 @@ import {
 import { ClaudeUsageFetcher, type ClaudeFetcherDeps } from './claudeSubscription';
 import { CodexRateLimitReader, type CodexRpcDeps } from './codexRateLimits';
 import { formatAmount, formatMoney, formatTokens } from './money';
+import { PriceSync, type PriceSyncResult } from './priceSync';
 import {
   BUILTIN_PRICES,
   DEFAULT_CNY_PER_USD,
@@ -164,6 +165,8 @@ type Deps = {
   /** 主动刷新额度所用的官方 CLI 调用（测试注入） */
   claudeUsage?: ClaudeFetcherDeps;
   codexRpc?: Partial<CodexRpcDeps>;
+  /** 价格同步所用的 fetch（测试注入；默认全局 fetch，只在用户点「同步价格」时调用） */
+  priceFetch?: (url: string, init: RequestInit) => Promise<Response>;
 };
 
 /** 单个工具这次「刷新」的结果（面板提示用，不含任何账号信息） */
@@ -295,6 +298,8 @@ export class UsageService {
   private codexFp: string | null = null;
   private claudeFp: string | null = null;
   private readonly salt: string;
+  /** models.dev 价格同步（只在用户点击时联网）：覆盖层缓存在 userData */
+  readonly priceSync: PriceSync;
   private readonly claudeCache: IdentityQuotaCache;
   private readonly codexCache: IdentityQuotaCache;
   private readonly claudeFetcher: ClaudeUsageFetcher;
@@ -305,6 +310,7 @@ export class UsageService {
   private sessionCache: {
     ver: number;
     prices: unknown;
+    priceVer: number;
     map: Map<string, SessionUsage>;
   } | null = null;
 
@@ -313,6 +319,12 @@ export class UsageService {
     this.settingsPath = path.join(d.root, 'settings.json');
     this.alertsPath = path.join(d.root, 'alerts.json');
     this.quotaPath = path.join(d.root, 'quota.json');
+    this.priceSync = new PriceSync({
+      root: d.root,
+      now: d.now,
+      fetchImpl: d.priceFetch,
+      logger: d.logger,
+    });
     this.load();
     this.loadAlerts();
     this.salt = loadSalt(d.root);
@@ -978,7 +990,13 @@ export class UsageService {
   private sessionMap(): Map<string, SessionUsage> {
     const ver = this.ledger.version();
     const prices = this.settings.customPrices;
-    if (this.sessionCache && this.sessionCache.ver === ver && this.sessionCache.prices === prices)
+    const priceVer = this.priceSync.version();
+    if (
+      this.sessionCache &&
+      this.sessionCache.ver === ver &&
+      this.sessionCache.prices === prices &&
+      this.sessionCache.priceVer === priceVer
+    )
       return this.sessionCache.map;
     const priceOf = this.priceOf();
     const map = new Map<string, SessionUsage>();
@@ -989,7 +1007,7 @@ export class UsageService {
       accumulate(e, r, priceOf);
       map.set(key, e);
     }
-    this.sessionCache = { ver, prices, map };
+    this.sessionCache = { ver, prices, priceVer, map };
     return map;
   }
 
@@ -1027,7 +1045,7 @@ export class UsageService {
   // ---------------------------------------------------------------- 查询
 
   private priceOf() {
-    return makePriceOf(this.settings.customPrices);
+    return makePriceOf(this.settings.customPrices, this.priceSync.entries());
   }
 
   private labels(): Labels {
@@ -1043,8 +1061,19 @@ export class UsageService {
       pricing: {
         date: PRICING_TABLE_DATE,
         builtin: BUILTIN_PRICES.map((p) => ({ ...p })),
+        sync: this.priceSync.state(),
       },
     };
+  }
+
+  /**
+   * 手动同步价格（用户点「同步价格」才会走到这里）：只下载 models.dev 的公开价格表，不上传任何用量。
+   * 返回结果 + 最新状态；成功后通知各窗口刷新。
+   */
+  async syncPrices(): Promise<{ result: PriceSyncResult } & ReturnType<UsageService['state']>> {
+    const result = await this.priceSync.sync();
+    if (result.ok) this.changed();
+    return { result, ...this.state() };
   }
 
   query(rangeId: RangeId) {
@@ -1166,6 +1195,7 @@ export class UsageService {
     handle('ai:usage:quota-refresh', () => this.refreshQuota());
     handle('ai:usage:quota-hook', () => this.quotaHookStatus());
     handle('ai:usage:quota-hook-set', (v) => this.setQuotaHook(v === true));
+    handle('ai:usage:price-sync', () => this.syncPrices());
     handle('ai:usage:scan', async () => {
       const r = await this.scan();
       return { ...r, ...this.state() };

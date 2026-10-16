@@ -29,7 +29,8 @@ import {
 
 import styles from './index.module.css';
 
-type Tab = 'ask' | 'memory' | 'privacy';
+export type ScreenTab = 'ask' | 'memory' | 'privacy';
+type Tab = ScreenTab;
 
 const INTERVALS = [
   { value: '30', label: '每 30 秒' },
@@ -54,11 +55,13 @@ const fmt = (t: number) =>
     minute: '2-digit',
   });
 
-export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> = ({
-  isVisible,
-  onClose,
-}) => {
-  const [tab, setTab] = useState<Tab>('ask');
+export const ScreenPanel: React.FC<{
+  isVisible: boolean;
+  onClose: () => void;
+  /** 首次显示的内层标签（默认「截图提问」） */
+  initialTab?: ScreenTab;
+}> = ({ isVisible, onClose, initialTab }) => {
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'ask');
   const [st, setSt] = useState<ScreenState | null>(null);
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');

@@ -7,6 +7,7 @@ import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
 import React from 'react';
 
 import { ScreenPanel } from '../lazyPanels';
+import type { ScreenTab } from '../ScreenPanel';
 
 import styles from './index.module.css';
 import { SectionPage } from './SectionPage';
@@ -28,7 +29,9 @@ const VoiceSection: React.FC = () => {
 export const SensesSection: React.FC<{
   tab: SensesTab;
   onTab: (tab: SensesTab) => void;
-}> = ({ tab, onTab }) => (
+  /** 「屏幕」里首次落在哪个内层标签（如从隐私页跳到「隐私与排除」） */
+  screenTab?: ScreenTab;
+}> = ({ tab, onTab, screenTab }) => (
   <SectionPage
     testId="settings-senses"
     title="语音与屏幕"
@@ -38,6 +41,10 @@ export const SensesSection: React.FC<{
     value={tab}
     onChange={onTab}
   >
-    {tab === 'voice' ? <VoiceSection /> : <ScreenPanel key="screen" isVisible onClose={noop} />}
+    {tab === 'voice' ? (
+      <VoiceSection />
+    ) : (
+      <ScreenPanel key="screen" isVisible onClose={noop} initialTab={screenTab} />
+    )}
   </SectionPage>
 );

@@ -161,3 +161,45 @@ describe('UsageService：采集 / 开关 / 查询', () => {
     expect(csv.split('\n')[1]!.split(',')[11]).toBe('25');
   });
 });
+
+describe('UsageService：手动价格同步', () => {
+  const api = () => {
+    const models: Record<string, unknown> = {};
+    for (let i = 0; i < 12; i++) models[`m-${i}`] = { id: `m-${i}`, cost: { input: 1, output: 2 } };
+    models['gpt-4o'] = { id: 'gpt-4o', cost: { input: 1, output: 1 } };
+    return { openai: { models } };
+  };
+  const build = (fetchImpl: jest.Mock) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-usage-svc-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-usage-svc-home-'));
+    return new UsageService({
+      root,
+      home,
+      scanMs: 0,
+      logger: { info: jest.fn(), warn: jest.fn() },
+      priceFetch: fetchImpl,
+    });
+  };
+
+  it('不点就不联网；点击后覆盖层生效，状态里带同步信息；失败回退内置', async () => {
+    const f = jest
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(api()), { status: 200 }))
+      .mockRejectedValueOnce(new Error('offline'));
+    const svc = build(f);
+    expect(f).not.toHaveBeenCalled();
+    svc.record({ ...call, promptTokens: 1_000_000, outputTokens: 0 });
+    const cost = () => svc.query('today').summary.costUsd;
+    expect(cost()).toBeCloseTo(2.5, 6); // 内置 gpt-4o
+    expect(svc.state().pricing.sync.count).toBe(0);
+    const r = await svc.syncPrices();
+    expect(r.result).toMatchObject({ ok: true, status: 'updated' });
+    expect(cost()).toBeCloseTo(1, 6); // 同步价
+    expect(r.pricing.sync.count).toBe(13);
+    const r2 = await svc.syncPrices();
+    expect(r2.result).toEqual({ ok: false, reason: 'network' });
+    expect(cost()).toBeCloseTo(1, 6); // 失败不影响已同步的覆盖层
+    svc.setSettings({ customPrices: [{ model: 'gpt-4o', input: 7, output: 0 }] });
+    expect(cost()).toBeCloseTo(7, 6); // 自定义最优先
+  });
+});

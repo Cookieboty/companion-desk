@@ -65,6 +65,50 @@ describe('模型名规范化与价格匹配', () => {
     expect(costUsd(r, { input: 2, output: 8 })).toBeCloseTo(2 + 8 + 2 + 2, 6);
   });
 
+  it('缓存写分档：1h 档按 2×输入价（或显式 cacheWrite1h），余量 / 旧账本按 5m 档', () => {
+    const pr = { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 };
+    const M = 1_000_000;
+    // 旧账本：没有 cacheWrite1h → 全部 5m
+    expect(costUsd({ input: 0, output: 0, cacheRead: 0, cacheWrite: M }, pr)).toBeCloseTo(3.75, 6);
+    // 一半 1h：0.5M × 3.75 + 0.5M × 6
+    expect(
+      costUsd({ input: 0, output: 0, cacheRead: 0, cacheWrite: M, cacheWrite1h: M / 2 }, pr),
+    ).toBeCloseTo(0.5 * 3.75 + 0.5 * 6, 6);
+    // 显式 1h 价
+    expect(
+      costUsd(
+        { input: 0, output: 0, cacheRead: 0, cacheWrite: M, cacheWrite1h: M },
+        { ...pr, cacheWrite1h: 5 },
+      ),
+    ).toBeCloseTo(5, 6);
+    // 没有缓存写价的模型：1h 部分也只按输入价
+    expect(
+      costUsd(
+        { input: 0, output: 0, cacheRead: 0, cacheWrite: M, cacheWrite1h: M },
+        { input: 2, output: 8 },
+      ),
+    ).toBeCloseTo(2, 6);
+    // cacheWrite1h 超过总量时按总量截断
+    expect(
+      costUsd({ input: 0, output: 0, cacheRead: 0, cacheWrite: M, cacheWrite1h: 9 * M }, pr),
+    ).toBeCloseTo(6, 6);
+  });
+
+  it('快速模式：整条记录 2 倍；标准 / 缺省不变', () => {
+    const pr = { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 };
+    const r = { input: 1_000_000, output: 1_000_000, cacheRead: 0, cacheWrite: 0 };
+    expect(costUsd(r, pr)).toBeCloseTo(18, 6);
+    expect(costUsd({ ...r, fast: true }, pr)).toBeCloseTo(36, 6);
+    expect(costUsd({ ...r, fast: false }, pr)).toBeCloseTo(18, 6);
+  });
+
+  it('自定义价格可带 cacheWrite1h，非法值丢弃', () => {
+    const [c] = sanitizeCustomPrices([{ model: 'm', input: 1, output: 2, cacheWrite1h: 4 }]);
+    expect(c!.cacheWrite1h).toBe(4);
+    const [d] = sanitizeCustomPrices([{ model: 'm', input: 1, output: 2, cacheWrite1h: -4 }]);
+    expect('cacheWrite1h' in d!).toBe(false);
+  });
+
   it('内置表无重复、价格都是有限非负数', () => {
     const names = BUILTIN_PRICES.map((p) => p.model);
     expect(new Set(names).size).toBe(names.length);

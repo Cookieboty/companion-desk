@@ -184,7 +184,15 @@ export const UsagePanel: React.FC = () => {
           {tab === 'overview' && <QuotaCard />}
           {tab === 'details' && <Details fx={fx} range={detailRange} onRange={setDetailRange} />}
           {tab === 'pricing' && (
-            <Pricing state={state} unpriced={data.summary.unpriced} onSettings={setSettings} />
+            <Pricing
+              state={state}
+              unpriced={data.summary.unpriced}
+              onSettings={setSettings}
+              onState={(s) => {
+                setState(s);
+                void refresh();
+              }}
+            />
           )}
           {tab === 'budget' && (
             <Budget

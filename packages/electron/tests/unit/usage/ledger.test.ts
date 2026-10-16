@@ -33,6 +33,19 @@ describe('UsageLedger', () => {
     expect(l.all()[0]!.output).toBe(9);
   });
 
+  it('新字段兼容：cacheWrite1h / fast 只增不减；旧记录（无字段）读出来仍是旧口径，落盘后保持', () => {
+    const root = tmp();
+    const l = new UsageLedger({ root });
+    l.upsert(rec({ cacheWrite: 10 }));
+    expect('cacheWrite1h' in l.all()[0]!).toBe(false);
+    expect(l.upsert(rec({ cacheWrite: 10, cacheWrite1h: 4, fast: true }))).toBe(true);
+    expect(l.upsert(rec({ cacheWrite: 10 }))).toBe(false); // 后到的旧口径行不会清掉新字段
+    expect(l.all()[0]).toMatchObject({ cacheWrite1h: 4, fast: true });
+    l.flush();
+    const l2 = new UsageLedger({ root });
+    expect(l2.all()[0]).toMatchObject({ cacheWrite: 10, cacheWrite1h: 4, fast: true });
+  });
+
   it('落盘后重新载入：覆盖行只保留最新，损坏行忽略，游标保留', () => {
     const root = tmp();
     const a = new UsageLedger({ root });

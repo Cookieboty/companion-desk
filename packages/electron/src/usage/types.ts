@@ -35,7 +35,15 @@ export interface UsageRecord {
   input: number;
   output: number;
   cacheRead: number;
+  /** 缓存写总量（含 1h 档）；旧账本只有这一个字段，整体按 5 分钟档计价 */
   cacheWrite: number;
+  /**
+   * 缓存写里属于 1 小时档的部分（≤ cacheWrite，余量即 5 分钟档）。缺省 = 0，按旧口径全部当 5 分钟档。
+   * 只有能拆出分档的来源（Claude 的 cache_creation.ephemeral_*）才会写它。
+   */
+  cacheWrite1h?: number;
+  /** true = 这次请求走了「快速模式」（Claude usage.speed === 'fast'），输入输出按 2 倍计价；缺省 = 标准速度 */
+  fast?: boolean;
   /** 会话 id（CLI 会话 id / Nomi 对话 id） */
   session?: string;
   /** 项目目录名 */
@@ -46,12 +54,31 @@ export interface UsageRecord {
 
 export type Currency = 'USD' | 'CNY';
 
+/**
+ * 长上下文分档：单次请求的提示词 token（input + 缓存读 + 缓存写）严格大于 size 时，改用这一档的价格
+ * （models.dev 的 cost.tiers 口径，例如 gpt-5.4 在 272000 以上输入价翻倍）。
+ * 档里没写的缓存价沿用基础价。
+ */
+export interface PriceTier {
+  size: number;
+  input: number;
+  output: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  cacheWrite1h?: number;
+}
+
 /** 单价：USD / 1M tokens */
 export interface ModelPrice {
   input: number;
   output: number;
   cacheRead?: number;
+  /** 缓存写（5 分钟档，没有分档的模型就是唯一的缓存写价） */
   cacheWrite?: number;
+  /** 缓存写 1 小时档；缺省时按 2 × 输入价（Anthropic 公布的倍率） */
+  cacheWrite1h?: number;
+  /** 长上下文分档（按 size 升序）；没有 = 不分档 */
+  tiers?: PriceTier[];
 }
 
 export interface PriceEntry extends ModelPrice {
