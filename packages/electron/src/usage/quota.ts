@@ -3,7 +3,9 @@
  *
  * 原则：只用「本机已经有的数据」或「官方公开文档、且不需要读取用户凭据的接口」。
  * 读取额度如果必须走未文档接口或登录凭据，就不做，显示「暂未返回可用额度」——不编造、不猜。
- * 目前只有一个来源：Codex 自己写进会话日志的额度快照（日志里没有就没有）。
+ * 来源：Codex 自己写进会话日志的额度快照；Claude Code 官方 statusline 输入里的 rate_limits
+ *（需用户在面板里主动开启，由本机脚本落一份快照，见 claudeStatusline.ts）。
+ * 只有「订阅 / 账号登录」的工具才会展示额度，API 计费的工具见 authMode.ts。
  * 新来源通过 QuotaRegistry.register 接入，不需要改面板。
  */
 
@@ -28,11 +30,16 @@ export interface QuotaReading {
   plan?: string;
 }
 
-/** 面板展示的一行：没有数据时 status = unavailable */
+/**
+ * 面板展示的一行：没有数据时 status = unavailable；
+ * API 计费（没有订阅额度）的工具 status = api，由 authMode.applyAuthModes 标注。
+ */
 export interface QuotaEntry {
   id: string;
   label: string;
-  status: 'ok' | 'unavailable';
+  status: 'ok' | 'unavailable' | 'api';
+  /** 登录方式（订阅 / API / 未知）；collect 不填，applyAuthModes 填 */
+  auth?: 'subscription' | 'api' | 'unknown';
   windows: QuotaWindow[];
   updatedAt?: number;
   plan?: string;

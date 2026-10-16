@@ -634,9 +634,20 @@ i.heatCell {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
+  padding: 2px 0;
   font-size: var(--cd-font-size-sm);
   color: var(--cd-color-text-muted);
+}
+.quotaHook {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--cd-radius-md);
+  background: var(--cd-color-hover);
+}
+.quotaHook > p {
+  margin: 0;
 }
 
 /* 明细表随容器宽度收起次要列（缓存 / 合计），保证不出现横向滚动 */

@@ -176,6 +176,12 @@ let calls: Array<[string, ...unknown[]]>;
 let state: typeof STATE;
 let emptyData = false;
 let quota: unknown[] = [];
+let hook: Record<string, unknown> = {
+  supported: true,
+  enabled: false,
+  hadOwnStatusLine: false,
+  hasSnapshot: false,
+};
 
 function install() {
   calls = [];
@@ -205,6 +211,11 @@ function install() {
           return state.settings;
         case 'ai:usage:quota':
           return quota;
+        case 'ai:usage:quota-hook':
+          return hook;
+        case 'ai:usage:quota-hook-set':
+          hook = { ...hook, enabled: a[0] === true };
+          return hook;
         case 'ai:usage:clear':
           state = { ...state, records: 0 };
           return state;
@@ -219,6 +230,7 @@ function install() {
 
 beforeEach(() => {
   emptyData = false;
+  hook = { supported: true, enabled: false, hadOwnStatusLine: false, hasSnapshot: false };
   quota = [
     { id: 'codex', label: 'Codex', status: 'unavailable', windows: [] },
     { id: 'claude', label: 'Claude Code', status: 'unavailable', windows: [] },
@@ -535,5 +547,112 @@ describe('UsagePanel 订阅额度', () => {
     const { findByTestId, queryByTestId } = render(<UsagePanel />);
     await findByTestId('usage-card-cost');
     expect(queryByTestId('usage-quota-card')?.textContent ?? '').not.toMatch(/已用/);
+  });
+});
+
+describe('UsagePanel 订阅额度：按登录方式区分', () => {
+  const E = (id: string, status: string, auth: string, extra: object = {}) => ({
+    id,
+    label: id,
+    status,
+    auth,
+    windows: [],
+    ...extra,
+  });
+
+  it('API Key / 第三方供应商的工具：只写「API 计费，无订阅额度」，没有额度条也没有「暂未返回」', async () => {
+    quota = [E('claude', 'api', 'api'), E('codex', 'api', 'api'), E('dsh', 'api', 'api')];
+    const { findByTestId, getByTestId } = render(<UsagePanel />);
+    const card = await findByTestId('usage-quota-card');
+    expect(getByTestId('usage-quota-dsh').getAttribute('data-status')).toBe('api');
+    expect(card.textContent?.match(/API 计费，无订阅额度/g)).toHaveLength(3);
+    expect(card.textContent).not.toContain('暂未返回可用额度');
+    expect(card.querySelector('[role="progressbar"]')).toBeNull();
+    // API 登录不需要 Claude 钩子
+    expect(card.querySelector('[data-testid="usage-quota-hook"]')).toBeNull();
+    expect(card.querySelector('[data-testid="usage-quota-nomi"]')).toBeNull();
+  });
+
+  it('订阅登录的 Claude 暂无额度：给出开启状态栏快照的选项；开启后按钮变为「关闭并恢复」', async () => {
+    quota = [
+      E('codex', 'ok', 'subscription', {
+        plan: 'plus',
+        windows: [{ id: 'primary', usedPercent: 10, windowMinutes: 300 }],
+      }),
+      E('claude', 'unavailable', 'subscription'),
+      E('dsh', 'api', 'api'),
+    ];
+    const { findByTestId, getByTestId, queryByTestId } = render(<UsagePanel />);
+    const box = await findByTestId('usage-quota-hook');
+    expect(box.textContent).toContain('不读取凭据');
+    expect(getByTestId('usage-quota-claude').textContent).toContain('暂未返回可用额度');
+    expect(queryByTestId('usage-hook-off')).toBeNull();
+    fireEvent.click(getByTestId('usage-hook-on'));
+    await waitFor(() =>
+      expect(calls.some((c) => c[0] === 'ai:usage:quota-hook-set' && c[1] === true)).toBe(true),
+    );
+    const off = await findByTestId('usage-hook-off');
+    expect(getByTestId('usage-quota-hook').textContent).toContain('等 Claude Code 完成一次回复');
+    fireEvent.click(off);
+    await waitFor(() =>
+      expect(calls.some((c) => c[0] === 'ai:usage:quota-hook-set' && c[1] === false)).toBe(true),
+    );
+    await findByTestId('usage-hook-on');
+  });
+
+  it('Claude 通过状态栏快照拿到额度：展示 5 小时 / 每周窗口', async () => {
+    const now = Date.now();
+    hook = { supported: true, enabled: true, hadOwnStatusLine: true, hasSnapshot: true };
+    quota = [
+      E('claude', 'ok', 'subscription', {
+        updatedAt: now - 60_000,
+        windows: [
+          { id: 'five_hour', usedPercent: 23.5, windowMinutes: 300, resetAt: now + 3_600_000 },
+          {
+            id: 'seven_day',
+            usedPercent: 41.2,
+            windowMinutes: 10080,
+            resetAt: now + 86_400_000 * 3,
+          },
+        ],
+      }),
+    ];
+    const { findByTestId, getAllByTestId } = render(<UsagePanel />);
+    const card = await findByTestId('usage-quota-card');
+    const wins = getAllByTestId('usage-quota-window');
+    expect(wins.map((w) => w.textContent)).toEqual([
+      expect.stringContaining('5 小时窗口'),
+      expect.stringContaining('每周窗口'),
+    ]);
+    expect(wins[0]!.textContent).toContain('已用 24%');
+    await findByTestId('usage-hook-off');
+    expect(card.textContent).toContain('你原来的状态栏命令照常运行');
+  });
+
+  it('settings.json 不合法 / Windows：说明原因，不给开启按钮', async () => {
+    quota = [E('claude', 'unavailable', 'subscription')];
+    hook = {
+      supported: true,
+      enabled: false,
+      hadOwnStatusLine: false,
+      hasSnapshot: false,
+      problem: 'invalid-settings',
+    };
+    const first = render(<UsagePanel />);
+    expect((await first.findByTestId('usage-quota-hook')).textContent).toContain('不是合法的 JSON');
+    expect(first.queryByTestId('usage-hook-on')).toBeNull();
+    first.unmount();
+    hook = { supported: false, enabled: false, hadOwnStatusLine: false, hasSnapshot: false };
+    const second = render(<UsagePanel />);
+    expect((await second.findByTestId('usage-quota-hook')).textContent).toContain('Windows');
+    expect(second.queryByTestId('usage-hook-on')).toBeNull();
+  });
+
+  it('没有任何订阅登录的工具：提示而不是空卡片，也没有「暂未返回」', async () => {
+    quota = [];
+    const { findByTestId } = render(<UsagePanel />);
+    const empty = await findByTestId('usage-quota-empty');
+    expect(empty.textContent).toContain('没有检测到');
+    expect((await findByTestId('usage-quota-card')).textContent).not.toContain('暂未返回可用额度');
   });
 });

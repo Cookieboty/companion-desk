@@ -144,10 +144,22 @@ export interface UsageQuotaWindow {
 export interface UsageQuotaEntry {
   id: string;
   label: string;
-  status: 'ok' | 'unavailable';
+  /** ok = 有额度；unavailable = 订阅登录但暂未返回；api = API 计费，没有订阅额度 */
+  status: 'ok' | 'unavailable' | 'api';
+  /** 登录方式（主进程按官方登录状态命令 / 本地配置判断，不读取凭据） */
+  auth?: 'subscription' | 'api' | 'unknown';
   windows: UsageQuotaWindow[];
   updatedAt?: number;
   plan?: string;
+}
+
+/** Claude Code 额度来源：用户可选开启的 statusline 快照 */
+export interface UsageQuotaHook {
+  supported: boolean;
+  enabled: boolean;
+  hadOwnStatusLine: boolean;
+  hasSnapshot: boolean;
+  problem?: 'invalid-settings' | 'unsupported-statusline';
 }
 
 interface AiBridge {
@@ -181,6 +193,8 @@ export const usageClient = {
   scan: () => call<UsageState & { added: number; files: number }>('scan'),
   clear: () => call<UsageState>('clear'),
   quota: () => call<UsageQuotaEntry[]>('quota'),
+  quotaHook: () => call<UsageQuotaHook>('quota-hook'),
+  setQuotaHook: (enabled: boolean) => call<UsageQuotaHook>('quota-hook-set', enabled),
   onChanged: (fn: () => void) => bridge()?.on('ai:usage:changed', () => fn()) ?? (() => undefined),
 };
 

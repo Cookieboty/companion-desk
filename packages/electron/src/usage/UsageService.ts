@@ -32,6 +32,15 @@ import {
   type Labels,
   type RangeId,
 } from './aggregate';
+import { AuthModeDetector, applyAuthModes, type AuthDeps, type AuthMode } from './authMode';
+import {
+  disableHook,
+  enableHook,
+  hookStatus,
+  readStatuslineSnapshot,
+  SNAPSHOT_FILE,
+  type HookStatus,
+} from './claudeStatusline';
 import { formatAmount, formatMoney, formatTokens } from './money';
 import {
   BUILTIN_PRICES,
@@ -128,6 +137,10 @@ type Deps = {
    * 且这条提醒不算「已提醒」。
    */
   alert?: (a: UsageAlert) => boolean;
+  /** 登录方式探测：运行官方「登录状态」命令（测试注入）；默认调用本机 claude / codex CLI */
+  authRun?: AuthDeps['run'];
+  /** 平台（测试注入）：statusline 快照脚本需要 sh，Windows 暂不支持 */
+  platform?: NodeJS.Platform;
 };
 
 export interface UsageAlert {
@@ -230,6 +243,7 @@ export class UsageService {
   /** Codex 日志里最近一次额度快照（落盘，重启后还能看到上次的） */
   private codexQuota: { ts: number; windows: QuotaWindow[]; plan?: string } | null = null;
   readonly quotaSources = new QuotaRegistry();
+  private readonly auth: AuthModeDetector;
   private sessionCache: {
     ver: number;
     prices: unknown;
@@ -244,6 +258,14 @@ export class UsageService {
     this.load();
     this.loadAlerts();
     this.loadQuota();
+    this.auth = new AuthModeDetector({
+      home: d.home,
+      now: d.now,
+      run: d.authRun,
+      // 日志 / 快照里已经有带额度的数据，说明是订阅登录
+      hasSubscriptionData: (id) =>
+        id === 'codex' ? !!this.codexQuota?.plan : !!readStatuslineSnapshot(d.root),
+    });
     this.quotaSources.register({
       id: 'codex',
       label: 'Codex',
@@ -255,6 +277,12 @@ export class UsageService {
               plan: this.codexQuota.plan,
             }
           : null,
+    });
+    this.quotaSources.register({
+      id: 'claude',
+      label: 'Claude Code',
+      // 用户开启 statusline 快照后，由官方 statusline 输入里的 rate_limits 提供
+      read: () => (this.settings.enabled ? readStatuslineSnapshot(this.d.root) : null),
     });
     this.ledger = new UsageLedger({ root: d.root, logger: d.logger, now: d.now });
     this.scanner = new UsageLogScanner({
@@ -342,6 +370,35 @@ export class UsageService {
       { id: 'dsh', label: 'dsh' },
       { id: 'nomi', label: 'Nomi' },
     ]);
+  }
+
+  /**
+   * 面板用：按登录方式过滤。订阅 / 账号登录才展示额度；API Key / 第三方供应商只显示「API 计费，无订阅额度」；
+   * Nomi 对话走 API，不出现在额度卡里。
+   */
+  async quotaView(): Promise<QuotaEntry[]> {
+    const modes: Record<string, AuthMode> = {};
+    for (const id of ['claude', 'codex', 'dsh', 'nomi'])
+      modes[id] = await this.auth.detect(id).catch(() => 'unknown' as AuthMode);
+    return applyAuthModes(this.quota(), modes, new Set(this.scanner.detected()));
+  }
+
+  quotaHookStatus(): HookStatus {
+    return hookStatus({ root: this.d.root, home: this.d.home, platform: this.d.platform });
+  }
+
+  /** 开启 / 关闭 Claude Code statusline 额度快照（用户在面板里主动操作） */
+  setQuotaHook(enabled: boolean): HookStatus {
+    const dep = {
+      root: this.d.root,
+      home: this.d.home,
+      platform: this.d.platform,
+      now: this.d.now,
+    };
+    const st = enabled ? enableHook(dep) : disableHook(dep);
+    this.auth.invalidate();
+    this.changed();
+    return st;
   }
 
   private saveAlerts(): void {
@@ -801,6 +858,7 @@ export class UsageService {
     this.codexQuota = null;
     try {
       fs.rmSync(this.quotaPath, { force: true });
+      fs.rmSync(path.join(this.d.root, SNAPSHOT_FILE), { force: true });
     } catch {
       /* 忽略 */
     }
@@ -858,7 +916,9 @@ export class UsageService {
     handle('ai:usage:details', (q) => this.details(dq(q)));
     handle('ai:usage:csv', (q) => this.csv(dq(q)));
     handle('ai:usage:set-settings', (p) => this.setSettings((p ?? {}) as Partial<UsageSettings>));
-    handle('ai:usage:quota', () => this.quota());
+    handle('ai:usage:quota', () => this.quotaView());
+    handle('ai:usage:quota-hook', () => this.quotaHookStatus());
+    handle('ai:usage:quota-hook-set', (v) => this.setQuotaHook(v === true));
     handle('ai:usage:scan', async () => {
       const r = await this.scan();
       return { ...r, ...this.state() };
