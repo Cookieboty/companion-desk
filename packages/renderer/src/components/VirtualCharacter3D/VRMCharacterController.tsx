@@ -20,6 +20,9 @@ import VRMModelFallback from './VRMModelFallback';
 /**
  * VRM 角色控制器：加载模型，并把它包装成 MascotBackend（口型/表情/眨眼/视线/待机）挂到 mascotRegistry。
  */
+/** 性能指标写入 store 的间隔（秒） */
+const PERF_REPORT_INTERVAL_S = 1;
+
 export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   modelPath,
   modelConfig,
@@ -39,7 +42,12 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
   const [useFallback, setUseFallback] = useState(false);
 
   const { scene } = useThree();
-  const { currentExpression, setIsLoaded, updatePerformanceMetrics } = useCharacter3DStore();
+  // 用选择器分别订阅：整仓订阅会让性能指标的每次写入都重渲染本组件
+  const currentExpression = useCharacter3DStore((s) => s.currentExpression);
+  const setIsLoaded = useCharacter3DStore((s) => s.setIsLoaded);
+  const updatePerformanceMetrics = useCharacter3DStore((s) => s.updatePerformanceMetrics);
+  // 帧率统计累加在 ref 里，每秒才写入一次 store（逐帧 set 会触发 60Hz 的 store 更新）
+  const perfAcc = useRef({ frames: 0, elapsed: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -140,14 +148,22 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
     // If we somehow stalled, still advance once so the pose doesn't freeze
     if (steps === 0) vrm.update(dt);
     onAnimationUpdate?.(vrm, dt);
-    updatePerformanceMetrics({
-      fps: 1 / Math.max(raw, 1e-4),
-      memoryMB:
-        ((performance as Performance & { memory?: { usedJSHeapSize: number } }).memory
-          ?.usedJSHeapSize ?? 0) /
-        1024 /
-        1024,
-    });
+    // 用未截断的真实帧间隔统计平均帧率（raw 被截到 1/20，会掩盖真正的卡顿）
+    const acc = perfAcc.current;
+    acc.frames += 1;
+    acc.elapsed += Math.max(delta, 0);
+    if (acc.elapsed >= PERF_REPORT_INTERVAL_S) {
+      updatePerformanceMetrics({
+        fps: acc.frames / acc.elapsed,
+        memoryMB:
+          ((performance as Performance & { memory?: { usedJSHeapSize: number } }).memory
+            ?.usedJSHeapSize ?? 0) /
+          1024 /
+          1024,
+      });
+      acc.frames = 0;
+      acc.elapsed = 0;
+    }
   });
 
   if (useFallback) {

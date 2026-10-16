@@ -104,6 +104,9 @@ importers:
       '@nomi-ai/voice':
         specifier: workspace:*
         version: link:../voice
+      lucide-react:
+        specifier: ^1.55.0
+        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -510,6 +513,10 @@ importers:
         version: 6.0.3
 
   packages/ui:
+    dependencies:
+      lucide-react:
+        specifier: ^1.55.0
+        version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
     devDependencies:
       '@testing-library/dom':
         specifier: ^10.4.2

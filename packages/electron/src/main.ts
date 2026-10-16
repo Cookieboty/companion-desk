@@ -103,17 +103,7 @@ async function main(): Promise<void> {
   }
 }
 
-// 优雅关闭处理
-async function gracefulShutdown(): Promise<void> {
-  if (application) {
-    await application.stop();
-  }
-  process.exit(0);
-}
-
-// 进程信号处理
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+// 退出（before-quit / SIGTERM / SIGINT）统一由 Application 处理，这里不再注册信号监听
 
 // 启动应用（仅主实例）
 if (isPrimaryInstance)

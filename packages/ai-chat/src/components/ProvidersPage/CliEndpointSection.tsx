@@ -13,7 +13,9 @@ import {
   Notice,
   ToastProvider,
   t,
+  Icon,
 } from '@nomi-ai/ui';
+import { CloudCog, Plus, Zap } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -259,7 +261,8 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
                 data-testid="cli-add-provider"
                 onClick={() => setView({ kind: 'add' })}
               >
-                {t('＋ 添加供应商')}
+                <Icon icon={Plus} size={14} />
+                {t('添加供应商')}
               </Button>
             </div>
             <dl className={styles.facts}>
@@ -307,7 +310,7 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
 
             {profiles.length === 0 && (
               <EmptyState
-                icon="🔌"
+                icon={CloudCog}
                 title={t('还没有第三方供应商')}
                 description={t('点「添加供应商」，选择预设模板或自定义配置')}
               />
@@ -371,7 +374,8 @@ export const CliEndpointSection: React.FC<{ kind: CliProviderKind }> = ({ kind }
                         data-testid="cli-provider-test"
                         onClick={() => void test(p)}
                       >
-                        {t('⚡ 测速')}
+                        <Icon icon={Zap} size={14} />
+                        {t('测速')}
                       </Button>
                       <Button
                         size="sm"

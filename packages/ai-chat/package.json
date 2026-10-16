@@ -18,6 +18,7 @@
     "@nomi-ai/ai-sdk-client": "workspace:*",
     "@nomi-ai/ui": "workspace:*",
     "@nomi-ai/voice": "workspace:*",
+    "lucide-react": "^1.55.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-window": "^2.3.3"

@@ -14,12 +14,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { BrowserWindow, dialog } from 'electron';
 
 import { t } from '../i18n';
+import { guardedHandle } from '../security/guardedIpc';
 
 import { buildCliEnv } from './cliEnv';
 import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
+import { killProcessTree } from './processTree';
 import { createClaudeParser, createDshParser, parseCodexLine } from './streamParse';
 import type {
   HarnessBackend,
@@ -94,6 +96,8 @@ export class CliHarnessService {
   private readonly tabs = new Map<string, HarnessTabMeta>();
   private readonly messages = new Map<string, HarnessTabMessage[]>();
   private readonly children = new Map<string, ChildProcessWithoutNullStreams>();
+  /** tabId → 当前这一轮最近的输出 / 步骤（轻量进度提示，仅内存；供监视器定时汇总用） */
+  private readonly progress = new Map<string, { kind: 'text' | 'tool'; value: string }>();
   /** tabId → requestId → timer；超时自动拒绝 */
   private readonly pendingPermissions = new Map<
     string,
@@ -481,6 +485,7 @@ export class CliHarnessService {
     const idx = order.indexOf(id);
     this.tabs.delete(id);
     this.messages.delete(id);
+    this.progress.delete(id);
     try {
       fs.rmSync(this.messagesPath(id), { force: true });
     } catch {
@@ -584,18 +589,14 @@ export class CliHarnessService {
     return true;
   }
 
-  /** 测试 / 应用退出：拆除所有长驻 Claude 与残留子进程 */
+  /** 测试 / 应用退出：拆除所有长驻 Claude 与残留子进程（含其子孙进程）、清掉所有定时器 */
   dispose(): void {
     for (const id of [...this.claudeLive.keys()]) this.teardownClaudeLive(id);
     for (const [id, child] of [...this.children.entries()]) {
-      try {
-        child.kill();
-      } catch {
-        /* */
-      }
+      killProcessTree(child);
       this.children.delete(id);
-      this.clearPermissionTimeouts(id);
     }
+    for (const id of [...this.pendingPermissions.keys()]) this.clearPermissionTimeouts(id);
   }
 
   /** 发送一轮到指定标签；多个标签并发，超出上限排队 */
@@ -679,6 +680,7 @@ export class CliHarnessService {
   }
 
   private finish(tab: HarnessTabMeta, ok: boolean, text: string, error?: string) {
+    this.progress.delete(tab.id);
     const background = this.activeTabId !== tab.id || !anyWindowFocused();
     if (background && tab.id !== MAIN_TAB_ID) tab.unread += 1;
     this.changed();
@@ -934,7 +936,7 @@ export class CliHarnessService {
     }
     try {
       if (!child.killed && child.exitCode === null) {
-        child.kill('SIGKILL');
+        killProcessTree(child);
       }
     } catch {
       /* */
@@ -1112,7 +1114,33 @@ export class CliHarnessService {
     }
   }
 
+  /** 记下一轮里最近的文本 / 工具步骤，不做任何额外计算或模型调用 */
+  private trackProgress(tabId: string, ev: HarnessEvent) {
+    const prev = this.progress.get(tabId);
+    if (ev.type === 'text-delta' || ev.type === 'text') {
+      const base = prev?.kind === 'text' ? prev.value : '';
+      this.progress.set(tabId, {
+        kind: 'text',
+        value: (ev.type === 'text' ? ev.text : base + ev.text).slice(-400),
+      });
+    } else if (ev.type === 'tool' && ev.status === 'start') {
+      this.progress.set(tabId, {
+        kind: 'tool',
+        value: (ev.detail ? `${ev.name} ${ev.detail}` : ev.name).slice(0, 160),
+      });
+    }
+  }
+
+  /** 标签当前这一轮的进度提示（最近一段文本或「正在执行 工具」）；没有则 undefined */
+  progressHint(tabId: string): string | undefined {
+    const p = this.progress.get(tabId);
+    if (!p?.value.trim()) return undefined;
+    const v = p.value.replace(/\s+/g, ' ').trim();
+    return p.kind === 'tool' ? t('正在执行 {0}', v) : v;
+  }
+
   private emitEvent(tabId: string, ev: HarnessEvent) {
+    this.trackProgress(tabId, ev);
     this.post('ai:harness:event', { ...ev, tabId });
     this.events.emit('event', { tabId, event: ev });
   }
@@ -1157,12 +1185,12 @@ export class CliHarnessService {
     }
     const prev = m.get(requestId);
     if (prev) clearTimeout(prev);
-    m.set(
-      requestId,
-      setTimeout(() => {
-        this.replyPermission(tabId, requestId, false);
-      }, PERMISSION_TIMEOUT_MS),
-    );
+    const timer = setTimeout(() => {
+      this.replyPermission(tabId, requestId, false);
+    }, PERMISSION_TIMEOUT_MS);
+    // 权限卡 120s 超时不应拖住进程退出
+    (timer as { unref?: () => void }).unref?.();
+    m.set(requestId, timer);
   }
 
   private clearOnePermissionTimeout(tabId: string, requestId: string) {
@@ -1181,16 +1209,8 @@ export class CliHarnessService {
   }
 
   registerIpc(): void {
-    const handle = (ch: string, fn: (...a: unknown[]) => unknown) => {
-      ipcMain.removeHandler(ch);
-      ipcMain.handle(ch, async (_e, ...a) => {
-        try {
-          return await fn(...a);
-        } catch (err) {
-          return { __error: { message: err instanceof Error ? err.message : String(err) } };
-        }
-      });
-    };
+    const handle = (ch: string, fn: (...a: unknown[]) => unknown) =>
+      guardedHandle(ch, fn, { owner: 'CliHarnessService' });
     handle('ai:harness:state', () => this.state());
     handle('ai:harness:set-backend', (b) => this.setBackend(b as HarnessBackend));
     handle('ai:harness:set-cwd', (c) => this.setCwd(String(c)));

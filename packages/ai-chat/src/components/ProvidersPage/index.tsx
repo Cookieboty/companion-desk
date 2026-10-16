@@ -3,10 +3,11 @@
  * - 四个端点各自独立：Nomi 是自有 AI 的供应商 + 任务路由（存于 ai-providers.json）；
  *   Claude Code / Codex / dsh 用与 Nomi 相同的供应商卡片交互（预设模板、添加 / 编辑 / 启用 / 测速 / 删除），
  *   默认「使用 CLI 自带登录/默认配置」；每个 CLI 端点还有「版本」卡片（检测 / 更新 / 安装）与「高级」（本地路由）。
- * - 监视与会话：本机编程助手进度监视设置 + 活跃会话列表（原「日程与提醒 → 编程助手」标签，已移到这里）。
+ * - 监视与会话：本机编程助手进度监视设置 + 活跃会话列表。
  * 切换标签只是换一个视图，不会改任何配置。
  */
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
+import { Radio } from 'lucide-react';
 import React from 'react';
 
 import { useProviderEndpoint } from '../../hooks/useProviderEndpoint';
@@ -81,7 +82,7 @@ export const ProvidersPage: React.FC<{
             data-testid="providers-endpoint-monitor"
             onClick={() => setEp('monitor')}
           >
-            <span aria-hidden>📡</span>
+            <Icon icon={Radio} />
             {t('监视与会话')}
           </button>
         </div>

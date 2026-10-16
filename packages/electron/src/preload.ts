@@ -1,5 +1,5 @@
 import { mkAiPreload } from '@nomi-ai/ai-sdk-client/preload';
-import { type IpcApi } from '@nomi-ai/types';
+import { type DesktopBubble, type IpcApi } from '@nomi-ai/types';
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 // 挂载 ai IPC 桥：`window.aiIPC.invoke/on/off` 走白名单校验的 `ai:` 通道。
@@ -64,8 +64,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.removeListener('desktop:confirm-cancel', l);
       };
     },
-    onBubble: (cb: (p: { text: string }) => void) => {
-      const l = (_: unknown, p: { text: string }) => cb(p);
+    onBubble: (cb: (p: DesktopBubble) => void) => {
+      const l = (_: unknown, p: DesktopBubble) => cb(p);
       ipcRenderer.on('desktop:bubble', l);
       return () => {
         ipcRenderer.removeListener('desktop:bubble', l);

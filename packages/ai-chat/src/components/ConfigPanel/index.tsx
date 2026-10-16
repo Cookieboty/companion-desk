@@ -1,5 +1,6 @@
 import { t } from '@nomi-ai/ui';
 import { Badge, Button, Card, EmptyState, FormField, Input, Modal, Switch } from '@nomi-ai/ui';
+import { Bot } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -143,7 +144,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
       ) : (
         <div className={styles.modelList}>
           <h3 className="cd-section-title">{t('可用模型')}</h3>
-          {state.models.length === 0 && <EmptyState icon="🤖" title={t('暂无模型')} />}
+          {state.models.length === 0 && <EmptyState icon={Bot} title={t('暂无模型')} />}
           {state.models.map((model) => (
             <Card
               key={model.id}

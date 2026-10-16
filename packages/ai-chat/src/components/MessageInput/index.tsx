@@ -1,4 +1,5 @@
-import { t as tr } from '@nomi-ai/ui';
+import { t as tr, Icon } from '@nomi-ai/ui';
+import { BookOpen, Pin, X, ArrowUp, Plus, Square } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -17,10 +18,16 @@ import {
   type RawAttachment,
   type ImageAttachment,
 } from '../../services/screenClient';
-import { getBindings, matchShortcut } from '../../services/shortcuts';
+import {
+  formatCombo,
+  getBindings,
+  matchShortcut,
+  useShortcutBindings,
+} from '../../services/shortcuts';
 import { AppIcon, FEATURE_ICONS } from '../AppIcons';
 import { EndpointControls } from '../EndpointControls';
 import { ErrorHint } from '../ErrorHint';
+import type { SettingsSection } from '../SettingsView/sections';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
 
 import styles from './index.module.css';
@@ -35,14 +42,13 @@ interface MessageInputProps {
   onConfigClick?: () => void;
   onProvidersClick?: () => void;
   onDesktopClick?: () => void;
-  onKnowledgeClick?: () => void;
-  onMemoryClick?: () => void;
-  onScheduleClick?: () => void;
+  /** 打开「知识 · 记忆 · 日程」快速视图 */
+  onHubClick?: () => void;
   onScreenClick?: () => void;
   onExtClick?: () => void;
   onLocalClick?: () => void;
   /** 打开统一设置页的某个分区 */
-  onSettingsClick?: (section?: string, endpoint?: string) => void;
+  onSettingsClick?: (section?: SettingsSection, endpoint?: string) => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -53,14 +59,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onConfigClick,
   onProvidersClick,
   onDesktopClick,
-  onKnowledgeClick,
-  onMemoryClick,
-  onScheduleClick,
+  onHubClick,
   onScreenClick,
   onExtClick,
   onLocalClick,
   onSettingsClick,
 }) => {
+  const bindings = useShortcutBindings();
   const [message, setMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const { pins, update: updatePins } = usePins();
@@ -290,6 +295,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     disabled ||
     (busyOverride !== undefined ? busyOverride : state.isLoading || !state.currentModelId);
 
+  // Nomi 流式生成中：发送键变为「停止」（CLI 标签自带忙碌状态，不走这里）
+  const canStop = busyOverride === undefined && state.streaming;
+
   // 语音：自动发送（对话空闲时）或填入输入框
   const busyRef = useRef(false);
   busyRef.current = isDisabled;
@@ -329,7 +337,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'kb',
       icon: <AppIcon icon={FEATURE_ICONS.kb} />,
       label: kbMode ? tr('知识库问答：开') : tr('知识库问答：关'),
-      hint: '⌘/Ctrl+Shift+K',
+      hint: formatCombo(bindings.kbAsk),
       testId: 'kb-mode-toggle',
       menu: true,
       run: toggleKb,
@@ -338,9 +346,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'snip',
-      icon: <AppIcon icon={FEATURE_ICONS.fork} />,
+      icon: <AppIcon icon={FEATURE_ICONS.snip} />,
       label: tr('截图提问'),
-      hint: '⌘/Ctrl+Shift+S',
+      hint: formatCombo(bindings.snip),
       testId: 'snip-button',
       menu: true,
       run: () => void snip(),
@@ -348,7 +356,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'model',
-      icon: <AppIcon icon={FEATURE_ICONS.settings} />,
+      icon: <AppIcon icon={FEATURE_ICONS.model} />,
       label: provOk ? tr('供应商与模型') : tr('配置模型'),
       testId: 'open-config',
       menu: true,
@@ -365,37 +373,19 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       show: cv.v.available,
     },
     {
-      id: 'kbm',
-      icon: <AppIcon icon={FEATURE_ICONS.files} />,
-      label: tr('知识库管理'),
-      hint: '⌘/Ctrl+Shift+L',
-      testId: 'open-kb-panel',
-      run: () => onKnowledgeClick?.(),
-      show: !!onKnowledgeClick && kbAvailable,
-    },
-    {
-      id: 'memory',
-      icon: <AppIcon icon={FEATURE_ICONS.memory} />,
-      label: tr('长期记忆'),
-      hint: '⌘/Ctrl+Shift+M',
-      testId: 'open-mem-panel',
-      run: () => onMemoryClick?.(),
-      show: !!onMemoryClick && memClient.available(),
-    },
-    {
-      id: 'schedule',
-      icon: <AppIcon icon={FEATURE_ICONS.schedule} />,
-      label: tr('日程 · 提醒 · 编程助手'),
-      hint: '⌘/Ctrl+Shift+D',
-      testId: 'open-sched-panel',
-      run: () => onScheduleClick?.(),
-      show: !!onScheduleClick && schedClient.available(),
+      id: 'hub',
+      icon: <AppIcon icon={FEATURE_ICONS.hub} />,
+      label: tr('知识 · 记忆 · 日程'),
+      hint: formatCombo(bindings.hub),
+      testId: 'open-hub-panel',
+      run: () => onHubClick?.(),
+      show: !!onHubClick && (kbAvailable || memClient.available() || schedClient.available()),
     },
     {
       id: 'screen',
       icon: <AppIcon icon={FEATURE_ICONS.screen} />,
       label: tr('截图与屏幕记忆'),
-      hint: '⌘/Ctrl+Shift+O',
+      hint: formatCombo(bindings.screen),
       testId: 'open-screen-panel',
       run: () => onScreenClick?.(),
       show: !!onScreenClick && screenOk,
@@ -404,7 +394,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'ext',
       icon: <AppIcon icon={FEATURE_ICONS.ext} />,
       label: tr('扩展：MCP 与技能'),
-      hint: '⌘/Ctrl+Shift+E',
+      hint: formatCombo(bindings.ext),
       testId: 'open-ext-panel',
       run: () => onExtClick?.(),
       show: !!onExtClick && extClient.available(),
@@ -421,16 +411,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'local',
       icon: <AppIcon icon={FEATURE_ICONS.local} />,
       label: tr('本地中心（辅助）'),
-      hint: '⌘/Ctrl+Shift+J',
+      hint: formatCombo(bindings.local),
       testId: 'open-local-panel',
       run: () => onLocalClick?.(),
       show: !!onLocalClick && extClient.available(),
     },
     {
       id: 'settings',
-      icon: <AppIcon icon={FEATURE_ICONS.appSettings} />,
+      icon: <AppIcon icon={FEATURE_ICONS.settings} />,
       label: tr('全部设置…'),
-      hint: '⌘/Ctrl+,',
+      hint: formatCombo(bindings.settings),
       testId: 'composer-settings',
       run: () => onSettingsClick?.(),
       show: !!onSettingsClick,
@@ -522,7 +512,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             aria-pressed={pinned}
             data-testid={`pin-toggle-${c.id}`}
           >
-            📌
+            <Icon icon={Pin} size={14} />
           </button>
         </div>
       );
@@ -546,7 +536,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 aria-label={tr('移除图片')}
                 onClick={() => setImages((c) => c.filter((x) => x.id !== i.id))}
               >
-                ×
+                <Icon icon={X} size={12} />
               </button>
             </div>
           ))}
@@ -630,9 +620,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               aria-label={tr('更多功能')}
               data-testid="composer-more"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11 5h2v14h-2zM5 11h14v2H5z" />
-              </svg>
+              <Icon icon={Plus} />
             </button>
             {menuOpen && (
               <div className={styles.menu} role="menu" data-testid="composer-menu">
@@ -651,7 +639,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               title={tr('知识库问答已开启，点击关闭')}
               data-testid="kb-mode-chip"
             >
-              {tr('📚 知识库')}
+              <Icon icon={BookOpen} size={14} />
+              {tr('知识库')}
             </button>
           )}
           <div className={styles.modelStatus}>
@@ -673,21 +662,32 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </div>
           <span className={styles.spacer} />
           <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
-          <button
-            onClick={handleSend}
-            disabled={isDisabled || (!message.trim() && !images.length)}
-            className={styles.sendButton}
-            title={tr('发送消息 (Enter)')}
-            aria-label={tr('发送')}
-          >
-            {(busyOverride ?? state.isLoading) ? (
-              <div className={styles.loadingSpinner} />
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 4l-7 7 1.4 1.4L11 7.8V20h2V7.8l4.6 4.6L19 11z" />
-              </svg>
-            )}
-          </button>
+          {canStop ? (
+            <button
+              type="button"
+              onClick={actions.stopGeneration}
+              className={styles.sendButton}
+              title={tr('停止生成')}
+              aria-label={tr('停止生成')}
+              data-testid="stop-button"
+            >
+              <Icon icon={Square} />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={isDisabled || (!message.trim() && !images.length)}
+              className={styles.sendButton}
+              title={tr('发送消息 (Enter)')}
+              aria-label={tr('发送')}
+            >
+              {(busyOverride ?? state.isLoading) ? (
+                <div className={styles.loadingSpinner} />
+              ) : (
+                <Icon icon={ArrowUp} />
+              )}
+            </button>
+          )}
         </div>
       </div>
       <VoiceSettingsModal cv={cv} />

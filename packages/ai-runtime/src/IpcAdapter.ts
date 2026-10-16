@@ -15,6 +15,8 @@ export interface IpcInvokeEvent {
   senderUrl?: string;
   /** 直接对发送方 send 事件（chunk 通道用） */
   send(channel: string, payload: unknown): void;
+  /** 发送方窗口 / webContents 是否已销毁（长流式调用中途窗口被关闭时用来停止推送） */
+  isDestroyed?(): boolean;
 }
 
 export type IpcHandler = (event: IpcInvokeEvent, ...args: unknown[]) => unknown | Promise<unknown>;
@@ -59,12 +61,14 @@ export function createElectronIpcAdapter(): IpcAdapter {
     sender: {
       id: number;
       getURL?: () => string;
+      isDestroyed?: () => boolean;
       send(channel: string, payload: unknown): void;
     };
   }): IpcInvokeEvent => ({
     senderId: e.sender.id,
     senderUrl: e.sender.getURL?.(),
     send: (ch, payload) => e.sender.send(ch, payload),
+    isDestroyed: () => e.sender.isDestroyed?.() ?? false,
   });
 
   return {

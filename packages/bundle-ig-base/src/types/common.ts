@@ -25,9 +25,14 @@ export interface ChatRequest {
 }
 
 export interface ChatUsage {
+  /** 输入 token 总数（含缓存命中 / 写入部分） */
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** 命中缓存的输入 token（上游返回时才有） */
+  cacheReadTokens?: number;
+  /** 写入缓存的输入 token（上游返回时才有） */
+  cacheWriteTokens?: number;
 }
 
 export interface ChatResponse {
@@ -44,7 +49,7 @@ export interface ChatResponse {
 export type ChatChunk =
   | { type: 'delta'; content: string }
   | { type: 'tool_call.delta'; index: number; name?: string; argumentsJson?: string }
-  | { type: 'usage'; usage: ChatUsage }
+  | { type: 'usage'; usage: ChatUsage; /** 实际使用的上游模型名 */ model?: string }
   | { type: 'done'; finishReason: ChatResponse['finishReason'] }
   | { type: 'error'; error: string };
 
