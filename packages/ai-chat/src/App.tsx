@@ -123,7 +123,7 @@ const AiChatContent: React.FC = () => {
   // 托盘「桌面能力…」→ 打开桌面能力面板
   useEffect(() => desktopClient.onOpenPanel(() => setShowDesktop(true)), []);
   const [showHub, setShowHub] = useState(false);
-  const [hubTab, setHubTab] = useState<HubTab>('memory');
+  const [hubTab, setHubTab] = useState<HubTab>('kb');
   const [showScreen, setShowScreen] = useState(false);
   const [showExt, setShowExt] = useState(false);
   const [showLocal, setShowLocal] = useState(false);

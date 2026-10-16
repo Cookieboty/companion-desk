@@ -13,6 +13,7 @@ import { AppIcon } from '../AppIcons';
 import { ConfigPanel, ExtensionsPanel, LocalPanel, UsagePanel } from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
 import { ProvidersPage } from '../ProvidersPage';
+import type { ScreenTab } from '../ScreenPanel';
 
 import { AppIconSettings } from './AppIconSettings';
 import styles from './index.module.css';
@@ -51,6 +52,8 @@ interface Props {
 type TabState = Partial<Record<keyof typeof SECTION_TABS, string>>;
 
 export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, deepLink }) => {
+  // 站内跳转指定的「屏幕」内层标签；从侧栏进入其它分区时清掉
+  const [screenSub, setScreenSub] = useState<ScreenTab | undefined>();
   const [localTab, setLocalTab] = useState<'export' | undefined>();
   // 有标签页的分区各自记住当前标签（离开设置页后重置）
   const [tabs, setTabs] = useState<TabState>(() =>
@@ -68,8 +71,9 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, dee
   const setTab = (s: keyof typeof SECTION_TABS, tab: string) =>
     setTabs((p) => ({ ...p, [s]: tab }));
   /** 站内跳转：可同时指定目标分区的标签 */
-  const go = (s: SettingsSection, tab?: SettingsTab) => {
+  const go = (s: SettingsSection, tab?: SettingsTab, sub?: ScreenTab) => {
     if (tab && s in SECTION_TABS) setTab(s as keyof typeof SECTION_TABS, tab);
+    setScreenSub(sub);
     onSection(s);
   };
   const inline = useMemo(() => ({ mode: 'inline' as const }), []);
@@ -124,7 +128,13 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, dee
       case 'usage':
         return <UsagePanel />;
       case 'senses':
-        return <SensesSection tab={tabOf('senses')} onTab={(x) => setTab('senses', x)} />;
+        return (
+          <SensesSection
+            tab={tabOf('senses')}
+            onTab={(x) => setTab('senses', x)}
+            screenTab={screenSub}
+          />
+        );
       case 'knowledge':
         return <KnowledgeSection tab={tabOf('knowledge')} onTab={(x) => setTab('knowledge', x)} />;
       case 'schedule':
@@ -180,6 +190,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, dee
             aria-current={s.id === section ? 'page' : undefined}
             onClick={() => {
               setLocalTab(undefined);
+              setScreenSub(undefined);
               onSection(s.id);
             }}
             data-testid={`settings-nav-${s.id}`}

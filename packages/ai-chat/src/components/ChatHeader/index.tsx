@@ -69,7 +69,7 @@ export const ChatHeader: React.FC<Props> = (p) => {
     },
     {
       k: 'local',
-      tip: t('本机管理（剪贴板 · 导出 · 小模型）'),
+      tip: t('本机管理（剪贴板 · 导出 · 小模型 · Ollama）'),
       key: formatCombo(bindings.local),
       id: 'open-local-panel',
       pin: 'local',

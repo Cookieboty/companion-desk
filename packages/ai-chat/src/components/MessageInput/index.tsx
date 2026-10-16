@@ -18,7 +18,12 @@ import {
   type RawAttachment,
   type ImageAttachment,
 } from '../../services/screenClient';
-import { getBindings, matchShortcut } from '../../services/shortcuts';
+import {
+  formatCombo,
+  getBindings,
+  matchShortcut,
+  useShortcutBindings,
+} from '../../services/shortcuts';
 import { AppIcon, FEATURE_ICONS } from '../AppIcons';
 import { EndpointControls } from '../EndpointControls';
 import { ErrorHint } from '../ErrorHint';
@@ -60,6 +65,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onLocalClick,
   onSettingsClick,
 }) => {
+  const bindings = useShortcutBindings();
   const [message, setMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const { pins, update: updatePins } = usePins();
@@ -331,7 +337,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'kb',
       icon: <AppIcon icon={FEATURE_ICONS.kb} />,
       label: kbMode ? tr('知识库问答：开') : tr('知识库问答：关'),
-      hint: '⌘/Ctrl+Shift+K',
+      hint: formatCombo(bindings.kbAsk),
       testId: 'kb-mode-toggle',
       menu: true,
       run: toggleKb,
@@ -342,7 +348,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'snip',
       icon: <AppIcon icon={FEATURE_ICONS.snip} />,
       label: tr('截图提问'),
-      hint: '⌘/Ctrl+Shift+S',
+      hint: formatCombo(bindings.snip),
       testId: 'snip-button',
       menu: true,
       run: () => void snip(),
@@ -370,7 +376,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'hub',
       icon: <AppIcon icon={FEATURE_ICONS.hub} />,
       label: tr('知识 · 记忆 · 日程'),
-      hint: '⌘/Ctrl+Shift+M',
+      hint: formatCombo(bindings.hub),
       testId: 'open-hub-panel',
       run: () => onHubClick?.(),
       show: !!onHubClick && (kbAvailable || memClient.available() || schedClient.available()),
@@ -379,7 +385,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'screen',
       icon: <AppIcon icon={FEATURE_ICONS.screen} />,
       label: tr('截图与屏幕记忆'),
-      hint: '⌘/Ctrl+Shift+O',
+      hint: formatCombo(bindings.screen),
       testId: 'open-screen-panel',
       run: () => onScreenClick?.(),
       show: !!onScreenClick && screenOk,
@@ -388,7 +394,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'ext',
       icon: <AppIcon icon={FEATURE_ICONS.ext} />,
       label: tr('扩展：MCP 与技能'),
-      hint: '⌘/Ctrl+Shift+E',
+      hint: formatCombo(bindings.ext),
       testId: 'open-ext-panel',
       run: () => onExtClick?.(),
       show: !!onExtClick && extClient.available(),
@@ -405,7 +411,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'local',
       icon: <AppIcon icon={FEATURE_ICONS.local} />,
       label: tr('本地中心（辅助）'),
-      hint: '⌘/Ctrl+Shift+J',
+      hint: formatCombo(bindings.local),
       testId: 'open-local-panel',
       run: () => onLocalClick?.(),
       show: !!onLocalClick && extClient.available(),
@@ -414,7 +420,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       id: 'settings',
       icon: <AppIcon icon={FEATURE_ICONS.settings} />,
       label: tr('全部设置…'),
-      hint: '⌘/Ctrl+,',
+      hint: formatCombo(bindings.settings),
       testId: 'composer-settings',
       run: () => onSettingsClick?.(),
       show: !!onSettingsClick,

@@ -8,6 +8,7 @@ import React from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
 import { DesktopPanel } from '../lazyPanels';
+import type { ScreenTab } from '../ScreenPanel';
 
 import styles from './index.module.css';
 import { SectionPage } from './SectionPage';
@@ -19,7 +20,7 @@ export const PrivacySection: React.FC<{
   tab: PrivacyTab;
   onTab: (tab: PrivacyTab) => void;
   /** 跳到别的分区（可带标签） */
-  go: (section: SettingsSection, tab?: SettingsTab) => void;
+  go: (section: SettingsSection, tab?: SettingsTab, sub?: ScreenTab) => void;
   onExport: () => void;
 }> = ({ tab, onTab, go, onExport }) => {
   const { actions } = useAiChat();
@@ -55,7 +56,7 @@ export const PrivacySection: React.FC<{
             <button
               type="button"
               className="cd-btn cd-btn--sm"
-              onClick={() => go('senses', 'screen')}
+              onClick={() => go('senses', 'screen', 'privacy')}
             >
               {t('屏幕记忆与排除')}
             </button>
