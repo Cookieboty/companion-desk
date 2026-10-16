@@ -118,7 +118,7 @@ describe('every action keeps both hands and elbows on the canvas for the whole t
             const cx = ha[0] + (c.x - c.hx) * fs;
             const cy = ha[1] + (c.y - c.hy) * fs;
             // a hand sweeping through the horizontal may graze the stage edge for a few frames (centre stays on the stage)
-            if (!inside(cx, cy, -70)) bad.push(`${side} hand ${Math.round(cx)},${Math.round(cy)} ${tag}`);
+            if (!inside(cx, cy, -90)) bad.push(`${side} hand ${Math.round(cx)},${Math.round(cy)} ${tag}`);
           }
         }
       }

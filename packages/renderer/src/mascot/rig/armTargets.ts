@@ -19,9 +19,9 @@ const at = (p: readonly [number, number], dx = 0, dy = 0): [number, number] => [
 ];
 
 export const ARM_TARGETS: Record<string, ArmTarget> = {
-  waveOut: { hand: 'wave', t: [780, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
-  waveUp: { hand: 'wave', t: [780, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
-  waveHigh: { hand: 'wave', t: [775, 290], angle: 0, z: 0.3, elbow: 1, hint: [55, 115] },
+  waveOut: { hand: 'wave', t: [700, 240], angle: 0, z: 0.85, elbow: 1, hint: [50, 120] },
+  waveUp: { hand: 'wave', t: [700, 240], angle: 0, z: 0.85, elbow: 1, hint: [50, 120] },
+  waveHigh: { hand: 'wave', t: [680, 230], angle: 4, z: 0.85, elbow: 1, hint: [55, 120] },
   fistUp: { hand: 'fist', t: [775, 330], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
   fistLow: { hand: 'fist', t: [770, 345], angle: 0, z: 0.3, elbow: 1, hint: [40, 115] },
   peaceUp: { hand: 'peace', t: [775, 320], angle: 0, z: 0.3, elbow: 1, hint: [45, 115] },
@@ -36,7 +36,7 @@ export const ARM_TARGETS: Record<string, ArmTarget> = {
   chinThink: { hand: 'rest', t: at(LM.chinR, 12, 12), angle: 24, z: 0.4, elbow: -1, hint: [-40, -100] },
   cheek: { hand: 'rest', t: at(LM.cheekR, 6, 36), angle: -10, z: 0.45, elbow: -1, hint: [-40, -100] },
   cheekPaw: { hand: 'fist', t: at(LM.cheekR, 4, 44), angle: -16, z: 0.45, elbow: -1, hint: [-40, -100] },
-  hairTouch: { hand: 'rest', t: [640, 260], angle: -15, z: 0.3, elbow: 1, hint: [70, 100] },
+  hairTouch: { hand: 'rest', t: [640, 260], angle: -20, z: 0.7, elbow: 1, hint: [90, 110] },
   temple: { hand: 'rest', t: at(LM.templeR, 4, 16), angle: 25, z: 0.35, hint: [95, 85] },
   visor: { hand: 'rest', t: [590, 250], angle: -45, z: 0.35, hint: [105, 105] },
   coverFace: { hand: 'rest', t: [520, 340], angle: -8, z: 0.45, hint: [-40, -100] },

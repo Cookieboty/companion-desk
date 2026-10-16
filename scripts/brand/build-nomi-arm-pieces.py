@@ -28,7 +28,7 @@ MODEL = ROOT / 'packages/renderer/public/assets/models/sprite/nomi'
 # Keep in sync with packages/renderer/src/mascot/rig/armKin.ts
 ELBOW_S = 340
 HAND_S = 560
-OVERLAP = 28  # px of feathered overlap — keep hinge sharp (was 56)
+OVERLAP = 48  # px of feathered overlap — keep hinge sharp (was 56)
 
 
 def feather(alpha: np.ndarray, dist: np.ndarray, lo: float, hi: float, into: str) -> np.ndarray:
@@ -120,30 +120,34 @@ def cut(side: str, geom: dict):
     n = (xs + 0.5 - geom['s0'][0]) * wx + (ys + 0.5 - geom['s0'][1]) * wy
     out = {}
 
-    # --- upper: s < ELBOW + OVERLAP, feather out toward distal
+    # --- upper / fore: generous INNER overlap seals the crook; OUTER hard-cut prevents balloon.
     upper = a.copy()
     keep = s < ELBOW_S + OVERLAP
     upper[~keep] = 0
-    upper[..., 3] = feather(upper[..., 3], s, ELBOW_S + OVERLAP * 0.15, ELBOW_S + OVERLAP, 'hi')
-    # --- fore: s > ELBOW - OVERLAP, feather in from proximal
+    upper[..., 3] = feather(upper[..., 3], s, ELBOW_S + OVERLAP * 0.2, ELBOW_S + OVERLAP, 'hi')
     fore = taper_forearm(a, geom, ux, uy, wx, wy)
     keep = (s > ELBOW_S - OVERLAP) & (s < HAND_S + 6)
     fore[~keep] = 0
-    fore[..., 3] = feather(fore[..., 3], s, ELBOW_S - OVERLAP, ELBOW_S - OVERLAP * 0.15, 'lo')
-    # Hard OUTER hinge cut: on the outer half of the sleeve, end upper and start fore
-    # at the elbow so a high bend cannot fan rest-pose material into a rubber-hose balloon.
-    # Inner half still overlaps (upper over fore) to seal the crook.
+    fore[..., 3] = feather(fore[..., 3], s, ELBOW_S - OVERLAP, ELBOW_S - OVERLAP * 0.2, 'lo')
     outer = n * sgn
-    # upper: kill distal outer beyond the elbow
-    outer_w = np.clip(outer / 35, 0, 1)
-    kill_u = np.clip((s - (ELBOW_S - 2)) / 22, 0, 1) * outer_w
+    outer_w = np.clip(outer / 32, 0, 1)
+    kill_u = np.clip((s - (ELBOW_S - 4)) / 18, 0, 1) * outer_w
     kill_u = kill_u * kill_u * (3 - 2 * kill_u)
     upper[..., 3] = (upper[..., 3].astype(np.float64) * (1 - kill_u)).astype(np.uint8)
-    # fore: kill proximal outer before the elbow
-    kill_f = np.clip(((ELBOW_S + 2) - s) / 22, 0, 1) * outer_w
+    kill_f = np.clip(((ELBOW_S + 4) - s) / 18, 0, 1) * outer_w
     kill_f = kill_f * kill_f * (3 - 2 * kill_f)
     fore[..., 3] = (fore[..., 3].astype(np.float64) * (1 - kill_f)).astype(np.uint8)
-
+    # Soft-fade master's elbow crease on distal upper (prevents ghost line through the fore).
+    # Keep most opacity so the crook stays solid when upper sits over fore.
+    crease = np.clip((s - (ELBOW_S - 30)) / 30, 0, 1)
+    upper[..., 3] = (upper[..., 3].astype(np.float64) * (1 - 0.4 * crease * crease)).astype(np.uint8)
+    # Clamp strap / hardware: fade dark pixels on the distal tip (last ~36px of upper)
+    # so buckle/strap ends never float in the crook when the sleeve bends.
+    tip = np.clip((s - (ELBOW_S - 48)) / 48, 0, 1)
+    dark = (upper[..., 0].astype(np.float64) + upper[..., 1] + upper[..., 2]) / 3.0
+    is_hw = (dark < 110) & (upper[..., 3] > 60)
+    kill_hw = (tip * is_hw.astype(np.float64))  # linear fade over tip — full kill at elbow
+    upper[..., 3] = (upper[..., 3].astype(np.float64) * (1.0 - kill_hw)).astype(np.uint8)
     # --- elbow sweep strip: the sleeve cross-section at the elbow (official pixels, averaged over a
     # few px of s). The renderer sweeps it through the bend angle about the elbow, so the OUTER corner
     # is a clean round hinge in the sleeve's own outline colour, and the inner crook is solid.

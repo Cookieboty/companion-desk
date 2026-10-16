@@ -720,7 +720,12 @@ export function hingeFrames(
   const fore = axisAffine(restE[0], restE[1], restH[0], restH[1], el[0], el[1], ha[0], ha[1], axis);
   const dirU = Math.atan2(el[1] - sh[1], el[0] - sh[0]);
   const dirF = Math.atan2(ha[1] - el[1], ha[0] - el[0]);
-  const sweep = Math.atan2(Math.sin(dirF - dirU), Math.cos(dirF - dirU));
+  // Screen-space angle balloons under foreshortening (z↑) and fans the strip into a hollow
+  // white tube. Always drive the hinge strip from the JOINT bend.
+  const screenSweep = Math.atan2(Math.sin(dirF - dirU), Math.cos(dirF - dirU));
+  const jointSweep = ch.sgnRot * bend;
+  const sweep = jointSweep;
+  void screenSweep;
   return {
     shoulder: sh,
     elbow: el,
@@ -742,6 +747,7 @@ export function hingeFrames(
  * the forearm's proximal end. Joints, lengths and the hand attach are the ArmChain / IK values
  * (hingeFrames), so the wrist lands exactly on the solved target.
  */
+
 export function drawArmHinge(
   ctx: Ctx,
   g: ArmGeom,
@@ -755,48 +761,72 @@ export function drawArmHinge(
 ): void {
   const ch = chainFor(upperImg as object, g, pivot, off);
   const f = hingeFrames(g, pivot, off, pieces, p, ch);
-  const put = (img: RigImageSource, m: Affine, info: ArmPieceInfo, alpha = 1) => {
-    const prev = ctx.globalAlpha;
-    ctx.globalAlpha = prev * alpha;
+
+  const put = (img: RigImageSource, m: Affine, info: ArmPieceInfo) => {
     ctx.save();
     ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
     ctx.drawImage(img as CanvasImageSource, off[0] + info.offset[0], off[1] + info.offset[1]);
     ctx.restore();
-    ctx.globalAlpha = prev;
   };
+
   put(foreImg, f.fore, pieces.fore);
-  // outer elbow: sweep the official sleeve cross-section through the bend (round hinge, no loop)
+
+  // OUTER-only elbow strip → hard anime jacket hinge (never fan the inner half into a
+  // hollow white pie / grey edge). Crook seal is a dark underside wedge drawn AFTER upper
+  // so it also clamps strap tips that poke into the V.
   const strip = pieces.elbow.strip;
-  if (strip && Math.abs(f.sweep) > 0.03) {
+  if (strip && Math.abs(f.sweep) > 0.04) {
     const axis = Math.atan2(ch.u0y, ch.u0x);
-    const step = 0.04;
-    const n = Math.min(80, Math.ceil(Math.abs(f.sweep) / step));
-    const sw = strip.n1 - strip.n0 + 1;
-    for (let k = 0; k <= n; k++) {
-      const rot = f.dirU + (f.sweep * k) / n - axis;
-      const cr = Math.cos(rot);
-      const sr = Math.sin(rot);
-      // columns: strip x → sleeve normal w0, strip y → spine u0, both rotated by `rot`
-      const a0 = cr * ch.w0x - sr * ch.w0y;
-      const b0 = sr * ch.w0x + cr * ch.w0y;
-      const c0 = cr * ch.u0x - sr * ch.u0y;
-      const d0 = sr * ch.u0x + cr * ch.u0y;
-      ctx.save();
-      ctx.transform(a0, b0, c0, d0, f.elbow[0], f.elbow[1]);
-      ctx.drawImage(
-        elbowImg as CanvasImageSource,
-        0,
-        0,
-        sw,
-        strip.thick,
-        strip.n0,
-        -strip.thick / 2 - 0.4,
-        sw,
-        strip.thick + 0.8,
-      );
-      ctx.restore();
+    const step = 0.045;
+    const n = Math.min(56, Math.ceil(Math.abs(f.sweep) / step));
+    const sgn = ch.sgn >= 0 ? 1 : -1;
+    let n0 = strip.n0;
+    let n1 = strip.n1;
+    if (sgn > 0) n0 = Math.max(n0, -4);
+    else n1 = Math.min(n1, 4);
+    const srcX = n0 - strip.n0;
+    const sw = n1 - n0 + 1;
+    if (sw > 2) {
+      for (let k = 0; k <= n; k++) {
+        const rot = f.dirU + (f.sweep * k) / n - axis;
+        const cr = Math.cos(rot);
+        const sr = Math.sin(rot);
+        ctx.save();
+        ctx.transform(
+          cr * ch.w0x - sr * ch.w0y,
+          sr * ch.w0x + cr * ch.w0y,
+          cr * ch.u0x - sr * ch.u0y,
+          sr * ch.u0x + cr * ch.u0y,
+          f.elbow[0],
+          f.elbow[1],
+        );
+        ctx.drawImage(
+          elbowImg as CanvasImageSource,
+          srcX, 0, sw, strip.thick,
+          n0, -strip.thick / 2 - 0.4, sw, strip.thick + 0.8,
+        );
+        ctx.restore();
+      }
     }
   }
+
+  // Sleeve-underside wedge UNDER upper: plugs the crook V. Color matched to jacket
+  // shadow (not a bright white pie, not a brown blob, no stroke — strokes read as floating strap).
+  if (Math.abs(f.sweep) > 0.4) {
+    const side = f.sweep >= 0 ? 1 : -1;
+    const i0 = f.dirU - side * (Math.PI / 2);
+    const i1 = f.dirU + f.sweep - side * (Math.PI / 2);
+    ctx.save();
+    ctx.fillStyle = 'rgb(232, 214, 204)';
+    ctx.beginPath();
+    ctx.moveTo(f.elbow[0], f.elbow[1]);
+    ctx.arc(f.elbow[0], f.elbow[1], 32, i0, i1, !(f.sweep > 0));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   put(upperImg, f.upper, pieces.upper);
+
   ch.hand(armFrame);
 }

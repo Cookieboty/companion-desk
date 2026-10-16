@@ -10,7 +10,7 @@
     ],
     "elbowS": 340,
     "handS": 560,
-    "overlap": 28,
+    "overlap": 48,
     "layerSize": [
       266,
       678
@@ -19,23 +19,23 @@
       "upper": {
         "file": "layers/arms/arm-l-upper.png",
         "offset": [
-          78,
+          79,
           0
         ],
         "size": [
-          188,
-          368
+          187,
+          387
         ]
       },
       "fore": {
         "file": "layers/arms/arm-l-fore.png",
         "offset": [
           45,
-          305
+          286
         ],
         "size": [
-          123,
-          263
+          127,
+          282
         ]
       },
       "elbow": {
@@ -58,23 +58,23 @@
     "upper": {
       "file": "layers/arms/arm-l-upper.png",
       "offset": [
-        78,
+        79,
         0
       ],
       "size": [
-        188,
-        368
+        187,
+        387
       ]
     },
     "fore": {
       "file": "layers/arms/arm-l-fore.png",
       "offset": [
         45,
-        305
+        286
       ],
       "size": [
-        123,
-        263
+        127,
+        282
       ]
     },
     "elbow": {
@@ -105,7 +105,7 @@
     ],
     "elbowS": 340,
     "handS": 560,
-    "overlap": 28,
+    "overlap": 48,
     "layerSize": [
       262,
       678
@@ -119,18 +119,18 @@
         ],
         "size": [
           170,
-          369
+          388
         ]
       },
       "fore": {
         "file": "layers/arms/arm-r-fore.png",
         "offset": [
           83,
-          305
+          286
         ],
         "size": [
           138,
-          261
+          280
         ]
       },
       "elbow": {
@@ -158,18 +158,18 @@
       ],
       "size": [
         170,
-        369
+        388
       ]
     },
     "fore": {
       "file": "layers/arms/arm-r-fore.png",
       "offset": [
         83,
-        305
+        286
       ],
       "size": [
         138,
-        261
+        280
       ]
     },
     "elbow": {
