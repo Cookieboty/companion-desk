@@ -302,6 +302,7 @@ describe('刷新额度 · Claude Code', () => {
 
   it('尊重 CLAUDE_CONFIG_DIR：只在自定义目录里配置的 apiKeyHelper 也能识别', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-qr-cfg-'));
+    fs.mkdirSync(path.join(dir, 'projects')); // 自定义目录也是一份 Claude 配置：检测以它为准
     fs.writeFileSync(
       path.join(dir, 'settings.json'),
       JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://proxy.local' } }),

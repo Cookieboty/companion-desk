@@ -394,4 +394,240 @@ export function parseAiderChunk(text: string): UsageRecord[] {
   return out;
 }
 
-export const LOG_SOURCES: UsageSource[] = ['claude', 'codex', 'dsh', 'gemini', 'aider'];
+// ---------------------------------------------------------------- Qwen Code
+
+/**
+ * `~/.qwen/tmp/<project_id>/chats/<sessionId>.jsonl`：type=assistant 的记录带 usageMetadata（Gemini API 口径）。
+ * promptTokenCount 含缓存（cachedContentTokenCount 要扣掉），toolUsePromptTokenCount 是工具提示词（记入输入），
+ * 输出 = candidatesTokenCount + thoughtsTokenCount。
+ * 以记录 uuid 去重：/branch 等会把消息原样复制进另一个文件 → 同 uuid 只记一次（块内同 uuid 取各字段最大）。
+ * ⚠ 字段只来自调研与上游源码阅读，未在真机日志上核对。
+ */
+export function parseQwenChunk(text: string): UsageRecord[] {
+  const out = new Map<string, UsageRecord>();
+  for (const o of lines(text)) {
+    if (o.type !== 'assistant') continue;
+    const u = obj(o.usageMetadata);
+    const uuid = str(o.uuid);
+    if (!u || !uuid) continue;
+    const cached = num(u.cachedContentTokenCount);
+    const rec = {
+      input: Math.max(0, num(u.promptTokenCount) - cached) + num(u.toolUsePromptTokenCount),
+      output: num(u.candidatesTokenCount) + num(u.thoughtsTokenCount),
+      cacheRead: cached,
+      cacheWrite: 0,
+    };
+    if (empty(rec)) continue;
+    const key = `qwen:${uuid}`;
+    const prev = out.get(key);
+    if (prev) {
+      prev.input = Math.max(prev.input, rec.input);
+      prev.output = Math.max(prev.output, rec.output);
+      prev.cacheRead = Math.max(prev.cacheRead, rec.cacheRead);
+      continue;
+    }
+    out.set(key, {
+      key,
+      ts: parseTs(o.timestamp),
+      source: 'qwen',
+      via: 'log',
+      model: str(o.model) ?? 'unknown',
+      ...rec,
+      session: str(o.sessionId),
+      project: base(o.cwd),
+    });
+  }
+  return [...out.values()];
+}
+
+// ---------------------------------------------------------------- Kimi
+
+/** Kimi 的 token 字段：新旧两种命名（snake / camel）都是「不含缓存的输入」；OpenAI 风格的 input_tokens 才需要扣缓存 */
+function kimiTokens(
+  u: Record<string, unknown>,
+): Pick<UsageRecord, 'input' | 'output' | 'cacheRead' | 'cacheWrite'> {
+  if (u.inputOther != null || u.input_other != null) {
+    return {
+      input: num(u.inputOther ?? u.input_other),
+      output: num(u.output),
+      cacheRead: num(u.inputCacheRead ?? u.input_cache_read),
+      cacheWrite: num(u.inputCacheCreation ?? u.input_cache_creation),
+    };
+  }
+  const details = obj(u.input_tokens_details);
+  const hasRead = u.cache_read_input_tokens != null;
+  const cacheRead = num(u.cache_read_input_tokens ?? details?.cached_tokens);
+  return {
+    input: Math.max(0, num(u.input_tokens) - (hasRead ? 0 : cacheRead)),
+    output: num(u.output_tokens),
+    cacheRead,
+    cacheWrite: num(u.cache_creation_input_tokens),
+  };
+}
+
+/**
+ * Kimi 本地会话 `wire.jsonl`，两代格式：
+ * - 旧 kimi-cli（`~/.kimi/sessions/<工作区哈希>/<会话>/wire.jsonl`）：`{timestamp(秒), message:{type:'StatusUpdate',
+ *   payload:{message_id, token_usage:{input_other, input_cache_read, input_cache_creation, output}}}}`；
+ * - Kimi Code（`~/.kimi-code/sessions/<会话>/agents/<agent>/wire.jsonl`）：`step.end` 事件（可包在
+ *   `context.append_loop_event` 里）带 `usage:{inputOther, inputCacheRead, inputCacheCreation, output}`、`messageId`，时间 `time`(ms)。
+ * 模型名取 wire 里最近的 `llm.request / config.update / profile.bind` 的 modelAlias（旧格式没有则为 unknown；
+ * 不读 config.toml —— 里面可能有密钥）。以消息 id（没有就用 step uuid）去重，迁移 / 复制的会话只记一次。
+ * state.sid 由扫描器按路径预置。⚠ 字段只来自调研，未在真机日志上核对。
+ */
+export function parseKimiChunk(text: string, state: ParseState): UsageRecord[] {
+  const out = new Map<string, UsageRecord>();
+  for (const o of lines(text)) {
+    const type = str(o.type);
+    if (type === 'llm.request' || type === 'config.update' || type === 'profile.bind') {
+      const m = str(o.modelAlias) ?? str(o.model);
+      if (m) state.model = m.split('/').pop();
+    }
+    const msg = obj(o.message);
+    const event = type === 'context.append_loop_event' ? obj(o.event) : o;
+    let usage: Record<string, unknown> | undefined;
+    let id: string | undefined;
+    let ts = 0;
+    if (msg?.type === 'StatusUpdate') {
+      const p = obj(msg.payload);
+      usage = obj(p?.token_usage);
+      id = str(p?.message_id);
+      ts = parseTs(o.timestamp);
+    } else if (event?.type === 'step.end') {
+      usage = obj(event.usage);
+      id = str(event.messageId) ?? str(event.uuid);
+      ts = parseTs(o.time ?? event.time);
+    }
+    if (!usage || !id) continue;
+    const rec = kimiTokens(usage);
+    if (empty(rec) || !ts) continue;
+    const key = `kimi:${id}`;
+    const prev = out.get(key);
+    if (prev) {
+      prev.input = Math.max(prev.input, rec.input);
+      prev.output = Math.max(prev.output, rec.output);
+      prev.cacheRead = Math.max(prev.cacheRead, rec.cacheRead);
+      prev.cacheWrite = Math.max(prev.cacheWrite, rec.cacheWrite);
+      continue;
+    }
+    out.set(key, {
+      key,
+      ts,
+      source: 'kimi',
+      via: 'log',
+      model: (state.model as string | undefined) ?? 'unknown',
+      ...rec,
+      session: state.sid as string | undefined,
+    });
+  }
+  return [...out.values()];
+}
+
+// ---------------------------------------------------------------- SQLite 来源（行 → 记录，纯函数）
+
+const cell = (v: unknown): number => (typeof v === 'bigint' ? Number(v) : num(v));
+const sv = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
+
+/**
+ * OpenCode `opencode.db` 的 message 表（只 SELECT 记账列，用 json_extract 取 data 里的字段）：
+ * assistant 消息的 tokens.input / output / reasoning / cache.read / cache.write。
+ * input 视为不含缓存（disjoint）；推理 token 按输出计价，并入 output。以消息 id 为键。
+ * ⚠ 列名 / 口径来自调研，未在真机核对；v2（session_message 表）暂不支持。
+ */
+export interface OpencodeRow {
+  id?: unknown;
+  session_id?: unknown;
+  created?: unknown;
+  model?: unknown;
+  provider?: unknown;
+  input?: unknown;
+  output?: unknown;
+  reasoning?: unknown;
+  cache_read?: unknown;
+  cache_write?: unknown;
+  cwd?: unknown;
+}
+
+export function opencodeRowToRecord(r: OpencodeRow): UsageRecord | null {
+  const id = sv(r.id);
+  if (!id) return null;
+  const rec = {
+    input: cell(r.input),
+    output: cell(r.output) + cell(r.reasoning),
+    cacheRead: cell(r.cache_read),
+    cacheWrite: cell(r.cache_write),
+  };
+  if (empty(rec)) return null;
+  const ts = parseTs(cell(r.created));
+  if (!ts) return null;
+  return {
+    key: `opencode:${id}`,
+    ts,
+    source: 'opencode',
+    via: 'log',
+    provider: sv(r.provider),
+    model: sv(r.model) ?? 'unknown',
+    ...rec,
+    session: sv(r.session_id),
+    project: base(r.cwd),
+  };
+}
+
+/**
+ * Copilot CLI `session-store.db` 的 assistant_usage_events（每次 LLM 请求一行）：
+ * input_tokens 含缓存读写（扣掉 cache_read_tokens / cache_write_tokens），output_tokens 已含推理。
+ * 以行 id 为键（带会话 id）。⚠ 列名 / 口径来自调研，未在真机核对。
+ */
+export interface CopilotRow {
+  id?: unknown;
+  session_id?: unknown;
+  model?: unknown;
+  input_tokens?: unknown;
+  output_tokens?: unknown;
+  cache_read_tokens?: unknown;
+  cache_write_tokens?: unknown;
+  created_at?: unknown;
+}
+
+export function copilotRowToRecord(r: CopilotRow): UsageRecord | null {
+  const id = cell(r.id);
+  const session = sv(r.session_id);
+  if (!id || !session) return null;
+  const total = cell(r.input_tokens);
+  const cacheRead = Math.min(cell(r.cache_read_tokens), total);
+  const cacheWrite = Math.min(cell(r.cache_write_tokens), total - cacheRead);
+  const rec = {
+    input: total - cacheRead - cacheWrite,
+    output: cell(r.output_tokens),
+    cacheRead,
+    cacheWrite,
+  };
+  if (empty(rec)) return null;
+  const ts = parseTs(
+    typeof r.created_at === 'string' && /^\d+$/.test(r.created_at)
+      ? Number(r.created_at)
+      : r.created_at,
+  );
+  if (!ts) return null;
+  return {
+    key: `copilot:${session}:${id}`,
+    ts,
+    source: 'copilot',
+    via: 'log',
+    model: sv(r.model) ?? 'unknown',
+    ...rec,
+    session,
+  };
+}
+
+export const LOG_SOURCES: UsageSource[] = [
+  'claude',
+  'codex',
+  'dsh',
+  'gemini',
+  'qwen',
+  'opencode',
+  'copilot',
+  'kimi',
+  'aider',
+];

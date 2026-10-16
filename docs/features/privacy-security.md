@@ -34,6 +34,16 @@ Nomi 是本地优先的：你的数据留在你的电脑上。
 - **按账号隔离**：用一个不可反推的短指纹（本机随机盐 + sha256）判断是否换号，换号后旧账号的额度立即清除；登录失效时清除旧值，只有超时等暂时性失败才保留上次的值并标「上次读取」。尊重 `CLAUDE_CONFIG_DIR` 与 `CODEX_HOME`。
 - 官方命令不可用（例如旧版 Claude Code 的 `-p` 模式没有 `/usage`）时静默降级为「暂未返回可用额度」。
 
+## 编程工具用量日志
+
+设置 → 用量与费用会读取本机编程工具已经写下的**记账字段**（时间、模型、各类 token 数、会话 / 项目名），按请求去重后在本机算费用。支持：Claude Code、Codex、dsh、Gemini CLI、Qwen Code、OpenCode、GitHub Copilot CLI、Kimi（Kimi CLI / Kimi Code）、Aider。
+
+- **只读、只取记账字段**：不读对话正文，不读 `auth.json`、`.credentials.json`、钥匙串或 Cursor 登录信息；OpenCode（`opencode.db`）与 Copilot CLI（`session-store.db`）用 Node 自带的 `node:sqlite` 以**只读**方式打开，只执行写死的 `SELECT`，只取 id、时间、模型和 token 列，不新增原生依赖。
+- **不联网、不上传**：全部在本机完成；工具不存在或数据库结构不符时静默跳过。
+- **尊重各工具的主目录环境变量**：`CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`GEMINI_CLI_HOME`、`QWEN_HOME`、`OPENCODE_HOME`（或 `XDG_DATA_HOME`）、`COPILOT_HOME`、`KIMI_HOME`、`KIMI_CODE_HOME`。
+- **口径**：「输入」只含未命中缓存的部分，缓存读 / 写单独计；输出含推理 token。已有记录不会被回头改算。
+- **未经真机核对的部分**：Qwen Code、OpenCode、Copilot CLI、Kimi 的文件位置与字段来自公开资料，尚未在所有真实安装上逐一核对；`QWEN_HOME`、`GEMINI_CLI_HOME` 的变量名同样待核对。Kimi 旧版日志里没有模型名，价格按「未知模型」处理（除非日志里有 `modelAlias`）。OpenCode 新版 `session_message` 表暂不支持。
+
 ## 价格同步
 
 设置 → 用量与费用 → 价格 →「同步价格」是**手动**的：只在你点击时，向 `https://models.dev/api.json` 发一次 GET，下载公开的模型价格表（用 ETag 判断，没变化就不重新下载）。

@@ -282,3 +282,45 @@ describe('源码级约束：价格同步（priceSync.ts）只做一次公开 GET
     expect(svc).toMatch(/handle\('ai:usage:price-sync', \(\) => this\.syncPrices\(\)\)/);
   });
 });
+
+describe('源码级约束：SQLite 来源（sqliteRead.ts）只读、只取记账列', () => {
+  const text = fs.readFileSync(path.resolve(__dirname, '../../../src/usage/sqliteRead.ts'), 'utf8');
+  const sf = ts.createSourceFile('sqliteRead.ts', text, ts.ScriptTarget.Latest, true);
+  const code = ts.createPrinter({ removeComments: true }).printFile(sf);
+
+  it('只以 readOnly 打开，所有 SQL 都是 SELECT，没有写操作 / PRAGMA / ATTACH', () => {
+    expect(code).toContain('readOnly: true');
+    expect(code.match(/new Ctor\(/g)).toHaveLength(1);
+    const sqls = [...code.matchAll(/`(\s*SELECT[^`]*)`/g)].map((m) => m[1]!);
+    expect(sqls).toHaveLength(2);
+    expect(code).not.toMatch(
+      /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|PRAGMA|ATTACH|VACUUM)\b/,
+    );
+    expect(code).not.toMatch(/\.exec\(|DatabaseSync\s*\(/);
+  });
+
+  it('SELECT 里只出现记账列：没有 data 整列、没有凭据 / 内容类字段', () => {
+    const sqls = [...code.matchAll(/`(\s*SELECT[^`]*)`/g)].map((m) => m[1]!).join('\n');
+    const bare = sqls.replace(/json_(extract|valid)\(data(,'[^']+')?\)/g, '');
+    expect(bare).not.toMatch(/SELECT\s+\*|\bdata\b/i);
+    expect(sqls).not.toMatch(
+      /token\b|secret|password|api_?key|auth|cookie|content|prompt|text|summary/i,
+    );
+    // json_extract 只取这些路径
+    const paths = [...sqls.matchAll(/json_extract\(data,'([^']+)'\)/g)].map((m) => m[1]);
+    expect(new Set(paths)).toEqual(
+      new Set([
+        '$.role',
+        '$.time.created',
+        '$.modelID',
+        '$.providerID',
+        '$.tokens.input',
+        '$.tokens.output',
+        '$.tokens.reasoning',
+        '$.tokens.cache.read',
+        '$.tokens.cache.write',
+        '$.path.cwd',
+      ]),
+    );
+  });
+});
