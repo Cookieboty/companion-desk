@@ -1,7 +1,7 @@
 {
   "note": "sha256 of the locked Nomi master layers. Update only with an approved brand-art change (docs/BRAND.md).",
   "algorithm": "sha256",
-  "layout": "fe1c202608f8f4bb49c5f644f6df03d321e9a841f3884568f4605fd18ae0e483",
+  "layout": "034b97d5eeb80ee4d4785252eff1645ffd0e191b0dd8d03d966ce31d04504f60",
   "files": {
     "layers/arm-l.png": "14dce4f9e02fd82273cc14de0baa8e9519452c62f55c9152d71807eb18dff8ba",
     "layers/arm-r.png": "c50c2fa326dd849496c95b3b4b60894e357df9e6a8e908871c8328416f485932",
@@ -13,6 +13,8 @@
     "layers/arms/arm-r-upper.png": "8cf6d365bc563a6b20fe5acff5a3f75b3e8e681bc225bed5a721d24ba9f8ac14",
     "layers/badge.png": "04a97af95f186ea5970a3da0a9a813c5b34b89723d3df705a4cde2e2da786736",
     "layers/bangs.png": "33f0200a89409bfa1032e8c2ccf0bc5cce3bbf6c3d6e6a995d71ef1a7ea11129",
+    "layers/body-flank-l.png": "736dabdb93abba56a249f56a8376dac9cc9424fa45b41130555c05cecb925048",
+    "layers/body-flank-r.png": "e74d4ca79f9fa285132b0cc25878d0ae0602276718747beecb1a9dcb8ed91c5c",
     "layers/body-noarm.png": "19e6fac3febe88166c57f10fe67be491142b3fdf27255b09cd9457777e3695dd",
     "layers/body.png": "150f56b59c49b8e3e50fca19b295a90fa7faca64237b92c64e34b1bcaf023924",
     "layers/clip.png": "451308e9ec4a701037d49277f5b0ea392d677db778627d970966aec379cd2711",

@@ -50,6 +50,8 @@ const PARTS = [
     true,
     'same torso art with both sleeves cut out; used while an arm is posed',
   ],
+  ['body-flank-l', 'hips', 'torso', true, 'derived torso side panel (screen-left); only shown while the arm on that side is raised'],
+  ['body-flank-r', 'hips', 'torso', true, 'derived torso side panel (screen-right); only shown while the arm on that side is raised'],
   ['badge', 'chest', 'torso', true, 'ID badge, swings from its lanyard pivot'],
   ['strap-r', 'chest', 'torso', true, 'right shoulder strap (fades while the right arm is posed)'],
   ['arm-l', 'chest', 'arm', true, 'sleeve; meshed into upper arm / forearm by the arm rig'],

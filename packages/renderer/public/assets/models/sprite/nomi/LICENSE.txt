@@ -36,3 +36,10 @@ scripts/brand/build-nomi-arm-pieces.py (no repaint, no generative content). The 
 the official sleeve pixels resampled (tapered) toward the cuff width; the elbow strip is the
 official sleeve's own one-pixel-wide cross-section at the elbow, swept through the bend angle at
 draw time (pixel resampling only). Same licence as above.
+
+layers/body-flank-l.png and layers/body-flank-r.png are GENERATED fills (local resampling, no
+generative model): the torso's jacket side seen under a lifted arm, which the official art
+never shows. scripts/brand/build-nomi-body-flank.py extends the cut edge of body-noarm.png outward
+by a few pixels using the median fabric colour of the official pixels just inside that edge,
+adds a gentle form shadow, and draws the same ink outline colour as the sleeve. They carry no
+brand-bearing detail and are only drawn while the matching arm is raised. Same licence as above.

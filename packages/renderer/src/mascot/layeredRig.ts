@@ -1109,6 +1109,8 @@ export type RigImages = Map<string, CanvasImageSource & { width: number; height:
 export const RIG_LAYERS = [
   'body',
   'body-noarm',
+  'body-flank-l',
+  'body-flank-r',
   'arm-l',
   'arm-r',
   'strap-r',
@@ -1715,10 +1717,25 @@ export function drawRig(
         // on the plug (not a hard cut) hides the hanging-sleeve ghost
         const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.1) / 0.4));
         const fillR = Math.round((230 - 30 * swing) / 20) * 20; // 230 → 200
-        const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
-        if (f) {
+        // torso side panel (jacket flank) behind the sleeve fill: with the arm lifted the
+        // body-noarm cut edge is the visible torso silhouette
+        const flank = imgs.get(`body-flank-${side}`);
+        const fOff = L[`body-flank-${side}`];
+        if (flank && fOff && swing > 0.02) {
           ctx.save();
           ctx.translate(0, lift * 0.5);
+          ctx.globalAlpha = Math.min(1, swing * 3);
+          ctx.drawImage(flank as CanvasImageSource, fOff[0], fOff[1]);
+          ctx.restore();
+        }
+        const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
+        // the sleeve-pixel fill only belongs to a still-hanging arm; a raised arm gets the
+        // outlined flank panel above instead (no ghost sleeve under the lifted arm)
+        const keep = 1 - Math.min(1, Math.max(0, (swing - 0.3) / 0.35));
+        if (f && keep > 0.01) {
+          ctx.save();
+          ctx.translate(0, lift * 0.5);
+          ctx.globalAlpha = keep;
           ctx.drawImage(f, bOff[0], bOff[1]);
           ctx.restore();
         }
@@ -1726,7 +1743,12 @@ export function drawRig(
     }
     const plugSwing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.1) / 0.4));
     // keep a long enough stump to seal the jacket armpit; distal feather hides the cuff ghost
-    const stump = shoulderPlug(img, geom, Math.round((140 - 16 * plugSwing) / 12) * 12); // 140 → 124
+    const stump = shoulderPlug(
+      img,
+      geom,
+      Math.round((140 - 76 * plugSwing) / 12) * 12,
+      plugSwing > 0.6 ? 10 : 70,
+    );
     if (stump) {
       ctx.save();
       ctx.translate(0, lift);
@@ -1824,8 +1846,8 @@ export function drawRig(
           const ia = side === 'l' ? IDX.lA : IDX.rA;
           const swung = on > 0.001 && ex ? Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.2) / 0.5)) : 0;
           // never fade the seal to transparent — a raised arm still needs the torso-side fill
-          const rad = Math.round(160 - 25 * swung); // 160 → 135
-          const fillS = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], sp, rad);
+          const rad = Math.round(160 - 60 * swung); // 160 → 100
+          const fillS = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], sp, rad, swung > 0.6 ? 6 : 30);
           if (fillS) {
             ctx.save();
             ctx.globalAlpha = Math.max(0.85, 1 - 0.15 * swung);
