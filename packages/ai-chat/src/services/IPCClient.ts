@@ -513,6 +513,6 @@ export const createIPCClient = (client?: ClientAIClient): IPCClient => {
   if (typeof window !== 'undefined' && (window as { aiIPC?: unknown }).aiIPC) {
     return new SdkIPCClient();
   }
-  console.warn('window.aiIPC 未就绪，使用 Mock 客户端（开发/测试模式）');
+  log.warn('window.aiIPC 未就绪，使用 Mock 客户端（开发/测试模式）');
   return new MockIPCClient();
 };

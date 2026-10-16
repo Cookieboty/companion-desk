@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber 的 JSX 元素属性 */
-import { t } from '@nomi-ai/ui';
-import { perfMark } from '@nomi-ai/ui';
+import { createLogger, perfMark, t } from '@nomi-ai/ui';
 import { type VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useState } from 'react';
@@ -16,6 +15,8 @@ import { useCharacter3DStore } from '../../stores/character3DStore';
 import { type VRMCharacterControllerProps } from '../../types/character3d';
 
 import VRMModelFallback from './VRMModelFallback';
+
+const log = createLogger('vrm-controller');
 
 /**
  * VRM 角色控制器：加载模型，并把它包装成 MascotBackend（口型/表情/眨眼/视线/待机）挂到 mascotRegistry。
@@ -95,7 +96,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
             mascotRegistry.refresh();
             perfMark('mascot-motions-loaded');
           })
-          .catch((err) => console.warn('VRMCharacterController: 动作库加载失败', err));
+          .catch((err) => log.warn('动作库加载失败', err));
         setIsLoaded(true);
         onModelLoaded?.(vrm);
         perfMark('mascot-model-loaded');
@@ -103,7 +104,7 @@ export const VRMCharacterController: React.FC<VRMCharacterControllerProps> = ({
       })
       .catch((err) => {
         if (cancelled) return;
-        console.warn('VRMCharacterController: VRM 加载失败，使用占位角色', err);
+        log.warn('VRM 加载失败，使用占位角色', err);
         setUseFallback(true);
         setIsLoaded(true);
         onError?.(err instanceof Error ? err.message : String(err));

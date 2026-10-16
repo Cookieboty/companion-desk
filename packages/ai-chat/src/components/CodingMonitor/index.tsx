@@ -3,7 +3,17 @@
  * + 活跃会话列表（按端点筛选；Nomi 标签可直接打开）。
  * 只读本地日志与进程列表，不登录、不抓取任何账号。通知样式与灵动岛在「通知 / 灵动岛」里设置。
  */
-import { Badge, Button, Card, EmptyState, Notice, Switch, t as tr, Icon } from '@nomi-ai/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  createLogger,
+  EmptyState,
+  Notice,
+  Switch,
+  t as tr,
+  Icon,
+} from '@nomi-ai/ui';
 import { SquareTerminal, Check } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -24,6 +34,8 @@ import { sessionUsageText } from '../UsagePanel/format';
 import { useUsageFx } from '../UsagePanel/useFx';
 
 import styles from './index.module.css';
+
+const log = createLogger('coding-monitor');
 
 /** 相对时间：刚刚 / N 分钟前 / N 小时前 / 日期 */
 export function relTime(ms: number, now = Date.now()): string {
@@ -51,7 +63,7 @@ export const CodingMonitor: React.FC<{
       .then(setAgents)
       .catch((e) => {
         // 主进程未就绪时不污染整页错误条
-        console.warn('[agents]', e instanceof Error ? e.message : String(e));
+        log.warn(e instanceof Error ? e.message : String(e));
       });
   }, []);
   useEffect(() => {

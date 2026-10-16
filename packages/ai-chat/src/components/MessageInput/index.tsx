@@ -1,4 +1,4 @@
-import { t as tr, Icon } from '@nomi-ai/ui';
+import { createLogger, t as tr, Icon } from '@nomi-ai/ui';
 import { BookOpen, Pin, X, ArrowUp, ListPlus, Plus, Square } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
@@ -31,6 +31,8 @@ import type { SettingsSection } from '../SettingsView/sections';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
 
 import styles from './index.module.css';
+
+const log = createLogger('message-input');
 
 interface MessageInputProps {
   onSend?: (message: string) => void;
@@ -235,7 +237,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         await actions.sendStreamMessage(trimmedMessage);
       }
     } catch (error) {
-      console.error('发送消息失败:', error);
+      log.error('发送消息失败:', error);
     }
   };
 

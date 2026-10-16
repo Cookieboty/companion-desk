@@ -1,4 +1,4 @@
-import { t } from '@nomi-ai/ui';
+import { createLogger, t } from '@nomi-ai/ui';
 import { Badge, Button, Card, EmptyState, FormField, Input, Modal, Switch } from '@nomi-ai/ui';
 import { Bot } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
@@ -7,6 +7,8 @@ import { useAiChat } from '../../contexts/AiChatContext';
 import { type AIModelConfig } from '../../types/config';
 
 import styles from './index.module.css';
+
+const log = createLogger('config-panel');
 
 interface ConfigPanelProps {
   isVisible: boolean;
@@ -40,7 +42,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isVisible, onClose }) 
 
       alert(t('模型配置已保存'));
     } catch (error) {
-      console.error('保存模型配置失败:', error);
+      log.error('保存模型配置失败:', error);
       alert(t('保存失败: {0}', error));
     }
   };

@@ -49,7 +49,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
         const errorMessage = err instanceof Error ? err.message : t('初始化失败');
         setError(errorMessage);
         onError?.(errorMessage);
-        console.error('VirtualCharacter3D: 初始化失败:', err);
+        log.error('初始化失败:', err);
       }
     };
 
@@ -73,7 +73,7 @@ export const VirtualCharacter3D: React.FC<VirtualCharacter3DProps> = ({
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
     onError?.(errorMessage);
-    console.error('VirtualCharacter3D: 错误:', errorMessage);
+    log.error('错误:', errorMessage);
   };
 
   // 如果出现错误，显示错误状态

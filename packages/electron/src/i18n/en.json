@@ -5,7 +5,6 @@
   "{0} 出错了：{1}": "{0} hit an error: {1}",
   "请看看终端": "check the terminal",
   "{0} 好像卡住了，要不要去看看？": "{0} seems stuck. Want to take a look?",
-  "[SafeKeyProvider] safeStorage 不可用；请配置 fallback=plaintext": "[SafeKeyProvider] safeStorage unavailable; configure fallback=plaintext",
   "AI 服务未就绪": "AI service not ready",
   "全天": "All day",
   "今日日历：\n{0}": "Today's calendar:\n{0}",

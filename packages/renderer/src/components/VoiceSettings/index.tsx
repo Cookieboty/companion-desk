@@ -1,6 +1,6 @@
 import type { ModelVoiceConfig } from '@nomi-ai/types';
 import { type VoiceSettings as VoiceSettingsType } from '@nomi-ai/types';
-import { t as tr } from '@nomi-ai/ui';
+import { createLogger, t as tr } from '@nomi-ai/ui';
 import { Modal, Switch } from '@nomi-ai/ui';
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -19,6 +19,8 @@ import { listSoftVoiceChoices } from '../../mascot/softSpeech';
 import { type VoiceService } from '../../services/VoiceService';
 
 import styles from './style.module.css';
+
+const log = createLogger('voice-settings');
 
 interface VoiceSettingsProps {
   voiceService: VoiceService;
@@ -77,7 +79,7 @@ export const VoiceSettings: React.FC<VoiceSettingsProps> = ({
       await voiceService.updateSettings({ [key]: value });
       onSettingsChange?.();
     } catch (error) {
-      console.error('更新设置失败:', error);
+      log.error('更新设置失败:', error);
     } finally {
       setIsLoading(false);
     }

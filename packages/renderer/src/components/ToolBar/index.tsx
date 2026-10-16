@@ -1,4 +1,4 @@
-import { t as tr } from '@nomi-ai/ui';
+import { createLogger, t as tr } from '@nomi-ai/ui';
 import { Switch, Tooltip } from '@nomi-ai/ui';
 import {
   AudioLines,
@@ -42,6 +42,8 @@ import { registerSpeechStopper } from '@/mascot/speechStop';
 import { MESSAGES } from '@/mascot/tips';
 import { MascotMicTool, toggleMascotHandsfree } from '@/mascot/voice/MascotVoice';
 import { getCache, setCache } from '@/utils/cache';
+
+const log = createLogger('toolbar');
 
 /**
  * 看板娘工具栏。
@@ -141,7 +143,7 @@ export const ToolBar: React.FC = () => {
         setVoiceEnabled(actualEnabled);
         setVoiceMode(actualVoiceMode as 'fixed' | 'tts');
       } catch (error) {
-        console.error('ToolBar: 初始化语音服务失败:', error);
+        log.error('初始化语音服务失败:', error);
         // 即使失败也要设置状态，避免组件卡住
         setVoiceService(globalVoiceService);
         setVoiceEnabled(false);
@@ -158,7 +160,7 @@ export const ToolBar: React.FC = () => {
         const currentState = (await getCache<boolean>('waifu-always-on-top')) === true;
         setAlwaysOnTop(currentState);
       } catch (error) {
-        console.error('ToolBar: 加载置顶状态失败:', error);
+        log.error('加载置顶状态失败:', error);
       }
     };
 
@@ -207,7 +209,7 @@ export const ToolBar: React.FC = () => {
 
       showMessage(tr('照好了，保存在下载目录了'));
     } catch (error) {
-      console.error('截图失败:', error);
+      log.error('截图失败:', error);
       showMessage(tr('截图失败'));
     }
   }, [showMessage]);
@@ -288,7 +290,7 @@ export const ToolBar: React.FC = () => {
       const modeText = newMode === 'fixed' ? tr('固定语音') : tr('TTS语音');
       showMessage(tr('已切换到{0}模式', modeText));
     } catch (error) {
-      console.error('ToolBar: 语音模式切换失败:', error);
+      log.error('语音模式切换失败:', error);
       showMessage(tr('语音模式切换失败，请重试'));
       // 回滚状态
       setVoiceMode(voiceMode);
@@ -353,11 +355,11 @@ export const ToolBar: React.FC = () => {
               })
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .catch((error: any) => {
-                console.error('打开TTS配置窗口失败:', error);
+                log.error('打开TTS配置窗口失败:', error);
                 showMessage(tr('打开TTS配置窗口失败，请稍后再试'));
               });
           } else {
-            console.warn('Electron API不可用，无法打开TTS配置窗口');
+            log.warn('Electron API不可用，无法打开TTS配置窗口');
             showMessage(tr('TTS配置功能需要在Electron环境中运行'));
           }
         };
@@ -378,11 +380,11 @@ export const ToolBar: React.FC = () => {
               })
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 遗留代码，沿用既有类型
               .catch((error: any) => {
-                console.error('打开AI对话窗口失败:', error);
+                log.error('打开AI对话窗口失败:', error);
                 showMessage(tr('打开AI对话窗口失败，请稍后再试'));
               });
           } else {
-            console.warn('Electron API不可用，无法打开AI对话窗口');
+            log.warn('Electron API不可用，无法打开AI对话窗口');
             showMessage(tr('AI对话功能需要在Electron环境中运行'));
           }
         };
