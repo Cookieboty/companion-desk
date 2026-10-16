@@ -5,7 +5,7 @@
 
 import path from 'node:path';
 
-import { app, ipcMain, session } from 'electron';
+import { app, session } from 'electron';
 
 import { getAgentProgressService, initAgentProgressService } from '../agents/AgentProgressService';
 import { startAIRuntime, type AIRuntimeBootHandle } from '../ai/AIRuntimeBoot';
