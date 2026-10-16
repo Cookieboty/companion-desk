@@ -129,7 +129,7 @@ describe('parseDshLine', () => {
       status: 'done',
     });
   });
-  it('maps errors and failed turns; ignores thinking and other status', () => {
+  it('maps errors and failed turns and thinking; ignores other status', () => {
     expect(p({ type: 'error', message: 'boom' })).toEqual([{ type: 'error', message: 'boom' }]);
     expect(
       p({
@@ -139,7 +139,7 @@ describe('parseDshLine', () => {
       }),
     ).toEqual([{ type: 'error', message: 'rate limited' }]);
     expect(p({ type: 'status', phase: 'turn_end', reason: { kind: 'completed' } })).toEqual([]);
-    expect(p({ type: 'thinking', text: 'hmm' })).toEqual([]);
+    expect(p({ type: 'thinking', text: 'hmm' })).toEqual([{ type: 'thinking', text: 'hmm' }]);
     expect(parseDshLine('not json')).toEqual([]);
   });
 });
@@ -166,7 +166,7 @@ describe('createDshParser', () => {
 
 describe('parseGrokLine', () => {
   const p = (o: unknown) => parseGrokLine(JSON.stringify(o));
-  it('maps text, tools, end, error; ignores thought/usage', () => {
+  it('maps text, tools, thought, end, error; ignores usage', () => {
     expect(p({ type: 'text', data: 'hi' })).toEqual([{ type: 'text-delta', text: 'hi' }]);
     expect(
       p({
@@ -183,7 +183,7 @@ describe('parseGrokLine', () => {
       { type: 'done', text: '', sessionId: 's1' },
     ]);
     expect(p({ type: 'error', message: 'boom' })).toEqual([{ type: 'error', message: 'boom' }]);
-    expect(p({ type: 'thought', data: 'hmm' })).toEqual([]);
+    expect(p({ type: 'thought', data: 'hmm' })).toEqual([{ type: 'thinking', text: 'hmm' }]);
     expect(p({ type: 'usage', usage: {} })).toEqual([]);
     expect(parseGrokLine('not json')).toEqual([]);
   });
@@ -198,5 +198,128 @@ describe('createGrokParser', () => {
       name: 'bash',
       status: 'done',
     });
+  });
+});
+
+describe('tool trace fields (input / output / thinking / parent)', () => {
+  it('claude: tool_use carries input, tool_result carries output, thinking block, sub-agent parent', () => {
+    const p = createClaudeParser();
+    const j = (o: unknown) => p(JSON.stringify(o));
+    const start = j({
+      type: 'assistant',
+      message: {
+        content: [
+          { type: 'thinking', thinking: '先看看目录' },
+          { type: 'tool_use', id: 'a', name: 'Read', input: { file_path: '/w/a.ts' } },
+        ],
+      },
+    });
+    expect(start[0]).toEqual({ type: 'thinking', text: '先看看目录' });
+    expect(start[1]).toMatchObject({
+      type: 'tool',
+      name: 'Read',
+      status: 'start',
+      detail: 'a',
+      input: '{"file_path":"/w/a.ts"}',
+    });
+    const inner = j({
+      type: 'assistant',
+      parent_tool_use_id: 'task1',
+      message: { content: [{ type: 'tool_use', id: 'b', name: 'Grep', input: { pattern: 'x' } }] },
+    });
+    expect(inner[0]).toMatchObject({ parentId: 'task1' });
+    const done = j({
+      type: 'user',
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'a',
+            content: [
+              { type: 'text', text: 'line1' },
+              { type: 'text', text: 'line2' },
+            ],
+          },
+        ],
+      },
+    });
+    expect(done[0]).toMatchObject({ name: 'Read', status: 'done', output: 'line1\nline2' });
+  });
+
+  it('clips long input strings but keeps the JSON valid', () => {
+    const [ev] = parseClaudeLine(
+      JSON.stringify({
+        type: 'assistant',
+        message: {
+          content: [
+            { type: 'tool_use', id: 'a', name: 'Write', input: { content: 'x'.repeat(10_000) } },
+          ],
+        },
+      }),
+    );
+    const input = (ev as { input: string }).input;
+    expect(() => JSON.parse(input)).not.toThrow();
+    expect(input.length).toBeLessThan(2300);
+  });
+
+  it('codex: command output / failure, reasoning, file_change', () => {
+    const run = (o: unknown) => parseCodexLine(JSON.stringify(o));
+    expect(
+      run({
+        type: 'item.completed',
+        item: {
+          id: 'i1',
+          type: 'command_execution',
+          command: 'ls',
+          aggregated_output: 'a\nb',
+          exit_code: 2,
+          status: 'failed',
+        },
+      })[0],
+    ).toMatchObject({
+      name: 'bash',
+      status: 'error',
+      id: 'i1',
+      detail: 'ls',
+      output: 'a\nb',
+      input: '{"command":"ls"}',
+    });
+    expect(run({ type: 'item.completed', item: { type: 'reasoning', text: '想一下' } })).toEqual([
+      { type: 'thinking', text: '想一下' },
+    ]);
+    expect(
+      run({
+        type: 'item.started',
+        item: { id: 'f1', type: 'file_change', changes: [{ path: 'a.ts', kind: 'update' }] },
+      })[0],
+    ).toMatchObject({ name: 'apply_patch', status: 'start', id: 'f1' });
+  });
+
+  it('grok / dsh: rawInput, rawOutput and result are mapped', () => {
+    const g = createGrokParser();
+    const gs = (o: unknown) => g(JSON.stringify(o));
+    expect(
+      gs({
+        type: 'tool_call',
+        toolCallId: 'c',
+        toolName: 'bash',
+        status: 'in_progress',
+        rawInput: { command: 'ls' },
+      })[0],
+    ).toMatchObject({ input: '{"command":"ls"}' });
+    expect(
+      gs({ type: 'tool_call_update', toolCallId: 'c', status: 'completed', rawOutput: 'ok' })[0],
+    ).toMatchObject({ name: 'bash', output: 'ok' });
+    expect(
+      parseDshLine(
+        JSON.stringify({
+          type: 'tool_result',
+          callId: 'c',
+          tool: 'x',
+          status: 'error',
+          result: 'no',
+        }),
+      )[0],
+    ).toMatchObject({ status: 'error', output: 'no' });
   });
 });

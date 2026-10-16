@@ -28,6 +28,7 @@ import {
   createGrokParser,
   parseCodexLine,
 } from './streamParse';
+import { buildTrace, stampEvent } from './traceBuilder';
 import type {
   HarnessBackend,
   HarnessEvent,
@@ -473,6 +474,7 @@ export class CliHarnessService {
         timestamp: typeof m.timestamp === 'number' ? m.timestamp : Date.now(),
         ...(m.error ? { error: true as const } : {}),
         ...(Array.isArray(m.tools) ? { tools: m.tools } : {}),
+        ...(Array.isArray(m.trace) && m.trace.length ? { trace: m.trace.slice(0, 300) } : {}),
       }));
     this.messages.set(id, seeded);
     try {
@@ -661,12 +663,14 @@ export class CliHarnessService {
           tools.push(label);
         }
       }
+      const trace = buildTrace(result.events);
       this.appendMessage(id, {
         id: randomUUID(),
         role: 'assistant',
         content: result.text,
         timestamp: Date.now(),
         ...(tools.length ? { tools } : {}),
+        ...(trace.length ? { trace } : {}),
       });
       this.finish(tab, true, result.text);
       return result;
@@ -886,6 +890,7 @@ export class CliHarnessService {
   private onClaudeLine(tabId: string, live: ClaudeLiveSession, line: string, liveEmit: boolean) {
     const turn = live.turn;
     for (const ev of live.parseLine(line)) {
+      stampEvent(ev);
       if (turn) {
         turn.events.push(ev);
         if (ev.type === 'text-delta' || ev.type === 'text') turn.text += ev.text;
@@ -1077,6 +1082,7 @@ export class CliHarnessService {
 
       const take = (line: string, live: boolean) => {
         for (const ev of opts.parseLine(line)) {
+          stampEvent(ev);
           events.push(ev);
           if (live) this.emitEvent(tab.id, ev);
           if (ev.type === 'permission') {

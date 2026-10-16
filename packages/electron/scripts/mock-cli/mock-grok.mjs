@@ -59,6 +59,43 @@ if (fmt === 'json') {
   process.exit(0);
 }
 
+if (process.env.NOMI_MOCK_SCENARIO === 'rich') {
+  const step = Number(process.env.NOMI_MOCK_STEP_MS || 0);
+  const pause = () =>
+    step > 0 && Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, step);
+  let n = 0;
+  const call = (toolName, rawInput, rawOutput, failed = false) => {
+    const toolCallId = `rich_${++n}`;
+    emit({ type: 'tool_call', toolCallId, toolName, status: 'in_progress', rawInput });
+    pause();
+    emit({
+      type: 'tool_call_update',
+      toolCallId,
+      status: failed ? 'failed' : 'completed',
+      rawOutput,
+    });
+    pause();
+  };
+  emit({ type: 'thought', data: '先列目录，再搜索并读取相关文件。' });
+  pause();
+  call('list_dir', { path: '.' }, 'src/\npackage.json');
+  for (const pat of ['password', 'secret', 'token', 'api_key'])
+    call('grep', { pattern: pat, path: 'src' }, `src/a.ts:1: ${pat}`);
+  call('read_file', { path: 'src/a.ts' }, 'const a = 1;');
+  call('read_file', { path: 'src/b.ts' }, 'const b = 2;');
+  call(
+    'spawn_subagent',
+    { description: '检查内存泄漏', prompt: '检查监听器卸载' },
+    '没有发现泄漏。',
+  );
+  call(
+    'edit_file',
+    { path: 'src/a.ts', old_string: 'const a = 1;', new_string: 'const a = 2;\nconst c = 3;' },
+    'ok',
+  );
+  call('bash', { command: 'ls -la' }, 'total 0');
+  call('bash', { command: 'false' }, 'exit 1', true);
+}
 emit({ type: 'thought', data: 'thinking…' });
 emit({
   type: 'tool_call',

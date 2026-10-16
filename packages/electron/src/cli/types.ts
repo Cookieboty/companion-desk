@@ -69,7 +69,24 @@ export interface HarnessSessionState {
 export type HarnessEvent =
   | { type: 'text-delta'; text: string }
   | { type: 'text'; text: string }
-  | { type: 'tool'; name: string; status: 'start' | 'done' | 'error'; detail?: string }
+  | {
+      type: 'tool';
+      name: string;
+      status: 'start' | 'done' | 'error';
+      /** claude / dsh / grok：调用 id；codex：命令行 */
+      detail?: string;
+      /** 调用 id（codex 等 detail 不是 id 的后端） */
+      id?: string;
+      /** 参数（已裁剪的 JSON 或文本）；start 事件带，部分后端在结果事件里补 */
+      input?: string;
+      /** 工具输出（已裁剪） */
+      output?: string;
+      /** 子代理内部的调用：指向父工具调用 id */
+      parentId?: string;
+      /** 主进程收到该事件的时间（ms） */
+      at?: number;
+    }
+  | { type: 'thinking'; text: string; at?: number }
   | { type: 'permission'; id: string; summary: string }
   | { type: 'done'; sessionId?: string; text: string }
   | { type: 'error'; message: string };
@@ -90,7 +107,12 @@ export interface HarnessTabMessage {
   timestamp: number;
   error?: boolean;
   tools?: string[];
+  /** 本轮工具调用 / 思考的结构化轨迹（会话视图据此渲染分组、diff、耗时） */
+  trace?: HarnessTraceEvent[];
 }
+
+/** 持久化到消息里的轨迹事件：HarnessEvent 里的 tool / thinking */
+export type HarnessTraceEvent = Extract<HarnessEvent, { type: 'tool' | 'thinking' }>;
 
 /**
  * 对话标签：绑定后端 + CLI 会话 + 工作目录。

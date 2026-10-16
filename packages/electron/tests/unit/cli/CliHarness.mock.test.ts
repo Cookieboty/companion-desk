@@ -375,8 +375,20 @@ describe('CliHarnessService session handling', () => {
       expect(r1.sessionId).toBe('session-mock-dsh-1');
       expect(r1.events).toEqual(
         expect.arrayContaining([
-          { type: 'tool', name: 'read_file', status: 'start', detail: 'call_1' },
-          { type: 'tool', name: 'read_file', status: 'done', detail: 'call_1' },
+          expect.objectContaining({
+            type: 'tool',
+            name: 'read_file',
+            status: 'start',
+            detail: 'call_1',
+            input: '{"path":"README.md"}',
+          }),
+          expect.objectContaining({
+            type: 'tool',
+            name: 'read_file',
+            status: 'done',
+            detail: 'call_1',
+            output: 'ok',
+          }),
         ]),
       );
       expect(h.state().cliSessionId).toBe('session-mock-dsh-1');

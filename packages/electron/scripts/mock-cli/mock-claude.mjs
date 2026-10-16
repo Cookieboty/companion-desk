@@ -7,7 +7,8 @@
  *   长驻：-p --input-format stream-json --output-format stream-json
  *     （stdin 逐行 NDJSON user / control_response；每轮 result 后进程不退出）
  * Env: NOMI_MOCK_CLAUDE_REPLY, NOMI_MOCK_SESSION, NOMI_MOCK_ASK_PERMISSION,
- *      NOMI_MOCK_PERMISSION_ID, NOMI_MOCK_TOOLS, NOMI_MOCK_DELAY_MS,
+ *      NOMI_MOCK_PERMISSION_ID, NOMI_MOCK_TOOLS（1 = 单个 Bash；rich = 多种工具调用演示）,
+ *      NOMI_MOCK_STEP_MS（rich 场景下每个事件之间的停顿）, NOMI_MOCK_DELAY_MS,
  *      NOMI_MOCK_CLAUDE_BOOT_LOG（可选：每次进程启动 append 一行，测复用）
  */
 import fs from 'node:fs';
@@ -146,6 +147,8 @@ async function runOnce(_prompt) {
     });
   }
 
+  if (process.env.NOMI_MOCK_TOOLS === 'rich') await richScenario();
+
   const chunks = text.match(/.{1,8}/gs) || [text];
   for (const c of chunks) {
     emit({
@@ -165,6 +168,126 @@ async function runOnce(_prompt) {
     result: text,
     subtype: 'success',
   });
+}
+
+/** 多种工具调用演示：思考 / 目录 / 搜索 / 读文件 / 子代理 / 编辑 / 命令（成功与失败） */
+async function richScenario() {
+  const step = Number(process.env.NOMI_MOCK_STEP_MS || 0);
+  const pause = () => step > 0 && new Promise((r) => setTimeout(r, step));
+  let n = 0;
+  const call = async (name, input, output, opts = {}) => {
+    const id = `rich-${++n}`;
+    emit({
+      type: 'assistant',
+      session_id: sessionId,
+      ...(opts.parent ? { parent_tool_use_id: opts.parent } : {}),
+      message: { role: 'assistant', content: [{ type: 'tool_use', id, name, input }] },
+    });
+    await pause();
+    emit({
+      type: 'user',
+      session_id: sessionId,
+      ...(opts.parent ? { parent_tool_use_id: opts.parent } : {}),
+      message: {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: id, content: output, is_error: !!opts.error },
+        ],
+      },
+    });
+    await pause();
+    return id;
+  };
+  emit({
+    type: 'assistant',
+    session_id: sessionId,
+    message: {
+      role: 'assistant',
+      content: [
+        { type: 'thinking', thinking: '先浏览目录结构，再搜索关键字，最后修改实现并跑测试。' },
+      ],
+    },
+  });
+  await pause();
+  await call('LS', { path: '/repo/src' }, 'cli/\nutils/\nindex.ts');
+  await call(
+    'Grep',
+    { pattern: 'registerHandler', path: 'src' },
+    'src/cli/a.ts:12: registerHandler(x)\nsrc/cli/b.ts:40: registerHandler(y)',
+  );
+  await call('Grep', { pattern: 'TODO', path: 'src' }, 'No matches found');
+  await call(
+    'Read',
+    { file_path: '/repo/src/cli/a.ts' },
+    'export function registerHandler() {\n  return 1;\n}\n',
+  );
+  await call('Read', { file_path: '/repo/src/cli/b.ts' }, 'export const b = 2;\n');
+  await call('Glob', { pattern: 'src/**/*.test.ts' }, 'src/cli/a.test.ts');
+  const task = 'rich-task';
+  emit({
+    type: 'assistant',
+    session_id: sessionId,
+    message: {
+      role: 'assistant',
+      content: [
+        {
+          type: 'tool_use',
+          id: task,
+          name: 'Task',
+          input: {
+            description: '检查内存泄漏风险',
+            subagent_type: 'explore',
+            prompt: '检查事件监听是否在卸载时移除。',
+          },
+        },
+      ],
+    },
+  });
+  await pause();
+  await call('Grep', { pattern: 'addEventListener' }, 'src/ui/a.tsx:8', { parent: task });
+  await call('Read', { file_path: '/repo/src/ui/a.tsx' }, 'useEffect(() => {})', { parent: task });
+  emit({
+    type: 'user',
+    session_id: sessionId,
+    message: {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: task,
+          content: [{ type: 'text', text: '未发现泄漏：所有监听都在 cleanup 中移除。' }],
+          is_error: false,
+        },
+      ],
+    },
+  });
+  await pause();
+  await call(
+    'Edit',
+    {
+      file_path: '/repo/src/cli/a.ts',
+      old_string: 'export function registerHandler() {\n  return 1;\n}',
+      new_string:
+        'export function registerHandler(opts = {}) {\n  const id = opts.id ?? 1;\n  return id;\n}',
+    },
+    'The file /repo/src/cli/a.ts has been updated.',
+  );
+  await call(
+    'Write',
+    { file_path: '/repo/src/cli/new.ts', content: 'export const x = 1;\nexport const y = 2;\n' },
+    'File created',
+  );
+  await call(
+    'Bash',
+    { command: 'pnpm test -- a.test.ts', description: '运行单测' },
+    ' PASS  src/cli/a.test.ts\n  ✓ registers handler (3 ms)\n\nTests: 1 passed, 1 total',
+  );
+  await call(
+    'Bash',
+    { command: 'pnpm lint' },
+    'src/cli/a.ts\n  3:5  error  Unexpected any  no-explicit-any',
+    { error: true },
+  );
 }
 
 function readStdinLine() {
