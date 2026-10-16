@@ -205,56 +205,54 @@ export const Heatmap: React.FC<{
     }
     lastM = m;
   }
+  // 周 / 月 / 星期标签与格子共用一张网格：列宽 minmax(0, 14px) 随容器收缩，
+  // 格子 aspect-ratio:1，整年始终完整显示，不出现横向滚动。
   return (
     <div className={styles.heatWrap} data-testid="usage-heatmap">
-      <div className={styles.heatScroll}>
-        <div
-          className={styles.heatMonths}
-          style={{ gridTemplateColumns: `repeat(${weeks}, 14px)` }}
-        >
-          {months.map((m) => (
-            <span key={m.col} style={{ gridColumn: m.col + 1 }}>
-              {m.label}
-            </span>
-          ))}
-        </div>
-        <div className={styles.heatBody}>
-          <div className={styles.heatWeekdays} aria-hidden>
-            {[
-              [1, t('周一')],
-              [3, t('周三')],
-              [5, t('周五')],
-            ].map(([i, label]) => (
-              <span key={i} style={{ gridRow: Number(i) + 1 }}>
-                {label}
-              </span>
-            ))}
-          </div>
-          <div
-            className={styles.heatGrid}
-            style={{ gridTemplateColumns: `repeat(${weeks}, 12px)` }}
+      <div
+        className={styles.heatGrid}
+        style={{ gridTemplateColumns: `var(--heat-label-w) repeat(${weeks}, minmax(0, 14px))` }}
+      >
+        {months.map((m) => (
+          <span key={m.col} className={styles.heatMonth} style={{ gridColumn: m.col + 2 }}>
+            {m.label}
+          </span>
+        ))}
+        {[
+          [1, t('周一')],
+          [3, t('周三')],
+          [5, t('周五')],
+        ].map(([i, label]) => (
+          <span
+            key={i}
+            className={styles.heatWeekday}
+            aria-hidden
+            style={{ gridRow: Number(i) + 2 }}
           >
-            {cells.map((d, i) =>
-              d ? (
-                <button
-                  key={d.date}
-                  type="button"
-                  className={`${styles.heatCell} ${styles[`lv${level(val(d))}`]} ${
-                    selected === d.date ? styles.heatSel : ''
-                  }`}
-                  aria-label={`${d.date} ${fmt(val(d), metric)}`}
-                  title={[d.date, fmt(val(d), metric), t('{0} 次调用', d.calls)].join(' · ')}
-                  aria-pressed={selected === d.date}
-                  data-testid="usage-heat-cell"
-                  data-date={d.date}
-                  onClick={() => onSelect(d)}
-                />
-              ) : (
-                <span key={`e${i}`} className={styles.heatEmpty} />
-              ),
-            )}
-          </div>
-        </div>
+            {label}
+          </span>
+        ))}
+        {cells.map((d, i) => {
+          const pos = { gridColumn: Math.floor(i / 7) + 2, gridRow: (i % 7) + 2 };
+          return d ? (
+            <button
+              key={d.date}
+              type="button"
+              style={pos}
+              className={`${styles.heatCell} ${styles[`lv${level(val(d))}`]} ${
+                selected === d.date ? styles.heatSel : ''
+              }`}
+              aria-label={`${d.date} ${fmt(val(d), metric)}`}
+              title={[d.date, fmt(val(d), metric), t('{0} 次调用', d.calls)].join(' · ')}
+              aria-pressed={selected === d.date}
+              data-testid="usage-heat-cell"
+              data-date={d.date}
+              onClick={() => onSelect(d)}
+            />
+          ) : (
+            <span key={`e${i}`} style={pos} />
+          );
+        })}
       </div>
       <div className={styles.heatLegend} aria-hidden>
         <span>{t('少')}</span>

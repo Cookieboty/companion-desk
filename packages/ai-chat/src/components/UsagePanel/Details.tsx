@@ -32,14 +32,14 @@ interface Props {
   onRange: (r: DetailRange) => void;
 }
 
-const COLS: Array<{ id: UsageDetailSort | null; label: string; num?: boolean }> = [
+const COLS: Array<{ id: UsageDetailSort | null; label: string; num?: boolean; col?: string }> = [
   { id: 'ts', label: '时间' },
   { id: 'source', label: '来源' },
   { id: 'model', label: '模型' },
   { id: null, label: '输入', num: true },
   { id: null, label: '输出', num: true },
-  { id: null, label: '缓存读 / 写', num: true },
-  { id: 'tokens', label: '合计', num: true },
+  { id: null, label: '缓存读 / 写', num: true, col: 'colCache' },
+  { id: 'tokens', label: '合计', num: true, col: 'colTotal' },
   { id: 'cost', label: '费用', num: true },
 ];
 
@@ -133,7 +133,7 @@ export const Details: React.FC<Props> = ({ fx, range, onRange }) => {
   ];
 
   return (
-    <div data-testid="usage-details">
+    <div className={styles.stack} data-testid="usage-details">
       <div className={styles.filters}>
         <Tabs
           className={styles.tabsSm}
@@ -234,7 +234,12 @@ export const Details: React.FC<Props> = ({ fx, range, onRange }) => {
             <thead>
               <tr>
                 {COLS.map((c) => (
-                  <th key={c.label} className={c.num ? styles.num : undefined}>
+                  <th
+                    key={c.label}
+                    className={[c.num ? styles.num : '', c.col ? styles[c.col] : '']
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
                     {c.id ? (
                       <button
                         type="button"
@@ -258,11 +263,13 @@ export const Details: React.FC<Props> = ({ fx, range, onRange }) => {
             <tbody>
               {(res?.rows ?? []).map((r) => (
                 <tr key={r.key} data-testid="usage-row">
-                  <td className={styles.nowrap}>{formatDateTime(r.ts)}</td>
+                  <td className={`${styles.nowrap} ${styles.colTime}`}>{formatDateTime(r.ts)}</td>
                   <td>
                     <span className={styles.srcCell}>
                       <SourceIcon source={r.source} size={14} />
-                      {t(USAGE_SOURCE_LABEL[r.source] ?? r.source)}
+                      <span className={styles.srcText}>
+                        {t(USAGE_SOURCE_LABEL[r.source] ?? r.source)}
+                      </span>
                     </span>
                   </td>
                   <td title={r.model}>
@@ -283,12 +290,12 @@ export const Details: React.FC<Props> = ({ fx, range, onRange }) => {
                   <td className={styles.num}>{formatInt(r.input)}</td>
                   <td className={styles.num}>{formatInt(r.output)}</td>
                   <td
-                    className={styles.num}
+                    className={`${styles.num} ${styles.colCache}`}
                     title={`${formatInt(r.cacheRead)} / ${formatInt(r.cacheWrite)}`}
                   >
                     {formatTokens(r.cacheRead)} / {formatTokens(r.cacheWrite)}
                   </td>
-                  <td className={styles.num}>{formatInt(r.tokens)}</td>
+                  <td className={`${styles.num} ${styles.colTotal}`}>{formatInt(r.tokens)}</td>
                   <td className={styles.num}>
                     <CostCell usd={r.costUsd} fx={fx} />
                   </td>

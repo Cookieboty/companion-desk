@@ -36,6 +36,10 @@ p.dim {
   line-height: 1.7;
   margin: 6px 0;
 }
+.panel > p.dim,
+.panel > .err {
+  margin: 0;
+}
 .err {
   color: var(--cd-color-danger-text, var(--cd-color-danger));
   font-size: var(--cd-font-size-sm);
@@ -130,6 +134,10 @@ p.dim {
 
 /* 面板 */
 .panel {
+  /* 卡片内统一用 gap 排垂直间距：子元素之间 12px，卡片内边距 14px 16px */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 14px 16px;
   border-radius: var(--cd-radius-lg);
   border: 1px solid var(--cd-color-border);
@@ -140,7 +148,6 @@ p.dim {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
 }
 .panelHead h3 {
   margin: 0;
@@ -301,39 +308,35 @@ p.dim {
   flex-direction: column;
   gap: 8px;
 }
-.heatScroll {
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-.heatMonths {
+.heatGrid {
+  --heat-label-w: 26px;
   display: grid;
   gap: 2px;
-  margin-left: 30px;
+  justify-content: start;
+  max-width: 100%;
+}
+.heatMonth {
+  grid-row: 1;
   height: 16px;
   font-size: 11px;
+  line-height: 14px;
   color: var(--cd-color-text-subtle);
+  white-space: nowrap;
+  overflow: visible;
 }
-.heatMonths span {
+.heatWeekday {
+  grid-column: 1;
+  align-self: center;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--cd-color-text-subtle);
   white-space: nowrap;
 }
-.heatBody {
-  display: flex;
-  gap: 4px;
-}
-.heatWeekdays {
-  display: grid;
-  grid-template-rows: repeat(7, 12px);
-  gap: 2px;
-  width: 26px;
-  font-size: 10px;
-  color: var(--cd-color-text-subtle);
-  line-height: 12px;
-}
-.heatGrid {
-  display: grid;
-  grid-template-rows: repeat(7, 12px);
-  grid-auto-flow: column;
-  gap: 2px;
+.heatGrid .heatCell {
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  aspect-ratio: 1;
 }
 .heatCell {
   width: 12px;
@@ -346,10 +349,6 @@ p.dim {
 }
 i.heatCell {
   cursor: default;
-}
-.heatEmpty {
-  width: 12px;
-  height: 12px;
 }
 .heatCell:focus-visible,
 .heatSel {
@@ -385,7 +384,6 @@ i.heatCell {
   flex-wrap: wrap;
   align-items: center;
   gap: 14px;
-  margin-top: 10px;
   padding: 8px 12px;
   border-radius: var(--cd-radius-md);
   background: var(--cd-color-hover);
@@ -402,9 +400,9 @@ i.heatCell {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
 .tableWrap {
+  container-type: inline-size;
   overflow-x: auto;
   border: 1px solid var(--cd-color-border);
   border-radius: var(--cd-radius-md);
@@ -475,7 +473,6 @@ i.heatCell {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 10px;
 }
 .fxRow {
   display: flex;
@@ -495,13 +492,14 @@ i.heatCell {
 }
 .priceIn {
   width: 92px;
+  min-width: 56px;
+  max-width: 100%;
   text-align: right;
 }
 .actionsRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
 }
 .chip {
   display: inline-flex;
@@ -551,7 +549,6 @@ i.heatCell {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px 16px;
-  margin-bottom: 4px;
 }
 .budgetField {
   display: flex;
@@ -582,7 +579,7 @@ i.heatCell {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 6px 0 10px;
+  padding: 0;
 }
 .quotaName {
   display: flex;
@@ -640,4 +637,32 @@ i.heatCell {
   padding: 5px 0;
   font-size: var(--cd-font-size-sm);
   color: var(--cd-color-text-muted);
+}
+
+/* 明细表随容器宽度收起次要列（缓存 / 合计），保证不出现横向滚动 */
+@container (max-width: 700px) {
+  .colCache {
+    display: none;
+  }
+}
+@container (max-width: 640px) {
+  .colTotal {
+    display: none;
+  }
+}
+@container (max-width: 600px) {
+  .table th,
+  .table td {
+    padding: 6px 5px;
+  }
+  .colTime {
+    white-space: normal;
+    min-width: 64px;
+  }
+  .srcText {
+    display: none;
+  }
+  .sub2 {
+    max-width: 120px;
+  }
 }
