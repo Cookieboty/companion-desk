@@ -34,6 +34,23 @@ describe('CliHarnessService tabs', () => {
   const mk = () =>
     new CliHarnessService({ root, logger: { info() {}, warn() {} }, defaultCwd: os.tmpdir() });
 
+  it('progressHint：记录当前一轮最近的文本 / 工具步骤，关闭标签后清空', () => {
+    const h = mk();
+    const a = h.createTab({ backend: 'claude' });
+    const emit = (ev: unknown) =>
+      (h as unknown as { emitEvent(id: string, e: unknown): void }).emitEvent(a.id, ev);
+    expect(h.progressHint(a.id)).toBeUndefined();
+    emit({ type: 'text-delta', text: '正在 ' });
+    emit({ type: 'text-delta', text: '改 login.ts' });
+    expect(h.progressHint(a.id)).toBe('正在 改 login.ts');
+    emit({ type: 'tool', name: 'Bash', status: 'start', detail: 'npm test' });
+    expect(h.progressHint(a.id)).toContain('Bash npm test');
+    emit({ type: 'tool', name: 'Bash', status: 'done' });
+    expect(h.progressHint(a.id)).toContain('Bash npm test');
+    h.closeTab(a.id);
+    expect(h.progressHint(a.id)).toBeUndefined();
+  });
+
   it('starts with the main tab and creates CLI-only tabs', () => {
     const h = mk();
     const s0 = h.listTabs();

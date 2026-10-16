@@ -515,5 +515,11 @@
   "常见原因：① 未安装 Microsoft Visual C++ 2015-2022 x64 运行库（缺 MSVCP140.dll / VCRUNTIME140_1.dll），": "Common causes: (1) Microsoft Visual C++ 2015–2022 x64 runtime is missing (MSVCP140.dll / VCRUNTIME140_1.dll),",
   "请安装 https://aka.ms/vs/17/release/vc_redist.x64.exe；": " install https://aka.ms/vs/17/release/vc_redist.x64.exe;",
   "② C:\\Windows\\System32 下的旧版 onnxruntime.dll 被优先加载（版本不匹配 / OrtGetApiBase 找不到），": " (2) an older onnxruntime.dll under C:\\Windows\\System32 is loaded first (version mismatch / OrtGetApiBase not found),",
-  "请确认平台包目录在 PATH 前面；③ 目录被杀毒软件拦截或路径权限不足。": " ensure the platform package folder is ahead on PATH; (3) antivirus blocked the folder or path permissions are insufficient."
+  "请确认平台包目录在 PATH 前面；③ 目录被杀毒软件拦截或路径权限不足。": " ensure the platform package folder is ahead on PATH; (3) antivirus blocked the folder or path permissions are insufficient.",
+  "正在执行 {0}": "Running {0}",
+  "还有 {0} 个编程任务进行中（{1}）": "{0} coding task(s) still in progress ({1})",
+  "{0} 个编程任务进行中": "{0} coding task(s) in progress",
+  "{0} 完成了任务「{1}」，结果：{2}": "{0} finished \"{1}\": {2}",
+  "{0} 的任务「{1}」失败了：{2}": "{0}: task \"{1}\" failed: {2}",
+  "顺利完成": "Completed successfully"
 }

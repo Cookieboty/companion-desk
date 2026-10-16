@@ -94,6 +94,8 @@ export class CliHarnessService {
   private readonly tabs = new Map<string, HarnessTabMeta>();
   private readonly messages = new Map<string, HarnessTabMessage[]>();
   private readonly children = new Map<string, ChildProcessWithoutNullStreams>();
+  /** tabId → 当前这一轮最近的输出 / 步骤（轻量进度提示，仅内存；供监视器定时汇总用） */
+  private readonly progress = new Map<string, { kind: 'text' | 'tool'; value: string }>();
   /** tabId → requestId → timer；超时自动拒绝 */
   private readonly pendingPermissions = new Map<
     string,
@@ -481,6 +483,7 @@ export class CliHarnessService {
     const idx = order.indexOf(id);
     this.tabs.delete(id);
     this.messages.delete(id);
+    this.progress.delete(id);
     try {
       fs.rmSync(this.messagesPath(id), { force: true });
     } catch {
@@ -679,6 +682,7 @@ export class CliHarnessService {
   }
 
   private finish(tab: HarnessTabMeta, ok: boolean, text: string, error?: string) {
+    this.progress.delete(tab.id);
     const background = this.activeTabId !== tab.id || !anyWindowFocused();
     if (background && tab.id !== MAIN_TAB_ID) tab.unread += 1;
     this.changed();
@@ -1112,7 +1116,33 @@ export class CliHarnessService {
     }
   }
 
+  /** 记下一轮里最近的文本 / 工具步骤，不做任何额外计算或模型调用 */
+  private trackProgress(tabId: string, ev: HarnessEvent) {
+    const prev = this.progress.get(tabId);
+    if (ev.type === 'text-delta' || ev.type === 'text') {
+      const base = prev?.kind === 'text' ? prev.value : '';
+      this.progress.set(tabId, {
+        kind: 'text',
+        value: (ev.type === 'text' ? ev.text : base + ev.text).slice(-400),
+      });
+    } else if (ev.type === 'tool' && ev.status === 'start') {
+      this.progress.set(tabId, {
+        kind: 'tool',
+        value: (ev.detail ? `${ev.name} ${ev.detail}` : ev.name).slice(0, 160),
+      });
+    }
+  }
+
+  /** 标签当前这一轮的进度提示（最近一段文本或「正在执行 工具」）；没有则 undefined */
+  progressHint(tabId: string): string | undefined {
+    const p = this.progress.get(tabId);
+    if (!p?.value.trim()) return undefined;
+    const v = p.value.replace(/\s+/g, ' ').trim();
+    return p.kind === 'tool' ? t('正在执行 {0}', v) : v;
+  }
+
   private emitEvent(tabId: string, ev: HarnessEvent) {
+    this.trackProgress(tabId, ev);
     this.post('ai:harness:event', { ...ev, tabId });
     this.events.emit('event', { tabId, event: ev });
   }

@@ -240,10 +240,23 @@ export interface DesktopConfirmRequest {
   expiresAt: number;
 }
 
+/**
+ * 主进程推给看板娘的气泡。voice 决定要不要出声（默认 full = 朗读气泡文字）：
+ * - full：朗读整段气泡文字（总结播报）
+ * - cue：只播一句简短固定台词 + 音效，不朗读气泡文字
+ * - none：只显示气泡，不出声也不放音效
+ * kind 明确事件类型（不再从文案推断）：digest = 定时汇总，done / fail = 任务结束。
+ */
+export interface DesktopBubble {
+  text: string;
+  voice?: 'full' | 'cue' | 'none';
+  kind?: 'digest' | 'done' | 'fail';
+}
+
 export interface DesktopApi {
   onConfirmRequest(cb: (req: DesktopConfirmRequest) => void): () => void;
   onConfirmCancel(cb: (id: string) => void): () => void;
-  onBubble(cb: (p: { text: string }) => void): () => void;
+  onBubble(cb: (p: DesktopBubble) => void): () => void;
   answer(id: string, allow: boolean, remember: boolean): void;
   dropFile(file: File): boolean;
   onReminder(cb: (p: DesktopReminderEvent) => void): () => void;

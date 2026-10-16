@@ -324,6 +324,7 @@ export class Application implements IApplication {
         root: path.join(app.getPath('userData'), 'agents'),
         logger: this.logger as never,
         desktop,
+        isQuiet: () => desktop.notifyPolicy?.quiet() ?? false,
       });
       agents.registerIpc();
       if (agents.state().settings.enabled) agents.start();
@@ -364,6 +365,7 @@ export class Application implements IApplication {
         onTabs: (fn) => harness.events.on('tabs', fn),
         onFinished: (fn) => harness.events.on('tab-finished', fn),
         onPermission: (fn) => harness.events.on('permission-needed', fn),
+        progress: (id) => harness.progressHint(id),
       });
 
       // 启动 AI runtime（在窗口创建之前，preload 到 renderer 时 IPC 通道已就绪）

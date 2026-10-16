@@ -9,6 +9,8 @@ export interface AgentWatchSettings {
   stallMs: number;
   cooldownMs: number;
   osNotify: boolean;
+  /** 总结播报：定时汇总附带进度、任务结束播报完成总结（默认关） */
+  summaryEnabled: boolean;
   tools: Record<AgentKind, boolean>;
 }
 

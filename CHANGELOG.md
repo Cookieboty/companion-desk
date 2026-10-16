@@ -8,6 +8,7 @@ All notable changes to Nomi. Generated from [changesets](.changeset/) by
 ### Features
 
 - **a11y:** dialogs trap focus, Esc closes only the top-most dialog and focus returns to the opener; reduced motion calms the VRM rig and the island.
+- **agents:** coding tools (Claude Code / Codex / dsh …) no longer pop a bubble, voice, sound or island notice when a task starts; only finish / failure / waiting / stalled / permission requests notify. While monitoring is on, a digest ("N coding tasks still running", grouped by tool) is shown every 10 minutes. New "Spoken summaries" switch (off by default) adds progress to the digest and reads a completion summary aloud through the existing TTS path; when off, only short bubble / island notices are shown.
 - **brand:** every user-visible 看板娘 / Live2D / Companion Desk string is now Nomi.
 - **chat:** conversation rows now show rename, delete and more icons on hover, keyboard focus, the selected row and touch devices. Rename edits inline, deleting a Nomi chat asks for a second confirmation, deleting on a CLI tab closes the tab (still confirming when it is running), and "more" opens the same menu as right click. Read-only disk history sessions only offer "Open in a tab". The title fades out under the icons and the time gives way, so the list does not jump.
 - **chat:** normal/dev chat mode, per-endpoint conversation isolation, dual sidebar list (全部/按端), and same/cross-endpoint fork (CLI tabs seed compact transcripts; not resume).

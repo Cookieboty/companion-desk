@@ -523,3 +523,29 @@ Nomi 用 Nomi 应用标志；Codex 用 OpenAI 标志；dsh 用 DeepSeek 鲸鱼�
 ### 14.9 普通模式不能跨端分叉
 
 「分叉到其他端」（把 Nomi 对话复制到 Claude Code / Codex / dsh 标签）属于开发模式的能力。**普通模式**下：会话右键菜单与行尾「···」菜单只有「分叉为新对话」（同端 Nomi 副本，`⌘/Ctrl+Shift+F` 同样可用），没有「分叉到其他端」；`App` 里的 `onForkRequest` 也会忽略普通模式下的跨端请求，已打开的目标选择框在切到普通模式时自动关闭。开发模式行为不变。（之前菜单项没有按模式过滤，普通模式也能分叉到其他端，属于漏网。）菜单仍是同一份 `ConversationMenu`，只是不传 `onForkCross`。测试：`sidebarRowActions.test.tsx`（开发模式有 / 普通模式无）、e2e E19。
+
+### 14.10 提示策略：开始不打扰、定时汇总、总结播报
+
+设置 → 编程助手 →「监视与会话」。
+
+**1. 只在结束 / 需要你时提示。** 编程工具（Claude Code / Codex / dsh 及其它被监视的工具）任务**开始 / 进行中**时，看板娘不弹气泡、不出声、不放音效，灵动岛也不弹；运行中的状态只在「监视与会话」列表里被动展示。以下提示保持不变：任务完成 / 失败、这一轮做完在等你回复、疑似卡住、**工具权限请求**（需要你操作，仍然弹出）。
+
+**2. 每 10 分钟汇总一次。** 打开「监视编程助手进度」后，主进程每 10 分钟（常量 `DIGEST_INTERVAL_MS`）重新扫描一次；若有进行中的编程任务，发一条汇总：「还有 N 个编程任务进行中（Claude Code 2 · Codex 1）」，通过气泡与灵动岛被动告知。规则：
+
+- 0 个任务不提示；Nomi 原生对话不计入；已在设置里关闭的工具不计入。
+- 刚发过结束 / 权限 / 卡住提示后的 1 分钟内（`DIGEST_QUIET_AFTER_REMIND_MS`）跳过本轮，避免与结束提示叠加刷屏；免打扰时段内也不弹。
+- 汇总默认**不出声**（只有气泡 + 灵动岛）。
+- 关闭监听（或退出应用）会清理汇总定时器；重新打开后重新计时（第一次汇总在 10 分钟后）。
+
+**3. 总结播报（默认关）。** 设置里新增开关「总结播报」，持久化在监视设置（`summaryEnabled`）：
+
+|          | 关（默认）                                                  | 开                                                 |
+| -------- | ----------------------------------------------------------- | -------------------------------------------------- |
+| 定时汇总 | 仅气泡 / 灵动岛，不出声                                     | 在数量之外附带最多 2 个任务的最近进度，并朗读      |
+| 任务结束 | 气泡 / 灵动岛的简短提示，只播一句固定台词和音效，不朗读结果 | 朗读完成总结：做了什么（任务标题）、成败、结果摘要 |
+
+- 进度摘要不新增任何模型调用：Nomi 标签取该轮最近的文本 / 工具步骤（`CliHarnessService.progressHint`，仅内存），文件会话取已有的「最后一步」摘要（`SessionInfo.detail`）。
+- 朗读走现有的看板娘语音通道（`MascotCueService` → `speakForActiveCharacter` → `tts:speak`），遵守语音开关、音量与勿扰静音；e2e 下 `CD_TTS=off` 照常生效。
+- 实现：主进程 `desktop:bubble` 载荷新增 `voice`（`full` / `cue` / `none`）与 `kind`（`digest` / `done` / `fail`），渲染进程 `MascotAudioBridge` 据此决定出声方式；未带 `voice` 的旧气泡沿用原有行为。
+
+**测试**：`packages/electron/tests/unit/agents/agentDigest.test.ts`（fake timers：开始不提示、10 分钟汇总与分组、0 个不提示、总结播报开 / 关、与结束提示去重、免打扰、关闭监听 / `stop` 清理定时器）、`agentProgress.test.ts` / `agentEndpoints.test.ts`、`HarnessTabs.test.ts`（`progressHint`）、`packages/renderer/tests/mascot/audioBridgeBubble.test.tsx`（三种出声方式）、`packages/ai-chat/tests/providersPage.test.tsx`（开关）。**未验证**：真实语音听感，以及 Windows / macOS 真机上的气泡、灵动岛与定时行为。

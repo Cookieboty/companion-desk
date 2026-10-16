@@ -80,6 +80,20 @@ export const CodingMonitor: React.FC<{
               label={tr('任务完成 / 卡住时发送系统通知')}
               data-testid="agents-os-notify"
             />
+            <Switch
+              checked={agents.settings.summaryEnabled}
+              disabled={!agents.settings.enabled}
+              onChange={(v) =>
+                void agentsClient.setSettings({ summaryEnabled: v }).then(loadAgents)
+              }
+              label={tr('总结播报（语音播报任务进度与完成总结）')}
+              data-testid="agents-summary"
+            />
+            <p className={styles.hint}>
+              {tr(
+                '开启后，每 10 分钟的汇总会附带当前任务进度并朗读，任务结束时朗读完成总结；关闭时只显示气泡 / 灵动岛的简短提示，不出声。遵守语音开关与静音。',
+              )}
+            </p>
             <p className={styles.hint}>
               {tr('灵动岛样式、通知类型与免打扰在「通知 / 灵动岛」和「日程与提醒」里设置。')}{' '}
               {onOpenNotify && (
