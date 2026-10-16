@@ -413,8 +413,9 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     // 回到对话：Claude 标签的输入栏只显示 Claude 自己启用的档案 + 模型；Codex 标签显示默认
     await chat.getByText('‹ 返回对话').click();
 
-    // 日程与提醒页不再有「编程助手」标签
-    await chat.click('[data-testid="open-sched-panel"]');
+    // 顶栏「知识 · 记忆 · 日程」→ 日程标签：没有「编程助手」标签
+    await chat.click('[data-testid="open-hub-panel"]');
+    await chat.click('[data-testid="hub-tab-schedule"]');
     await expect(chat.locator('[data-testid="sched-panel"]')).toBeVisible();
     await expect(chat.locator('[data-testid="sched-panel"]').getByText('编程助手')).toHaveCount(0);
     await shot(chat, '16-schedule-no-coding-tab');
