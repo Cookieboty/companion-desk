@@ -113,8 +113,8 @@ class Arm:
         y = y0
         while y < y1: ry.add(round(y)); y += 34
         yE = self.sE - TEX_S0
-        y = yE - 70
-        while y <= yE + 70: ry.add(round(y)); y += 14
+        y = yE - 90
+        while y <= yE + 90: ry.add(round(y)); y += 8
         y = 715 - TEX_S0
         while y <= 790 - TEX_S0: ry.add(round(y)); y += 20
         ry = sorted(r for r in ry if y0 <= r <= y1)
@@ -158,7 +158,11 @@ class Arm:
             m = HANDS[hn]
             flip = m['side'] != 'S' and m['side'] != CHAR_SIDE[self.side]
             hs = m['scale']
-            node_ = El('Node', f'hand-{self.side}.{hn}', ident=True, x=-4, y=0, rotation=math.pi / 2,
+            # tuck the extended wrist stub under the orange cuff lining: pull along the bone toward the elbow
+            # (wrist RootBone +x points along the forearm). Scale up a bit so fingers stay crisp after downsample.
+            hs = m['scale'] * 1.12
+            tuck = -28.0   # px toward elbow / under cuff
+            node_ = El('Node', f'hand-{self.side}.{hn}', ident=True, x=tuck, y=0, rotation=math.pi / 2,
                        scaleX=-hs if flip else hs, scaleY=hs, opacity=1.0 if hn == 'rest' else 0.0)
             im = El('Image', f'hand-{hn}', assetId=part_asset(f'hand-{hn}').need_id(), x=0, y=0,
                     originX=m['ax'] / m['w'], originY=m['ay'] / m['h'])
@@ -166,6 +170,31 @@ class Arm:
             self.bones['wr' if hn == 'rest' else 'wrF'].add(node_)
             self.hand_nodes[hn] = node_
             node_.flip = flip
+
+    def make_cuff_overlay(self):
+        """Official cuff tip (strap+buckle+orange lining) drawn ABOVE the hand so the wrist stub never shows as a flesh block."""
+        arm = cv2.imread(str(PARTS / f'arm-{self.side}-complete.png'), cv2.IMREAD_UNCHANGED)
+        # cuff band approx tex y 820..920
+        cuff = arm[800:940].copy()
+        # fade top into sleeve
+        for i in range(20):
+            cuff[i, ..., 3] = (cuff[i, ..., 3].astype(np.float32) * (i / 20)).astype(np.uint8)
+        path = PARTS / f'cuff-overlay-{self.side}.png'
+        cv2.imwrite(str(path), cuff)
+        part_asset(f'cuff-overlay-{self.side}')
+        self.cuff_overlay = El('Node', f'arm-{self.side}.cuffOverlay', ident=True, x=-8, y=0, rotation=0.0, opacity=0.0)
+        im = El('Image', f'cuff-ov-{self.side}', assetId=part_asset(f'cuff-overlay-{self.side}').need_id(),
+                x=0, y=0, originX=0.5, originY=0.85, scaleX=0.42, scaleY=0.42)
+        self.cuff_overlay.add(im)
+        self.bones['wrF'].add(self.cuff_overlay)
+
+    def make_elbow_patch(self):
+        """Overlay a bent-sleeve crease near the elbow bone; opacity keyed later in build_action."""
+        self.elbow_patch = El('Node', f'arm-{self.side}.elbowPatch', ident=True, x=0, y=0, opacity=0.0)
+        im = El('Image', f'elbow-bent-{self.side}', assetId=part_asset(f'elbow-bent-patch-{self.side}').need_id(),
+                x=0, y=0, originX=0.5, originY=0.5, scaleX=0.55, scaleY=0.55)
+        self.elbow_patch.add(im)
+        self.bones['el'].add(self.elbow_patch)
 
     def fk(self, d1, d2, d3=0.0):
         a_sh = self.a1 + d1
@@ -231,8 +260,21 @@ class Scene:
         self.arms = {'l': Arm('l'), 'r': Arm('r')}
         rigs, meshes = [], []
         for s, arm in self.arms.items():
-            rigs.append(arm.make_rig(FIG)); arm.make_hands(); meshes.append(arm.mesh_image(FIG))
+            rigs.append(arm.make_rig(FIG)); arm.make_cuff_overlay(); arm.make_hands(); arm.make_elbow_patch(); meshes.append(arm.mesh_image(FIG))
         flank_l = image('body-flank-l', FIG); flank_r = image('body-flank-r', FIG)
+        # raised-arm shoulder gussets (official flank + orange lining), start hidden; opacity keyed to arm raise
+        self.gusset = {}
+        for sd in ('l', 'r'):
+            pivot = self.arms[sd].P
+            # shift slightly toward body midline and down into the armpit
+            mid = 476.0
+            gx = pivot[0] + (12 if sd == 'r' else -12) * (1 if sd == 'r' else 1)
+            gx = pivot[0] + (18 if sd == 'r' else -18)
+            gy = pivot[1] + 40
+            gn = node(f'gusset-{sd}', (gx, gy), FIG, opacity=0.0)
+            gim = El('Image', f'gusset-{sd}-img', assetId=part_asset(f'shoulder-gusset-{sd}-raised').need_id(),
+                     x=0, y=0, originX=0.5, originY=0.15, scaleX=0.85 if sd == 'r' else -0.85, scaleY=0.85)
+            gn.add(gim); self.gusset[sd] = gn
         body = image('body-noarm', FIG)
         self.badge = node('badge.idle', tuple(P_BY['badge']['pivot']), FIG); self.badge.add(image('badge', tuple(P_BY['badge']['pivot'])))
         self.strap = node('strap-r.idle', tuple(P_BY['strap-r']['pivot']), FIG); self.strap.add(image('strap-r', tuple(P_BY['strap-r']['pivot'])))
@@ -257,7 +299,9 @@ class Scene:
         back_to_front(self.headAct, *tail_nodes, image('head', NECK), image('crown', NECK), *feats, mouth, image('bangs', NECK),
                       image('clip', NECK), self.ribbon, image('earring', NECK))
         # z: back -> front
-        back_to_front(self.figAct, flank_l, flank_r, rigs[0], rigs[1], meshes[0], meshes[1], body, self.strap, self.badge, self.headIdle, self.arms['l'].rigF, self.arms['r'].rigF)
+        back_to_front(self.figAct, flank_l, flank_r, self.gusset['l'], self.gusset['r'],
+                      rigs[0], rigs[1], meshes[0], meshes[1], body, self.strap, self.badge, self.headIdle,
+                      self.arms['l'].rigF, self.arms['r'].rigF)
         ab.add(self.figIdle)
         if os.environ.get('RC_BG'):   # review renders only: opaque cream backdrop so CLI frames match the canvas rig's bg
             bg = El('Shape', 'review.bg', ident=True, x=0, y=0)
@@ -277,7 +321,7 @@ def load_rows(name):
 
 MID_X2 = 2 * 476.0   # mirror axis between the two shoulder pivots (rig x)
 HAND_XMIN = 745.0
-HAND_D = 83.0   # canvas hand anchor -> cuff rim distance (rig px)
+HAND_D = 52.0   # cuff rim offset from canvas hand anchor; smaller = hand sits closer under cuff   # canvas hand anchor -> cuff rim distance (rig px)
 def _unwrap(v):
     out = [v[0]]
     for x in v[1:]:
@@ -366,9 +410,17 @@ def build_action(sc: Scene, name: str, src: str, sides: dict[str, str], hand: st
             an.key(arm.bones[bn], 'y', [(f, v, 'l') for f, v in track(ys, 0.3)])
         # hands: rest -> action hand crossfade by the canvas rig's own hand mix
         hv = [min(1.0, max(0.0, m)) for m in mix]
-        an.key(arm.hand_nodes[hand], 'opacity', [(f, v, 'l') for f, v in track(hv, 0.02)])
-        # no ghosting: the new hand fades in OVER the resting hand, which is dropped only once the new one is opaque
-        an.key(arm.hand_nodes['rest'], 'opacity', [(f, v, 'l') for f, v in track([0.0 if h >= 0.999 else 1.0 for h in hv], 0.02)])
+        # never leave a stump: wave hand is visible whenever mix>0.15; rest hand stays until wave is nearly solid
+        an.key(arm.hand_nodes[hand], 'opacity', [(f, v, 'l') for f, v in track([min(1.0, max(0.0, (m-0.12)/0.55)) for m in mix], 0.02)])
+        an.key(arm.hand_nodes['rest'], 'opacity', [(f, v, 'l') for f, v in track([1.0 if m < 0.85 else max(0.0, 1.0-(m-0.85)/0.15) for m in mix], 0.02)])
+        # raised-arm detail: gusset fades in with z / raise; elbow crease with |E|
+        raise_amt = [max(0.0, min(1.0, 0.55 * z + 0.55 * max(0.0, (abs(r[pre + 'A']) - 25) / 90))) for r, z in zip(rows, Z)]
+        an.key(sc.gusset[side], 'opacity', [(f, v, 'l') for f, v in track(raise_amt, 0.02)])
+        bend = [max(0.0, min(0.85, abs(r[pre + 'E']) / 70.0)) for r in rows]
+        an.key(arm.elbow_patch, 'opacity', [(f, v, 'l') for f, v in track(bend, 0.02)])
+        an.key(arm.cuff_overlay, 'opacity', [(f, v, 'l') for f, v in track([min(1.0, max(0.0, (m-0.12)/0.55)) for m in mix], 0.02)])
+
+
     # body bob / head
     an.key(sc.figAct, 'y', [(f, v, 'l') for f, v in track([r['bodyY'] for r in rows], 0.15)])
     an.key(sc.figAct, 'x', [(f, v, 'l') for f, v in track([r['torsoX'] for r in rows], 0.15)])

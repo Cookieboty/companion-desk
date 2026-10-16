@@ -99,3 +99,22 @@ reference for hairclip / N logo geometry only), and the existing 2D polish arm p
   via the same pipeline (~3–4 d), replace the shoulder gusset with a properly drawn/generated + human-reviewed asset
   (needs an image generator + art review, 2–3 d), runtime/state-machine bridge to the existing action manager & lip-sync
   (~3 d), CSP `wasm-unsafe-eval` decision + packaging (~1 d), QA/brand review (~2 d): **≈ 3 person-weeks**.
+
+## Detail-fix pass (r2) — red-box checklist
+
+Annotated source: user contact sheet with 6 red boxes. Media: `/workspace/screenshots/nomi-rive-complete/r2-detail-fix/`.
+
+**GenerateImage:** the `cursor` MCP namespace / `GenerateImage` tool was **not available** in this executor
+(`MCP server "cursor" is not available here`). No AI-generated pixels were produced. Fixes used official-layer
+cut/restore, procedural crease/gusset compositing, cuff overlay, denser elbow mesh, and hand tuck.
+
+| Box | Symptom | What we did | Result |
+|---|---|---|---|
+| 1 cuff↔hand | gap at hanging wrist | hand tuck under cuff; rest hand under mesh | improved at rest (f000); mid-wave still has a thin seam |
+| 2 missing hand | stump when arm out | never drop rest until wave opaque; wave fades in earlier; cuff overlay on wrF | hand present on extended frames |
+| 3 elbow pinch | jagged fold | denser elbow mesh (408 verts) + crease overlay from official sleeve | partial; still looks squashed without redrawn bent-sleeve art |
+| 4 blurry fingers | soft hand | unsharp on official hand-wave; scale *1.12 | visibly crisper |
+| 5 shoulder wedge | hard cut | shoulder-gusset-{l,r}-raised from official flank + orange lining sample | wedge reduced on cheer raised frames |
+| 6 sleeve holes | white holes | careful connected-component inpaint from official | small interior holes fixed; body-noarm hard silhouette edge remains |
+
+Provenance: `rive/nomi-complete/parts/DETAIL_LICENSE.json` (`ai_generated: false` for every file).

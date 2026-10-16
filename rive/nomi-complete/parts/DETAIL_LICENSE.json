@@ -1,0 +1,96 @@
+{
+  "note": "cursor MCP GenerateImage was NOT available (namespace unreachable). NO AI-generated pixels. All detail-fix assets are official-pixel cut/restore + procedural.",
+  "generateImage_status": "unavailable",
+  "assets": {
+    "arm-l-complete.png": {
+      "sha256": "ecb145cd8a85f4c3eca6019be005a5faf04e0e3073b4c12c929a9d5bd87eb0cf",
+      "bytes": 186572,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "arm-l-generated-mask.png": {
+      "sha256": "7ae2b1387e141f1f57212bbdeeeac37518ded5d438eb3e84a811e888ad1ec048",
+      "bytes": 3772,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "arm-l-official.png": {
+      "sha256": "24a7769c4aeda41ac93a81de55b5d97506e8a37950fb937c7fd45c58b2935a30",
+      "bytes": 252814,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "arm-r-complete.png": {
+      "sha256": "45541be1058d037b217914cf25cb43ab46a5900d25d4c2f73b79c39e398cd59c",
+      "bytes": 182510,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "arm-r-generated-mask.png": {
+      "sha256": "6ba7965f703e0cf42e776ef7e6744a03da67c31f9d8bf3d2742beb22289575e5",
+      "bytes": 3936,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "arm-r-official.png": {
+      "sha256": "8223ce7007d369dace5729c238e8cbe6ea5fe8eec1266ef9374a25f17baf4204",
+      "bytes": 260540,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "cuff-overlay-l.png": {
+      "sha256": "21fd447f1178cfd750702e0fb9a9abcd991d781608d90f1327ecec66a7db2935",
+      "bytes": 26537,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "cuff-overlay-r.png": {
+      "sha256": "5daa4c0f302d83af17472e6d2497bd98c595683b16580cc41dc3de28814b192b",
+      "bytes": 27608,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "elbow-bent-patch-l.png": {
+      "sha256": "5777cda38eb5c27e9544ba350245314858c626aa9be016016f8f0a47573c1d92",
+      "bytes": 46643,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "elbow-bent-patch-r.png": {
+      "sha256": "22554cbf1c7dc11d4ee6d72c02354ceb7a4670b6b39eb494d76269b07e264099",
+      "bytes": 42773,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "hand-fist.png": {
+      "sha256": "d9557c469904b8e071a16a865fd67184259394958b2ae3bd4d217f0bbfa6ac23",
+      "bytes": 41160,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "hand-rest.png": {
+      "sha256": "74ef3409ec1a00b7a574955dfad560c8dacbae00838d65545f35bdfbeb30b8c7",
+      "bytes": 61876,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "hand-wave.png": {
+      "sha256": "224a476ca9000e0416bf26640d3e61286d0144f58171d5ecc0ce4fef97e6fdeb",
+      "bytes": 84077,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "shoulder-gusset-l-raised.png": {
+      "sha256": "c7752ac94aba81e9e968a6541c72d2a1da62647be0f0e9d870deaab49f0597b4",
+      "bytes": 41828,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    },
+    "shoulder-gusset-r-raised.png": {
+      "sha256": "2a8f748aaa826a794676797d8d60be6d574b35eac8a0e0175422db08431b54d1",
+      "bytes": 41714,
+      "ai_generated": false,
+      "method": "cut-restore from official layers/draft + procedural tone/unsharp; GenerateImage MCP unavailable"
+    }
+  }
+}

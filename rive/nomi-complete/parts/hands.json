@@ -8,7 +8,8 @@
   "wristW": 82.0,
   "scale": 0.5854,
   "side": "R",
-  "source": "official/layers/hands/hand-rest.png rows 0..295"
+  "source": "official/layers/hands/hand-rest.png rows 0..295",
+  "note": "official crop + unsharp; no AI; no wrist extension"
  },
  "wave": {
   "file": "hand-wave.png",
@@ -19,7 +20,8 @@
   "wristW": 94.0,
   "scale": 0.5106,
   "side": "L",
-  "source": "official/layers/hands/hand-wave.png rows 0..375"
+  "source": "official/layers/hands/hand-wave.png rows 0..375",
+  "note": "official crop + unsharp; no AI; no wrist extension"
  },
  "fist": {
   "file": "hand-fist.png",
@@ -30,6 +32,7 @@
   "wristW": 89.0,
   "scale": 0.5393,
   "side": "R",
-  "source": "official/layers/hands/hand-fist.png rows 0..205"
+  "source": "official/layers/hands/hand-fist.png rows 0..205",
+  "note": "official crop + unsharp; no AI; no wrist extension"
  }
 }
