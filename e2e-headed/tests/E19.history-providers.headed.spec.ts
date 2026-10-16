@@ -350,7 +350,7 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await chat.click('[data-testid="sidebar-settings"]');
     await chat.click('[data-testid="settings-nav-coding"]');
     await expect(chat.locator('[data-testid="providers-page"]')).toBeVisible();
-    await expect(chat.locator('[data-testid="providers-endpoint-tabs"] [role=tab]')).toHaveCount(5);
+    await expect(chat.locator('[data-testid="providers-endpoint-tabs"] [role=tab]')).toHaveCount(6);
     await expect(chat.locator('[data-testid="providers-section-nomi"]')).toBeVisible();
     await shot(chat, '09-providers-nomi');
 
