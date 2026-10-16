@@ -327,3 +327,236 @@ describe('UsageLogScanner：增量游标 + 去重', () => {
     ]);
   });
 });
+
+describe('UsageLogScanner：Qwen / Kimi / OpenCode / Copilot / 各工具 HOME 环境变量', () => {
+  const fxd = path.join(__dirname, '../../fixtures/history');
+  const setup = (env: NodeJS.ProcessEnv = {}) => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-usage-home-'));
+    const ledger = new UsageLedger({ root: fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-ur-')) });
+    const scanner = new UsageLogScanner({
+      ledger,
+      home,
+      env,
+      dshHome: path.join(home, '.dsh'),
+      retention: () => 'forever',
+    });
+    return { home, ledger, scanner };
+  };
+  const put = (file: string, from: string) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.copyFileSync(path.join(fxd, from), file);
+  };
+  type Db = {
+    exec(sql: string): void;
+    prepare(sql: string): { run(...a: unknown[]): void };
+    close(): void;
+  };
+  const openDb = (file: string): Db => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { DatabaseSync } = require('node:sqlite') as { DatabaseSync: new (f: string) => Db };
+    return new DatabaseSync(file);
+  };
+  const T0 = Date.parse('2026-10-14T10:00:00Z');
+
+  it('Qwen Code：~/.qwen/tmp/<id>/chats/*.jsonl，QWEN_HOME 可改目录；检测到工具', async () => {
+    const a = setup();
+    put(path.join(a.home, '.qwen', 'tmp', 'pid', 'chats', 'qsess-1.jsonl'), 'qwen-chat.jsonl');
+    expect(a.scanner.detected()).toContain('qwen');
+    await a.scanner.scan();
+    expect(a.ledger.all().map((r) => r.key)).toEqual(['qwen:a-1']);
+
+    const custom = path.join(os.tmpdir(), `nomi-qwen-${Date.now()}`);
+    const b = setup({ QWEN_HOME: custom });
+    put(path.join(custom, 'tmp', 'pid', 'chats', 'q.jsonl'), 'qwen-chat.jsonl');
+    await b.scanner.scan();
+    expect(b.ledger.size()).toBe(1);
+    // chats 之外的 jsonl 不读
+    const c = setup();
+    put(path.join(c.home, '.qwen', 'tmp', 'pid', 'other.jsonl'), 'qwen-chat.jsonl');
+    await c.scanner.scan();
+    expect(c.ledger.size()).toBe(0);
+  });
+
+  it('Kimi：旧 kimi-cli 与 Kimi Code 两种目录，KIMI_HOME / KIMI_CODE_HOME 生效，会话 id 取自路径', async () => {
+    const a = setup();
+    put(
+      path.join(a.home, '.kimi', 'sessions', 'wshash', 'sess-legacy', 'wire.jsonl'),
+      'kimi-wire-legacy.jsonl',
+    );
+    put(
+      path.join(a.home, '.kimi-code', 'sessions', 'ses_abc', 'agents', 'main', 'wire.jsonl'),
+      'kimi-code-wire.jsonl',
+    );
+    expect(a.scanner.detected()).toContain('kimi');
+    await a.scanner.scan();
+    const by = Object.fromEntries(a.ledger.all().map((r) => [r.key, r]));
+    expect(Object.keys(by).sort()).toEqual([
+      'kimi:msg-code-1',
+      'kimi:msg-legacy-1',
+      'kimi:msg-legacy-2',
+      'kimi:step-2',
+    ]);
+    expect(by['kimi:msg-legacy-1']!.session).toBe('sess-legacy');
+    expect(by['kimi:msg-code-1']!.session).toBe('ses_abc');
+
+    const kh = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-kh-'));
+    const kc = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-kc-'));
+    const b = setup({ KIMI_HOME: kh, KIMI_CODE_HOME: kc });
+    put(path.join(kh, 'sessions', 'h', 's1', 'wire.jsonl'), 'kimi-wire-legacy.jsonl');
+    put(path.join(kc, 'sessions', 's2', 'agents', 'main', 'wire.jsonl'), 'kimi-code-wire.jsonl');
+    await b.scanner.scan();
+    expect(b.ledger.size()).toBe(4);
+  });
+
+  it('OpenCode：只读 SELECT message 表（assistant）；库没变不重读；新增行下一轮读到；不改库文件', async () => {
+    const a = setup();
+    const file = path.join(a.home, '.local', 'share', 'opencode', 'opencode.db');
+    const db = openDb(file);
+    db.exec(
+      'CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, time_created INTEGER, time_updated INTEGER, data TEXT)',
+    );
+    const ins = db.prepare('INSERT INTO message VALUES (?,?,?,?,?)');
+    const asst = (tokens: object, extra: object = {}) =>
+      JSON.stringify({
+        role: 'assistant',
+        modelID: 'claude-sonnet-4-5',
+        providerID: 'anthropic',
+        path: { cwd: '/w/oc' },
+        tokens,
+        ...extra,
+      });
+    ins.run(
+      'm1',
+      's1',
+      T0,
+      T0 + 5,
+      asst({ input: 10, output: 20, reasoning: 5, cache: { read: 300, write: 40 } }),
+    );
+    ins.run('m2', 's1', T0 + 10, T0 + 10, JSON.stringify({ role: 'user', tokens: { input: 999 } }));
+    ins.run(
+      'm3',
+      's1',
+      T0 + 20,
+      T0 + 20,
+      asst({ input: 0, output: 0, cache: { read: 0, write: 0 } }),
+    );
+    ins.run('m4', 's1', T0 + 30, T0 + 30, 'not json');
+    db.close();
+    const before = fs.readFileSync(file);
+    expect(a.scanner.detected()).toContain('opencode');
+    await a.scanner.scan();
+    expect(a.ledger.all()).toHaveLength(1);
+    expect(a.ledger.all()[0]).toMatchObject({
+      key: 'opencode:m1',
+      source: 'opencode',
+      provider: 'anthropic',
+      input: 10,
+      output: 25,
+      cacheRead: 300,
+      cacheWrite: 40,
+      session: 's1',
+      project: 'oc',
+    });
+    expect(fs.readFileSync(file).equals(before)).toBe(true); // 只读：库文件字节不变
+    expect((await a.scanner.scan()).added).toBe(0);
+    await new Promise((r) => setTimeout(r, 30));
+    const db2 = openDb(file);
+    db2
+      .prepare('INSERT INTO message VALUES (?,?,?,?,?)')
+      .run(
+        'm5',
+        's2',
+        T0 + 60_000,
+        T0 + 60_000,
+        asst({ input: 1, output: 2, cache: { read: 0, write: 0 } }),
+      );
+    db2.close();
+    await a.scanner.scan();
+    expect(
+      a.ledger
+        .all()
+        .map((r) => r.key)
+        .sort(),
+    ).toEqual(['opencode:m1', 'opencode:m5']);
+  });
+
+  it('OpenCode：OPENCODE_HOME / XDG_DATA_HOME 改目录；库结构不符（没有 message 表）静默跳过', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-oc-'));
+    const a = setup({ OPENCODE_HOME: dir });
+    const db = openDb(path.join(dir, 'opencode.db'));
+    db.exec('CREATE TABLE other (x)');
+    db.close();
+    await expect(a.scanner.scan()).resolves.toMatchObject({ added: 0 });
+    const xdg = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-xdg-'));
+    const b = setup({ XDG_DATA_HOME: xdg });
+    const d2 = openDb(path.join(xdg, 'opencode', 'opencode.db'));
+    d2.exec(
+      'CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER, time_updated INTEGER, data TEXT)',
+    );
+    d2.prepare('INSERT INTO message VALUES (?,?,?,?,?)').run(
+      'z',
+      's',
+      T0,
+      T0,
+      JSON.stringify({ role: 'assistant', modelID: 'm', tokens: { input: 3, output: 4 } }),
+    );
+    d2.close();
+    await b.scanner.scan();
+    expect(b.ledger.size()).toBe(1);
+  });
+
+  it('Copilot CLI：assistant_usage_events，按 id 增量；COPILOT_HOME 改目录', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cp-'));
+    const a = setup({ COPILOT_HOME: dir });
+    const file = path.join(dir, 'session-store.db');
+    const db = openDb(file);
+    db.exec(
+      'CREATE TABLE assistant_usage_events (id INTEGER PRIMARY KEY, session_id TEXT, model TEXT, input_tokens INTEGER, output_tokens INTEGER, cache_read_tokens INTEGER, cache_write_tokens INTEGER, reasoning_tokens INTEGER, created_at TEXT, secret_note TEXT)',
+    );
+    const ins = db.prepare(
+      'INSERT INTO assistant_usage_events (id, session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, created_at, secret_note) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    );
+    ins.run(1, 'cs', 'gpt-5', 1000, 80, 600, 100, 20, '2026-10-14T10:00:00.000Z', 'x');
+    ins.run(2, 'cs', 'gpt-5', 500, 40, 0, 0, 0, '2026-10-14T10:01:00.000Z', 'x');
+    db.close();
+    expect(a.scanner.detected()).toContain('copilot');
+    await a.scanner.scan();
+    expect(
+      a.ledger.all().map((r) => [r.key, r.input, r.cacheRead, r.cacheWrite, r.output]),
+    ).toEqual([
+      ['copilot:cs:1', 300, 600, 100, 80],
+      ['copilot:cs:2', 500, 0, 0, 40],
+    ]);
+    await new Promise((r) => setTimeout(r, 30)); // 避开内核时间戳粒度，确保 mtime 变化
+    const db2 = openDb(file);
+    db2
+      .prepare(
+        'INSERT INTO assistant_usage_events (id, session_id, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, created_at) VALUES (3,?,?,?,?,?,?,?)',
+      )
+      .run('cs', 'gpt-5', 70, 7, 0, 0, '2026-10-14T10:02:00.000Z');
+    db2.close();
+    await a.scanner.scan();
+    expect(a.ledger.size()).toBe(3);
+    // 账本里没有任何非记账列的内容
+    expect(JSON.stringify(a.ledger.all())).not.toContain('secret');
+  });
+
+  it('Gemini：GEMINI_CLI_HOME 指向放 .gemini 的主目录', async () => {
+    const gh = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-gh-'));
+    const a = setup({ GEMINI_CLI_HOME: gh });
+    put(path.join(gh, '.gemini', 'tmp', 'p', 'chats', 'session-1.jsonl'), 'gemini-session.jsonl');
+    expect(a.scanner.detected()).toContain('gemini');
+    await a.scanner.scan();
+    expect(a.ledger.size()).toBe(2);
+  });
+
+  it('CLAUDE_CONFIG_DIR / CODEX_HOME 经注入的 env 生效（不再只读 process.env）', async () => {
+    const cd = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-cd-'));
+    const a = setup({ CLAUDE_CONFIG_DIR: cd });
+    fs.mkdirSync(path.join(cd, 'projects', 'p'), { recursive: true });
+    fs.writeFileSync(path.join(cd, 'projects', 'p', 's.jsonl'), asst('msg_env', 3));
+    await a.scanner.scan();
+    expect(a.ledger.all().map((r) => r.key)).toEqual(['claude:msg_env']);
+  });
+});

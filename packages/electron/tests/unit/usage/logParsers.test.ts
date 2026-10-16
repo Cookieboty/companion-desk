@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  copilotRowToRecord,
+  opencodeRowToRecord,
+  parseKimiChunk,
+  parseQwenChunk,
   parseAiderChunk,
   parseClaudeChunk,
   parseCodexChunk,
@@ -373,5 +377,147 @@ describe('dsh / Gemini / Aider', () => {
     expect(recs).toHaveLength(1);
     expect(recs[0]).toMatchObject({ source: 'aider', model: 'gpt-4o', input: 500, output: 50 });
     expect(recs[0]!.ts).toBe(1792000000_000);
+  });
+});
+
+describe('Qwen Code / Kimi / OpenCode / Copilot 解析（字段来自调研，未经真机核对）', () => {
+  it('Qwen：promptTokenCount 含缓存要扣、thoughts 进输出、tool 进输入；同 uuid 取最大；无 usage / 非 assistant 不记', () => {
+    const recs = parseQwenChunk(fx('qwen-chat.jsonl'));
+    expect(recs).toHaveLength(1);
+    expect(recs[0]).toMatchObject({
+      key: 'qwen:a-1',
+      source: 'qwen',
+      model: 'qwen3-coder-plus',
+      input: 600 + 20,
+      cacheRead: 400,
+      output: 60 + 30,
+      session: 'qsess-1',
+      project: 'qproj',
+    });
+    expect(recs[0]!.ts).toBe(Date.parse('2026-10-14T10:00:05.000Z'));
+  });
+
+  it('Qwen：分支复制的同 uuid 消息在另一个文件里 key 相同（账本去重）', () => {
+    const a = parseQwenChunk(fx('qwen-chat.jsonl'))[0]!;
+    const b = parseQwenChunk(fx('qwen-chat.jsonl').replace(/qsess-1/g, 'qsess-2'))[0]!;
+    expect(b.key).toBe(a.key);
+  });
+
+  it('Kimi 旧 kimi-cli：StatusUpdate.token_usage（输入不含缓存），按 message_id 去重，秒级时间戳', () => {
+    const recs = parseKimiChunk(fx('kimi-wire-legacy.jsonl'), { sid: 'sess-a' });
+    expect(recs.map((r) => r.key)).toEqual(['kimi:msg-legacy-1', 'kimi:msg-legacy-2']);
+    expect(recs[0]).toMatchObject({
+      source: 'kimi',
+      input: 120,
+      output: 30,
+      cacheRead: 900,
+      cacheWrite: 40,
+      session: 'sess-a',
+      model: 'unknown',
+    });
+    expect(recs[0]!.ts).toBe(1792000010_250);
+  });
+
+  it('Kimi Code：step.end（含包在 context.append_loop_event 里的）带 usage；模型取 modelAlias 末段；messageId 优先当键', () => {
+    const state: Record<string, unknown> = { sid: 'ses-b' };
+    const recs = parseKimiChunk(fx('kimi-code-wire.jsonl'), state);
+    expect(recs.map((r) => r.key)).toEqual(['kimi:msg-code-1', 'kimi:step-2']);
+    expect(recs[0]).toMatchObject({
+      model: 'kimi-for-coding',
+      input: 200,
+      output: 50,
+      cacheRead: 1000,
+      cacheWrite: 10,
+      session: 'ses-b',
+    });
+    expect(recs[0]!.ts).toBe(1792000010_000);
+    expect(state.model).toBe('kimi-for-coding'); // 跨块续读靠 state
+  });
+
+  it('Kimi：OpenAI 风格的 input_tokens（含缓存）才扣缓存；全零 / 缺时间不记', () => {
+    const l = (u: object) =>
+      line({
+        timestamp: 1792000000,
+        message: { type: 'StatusUpdate', payload: { message_id: 'x', token_usage: u } },
+      });
+    expect(
+      parseKimiChunk(
+        l({ input_tokens: 100, output_tokens: 5, input_tokens_details: { cached_tokens: 40 } }),
+        {},
+      )[0],
+    ).toMatchObject({ input: 60, cacheRead: 40, output: 5 });
+    expect(
+      parseKimiChunk(
+        l({ input_tokens: 100, cache_read_input_tokens: 40, output_tokens: 5 }),
+        {},
+      )[0],
+    ).toMatchObject({ input: 100, cacheRead: 40 });
+    expect(parseKimiChunk(l({ input_other: 0, output: 0 }), {})).toEqual([]);
+  });
+
+  it('OpenCode 行：input 不含缓存，reasoning 并入输出；缺 id / 全零 / 缺时间不记', () => {
+    const r = opencodeRowToRecord({
+      id: 'msg_1',
+      session_id: 'ses_1',
+      created: 1792000000123,
+      model: 'claude-sonnet-4-5',
+      provider: 'anthropic',
+      input: 10,
+      output: 20,
+      reasoning: 5,
+      cache_read: 300,
+      cache_write: 40,
+      cwd: '/w/ocproj',
+    })!;
+    expect(r).toMatchObject({
+      key: 'opencode:msg_1',
+      source: 'opencode',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-5',
+      input: 10,
+      output: 25,
+      cacheRead: 300,
+      cacheWrite: 40,
+      session: 'ses_1',
+      project: 'ocproj',
+      ts: 1792000000123,
+    });
+    expect(opencodeRowToRecord({ created: 1, input: 1 })).toBeNull();
+    expect(opencodeRowToRecord({ id: 'a', created: 1792000000000 })).toBeNull();
+    expect(opencodeRowToRecord({ id: 'a', input: 1 })).toBeNull();
+  });
+
+  it('Copilot 行：input_tokens 含缓存读写要扣，output 已含推理；时间支持 ISO / 数字', () => {
+    const r = copilotRowToRecord({
+      id: 7,
+      session_id: 'cs-1',
+      model: 'gpt-5',
+      input_tokens: 1000,
+      output_tokens: 80,
+      cache_read_tokens: 600,
+      cache_write_tokens: 100,
+      created_at: '2026-10-14T10:00:00.000Z',
+    })!;
+    expect(r).toMatchObject({
+      key: 'copilot:cs-1:7',
+      source: 'copilot',
+      input: 300,
+      cacheRead: 600,
+      cacheWrite: 100,
+      output: 80,
+      model: 'gpt-5',
+    });
+    expect(r.ts).toBe(Date.parse('2026-10-14T10:00:00.000Z'));
+    // 缓存列大于输入总量时被截断，不会出现负数
+    const bad = copilotRowToRecord({
+      id: 8,
+      session_id: 's',
+      input_tokens: 10,
+      cache_read_tokens: 50,
+      output_tokens: 1,
+      created_at: 1792000000,
+    })!;
+    expect(bad).toMatchObject({ input: 0, cacheRead: 10, cacheWrite: 0 });
+    expect(copilotRowToRecord({ id: 1, input_tokens: 5, created_at: 1792000000 })).toBeNull();
   });
 });

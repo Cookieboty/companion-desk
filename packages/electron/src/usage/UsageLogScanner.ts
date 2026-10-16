@@ -13,7 +13,15 @@ import path from 'node:path';
 
 import { zstdDecode } from '../cli/SessionHistoryService';
 
-import { claudeConfigDir, codexHomeDir } from './cliHomes';
+import {
+  claudeConfigDir,
+  codexHomeDir,
+  copilotDir,
+  geminiDir,
+  kimiDirs,
+  opencodeDir,
+  qwenDir,
+} from './cliHomes';
 import {
   parseAiderChunk,
   parseClaudeChunk,
@@ -21,9 +29,14 @@ import {
   parseCodexRateLimits,
   parseDshChunk,
   parseGeminiFile,
+  parseKimiChunk,
+  parseQwenChunk,
+  copilotRowToRecord,
+  opencodeRowToRecord,
   type ParseState,
 } from './logParsers';
 import type { QuotaWindow } from './quota';
+import { DB_BATCH, dbSignature, readCopilotRows, readOpencodeRows } from './sqliteRead';
 import type { UsageRecord, UsageSource } from './types';
 import { RETENTION_MS, type Retention, type UsageLedger } from './UsageLedger';
 
@@ -41,6 +54,8 @@ export interface ScannerDeps {
   ledger: UsageLedger;
   home?: string;
   dshHome?: string;
+  /** 环境变量（测试注入）：CODEX_HOME / KIMI_HOME / OPENCODE_HOME … 默认 process.env */
+  env?: NodeJS.ProcessEnv;
   now?: () => number;
   logger?: Logger;
   /** 当前保留期：决定首次导入回看多久 */
@@ -59,8 +74,8 @@ interface Found {
   source: UsageSource;
   path: string;
   mtime: number;
-  /** jsonl = 增量按行读；whole = 整份解析 */
-  mode: 'jsonl' | 'whole';
+  /** jsonl = 增量按行读；whole = 整份解析；db = 只读 SQLite（只 SELECT 记账列） */
+  mode: 'jsonl' | 'whole' | 'db';
 }
 
 function safeStat(p: string): fs.Stats | null {
@@ -118,15 +133,28 @@ function geminiProject(file: string): string | undefined {
   return proj && !/^[0-9a-f]{32,}$/i.test(proj) ? proj : undefined;
 }
 
+/**
+ * Kimi 会话 id（取自路径）：Kimi Code `sessions/<会话>/agents/<agent>/wire.jsonl` → <会话>；
+ * 旧 kimi-cli `sessions/<工作区哈希>/<会话>/wire.jsonl` → <会话>。
+ */
+export function kimiSessionId(file: string): string | undefined {
+  const parts = file.split(path.sep);
+  const a = parts.lastIndexOf('agents');
+  const id = a > 0 && parts.length - a === 3 ? parts[a - 1] : parts[parts.length - 2];
+  return id ? id.replace(/^(?:ses_|session_)(?=[0-9a-f-]{36}$)/i, '') : undefined;
+}
+
 const tick = () => new Promise<void>((r) => setImmediate(r));
 
 export class UsageLogScanner {
   private readonly home: string;
   private readonly dshHome: string;
+  private readonly env: NodeJS.ProcessEnv;
   private running = false;
 
   constructor(private readonly d: ScannerDeps) {
     this.home = d.home ?? os.homedir();
+    this.env = d.env ?? process.env;
     this.dshHome =
       d.dshHome ??
       (process.env.DSH_HOME?.trim()
@@ -145,17 +173,30 @@ export class UsageLogScanner {
     if (fs.existsSync(this.claudeDir())) out.push('claude');
     if (fs.existsSync(this.codexDir())) out.push('codex');
     if (fs.existsSync(path.join(this.dshHome, 'sessions'))) out.push('dsh');
-    if (fs.existsSync(path.join(h, '.gemini'))) out.push('gemini');
+    if (fs.existsSync(geminiDir(h, this.env))) out.push('gemini');
+    if (fs.existsSync(qwenDir(h, this.env))) out.push('qwen');
+    if (fs.existsSync(this.opencodeDb())) out.push('opencode');
+    if (fs.existsSync(this.copilotDb())) out.push('copilot');
+    if (kimiDirs(h, this.env).some((d) => fs.existsSync(path.join(d, 'sessions'))))
+      out.push('kimi');
     if (fs.existsSync(path.join(h, '.aider', 'analytics.jsonl'))) out.push('aider');
     return out;
   }
 
   private claudeDir(): string {
-    return path.join(claudeConfigDir(this.home), 'projects');
+    return path.join(claudeConfigDir(this.home, this.env), 'projects');
   }
 
   private codexDir(): string {
-    return path.join(codexHomeDir(this.home), 'sessions');
+    return path.join(codexHomeDir(this.home, this.env), 'sessions');
+  }
+
+  private opencodeDb(): string {
+    return path.join(opencodeDir(this.home, this.env), 'opencode.db');
+  }
+
+  private copilotDb(): string {
+    return path.join(copilotDir(this.home, this.env), 'session-store.db');
   }
 
   /** 候选文件（各工具 mtime 倒序；只含回看窗口内修改过的） */
@@ -203,12 +244,38 @@ export class UsageLogScanner {
       'gemini',
       'whole',
       walk(
-        path.join(this.home, '.gemini', 'tmp'),
+        path.join(geminiDir(this.home, this.env), 'tmp'),
         (n, full) => isGeminiChatFile(n, full),
         5,
         since,
       ),
     );
+    // Qwen Code：tmp/<project_id>/chats/<sessionId>.jsonl
+    add(
+      'qwen',
+      'jsonl',
+      walk(
+        path.join(qwenDir(this.home, this.env), 'tmp'),
+        (n, full) => n.endsWith('.jsonl') && full.includes(`${path.sep}chats${path.sep}`),
+        4,
+        since,
+      ),
+    );
+    // Kimi：旧 kimi-cli 与 Kimi Code 的 sessions/**/wire.jsonl
+    for (const root of kimiDirs(this.home, this.env))
+      add(
+        'kimi',
+        'jsonl',
+        walk(path.join(root, 'sessions'), (n) => n === 'wire.jsonl', 6, since),
+      );
+    // SQLite：OpenCode / Copilot CLI（读之前先看库是否变过）
+    for (const [source, file] of [
+      ['opencode', this.opencodeDb()],
+      ['copilot', this.copilotDb()],
+    ] as const) {
+      const dbSt = safeStat(file);
+      if (dbSt) add(source, 'db', [{ path: file, mtime: dbSt.mtimeMs }]);
+    }
     const aider = path.join(this.home, '.aider', 'analytics.jsonl');
     const st = safeStat(aider);
     if (st && st.mtimeMs >= since) add('aider', 'jsonl', [{ path: aider, mtime: st.mtimeMs }]);
@@ -225,7 +292,12 @@ export class UsageLogScanner {
       for (const f of this.find()) {
         if (this.d.routeBusy?.(f.source)) continue;
         try {
-          const n = f.mode === 'jsonl' ? await this.readJsonl(f) : await this.readWhole(f);
+          const n =
+            f.mode === 'jsonl'
+              ? await this.readJsonl(f)
+              : f.mode === 'db'
+                ? await this.readDb(f)
+                : await this.readWhole(f);
           if (n >= 0) files++;
           added += Math.max(0, n);
         } catch (e) {
@@ -274,6 +346,10 @@ export class UsageLogScanner {
       }
       case 'dsh':
         return parseDshChunk(text, state);
+      case 'qwen':
+        return parseQwenChunk(text);
+      case 'kimi':
+        return parseKimiChunk(text, state);
       case 'aider':
         return parseAiderChunk(text);
       default:
@@ -294,6 +370,7 @@ export class UsageLogScanner {
       return -1;
     }
     const state: ParseState = { ...(cur?.state ?? {}) };
+    if (f.source === 'kimi' && !state.sid) state.sid = kimiSessionId(f.path);
     const startOffset = cur?.offset ?? 0;
     let offset = startOffset; // 已处理到的位置（只落在完整行末尾）
     let readPos = startOffset;
@@ -359,6 +436,53 @@ export class UsageLogScanner {
     }
     const added = this.ingest(recs);
     ledger.setCursor(f.path, { offset: st.size, size: st.size, mtimeMs: st.mtimeMs });
+    return added;
+  }
+
+  /**
+   * 只读 SQLite（OpenCode：message 表；Copilot：assistant_usage_events）：库 / WAL 没变就跳过；
+   * 游标记「已读到的 time_updated / 行 id」，每轮最多一批。返回新增条数，-1 = 没有变化。
+   */
+  private async readDb(f: Found): Promise<number> {
+    const { ledger } = this.d;
+    const sig = dbSignature(f.path);
+    if (!sig) return -1;
+    const cur = ledger.cursor(f.path);
+    const prev = (cur?.state ?? {}) as { sig?: string; last?: number };
+    if (prev.sig === sig) return -1;
+    const keep = RETENTION_MS[this.d.retention()];
+    const since = this.now() - Math.min(keep, MAX_LOOKBACK_MS);
+    const recs: UsageRecord[] = [];
+    let last = prev.last ?? 0;
+    let full = false;
+    if (f.source === 'opencode') {
+      // time_updated >= 游标：同一毫秒的行会重读一次，账本按消息 id 去重；首次只回看保留期内
+      const rows = readOpencodeRows(f.path, Math.max(0, last || since));
+      full = rows.length >= DB_BATCH;
+      for (const r of rows) {
+        const rec = opencodeRowToRecord(r);
+        if (rec && rec.ts >= since) recs.push(rec);
+        last = Math.max(last, Number(r.updated) || 0);
+      }
+    } else if (f.source === 'copilot') {
+      const rows = readCopilotRows(f.path, last);
+      full = rows.length >= DB_BATCH;
+      for (const r of rows) {
+        const rec = copilotRowToRecord(r);
+        if (rec && rec.ts >= since) recs.push(rec);
+        last = Math.max(last, Number(r.id) || 0);
+      }
+    }
+    const added = this.ingest(recs);
+    const st = safeStat(f.path);
+    // 一批读满时不记 sig，下一轮继续追
+    ledger.setCursor(f.path, {
+      offset: st?.size ?? 0,
+      size: st?.size ?? 0,
+      mtimeMs: st?.mtimeMs ?? 0,
+      state: full ? { last } : { sig, last },
+    });
+    await tick();
     return added;
   }
 }

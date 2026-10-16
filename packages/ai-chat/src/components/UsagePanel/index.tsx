@@ -7,6 +7,7 @@ import { Coins, RefreshCw } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
+  USAGE_SOURCE_LABEL,
   usageClient,
   type UsageHeatDay,
   type UsageQueryResult,
@@ -136,7 +137,13 @@ export const UsagePanel: React.FC = () => {
       <p className={styles.sub}>
         {t('统计 Nomi 对话与本机编程工具的 Token 用量和预估费用。数据只保存在这台电脑上，不上传。')}
         {state && state.detected.length > 0 && (
-          <> {t('已检测到本机工具：{0}。', state.detected.join(listSep()))}</>
+          <>
+            {' '}
+            {t(
+              '已检测到本机工具：{0}。',
+              state.detected.map((s) => USAGE_SOURCE_LABEL[s] ?? s).join(listSep()),
+            )}
+          </>
         )}
       </p>
 

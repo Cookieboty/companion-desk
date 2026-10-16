@@ -308,6 +308,17 @@ describe('UsagePanel 概览', () => {
     );
   });
 
+  it('检测到的工具显示友好名称（含 Qwen Code / OpenCode / Copilot CLI / Kimi）', async () => {
+    install();
+    (state as { detected: string[] }).detected = ['claude', 'qwen', 'opencode', 'copilot', 'kimi'];
+    const { findByTestId, container } = render(<UsagePanel />);
+    await findByTestId('usage-card-cost');
+    const sub = container.querySelector('p')?.textContent ?? '';
+    for (const n of ['Claude Code', 'Qwen Code', 'OpenCode', 'GitHub Copilot CLI', 'Kimi'])
+      expect(sub).toContain(n);
+    expect(sub).not.toContain('copilot,');
+  });
+
   it('没有任何数据：复用 EmptyState，并可手动扫描', async () => {
     emptyData = true;
     install();
