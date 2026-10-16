@@ -19,6 +19,8 @@ export interface UsageCustomPrice {
 export interface UsageSettings {
   enabled: boolean;
   readToolLogs: boolean;
+  /** 点「刷新」时才拉起官方 CLI 去取额度（claude -p /usage、codex app-server）；关闭后只重读本机已有数据 */
+  activeQuotaRefresh: boolean;
   retention: UsageRetention;
   currency: UsageCurrency;
   cnyPerUsd: number;
@@ -151,6 +153,24 @@ export interface UsageQuotaEntry {
   windows: UsageQuotaWindow[];
   updatedAt?: number;
   plan?: string;
+  /** 这份数字的来源：状态栏快照 / claude /usage / Codex 会话日志 / codex app-server */
+  origin?: 'statusline' | 'usage-cmd' | 'session-log' | 'app-server';
+  /** 最近一次刷新暂时失败，显示的是更早读到的值 */
+  stale?: boolean;
+}
+
+/** 某个工具这次刷新的结果（不含任何账号信息） */
+export type UsageToolRefresh =
+  | { state: 'fresh-local' }
+  | { state: 'ok' }
+  | { state: 'throttled'; retryInSec: number }
+  | { state: 'transient'; reason: string; stale: boolean }
+  | { state: 'auth'; reason: string }
+  | { state: 'skipped'; reason: 'disabled' | 'not-subscription' };
+
+export interface UsageQuotaRefresh {
+  entries: UsageQuotaEntry[];
+  tools: Partial<Record<'claude' | 'codex', UsageToolRefresh>>;
 }
 
 /** Claude Code 额度来源：用户可选开启的 statusline 快照 */
@@ -193,6 +213,7 @@ export const usageClient = {
   scan: () => call<UsageState & { added: number; files: number }>('scan'),
   clear: () => call<UsageState>('clear'),
   quota: () => call<UsageQuotaEntry[]>('quota'),
+  quotaRefresh: () => call<UsageQuotaRefresh>('quota-refresh'),
   quotaHook: () => call<UsageQuotaHook>('quota-hook'),
   setQuotaHook: (enabled: boolean) => call<UsageQuotaHook>('quota-hook-set', enabled),
   onChanged: (fn: () => void) => bridge()?.on('ai:usage:changed', () => fn()) ?? (() => undefined),

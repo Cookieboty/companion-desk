@@ -181,3 +181,91 @@ describe('applyAuthModes：只有订阅登录的工具展示额度', () => {
     expect(r.map((e) => e.id)).toEqual(['codex']);
   });
 });
+
+describe('身份指纹 / 自定义 provider 检测 / CLAUDE_CONFIG_DIR', () => {
+  const SALT = 'b'.repeat(32);
+  const status = (over: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      loggedIn: true,
+      authMethod: 'claude.ai',
+      apiProvider: 'firstParty',
+      email: 'me@example.com',
+      orgId: 'org-1',
+      subscriptionType: 'max',
+      ...over,
+    });
+
+  it('账号登录但 apiProvider 不是 firstParty（Bedrock / Vertex）→ API', () => {
+    expect(parseClaudeAuthStatus(status())).toBe('subscription');
+    expect(parseClaudeAuthStatus(status({ apiProvider: 'bedrock' }))).toBe('api');
+  });
+
+  it('parseClaudeIdentity：邮箱 / 组织 id 只进指纹；套餐可展示；缺邮箱 = 没有身份', async () => {
+    const { parseClaudeIdentity } = await import('../../../src/usage/authMode');
+    const a = parseClaudeIdentity(status(), SALT);
+    expect(a.plan).toBe('Max');
+    expect(a.fp).toMatch(/^[0-9a-f]{16}$/);
+    expect(JSON.stringify(a)).not.toContain('example.com');
+    expect(parseClaudeIdentity(status({ email: 'you@example.com' }), SALT).fp).not.toBe(a.fp);
+    expect(parseClaudeIdentity(status({ orgId: 'org-2' }), SALT).fp).not.toBe(a.fp);
+    expect(parseClaudeIdentity(status({ email: undefined }), SALT).fp).toBeNull();
+    expect(parseClaudeIdentity('not json', SALT)).toEqual({ fp: null });
+  });
+
+  it('hasCustomClaudeConfiguration：env / settings.env / apiKeyHelper；空值、0、false 不算配置', async () => {
+    const { hasCustomClaudeConfiguration } = await import('../../../src/usage/authMode');
+    expect(hasCustomClaudeConfiguration({}, [])).toBe(false);
+    expect(hasCustomClaudeConfiguration({ ANTHROPIC_API_KEY: 'k' }, [])).toBe(true);
+    expect(hasCustomClaudeConfiguration({ ANTHROPIC_API_KEY: '' }, [])).toBe(false);
+    expect(hasCustomClaudeConfiguration({ CLAUDE_CODE_USE_BEDROCK: '0' }, [])).toBe(false);
+    expect(hasCustomClaudeConfiguration({ CLAUDE_CODE_USE_BEDROCK: '1' }, [])).toBe(true);
+    expect(hasCustomClaudeConfiguration({}, [{ env: { ANTHROPIC_BASE_URL: 'https://x' } }])).toBe(
+      true,
+    );
+    expect(hasCustomClaudeConfiguration({}, [{ env: { ANTHROPIC_BASE_URL: 'false' } }])).toBe(
+      false,
+    );
+    expect(hasCustomClaudeConfiguration({}, [{ apiKeyHelper: '/bin/get-key' }])).toBe(true);
+    expect(hasCustomClaudeConfiguration({}, [{ apiKeyHelper: '' }, null, 'x', [1]])).toBe(false);
+  });
+
+  it('claudeAuthFromConfig：settings.local.json 与 apiKeyHelper；尊重 CLAUDE_CONFIG_DIR（含 ~/）', () => {
+    const home = tmpHome();
+    write(path.join(home, '.claude', 'settings.local.json'), JSON.stringify({ apiKeyHelper: 'x' }));
+    expect(claudeAuthFromConfig(home, {})).toBe('api');
+    const other = path.join(home, 'cfg');
+    // 指到别的目录后，默认目录里的配置不再生效
+    expect(claudeAuthFromConfig(home, { CLAUDE_CONFIG_DIR: other })).toBeNull();
+    write(
+      path.join(other, 'settings.json'),
+      JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: 't' } }),
+    );
+    expect(claudeAuthFromConfig(home, { CLAUDE_CONFIG_DIR: other })).toBe('api');
+    expect(claudeAuthFromConfig(home, { CLAUDE_CONFIG_DIR: '~/cfg' })).toBe('api');
+  });
+
+  it('codexAuthFromConfig 尊重 CODEX_HOME', () => {
+    const home = tmpHome();
+    const ch = path.join(home, 'codex-alt');
+    write(path.join(ch, 'config.toml'), 'forced_login_method = "api"\n');
+    expect(codexAuthFromConfig(home, {})).toBeNull();
+    expect(codexAuthFromConfig(home, { CODEX_HOME: ch })).toBe('api');
+  });
+
+  it('AuthModeDetector.detectFull：同一次官方命令输出带出指纹 / 套餐；自定义配置优先于 CLI 结论', async () => {
+    const home = tmpHome();
+    const run = jest.fn(async () => status());
+    const det = new AuthModeDetector({ home, env: {}, run, salt: () => SALT });
+    const a = await det.detectFull('claude');
+    expect(a).toMatchObject({ mode: 'subscription', plan: 'Max' });
+    expect(a.fp).toMatch(/^[0-9a-f]{16}$/);
+    await det.detectFull('claude');
+    expect(run).toHaveBeenCalledTimes(1); // 5 分钟内走缓存
+
+    write(path.join(home, '.claude', 'settings.local.json'), JSON.stringify({ apiKeyHelper: 'x' }));
+    det.invalidate();
+    run.mockClear();
+    expect(await det.detectFull('claude')).toEqual({ mode: 'api', fp: null });
+    expect(run).not.toHaveBeenCalled(); // 自定义供应商：连官方命令都不用跑
+  });
+});

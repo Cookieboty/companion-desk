@@ -17,6 +17,7 @@ import path from 'node:path';
 
 import { writePrivateFile, writePrivateFileAtomic } from '../utils/privateFile';
 
+import { claudeConfigDir } from './cliHomes';
 import type { QuotaReading, QuotaWindow } from './quota';
 
 export const SNAPSHOT_FILE = 'claude-statusline.json';
@@ -114,11 +115,14 @@ export interface HookStatus {
 interface HookDeps {
   root: string;
   home?: string;
+  env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
   now?: () => number;
 }
 
-const settingsFile = (home: string) => path.join(home, '.claude', 'settings.json');
+/** 尊重 CLAUDE_CONFIG_DIR */
+const settingsFile = (home: string, env: NodeJS.ProcessEnv | undefined) =>
+  path.join(claudeConfigDir(home, env ?? process.env), 'settings.json');
 
 function readSettings(
   file: string,
@@ -166,7 +170,7 @@ const isOurs = (sl: unknown, root: string): boolean => {
 export function hookStatus(d: HookDeps): HookStatus {
   const home = d.home ?? os.homedir();
   const platform = d.platform ?? process.platform;
-  const s = readSettings(settingsFile(home));
+  const s = readSettings(settingsFile(home, d.env));
   const hasSnapshot = fs.existsSync(path.join(d.root, SNAPSHOT_FILE));
   const base = { supported: platform !== 'win32', hasSnapshot };
   if (!s.ok)
@@ -190,7 +194,7 @@ export function enableHook(d: HookDeps): HookStatus {
   if (!st.supported) throw new Error('unsupported-platform');
   if (st.problem) throw new Error(st.problem);
   if (st.enabled) return st;
-  const file = settingsFile(home);
+  const file = settingsFile(home, d.env);
   const s = readSettings(file);
   if (!s.ok) throw new Error('invalid-settings');
 
@@ -230,7 +234,7 @@ export function enableHook(d: HookDeps): HookStatus {
 /** 关闭：恢复原 statusLine（没有就删掉这个键），清理脚本 / 快照。当前不是我们的配置则只清理自己的文件。 */
 export function disableHook(d: HookDeps): HookStatus {
   const home = d.home ?? os.homedir();
-  const file = settingsFile(home);
+  const file = settingsFile(home, d.env);
   const s = readSettings(file);
   if (s.ok && isOurs(s.obj.statusLine, d.root)) {
     let orig: unknown;

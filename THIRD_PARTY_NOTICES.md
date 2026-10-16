@@ -88,6 +88,16 @@ Node.js permission model (both MIT, already listed). No code from Open Interpret
 or other copyleft agents was used; no new dependencies were added. Python, when used, is the
 user's own system interpreter and is not redistributed.
 
+## Subscription quota readers
+
+Clean-room TypeScript in `packages/electron/src/usage/`; no dependencies added. The reset-time
+parser and the restricted `claude -p /usage` subprocess approach follow the design of
+juejin-usage (`apps/desktop/src/main/claude-usage-parser.ts`, `claude-subscription.ts`,
+commit `063322e`) — MIT, © 2026 juejin-cn, https://github.com/juejin-cn/juejin-usage. Nomi does
+**not** adopt its Codex path (reading `auth.json` and calling an undocumented usage endpoint):
+Codex quota is read through the official `codex app-server` JSON-RPC (`account/rateLimits/read`,
+the same method CodexBar — MIT, © Peter Steinberger — uses), so credentials never leave the CLI.
+
 ## Production dependencies (generated with `pnpm licenses list --prod -r`)
 
 | Package                                                   | Version(s)    | Licence                   |
