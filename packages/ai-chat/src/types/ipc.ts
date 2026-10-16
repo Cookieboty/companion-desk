@@ -1,3 +1,6 @@
+import type { HarnessTraceEvent } from '../services/harnessClient';
+import type { StreamUsage } from '../utils/chunkTrace';
+
 import {
   type ChatMessage,
   type ChatConfig,
@@ -12,6 +15,10 @@ export interface StreamSendOptions {
   reqId?: string;
   /** 中止信号：aborted 后尽快结束循环，并通知主进程中止上游请求；已收到的内容照常交给调用方 */
   signal?: AbortSignal;
+  /** 工具调用 / 思考事件（Nomi 自己的 MCP / 知识库 / 搜索等工具）：与编程助手同一种轨迹事件 */
+  onTrace?: (event: HarnessTraceEvent) => void;
+  /** 本轮 token 用量（上游返回时） */
+  onUsage?: (usage: StreamUsage) => void;
 }
 
 export interface IPCClient {

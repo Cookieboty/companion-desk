@@ -323,3 +323,65 @@ describe('tool trace fields (input / output / thinking / parent)', () => {
     ).toMatchObject({ status: 'error', output: 'no' });
   });
 });
+
+describe('usage / status events', () => {
+  it('claude: result carries usage, cost and duration; api_retry / compacting become status events', () => {
+    const done = parseClaudeLine(
+      JSON.stringify({
+        type: 'result',
+        result: 'ok',
+        session_id: 's',
+        usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 100 },
+        total_cost_usd: 0.5,
+        duration_ms: 1234,
+      }),
+    );
+    expect(done).toEqual([
+      {
+        type: 'done',
+        text: 'ok',
+        sessionId: 's',
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 100,
+          costUsd: 0.5,
+          durationMs: 1234,
+        },
+      },
+    ]);
+    // 没有用量时不带 usage 字段
+    expect(parseClaudeLine('{"type":"result","result":"x"}')[0]).not.toHaveProperty('usage');
+    expect(
+      parseClaudeLine('{"type":"system","subtype":"api_retry","attempt":2,"max_retries":5}'),
+    ).toEqual([{ type: 'status', kind: 'retry', attempt: 2, max: 5 }]);
+    expect(parseClaudeLine('{"type":"system","subtype":"status","status":"compacting"}')).toEqual([
+      { type: 'status', kind: 'compact' },
+    ]);
+    expect(parseClaudeLine('{"type":"system","subtype":"status","status":null}')).toEqual([
+      { type: 'status', kind: 'clear' },
+    ]);
+  });
+
+  it('codex: turn.completed usage; "Reconnecting... 2/5" is a reconnect status, not an error', () => {
+    expect(
+      parseCodexLine(
+        '{"type":"turn.completed","usage":{"input_tokens":10,"cached_input_tokens":4,"output_tokens":8}}',
+      ),
+    ).toEqual([
+      { type: 'done', text: '', usage: { inputTokens: 10, outputTokens: 8, cacheReadTokens: 4 } },
+    ]);
+    expect(parseCodexLine('{"type":"error","message":"Reconnecting... 2/5"}')).toEqual([
+      { type: 'status', kind: 'reconnect', text: 'Reconnecting... 2/5', attempt: 2, max: 5 },
+    ]);
+    expect(parseCodexLine('{"type":"error","message":"boom"}')).toEqual([
+      { type: 'error', message: 'boom' },
+    ]);
+  });
+
+  it('grok: usage event yields a done event carrying camelCase usage', () => {
+    expect(parseGrokLine('{"type":"usage","usage":{"inputTokens":3,"outputTokens":4}}')).toEqual([
+      { type: 'done', text: '', usage: { inputTokens: 3, outputTokens: 4 } },
+    ]);
+  });
+});

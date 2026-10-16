@@ -1,5 +1,5 @@
 /** 把一轮的 HarnessEvent 整理成可持久化的轨迹（工具调用 + 思考），控制体积 */
-import type { HarnessEvent, HarnessTraceEvent } from './types';
+import type { HarnessEvent, HarnessTraceEvent, HarnessUsage } from './types';
 
 export const MAX_TRACE_EVENTS = 300;
 export const MAX_TRACE_BYTES = 400_000;
@@ -71,4 +71,13 @@ export function compactOldTraces(
     }
   }
   return changed;
+}
+
+/** 一轮里所有 done 事件携带的用量合并（后到的字段覆盖先到的）；没有数据返回 undefined */
+export function mergeUsage(events: readonly HarnessEvent[]): HarnessUsage | undefined {
+  let out: HarnessUsage | undefined;
+  for (const ev of events) {
+    if (ev.type === 'done' && ev.usage) out = { ...out, ...ev.usage };
+  }
+  return out;
 }

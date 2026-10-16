@@ -82,6 +82,137 @@ describe('history transcript parsers (fixtures)', () => {
     ]);
   });
 
+  it('claude: restored transcript carries trace (thinking, tool input / output, timing) and turn duration', () => {
+    const m = parseClaudeTranscript(fx('claude-tools.jsonl'));
+    const a = m[1]!;
+    expect(a.trace?.map((e) => [e.type, e.type === 'tool' ? `${e.name}:${e.status}` : ''])).toEqual(
+      [
+        ['thinking', ''],
+        ['tool', 'Read:start'],
+        ['tool', 'Read:done'],
+      ],
+    );
+    const start = a.trace![1] as { input?: string; at?: number };
+    const done = a.trace![2] as { output?: string; id?: string; at?: number };
+    expect(JSON.parse(start.input!)).toEqual({ file_path: '/work/app/login.test.ts' });
+    expect(done.output).toBe('file contents');
+    expect(done.at! - start.at!).toBe(1000);
+    // 整轮耗时：用户提问（10:00:01）→ 最后一个助手事件（10:00:06）
+    expect(a.durationMs).toBe(5000);
+  });
+
+  it('claude: tool_result with is_error becomes an error call; usage is summed per turn', () => {
+    const jl = [
+      {
+        type: 'user',
+        message: { role: 'user', content: 'run it' },
+        timestamp: '2026-10-14T10:00:00.000Z',
+      },
+      {
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'tool_use', id: 'b1', name: 'Bash', input: { command: 'false' } }],
+          usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 100 },
+        },
+        timestamp: '2026-10-14T10:00:01.000Z',
+      },
+      {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'b1',
+              content: [{ type: 'text', text: 'exit 1' }],
+              is_error: true,
+            },
+          ],
+        },
+        timestamp: '2026-10-14T10:00:02.000Z',
+      },
+      {
+        type: 'assistant',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'failed' }],
+          usage: { input_tokens: 20, output_tokens: 7 },
+        },
+        timestamp: '2026-10-14T10:00:03.000Z',
+      },
+    ]
+      .map((x) => JSON.stringify(x))
+      .join('\n');
+    const m = parseClaudeTranscript(jl);
+    expect(m).toHaveLength(2);
+    expect(m[1]!.trace![1]).toMatchObject({
+      type: 'tool',
+      name: 'Bash',
+      status: 'error',
+      output: 'exit 1',
+    });
+    expect(m[1]!.usage).toEqual({ inputTokens: 30, outputTokens: 12, cacheReadTokens: 100 });
+  });
+
+  it('codex: function_call / function_call_output pair into a trace; JSON output unwrapped, non-zero exit is an error', () => {
+    const m = parseCodexTranscript(fx('codex-rollout.jsonl'));
+    const a = m[3]!;
+    expect(a.trace).toEqual([
+      expect.objectContaining({ type: 'tool', name: 'shell', status: 'start', id: 'c1' }),
+      expect.objectContaining({
+        type: 'tool',
+        name: 'shell',
+        status: 'done',
+        id: 'c1',
+        output: 'a.txt\nb.txt',
+      }),
+    ]);
+    const jl = [
+      {
+        timestamp: '2026-10-14T10:00:00.000Z',
+        type: 'response_item',
+        payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'go' }] },
+      },
+      {
+        timestamp: '2026-10-14T10:00:01.000Z',
+        type: 'response_item',
+        payload: { type: 'reasoning', summary: [{ type: 'summary_text', text: 'plan it' }] },
+      },
+      {
+        timestamp: '2026-10-14T10:00:02.000Z',
+        type: 'response_item',
+        payload: {
+          type: 'function_call',
+          name: 'shell',
+          arguments: '{"command":["false"]}',
+          call_id: 'x',
+        },
+      },
+      {
+        timestamp: '2026-10-14T10:00:03.000Z',
+        type: 'response_item',
+        payload: {
+          type: 'function_call_output',
+          call_id: 'x',
+          output: '{"output":"boom","metadata":{"exit_code":1,"duration_seconds":0.5}}',
+        },
+      },
+    ]
+      .map((x) => JSON.stringify(x))
+      .join('\n');
+    const r = parseCodexTranscript(jl)[1]!;
+    expect(r.trace![0]).toMatchObject({ type: 'thinking', text: 'plan it' });
+    expect(r.trace![2]).toMatchObject({ status: 'error', output: 'boom' });
+    expect(r.durationMs).toBe(3000);
+  });
+
+  it('dsh: assistant usage is carried; tool blocks / results are paired when present', () => {
+    const m = parseDshTranscript(fx('dsh-session.jsonl'));
+    expect(m[1]!.usage).toMatchObject({ inputTokens: 4651, outputTokens: 3, cacheReadTokens: 3 });
+    expect(m[1]!.durationMs).toBeGreaterThan(1000);
+  });
+
   it('tolerates garbage and truncated lines', () => {
     expect(parseClaudeTranscript('not json\n{"type":"user"')).toEqual([]);
     expect(parseCodexTranscript('')).toEqual([]);

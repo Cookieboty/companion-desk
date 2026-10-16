@@ -1,7 +1,7 @@
 /** 解析 Claude stream-json / Codex NDJSON 行 → HarnessEvent */
 import { t } from '../i18n';
 
-import type { HarnessEvent } from './types';
+import type { HarnessEvent, HarnessUsage } from './types';
 
 const MAX_INPUT_STR = 2000;
 const MAX_OUTPUT = 6000;
@@ -61,6 +61,45 @@ export function outputText(v: unknown): string | undefined {
   return s ? clip(s, MAX_OUTPUT) : undefined;
 }
 
+const num = (v: unknown): number | undefined =>
+  typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined;
+
+/**
+ * 各 CLI 上报的用量 → HarnessUsage（兼容 snake_case / camelCase；没有任何数据时返回 undefined）。
+ * Claude: usage.{input,output,cache_read_input}_tokens + total_cost_usd + duration_ms；
+ * Codex: usage.{input,cached_input,output}_tokens；Grok: usage 对象（camelCase）。
+ */
+export function parseUsage(
+  usage: unknown,
+  extra: { costUsd?: unknown; durationMs?: unknown } = {},
+): HarnessUsage | undefined {
+  const u = usage && typeof usage === 'object' ? (usage as Record<string, unknown>) : {};
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = num(u[k]);
+      if (v !== undefined) return v;
+    }
+    return undefined;
+  };
+  const out: HarnessUsage = {};
+  const input = pick('input_tokens', 'inputTokens', 'prompt_tokens', 'promptTokens');
+  const output = pick('output_tokens', 'outputTokens', 'completion_tokens', 'completionTokens');
+  const cache = pick(
+    'cache_read_input_tokens',
+    'cached_input_tokens',
+    'cacheReadTokens',
+    'cachedInputTokens',
+  );
+  if (input !== undefined) out.inputTokens = input;
+  if (output !== undefined) out.outputTokens = output;
+  if (cache !== undefined) out.cacheReadTokens = cache;
+  const cost = num(extra.costUsd);
+  if (cost !== undefined) out.costUsd = cost;
+  const dur = num(extra.durationMs);
+  if (dur !== undefined) out.durationMs = dur;
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** 只在有值时附加可选字段，保持事件对象干净 */
 function withOpt<T extends object>(ev: T, extra: Record<string, unknown>): T {
   for (const [k, x] of Object.entries(extra))
@@ -91,7 +130,24 @@ export function parseClaudeLine(line: string): HarnessEvent[] {
   } else if (type === 'result') {
     const text = typeof j.result === 'string' ? j.result : '';
     const sid = typeof j.session_id === 'string' ? j.session_id : undefined;
-    out.push({ type: 'done', text, sessionId: sid });
+    const usage = parseUsage(j.usage, { costUsd: j.total_cost_usd, durationMs: j.duration_ms });
+    out.push(withOpt({ type: 'done', text, sessionId: sid } as HarnessEvent, { usage }));
+  } else if (type === 'system' && j.subtype === 'api_retry') {
+    out.push(
+      withOpt({ type: 'status', kind: 'retry' } as HarnessEvent, {
+        attempt: num(j.attempt),
+        max: num(j.max_retries),
+        text: typeof j.error === 'string' ? j.error : undefined,
+      }),
+    );
+  } else if (type === 'system' && j.subtype === 'status') {
+    out.push(
+      j.status === 'compacting'
+        ? { type: 'status', kind: 'compact' }
+        : { type: 'status', kind: 'clear' },
+    );
+  } else if (type === 'system' && j.subtype === 'compact_boundary') {
+    out.push({ type: 'status', kind: 'clear' });
   } else if (type === 'error' || (type === 'system' && j.subtype === 'error')) {
     out.push({ type: 'error', message: String(j.error ?? j.message ?? t('Claude 错误')) });
   } else if (type === 'control_request') {
@@ -272,8 +328,20 @@ export function parseCodexLine(line: string): HarnessEvent[] {
         ),
       );
     }
+  } else if (type === 'turn.completed') {
+    const usage = parseUsage(j.usage);
+    if (usage) out.push({ type: 'done', text: '', usage });
   } else if (type === 'turn.failed' || type === 'error') {
-    out.push({ type: 'error', message: String(j.error ?? j.message ?? t('Codex 错误')) });
+    const message = String(j.error ?? j.message ?? t('Codex 错误'));
+    const re = /reconnect\w*[^\d]*(\d+)\s*\/\s*(\d+)/i.exec(message);
+    if (type === 'error' && (re || /reconnect/i.test(message)))
+      out.push(
+        withOpt({ type: 'status', kind: 'reconnect', text: message } as HarnessEvent, {
+          attempt: re ? Number(re[1]) : undefined,
+          max: re ? Number(re[2]) : undefined,
+        }),
+      );
+    else out.push({ type: 'error', message });
   } else if (type === 'thread.started' && typeof j.thread_id === 'string') {
     out.push({ type: 'done', text: '', sessionId: j.thread_id });
   }
@@ -437,7 +505,10 @@ export function parseGrokLine(line: string): HarnessEvent[] {
       const data = str(j.data) || str(j.text);
       return data ? [{ type: 'thinking', text: clip(data, MAX_THINKING) }] : [];
     }
-    case 'usage':
+    case 'usage': {
+      const usage = parseUsage(j.usage ?? j.data ?? j, { costUsd: j.costUsd ?? j.cost });
+      return usage ? [{ type: 'done', text: '', usage }] : [];
+    }
     case 'plan':
     case 'available_commands':
       return [];

@@ -113,7 +113,14 @@ export interface HarnessSendResult {
   text: string;
   sessionId: string | null;
   events: HarnessEvent[];
+  /** 本轮轨迹 / 耗时 / 用量（sendTab 填充；IPC 只返回这些，不返回 events） */
+  trace?: HarnessTraceEvent[];
+  durationMs?: number;
+  usage?: HarnessUsage;
 }
+
+/** 经 IPC 返回渲染层的发送结果（不含逐条事件） */
+export type HarnessSendReply = Omit<HarnessSendResult, 'events'>;
 
 /** 标签运行状态 */
 export type HarnessTabStatus = 'idle' | 'queued' | 'running' | 'error';

@@ -147,6 +147,8 @@ async function runOnce(_prompt) {
     });
   }
 
+  const firstToken = Number(process.env.NOMI_MOCK_FIRST_TOKEN_MS || 0);
+  if (firstToken > 0) await new Promise((r) => setTimeout(r, firstToken));
   if (process.env.NOMI_MOCK_TOOLS === 'rich') await richScenario();
   if (process.env.NOMI_MOCK_TOOLS === 'stress') await stressScenario();
 
@@ -168,6 +170,9 @@ async function runOnce(_prompt) {
     session_id: sessionId,
     result: text,
     subtype: 'success',
+    usage: { input_tokens: 1200, output_tokens: 340, cache_read_input_tokens: 800 },
+    total_cost_usd: 0.0123,
+    duration_ms: 1500,
   });
 }
 
@@ -272,6 +277,12 @@ async function richScenario() {
     await pause();
     return id;
   };
+  // 等待 / 恢复状态：API 重试、上下文压缩（各停一会儿，便于界面截图）
+  emit({ type: 'system', subtype: 'api_retry', session_id: sessionId, attempt: 1, max_retries: 3 });
+  await pause();
+  emit({ type: 'system', subtype: 'status', status: 'compacting', session_id: sessionId });
+  await pause();
+  emit({ type: 'system', subtype: 'status', status: null, session_id: sessionId });
   emit({
     type: 'assistant',
     session_id: sessionId,

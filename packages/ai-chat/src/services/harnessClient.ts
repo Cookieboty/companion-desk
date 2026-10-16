@@ -92,6 +92,10 @@ export const MAIN_TAB_ID = 'main';
 export interface HarnessSendResult {
   text: string;
   sessionId: string | null;
+  /** 本轮轨迹 / 耗时 / 用量（主进程 sendTab 填充） */
+  trace?: HarnessTraceEvent[];
+  durationMs?: number;
+  usage?: HarnessUsage;
 }
 
 interface AiBridge {
