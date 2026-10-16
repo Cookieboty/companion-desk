@@ -92,4 +92,22 @@ describe('UsageLedger', () => {
     expect(l.coveredByRoute('claude', 1_000_000 - 20_000)).toBe(false);
     expect(l.coveredByRoute('codex', 1_000_000)).toBe(false);
   });
+
+  it('attribute 只补缺的会话 / 项目、不改 token；version 随写入变化；重开后保留', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-ledger-attr-'));
+    const a = new UsageLedger({ root });
+    const v0 = a.version();
+    a.upsert(rec({ key: 'r', via: 'route' }));
+    expect(a.version()).toBeGreaterThan(v0);
+    const v1 = a.version();
+    expect(a.attribute('r', { session: 's9', project: 'p' })).toBe(true);
+    expect(a.version()).toBeGreaterThan(v1);
+    // 已有的不覆盖；没变化返回 false
+    expect(a.attribute('r', { session: 'other', project: 'x' })).toBe(false);
+    expect(a.attribute('nope', { session: 's' })).toBe(false);
+    expect(a.all()[0]).toMatchObject({ session: 's9', project: 'p' });
+    a.flush();
+    const b = new UsageLedger({ root });
+    expect(b.all()[0]).toMatchObject({ key: 'r', session: 's9', project: 'p' });
+  });
 });

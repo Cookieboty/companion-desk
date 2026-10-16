@@ -16,6 +16,7 @@ import {
 } from '../../services/usageClient';
 import { AppIcon } from '../AppIcons';
 
+import { Budget } from './Budget';
 import { Details, type DetailRange } from './Details';
 import { listSep } from './format';
 import styles from './index.module.css';
@@ -23,7 +24,7 @@ import { Overview } from './Overview';
 import { Pricing } from './Pricing';
 import type { Fx } from './shared';
 
-type Tab = 'overview' | 'details' | 'pricing';
+type Tab = 'overview' | 'details' | 'pricing' | 'budget';
 
 export const UsagePanel: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
@@ -146,6 +147,7 @@ export const UsagePanel: React.FC = () => {
           { value: 'overview', label: t('概览') },
           { value: 'details', label: t('明细') },
           { value: 'pricing', label: t('价格') },
+          { value: 'budget', label: t('预算与隐私') },
         ]}
       />
 
@@ -181,6 +183,16 @@ export const UsagePanel: React.FC = () => {
           {tab === 'details' && <Details fx={fx} range={detailRange} onRange={setDetailRange} />}
           {tab === 'pricing' && (
             <Pricing state={state} unpriced={data.summary.unpriced} onSettings={setSettings} />
+          )}
+          {tab === 'budget' && (
+            <Budget
+              state={state}
+              onSettings={setSettings}
+              onCleared={(s) => {
+                setState(s);
+                void refresh();
+              }}
+            />
           )}
         </>
       )}

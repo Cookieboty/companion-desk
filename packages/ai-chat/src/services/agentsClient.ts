@@ -14,6 +14,14 @@ export interface AgentWatchSettings {
   tools: Record<AgentKind, boolean>;
 }
 
+/** 会话累计用量（costUsd 为 null = 全部来自未定价模型） */
+export interface SessionUsageView {
+  tokens: number;
+  costUsd: number | null;
+  calls: number;
+  unpriced: boolean;
+}
+
 export interface AgentSessionView {
   id: string;
   kind: AgentKind | 'nomi';
@@ -31,6 +39,8 @@ export interface AgentSessionView {
   path: string;
   mtime: number;
   updatedAt: number;
+  /** 这个会话累计的 Token / 费用（用量统计开着、且能对上会话时才有） */
+  usage?: SessionUsageView;
 }
 
 export interface AgentWatchState {

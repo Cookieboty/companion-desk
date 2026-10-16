@@ -46,6 +46,8 @@ export interface ScannerDeps {
   clearedAt?: () => number;
   /** 这个来源现在有路由请求在飞：先别读它的日志（等路由记完账再说，避免同一次请求记两份） */
   routeBusy?: (source: UsageSource) => boolean;
+  /** 新增 / 更新了一条记录（预算 / 单任务提醒用） */
+  onNew?: (r: UsageRecord) => void;
 }
 
 interface Found {
@@ -223,9 +225,18 @@ export class UsageLogScanner {
     let n = 0;
     for (const r of recs) {
       if (!r.ts || r.ts < (this.d.clearedAt?.() ?? 0)) continue;
-      if ((r.source === 'claude' || r.source === 'codex') && ledger.coveredByRoute(r.source, r.ts))
-        continue;
-      if (ledger.upsert(r)) n++;
+      if (r.source === 'claude' || r.source === 'codex') {
+        const cover = ledger.routeCovering(r.source, r.ts);
+        if (cover) {
+          // 费用以路由记录为准；日志只补上它不知道的会话 / 项目，供「按会话统计」归属
+          ledger.attribute(cover.key, { session: r.session, project: r.project });
+          continue;
+        }
+      }
+      if (ledger.upsert(r)) {
+        n++;
+        this.d.onNew?.(r);
+      }
     }
     return n;
   }

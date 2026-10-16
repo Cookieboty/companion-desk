@@ -10,6 +10,7 @@ import path from 'node:path';
 
 import { BrowserWindow, ipcMain } from 'electron';
 
+import { t as tr } from '../i18n';
 import { isTrustedSenderUrl } from '../security/ipcSenderGuard';
 import { writePrivateFile } from '../utils/privateFile';
 
@@ -20,6 +21,9 @@ import {
   heatmap,
   makePriceOf,
   rangeOf,
+  recordCost,
+  startOfDay,
+  totalTokens,
   series,
   summarize,
   toCsv,
@@ -28,6 +32,7 @@ import {
   type Labels,
   type RangeId,
 } from './aggregate';
+import { formatAmount, formatMoney, formatTokens } from './money';
 import {
   BUILTIN_PRICES,
   DEFAULT_CNY_PER_USD,
@@ -54,6 +59,11 @@ export interface UsageSettings {
   customPrices: CustomPrice[];
   /** 上次「一键清空」的时间（ms）；早于它的日志内容不再导入 */
   clearedAt: number;
+  /** 预算与提醒线（以当前币种计；0 = 不提醒）。切换币种时按汇率自动换算 */
+  dailyBudget: number;
+  monthlyBudget: number;
+  /** 单个任务（连续使用的一段会话）花费超过它就提醒一次 */
+  taskAlert: number;
 }
 
 export const DEFAULT_USAGE_SETTINGS: UsageSettings = {
@@ -64,6 +74,9 @@ export const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   cnyPerUsd: DEFAULT_CNY_PER_USD,
   customPrices: [],
   clearedAt: 0,
+  dailyBudget: 0,
+  monthlyBudget: 0,
+  taskAlert: 0,
 };
 
 export function sanitizeUsageSettings(
@@ -87,7 +100,16 @@ export function sanitizeUsageSettings(
     customPrices:
       o.customPrices === undefined ? base.customPrices : sanitizeCustomPrices(o.customPrices),
     clearedAt: typeof o.clearedAt === 'number' && o.clearedAt >= 0 ? o.clearedAt : base.clearedAt,
+    dailyBudget: amount(o.dailyBudget, base.dailyBudget),
+    monthlyBudget: amount(o.monthlyBudget, base.monthlyBudget),
+    taskAlert: amount(o.taskAlert, base.taskAlert),
   };
+}
+
+/** 预算 / 阈值：有限的非负数（最多两位小数），非法值回落到默认 */
+function amount(v: unknown, d: number): number {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1e7) return d;
+  return Math.round(v * 100) / 100;
 }
 
 type Deps = {
@@ -100,7 +122,54 @@ type Deps = {
   scanMs?: number;
   /** Nomi 供应商 id → 显示名 */
   providerName?: (id: string) => string | undefined;
+  /**
+   * 弹出一条提醒（看板娘气泡 + 灵动岛）。返回 false = 当前不方便（免打扰等），稍后会重试，
+   * 且这条提醒不算「已提醒」。
+   */
+  alert?: (a: UsageAlert) => boolean;
 };
+
+export interface UsageAlert {
+  kind: 'budget-80' | 'budget-100' | 'task';
+  title: string;
+  text: string;
+}
+
+/** 某个会话 / 任务的累计用量 */
+export interface SessionUsage {
+  tokens: number;
+  /** 已定价部分的费用（USD）；null = 这段用量全部来自未定价模型 */
+  costUsd: number | null;
+  calls: number;
+  /** 其中有未定价模型（费用不完整） */
+  unpriced: boolean;
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  nomi: 'Nomi',
+  claude: 'Claude Code',
+  codex: 'Codex',
+  dsh: 'dsh',
+  gemini: 'Gemini CLI',
+  aider: 'Aider',
+  cline: 'Cline',
+  continue: 'Continue',
+  cursor: 'Cursor',
+  other: 'other',
+};
+
+/** 同一个会话两次调用相隔超过它，就当作新的一个任务 */
+const TASK_GAP_MS = 10 * 60_000;
+/** 只对这么近的记录做单任务提醒（避免首次导入历史日志时刷屏） */
+const TASK_FRESH_MS = 30 * 60_000;
+const BUDGET_CHECK_MS = 5 * 60_000;
+
+interface BudgetAlertState {
+  day: string;
+  dayLevel: 0 | 80 | 100;
+  month: string;
+  monthLevel: 0 | 80 | 100;
+}
 
 /** 一条调用的原始数据（主进程各采集点统一走这里） */
 export interface UsageInput {
@@ -122,6 +191,18 @@ export interface UsageInput {
   key?: string;
 }
 
+function accumulate(
+  e: SessionUsage,
+  r: UsageRecord,
+  priceOf: ReturnType<typeof makePriceOf>,
+): void {
+  e.tokens += totalTokens(r);
+  e.calls++;
+  const c = recordCost(r, priceOf);
+  if (c === null) e.unpriced = true;
+  else e.costUsd = (e.costUsd ?? 0) + c;
+}
+
 export class UsageService {
   readonly ledger: UsageLedger;
   private settings: UsageSettings = { ...DEFAULT_USAGE_SETTINGS };
@@ -136,11 +217,26 @@ export class UsageService {
   private readonly routeInflight = new Map<UsageSource, number>();
   private seq = 0;
   private listeners = new Set<(r: UsageRecord) => void>();
+  private readonly alertsPath: string;
+  private alertState: BudgetAlertState = { day: '', dayLevel: 0, month: '', monthLevel: 0 };
+  private budgetTimer: ReturnType<typeof setInterval> | null = null;
+  private checkTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly tasks = new Map<
+    string,
+    { last: number; parts: Map<string, number>; alerted: boolean }
+  >();
+  private sessionCache: {
+    ver: number;
+    prices: unknown;
+    map: Map<string, SessionUsage>;
+  } | null = null;
 
   constructor(private readonly d: Deps) {
     fs.mkdirSync(d.root, { recursive: true });
     this.settingsPath = path.join(d.root, 'settings.json');
+    this.alertsPath = path.join(d.root, 'alerts.json');
     this.load();
+    this.loadAlerts();
     this.ledger = new UsageLedger({ root: d.root, logger: d.logger, now: d.now });
     this.scanner = new UsageLogScanner({
       ledger: this.ledger,
@@ -151,6 +247,7 @@ export class UsageService {
       retention: () => this.settings.retention,
       clearedAt: () => this.settings.clearedAt,
       routeBusy: (s) => (this.routeInflight.get(s) ?? 0) > 0,
+      onNew: (r) => this.afterRecord(r),
     });
     this.ledger.prune(this.settings.retention);
   }
@@ -171,17 +268,66 @@ export class UsageService {
     writePrivateFile(this.settingsPath, JSON.stringify(this.settings, null, 2));
   }
 
+  private loadAlerts(): void {
+    try {
+      const o = JSON.parse(fs.readFileSync(this.alertsPath, 'utf8')) as Partial<BudgetAlertState>;
+      const lv = (v: unknown): 0 | 80 | 100 => (v === 80 || v === 100 ? v : 0);
+      this.alertState = {
+        day: typeof o.day === 'string' ? o.day : '',
+        dayLevel: lv(o.dayLevel),
+        month: typeof o.month === 'string' ? o.month : '',
+        monthLevel: lv(o.monthLevel),
+      };
+    } catch {
+      /* 没有记录 = 都还没提醒过 */
+    }
+  }
+
+  private saveAlerts(): void {
+    try {
+      writePrivateFile(this.alertsPath, JSON.stringify(this.alertState));
+    } catch (e) {
+      this.d.logger.warn('usage alert state save failed', String(e));
+    }
+  }
+
   getSettings(): UsageSettings {
     return this.settings;
   }
 
   setSettings(patch: Partial<UsageSettings>): UsageSettings {
     const prev = this.settings;
-    this.settings = sanitizeUsageSettings({ ...prev, ...patch, clearedAt: prev.clearedAt }, prev);
+    const merged: Partial<UsageSettings> = { ...prev, ...patch, clearedAt: prev.clearedAt };
+    this.settings = sanitizeUsageSettings(merged, prev);
+    const next = this.settings;
+    // 切换币种：预算 / 提醒线按汇率换算，数值含义不变（没有同时改预算时）
+    if (next.currency !== prev.currency) {
+      const k = next.currency === 'CNY' ? next.cnyPerUsd : 1 / prev.cnyPerUsd;
+      const conv = (key: 'dailyBudget' | 'monthlyBudget' | 'taskAlert') =>
+        patch[key] === undefined ? Math.round(prev[key] * k * 100) / 100 : next[key];
+      this.settings = {
+        ...next,
+        dailyBudget: conv('dailyBudget'),
+        monthlyBudget: conv('monthlyBudget'),
+        taskAlert: conv('taskAlert'),
+      };
+    }
+    // 预算改了：这个周期的提醒进度重新算（调低预算后可以再次提醒）
+    if (this.settings.dailyBudget !== prev.dailyBudget) this.alertState.dayLevel = 0;
+    if (this.settings.monthlyBudget !== prev.monthlyBudget) this.alertState.monthLevel = 0;
+    if (this.settings.taskAlert !== prev.taskAlert) this.tasks.clear();
+    this.saveAlerts();
     this.save();
     if (this.settings.retention !== prev.retention) this.ledger.prune(this.settings.retention);
-    if (this.settings.enabled && this.settings.readToolLogs) this.start();
-    else this.stopTimers();
+    if (!this.settings.enabled) {
+      this.stopTimers();
+      this.stopBudgetTimer();
+    } else {
+      this.startBudgetTimer();
+      if (this.settings.readToolLogs) this.start();
+      else this.stopTimers();
+    }
+    this.scheduleCheck();
     this.changed();
     return this.settings;
   }
@@ -255,13 +401,17 @@ export class UsageService {
         this.d.logger.warn('usage listener failed', String(e));
       }
     }
+    this.trackTask(rec);
+    this.scheduleCheck();
     this.changed();
   }
 
   // ---------------------------------------------------------------- 日志扫描
 
   start(): void {
-    if (this.scanTimer || !this.settings.enabled || !this.settings.readToolLogs) return;
+    if (!this.settings.enabled) return;
+    this.startBudgetTimer();
+    if (this.scanTimer || !this.settings.readToolLogs) return;
     const ms = this.d.scanMs ?? 60_000;
     if (ms <= 0) return;
     // 启动后稍等一会再首扫，让出启动高峰
@@ -275,6 +425,17 @@ export class UsageService {
     }
   }
 
+  private startBudgetTimer(): void {
+    if (this.budgetTimer || (this.d.scanMs ?? 60_000) <= 0) return;
+    this.budgetTimer = setInterval(() => this.checkBudgets(), BUDGET_CHECK_MS);
+    (this.budgetTimer as { unref?: () => void }).unref?.();
+  }
+
+  private stopBudgetTimer(): void {
+    if (this.budgetTimer) clearInterval(this.budgetTimer);
+    this.budgetTimer = null;
+  }
+
   private stopTimers(): void {
     if (this.scanTimer) clearInterval(this.scanTimer);
     this.scanTimer = null;
@@ -282,6 +443,9 @@ export class UsageService {
 
   stop(): void {
     this.stopTimers();
+    this.stopBudgetTimer();
+    if (this.checkTimer) clearTimeout(this.checkTimer);
+    this.checkTimer = null;
     if (this.pruneTimer) clearInterval(this.pruneTimer);
     this.pruneTimer = null;
     if (this.broadcastTimer) clearTimeout(this.broadcastTimer);
@@ -297,10 +461,7 @@ export class UsageService {
       const before = this.ledger.size();
       const r = await this.scanner.scan();
       this.lastScanAt = this.now();
-      if (r.added || this.ledger.size() !== before) {
-        this.changed();
-        this.notifyLogRecords();
-      }
+      if (r.added || this.ledger.size() !== before) this.changed();
       return r;
     } catch (e) {
       this.d.logger.warn('usage scan failed', String(e));
@@ -310,25 +471,198 @@ export class UsageService {
     }
   }
 
-  /** 日志导入的记录也要让监听方（预算提醒）看到最新状态：用一条空通知触发重算 */
-  private notifyLogRecords(): void {
-    for (const fn of this.listeners) {
-      try {
-        fn({
-          key: '',
-          ts: this.now(),
-          source: 'other',
-          via: 'log',
-          model: '',
-          input: 0,
-          output: 0,
-          cacheRead: 0,
-          cacheWrite: 0,
-        });
-      } catch {
-        /* */
+  // ---------------------------------------------------------------- 预算与提醒
+
+  /** 记录 / 扫描后稍等一下再算（一次导入很多条也只算一次） */
+  private scheduleCheck(): void {
+    if (this.checkTimer || (this.d.scanMs ?? 60_000) <= 0) return;
+    this.checkTimer = setTimeout(() => {
+      this.checkTimer = null;
+      this.checkBudgets();
+    }, 3000);
+    (this.checkTimer as { unref?: () => void }).unref?.();
+  }
+
+  private rate(): number {
+    return this.settings.currency === 'CNY' ? this.settings.cnyPerUsd : 1;
+  }
+
+  private money(usd: number): string {
+    return formatMoney(usd, this.settings.currency, this.settings.cnyPerUsd);
+  }
+
+  /**
+   * 日 / 月预算：达到 80% 与 100% 各提醒一次（同一周期内只升不降，跨天 / 跨月重新计）。
+   * 免打扰等原因没能弹出时不记「已提醒」，下一轮（5 分钟）再试。
+   */
+  checkBudgets(): void {
+    const s = this.settings;
+    if (!s.enabled || (!(s.dailyBudget > 0) && !(s.monthlyBudget > 0))) return;
+    const now = this.now();
+    const d = new Date(now);
+    const dayKey = dateKey(now);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (this.alertState.day !== dayKey)
+      this.alertState = { ...this.alertState, day: dayKey, dayLevel: 0 };
+    if (this.alertState.month !== monthKey)
+      this.alertState = { ...this.alertState, month: monthKey, monthLevel: 0 };
+
+    const todayStart = startOfDay(now);
+    const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    const recs = this.ledger.range(Math.min(todayStart, monthStart), now + 1);
+    const priceOf = this.priceOf();
+    let day = 0;
+    let month = 0;
+    let unpriced = false;
+    for (const r of recs) {
+      const c = recordCost(r, priceOf);
+      if (c === null) {
+        unpriced = true;
+        continue;
       }
+      month += c;
+      if (r.ts >= todayStart) day += c;
     }
+    const k = this.rate();
+    const level = (cost: number, budget: number): 0 | 80 | 100 => {
+      if (!(budget > 0)) return 0;
+      const ratio = (cost * k) / budget;
+      return ratio >= 1 ? 100 : ratio >= 0.8 ? 80 : 0;
+    };
+    const dl = level(day, s.dailyBudget);
+    const ml = level(month, s.monthlyBudget);
+    const fire: Array<{ scope: 'day' | 'month'; level: 80 | 100; text: string }> = [];
+    const text = (period: string, cost: number, budget: number, lv: 80 | 100) =>
+      lv === 100
+        ? tr(
+            '{0}的花费已超过预算（{1} / {2}）。',
+            period,
+            this.money(cost),
+            formatAmount(budget, s.currency),
+          )
+        : tr(
+            '{0}的花费已用到预算的 80%（{1} / {2}）。',
+            period,
+            this.money(cost),
+            formatAmount(budget, s.currency),
+          );
+    if (dl > this.alertState.dayLevel && dl > 0)
+      fire.push({
+        scope: 'day',
+        level: dl as 80 | 100,
+        text: text(tr('今天'), day, s.dailyBudget, dl as 80 | 100),
+      });
+    if (ml > this.alertState.monthLevel && ml > 0)
+      fire.push({
+        scope: 'month',
+        level: ml as 80 | 100,
+        text: text(tr('本月'), month, s.monthlyBudget, ml as 80 | 100),
+      });
+    if (!fire.length) return;
+    const top = fire.some((f) => f.level === 100) ? 100 : 80;
+    const body = fire.map((f) => f.text).join(' ') + (unpriced ? tr('（未定价模型不计入）') : '');
+    const delivered = this.d.alert?.({
+      kind: top === 100 ? 'budget-100' : 'budget-80',
+      title: tr('用量预算提醒'),
+      text: body,
+    });
+    if (!delivered) return;
+    for (const f of fire) {
+      if (f.scope === 'day') this.alertState.dayLevel = f.level;
+      else this.alertState.monthLevel = f.level;
+    }
+    this.saveAlerts();
+    this.d.logger.info('usage budget alert', { levels: fire.map((f) => `${f.scope}:${f.level}`) });
+  }
+
+  /**
+   * 单任务高花费：同一个会话里连续使用（间隔 < 10 分钟）算一个任务，
+   * 已定价部分的花费超过「提醒线」就提醒一次。
+   */
+  private trackTask(rec: UsageRecord): void {
+    const s = this.settings;
+    if (!s.enabled || !(s.taskAlert > 0) || !rec.key) return;
+    const now = this.now();
+    if (rec.ts < now - TASK_FRESH_MS) return;
+    const cost = recordCost(rec, this.priceOf());
+    if (cost === null) return;
+    const key = rec.session ? `${rec.source}:${rec.session}` : `${rec.source}:${rec.via}`;
+    let t = this.tasks.get(key);
+    if (!t || rec.ts - t.last > TASK_GAP_MS) {
+      t = { last: rec.ts, parts: new Map(), alerted: false };
+      this.tasks.set(key, t);
+    }
+    t.last = Math.max(t.last, rec.ts);
+    t.parts.set(rec.key, cost); // 同一条消息的后续分段会更新同一个键，不重复累计
+    for (const [k, v] of this.tasks) if (now - v.last > 2 * TASK_GAP_MS) this.tasks.delete(k);
+    if (t.alerted) return;
+    let total = 0;
+    for (const v of t.parts.values()) total += v;
+    if (total * this.rate() < s.taskAlert) return;
+    const label = SOURCE_LABEL[rec.source] ?? rec.source;
+    const who = rec.project ? `${label}（${rec.project}）` : label;
+    const delivered = this.d.alert?.({
+      kind: 'task',
+      title: tr('单次任务花费偏高'),
+      text: tr(
+        '{0} 这次任务已经花了约 {1}（提醒线 {2}），要不要看一眼？',
+        who,
+        this.money(total),
+        formatAmount(s.taskAlert, s.currency),
+      ),
+    });
+    if (delivered) t.alerted = true;
+  }
+
+  // ---------------------------------------------------------------- 会话 / 任务累计
+
+  private sessionMap(): Map<string, SessionUsage> {
+    const ver = this.ledger.version();
+    const prices = this.settings.customPrices;
+    if (this.sessionCache && this.sessionCache.ver === ver && this.sessionCache.prices === prices)
+      return this.sessionCache.map;
+    const priceOf = this.priceOf();
+    const map = new Map<string, SessionUsage>();
+    for (const r of this.ledger.all()) {
+      if (!r.session) continue;
+      const key = `${r.source}:${r.session}`;
+      const e = map.get(key) ?? { tokens: 0, costUsd: null, calls: 0, unpriced: false };
+      accumulate(e, r, priceOf);
+      map.set(key, e);
+    }
+    this.sessionCache = { ver, prices, map };
+    return map;
+  }
+
+  /** 某个编程工具会话的累计用量（CodingMonitor 显示用） */
+  sessionUsage(source: UsageSource, session: string): SessionUsage | null {
+    if (!this.settings.enabled) return null;
+    return this.sessionMap().get(`${source}:${session}`) ?? null;
+  }
+
+  /** 某来源从 since 起的用量；给了 session 时只算该会话（以及尚未归属会话的路由记录） */
+  costSince(q: { source: UsageSource; since: number; session?: string }): SessionUsage | null {
+    if (!this.settings.enabled) return null;
+    const priceOf = this.priceOf();
+    const e: SessionUsage = { tokens: 0, costUsd: null, calls: 0, unpriced: false };
+    for (const r of this.ledger.range(q.since, this.now() + 1)) {
+      if (r.source !== q.source) continue;
+      if (q.session && r.session !== q.session && !(r.via === 'route' && !r.session)) continue;
+      accumulate(e, r, priceOf);
+    }
+    return e.calls ? e : null;
+  }
+
+  /** 任务结束播报里附带的一句话：「本次约用 1.2M Token，花费约 $0.42。」没有可报的就返回 null */
+  taskCostLine(q: { source: UsageSource; since: number; session?: string }): string | null {
+    const u = this.costSince(q);
+    if (!u || u.tokens <= 0) return null;
+    const tokens = formatTokens(u.tokens);
+    if (u.costUsd === null) return tr('本次约用 {0} Token（模型未定价，费用未计）。', tokens);
+    const cost = this.money(u.costUsd);
+    return u.unpriced
+      ? tr('本次约用 {0} Token，已计价部分约 {1}。', tokens, cost)
+      : tr('本次约用 {0} Token，花费约 {1}。', tokens, cost);
   }
 
   // ---------------------------------------------------------------- 查询

@@ -146,6 +146,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             <ul className={styles.list}>
               <li>{t('对话、记忆、知识库索引、屏幕记忆都只保存在这台电脑上，不做云同步。')}</li>
               <li>{t('编程助手进度只读取本机日志 / 状态文件，不登录、不抓取任何账号。')}</li>
+              <li>{t('Token 用量与费用统计只存在本机，可随时关闭、设保留时长或一键清空。')}</li>
               <li>{t('屏幕记忆可随时暂停；桌面文件访问需逐个文件夹授权，操作都有记录可撤销。')}</li>
             </ul>
             <div className={styles.actions}>
@@ -169,6 +170,14 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
                 onClick={() => onSection('desktop')}
               >
                 {t('文件夹授权与操作记录')}
+              </button>
+              <button
+                type="button"
+                className="cd-btn cd-btn--sm"
+                data-testid="privacy-usage"
+                onClick={() => onSection('usage')}
+              >
+                {t('用量统计的隐私设置')}
               </button>
               <button
                 type="button"

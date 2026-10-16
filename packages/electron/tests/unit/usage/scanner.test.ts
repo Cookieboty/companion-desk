@@ -154,6 +154,29 @@ describe('UsageLogScanner：增量游标 + 去重', () => {
     const keys = ledger.all().map((r) => r.key);
     expect(keys).toContain('claude:msg_direct');
     expect(keys).not.toContain('claude:msg_routed');
+    // 路由记录不带会话；日志只补会话 / 项目归属，token 不变（会话累计才不会漏掉路由请求）
+    const routed = ledger.all().find((r) => r.key === 'route-1')!;
+    expect(routed).toMatchObject({ session: 's1', project: 'app', input: 10, output: 5 });
+  });
+
+  it('onNew 只对真正新增的记录触发（被路由覆盖的 / 重复的不触发）', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-usage-home-'));
+    const ledger = new UsageLedger({ root: fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-ur-')) });
+    const seen: string[] = [];
+    const scanner = new UsageLogScanner({
+      ledger,
+      home,
+      dshHome: path.join(home, '.dsh'),
+      retention: () => '1y',
+      onNew: (r) => seen.push(r.key),
+    });
+    const f = claudeFile(home);
+    fs.writeFileSync(f, asst('msg_1', 5));
+    await scanner.scan();
+    await scanner.scan();
+    fs.appendFileSync(f, asst('msg_2', 6));
+    await scanner.scan();
+    expect(seen).toEqual(['claude:msg_1', 'claude:msg_2']);
   });
 
   it('该来源有路由请求在飞时先不读它的日志（游标不动），结束后补读', async () => {

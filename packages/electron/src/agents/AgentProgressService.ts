@@ -104,6 +104,16 @@ export interface AgentSessionView {
   /** 最后活动时间（文件写入 / 事件时间戳） */
   mtime: number;
   updatedAt: number;
+  /** 这个会话累计的 Token / 费用（用量统计开着、且能对上会话时才有） */
+  usage?: SessionUsageView;
+}
+
+/** 会话累计用量（来自用量统计；costUsd 为 null = 全部来自未定价模型） */
+export interface SessionUsageView {
+  tokens: number;
+  costUsd: number | null;
+  calls: number;
+  unpriced: boolean;
 }
 
 export interface AgentWatchState {
@@ -146,6 +156,10 @@ type Deps = {
   isQuiet?: () => boolean;
   /** 汇总间隔（默认 DIGEST_INTERVAL_MS），测试可调 */
   digestMs?: number;
+  /** 会话累计用量（CodingMonitor 显示）；source = claude / codex / dsh */
+  usageOf?: (source: string, session: string) => SessionUsageView | null;
+  /** 任务结束播报附带的「本次花费」一句话；总结播报开着时才会调用 */
+  taskCost?: (q: { source: string; session?: string; since: number }) => Promise<string | null>;
 };
 
 /** Nomi 对话标签（来自 CliHarnessService），避免 agents 依赖 cli 模块 */
@@ -295,6 +309,8 @@ export class AgentProgressService {
   private readonly home: string;
   private readonly now: () => number;
   private readonly pollMs: number;
+  /** 会话 / 标签这一轮开始跑的时间（算「本次花费」的起点） */
+  private readonly runStart = new Map<string, number>();
   private readonly digestMs: number;
   private readonly settingsPath: string;
   /** 最近一次进程快照（异步刷新）；null = 无法判断 */
@@ -348,6 +364,7 @@ export class AgentProgressService {
         source: 'file',
       }))
       .concat(tabs.map((t) => tabView(t)))
+      .map((v) => this.withUsage(v, tabs))
       .sort((a, b) => rank(a.status) - rank(b.status) || b.mtime - a.mtime);
     return {
       settings: this.settings,
@@ -355,6 +372,29 @@ export class AgentProgressService {
       detected: this.detectKinds(),
       lastRemindAt: this.lastRemindAt,
     };
+  }
+
+  /** 附上会话累计用量：文件会话按「工具:会话 id」对，Nomi 标签按它接管的 CLI 会话 id 对 */
+  private withUsage(v: AgentSessionView, tabs: WatchedTab[]): AgentSessionView {
+    const of = this.d.usageOf;
+    if (!of) return v;
+    let source: string | undefined;
+    let session: string | undefined;
+    if (v.source === 'tab') {
+      const t = tabs.find((x) => x.id === v.tabId);
+      source = t?.backend;
+      session = t?.cliSessionId ?? undefined;
+    } else {
+      source = v.kind;
+      session = v.id.startsWith(`${v.kind}:`) ? v.id.slice(v.kind.length + 1) : undefined;
+    }
+    if (!source || !session || !USAGE_KINDS.has(source)) return v;
+    try {
+      const usage = of(source, session);
+      return usage ? { ...v, usage } : v;
+    } catch {
+      return v;
+    }
   }
 
   setSettings(
@@ -681,11 +721,17 @@ export class AgentProgressService {
         lastRemindAt: prev?.lastRemindAt ?? 0,
       };
       this.tracked.set(c.key, next);
+      if (next.status === 'running' && !this.runStart.has(c.key))
+        this.runStart.set(c.key, now - 2 * this.pollMs);
       this.maybeRemind(prev, next);
+      if (next.status !== 'running') this.runStart.delete(c.key);
     }
 
     for (const id of [...this.tracked.keys()]) {
-      if (!seen.has(id)) this.tracked.delete(id);
+      if (!seen.has(id)) {
+        this.tracked.delete(id);
+        this.runStart.delete(id);
+      }
     }
     this.broadcast();
   }
@@ -713,7 +759,17 @@ export class AgentProgressService {
       ? finishSummary(next.label, next.title, next.status === 'completed', next.summary)
       : REMIND[next.status](who, next.summary);
     if (!text) return;
-    this.d.desktop.say(text.slice(0, 140), finishedBubbleOpts(next.status, summary));
+    this.sayWithCost(
+      text,
+      finishedBubbleOpts(next.status, summary),
+      finished && USAGE_KINDS.has(next.kind) && this.runStart.has(next.id)
+        ? {
+            source: next.kind,
+            session: next.id.slice(next.kind.length + 1),
+            since: this.runStart.get(next.id)!,
+          }
+        : undefined,
+    );
     notifyIsland({
       kind: 'agent',
       endpoint: next.kind,
@@ -752,7 +808,13 @@ export class AgentProgressService {
   }): void {
     this.tabs = h.tabs;
     this.tabProgress = h.progress ?? (() => undefined);
-    h.onTabs(() => this.broadcast());
+    h.onTabs(() => {
+      const now = this.now();
+      for (const t of this.safeTabs())
+        if ((t.status === 'running' || t.status === 'queued') && !this.runStart.has(`tab:${t.id}`))
+          this.runStart.set(`tab:${t.id}`, now);
+      this.broadcast();
+    });
     h.onFinished((e) => this.onEndpointFinished(e));
     h.onPermission?.((e) => this.onPermissionNeeded(e));
   }
@@ -808,9 +870,19 @@ export class AgentProgressService {
       : e.ok
         ? REMIND.completed(who, brief)
         : REMIND.failed(who, brief);
-    this.d.desktop.say(
-      text.slice(0, 140),
+    const since = this.runStart.get(`tab:${e.tabId}`);
+    this.runStart.delete(`tab:${e.tabId}`);
+    const tab = this.safeTabs().find((t) => t.id === e.tabId);
+    this.sayWithCost(
+      text,
       finishedBubbleOpts(e.ok ? 'completed' : 'failed', summary),
+      since === undefined
+        ? undefined
+        : e.backend === 'nomi'
+          ? { source: 'nomi', since }
+          : tab?.cliSessionId
+            ? { source: e.backend, session: tab.cliSessionId, since }
+            : undefined,
     );
     notifyIsland({
       kind: 'agent',
@@ -824,6 +896,34 @@ export class AgentProgressService {
     this.lastRemindAt = this.now();
     this.d.logger.info('agent-progress endpoint finished', { backend: e.backend, ok: e.ok });
     this.broadcast();
+  }
+
+  /**
+   * 说出结束播报。总结播报开着且能查到「本次花费」时，在末尾补一句（最多等 3 秒，
+   * 查不到 / 超时就照常播原文，不让播报被用量统计拖住）。
+   */
+  private sayWithCost(
+    text: string,
+    opts: ReturnType<typeof finishedBubbleOpts>,
+    q?: { source: string; session?: string; since: number },
+  ): void {
+    const send = (cost: string | null) => this.d.desktop.say(withCost(text, cost), opts);
+    if (!q || !this.settings.summaryEnabled || !this.d.taskCost) return send(null);
+    let done = false;
+    const once = (cost: string | null) => {
+      if (done) return;
+      done = true;
+      send(cost);
+    };
+    const timer = setTimeout(() => once(null), COST_WAIT_MS);
+    if (typeof timer === 'object' && 'unref' in timer) timer.unref();
+    this.d
+      .taskCost(q)
+      .then(
+        (c) => once(c),
+        () => once(null),
+      )
+      .finally(() => clearTimeout(timer));
   }
 
   private notify(title: string, body: string) {
@@ -1030,6 +1130,21 @@ function finishSummary(label: string, title: string, ok: boolean, detail?: strin
   return ok
     ? tr('{0} 完成了任务「{1}」，结果：{2}', label, task, d || tr('顺利完成'))
     : tr('{0} 的任务「{1}」失败了：{2}', label, task, d || tr('请看看终端'));
+}
+
+/** 有会话级用量日志的工具 */
+const USAGE_KINDS = new Set<string>(['claude', 'codex', 'dsh']);
+/** 等「本次花费」最多这么久，超时就照常播报 */
+const COST_WAIT_MS = 3000;
+const BUBBLE_MAX = 140;
+
+/** 气泡文字加上「本次花费」一句：总长不超过 140，超出的部分截掉原文末尾 */
+export function withCost(text: string, cost: string | null): string {
+  if (!cost) return text.slice(0, BUBBLE_MAX);
+  const room = BUBBLE_MAX - cost.length - 1;
+  if (room <= 0) return cost.slice(0, BUBBLE_MAX);
+  const head = text.length > room ? `${text.slice(0, Math.max(0, room - 1)).trimEnd()}…` : text;
+  return `${head} ${cost}`;
 }
 
 /** 结束气泡的出声方式：总结播报开 → 朗读总结；关 → 只播一句简短固定台词 + 音效 */

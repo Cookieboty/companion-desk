@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseAmount } from '../src/components/UsagePanel/Budget';
 import { niceMax } from '../src/components/UsagePanel/charts';
 import {
   changePct,
@@ -11,6 +12,7 @@ import {
   formatTokens,
   heatLevels,
   presetRange,
+  sessionUsageText,
   share,
 } from '../src/components/UsagePanel/format';
 import { parseRows } from '../src/components/UsagePanel/Pricing';
@@ -115,5 +117,33 @@ describe('用量格式化', () => {
           { model: 'a', input: '1', output: '1', cacheRead: '', cacheWrite: '' },
         ]),
     ).toBe(true);
+  });
+});
+
+describe('sessionUsageText', () => {
+  it('累计 Token + 费用；未定价不编造金额；部分未定价注明', () => {
+    expect(sessionUsageText({ tokens: 1200, costUsd: 0.5, unpriced: false }, 'USD', 7.2)).toBe(
+      '累计 1.2K Token · $0.500',
+    );
+    expect(sessionUsageText({ tokens: 1200, costUsd: 1, unpriced: false }, 'CNY', 7)).toBe(
+      '累计 1.2K Token · ¥7.00',
+    );
+    expect(sessionUsageText({ tokens: 900, costUsd: null, unpriced: true }, 'USD', 7.2)).toBe(
+      '累计 900 Token · 未定价',
+    );
+    expect(sessionUsageText({ tokens: 900, costUsd: 2, unpriced: true }, 'USD', 7.2)).toContain(
+      '部分模型未定价',
+    );
+  });
+});
+
+describe('parseAmount', () => {
+  it('空 = 0；合法取两位小数；非法 null', () => {
+    expect(parseAmount('')).toBe(0);
+    expect(parseAmount(' 12.345 ')).toBe(12.35);
+    expect(parseAmount('0')).toBe(0);
+    expect(parseAmount('-1')).toBeNull();
+    expect(parseAmount('abc')).toBeNull();
+    expect(parseAmount('1e9')).toBeNull();
   });
 });

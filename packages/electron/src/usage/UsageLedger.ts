@@ -47,6 +47,8 @@ export class UsageLedger {
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private cursorDirty = false;
   private lines = 0;
+  /** 内容变化计数（派生缓存用） */
+  private ver = 0;
 
   constructor(
     private readonly d: { root: string; logger?: Logger; flushMs?: number; now?: () => number },
@@ -117,7 +119,30 @@ export class UsageLedger {
     }
     this.recs.set(r.key, r);
     this.sorted = null;
+    this.ver++;
     this.pending.push(JSON.stringify(r));
+    this.lines++;
+    this.scheduleFlush();
+    return true;
+  }
+
+  /** 内容版本号：每次写入 / 清空 / 清理都会变，用来判断派生缓存是否过期 */
+  version(): number {
+    return this.ver;
+  }
+
+  /** 给已有记录补会话 / 项目（只补缺的字段，不改 token）；返回 true = 有变化 */
+  attribute(key: string, patch: { session?: string; project?: string }): boolean {
+    const prev = this.recs.get(key);
+    if (!prev) return false;
+    const next: UsageRecord = { ...prev };
+    if (!prev.session && patch.session) next.session = patch.session;
+    if (!prev.project && patch.project) next.project = patch.project;
+    if (next.session === prev.session && next.project === prev.project) return false;
+    this.recs.set(key, next);
+    this.sorted = null;
+    this.ver++;
+    this.pending.push(JSON.stringify(next));
     this.lines++;
     this.scheduleFlush();
     return true;
@@ -155,7 +180,7 @@ export class UsageLedger {
    * 编程工具日志里的这条记录，是不是已经由 Nomi 本地路由记过账？
    * （走本地路由的请求，日志里也有一份；以路由的为准，日志的跳过，避免重复计数）
    */
-  coveredByRoute(source: UsageSource, ts: number): boolean {
+  routeCovering(source: UsageSource, ts: number): UsageRecord | null {
     const arr = this.snapshot();
     // 找到第一个 ts >= 窗口左界的路由记录
     const left = ts - ROUTE_SLACK_MS - 10 * 60_000; // 路由单次最长按 10 分钟估
@@ -169,9 +194,13 @@ export class UsageLedger {
     for (let i = lo; i < arr.length && arr[i]!.ts <= ts + ROUTE_SLACK_MS; i++) {
       const r = arr[i]!;
       if (r.via !== 'route' || r.source !== source) continue;
-      if (ts >= r.ts - ROUTE_SLACK_MS && ts <= r.ts + (r.dur ?? 0) + ROUTE_SLACK_MS) return true;
+      if (ts >= r.ts - ROUTE_SLACK_MS && ts <= r.ts + (r.dur ?? 0) + ROUTE_SLACK_MS) return r;
     }
-    return false;
+    return null;
+  }
+
+  coveredByRoute(source: UsageSource, ts: number): boolean {
+    return this.routeCovering(source, ts) !== null;
   }
 
   // ---------------------------------------------------------------- 游标
@@ -211,6 +240,7 @@ export class UsageLedger {
     }
     if (n) {
       this.sorted = null;
+      this.ver++;
       this.compact();
     }
     return n;
@@ -223,6 +253,7 @@ export class UsageLedger {
   clear(): void {
     this.recs.clear();
     this.sorted = null;
+    this.ver++;
     this.pending = [];
     this.lines = 0;
     try {

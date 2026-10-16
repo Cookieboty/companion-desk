@@ -22,7 +22,7 @@ import { initExtensionsService } from '../extensions/ExtensionsService';
 import { IpcRegistry } from '../handlers/ipc/IpcRegistry';
 import { t as tr } from '../i18n';
 import { LocaleService } from '../i18n';
-import { getIslandService, initIslandService } from '../island/IslandService';
+import { getIslandService, initIslandService, notifyIsland } from '../island/IslandService';
 import { initKnowledgeService } from '../knowledge/KnowledgeService';
 import { getLocalHubService, initLocalHubService } from '../local/LocalHubService';
 import { getLocalModelService, initLocalModelService } from '../local/LocalModelService';
@@ -326,6 +326,13 @@ export class Application implements IApplication {
         root: path.join(app.getPath('userData'), 'usage'),
         logger: this.logger as never,
         providerName: (id) => this.aiRuntime?.listProviders().find((p) => p.id === id)?.name,
+        // 预算 / 单任务提醒：看板娘气泡（只显示，不朗读）+ 灵动岛；免打扰中不弹，稍后重试
+        alert: (a) => {
+          if (desktop.notifyPolicy?.quiet() ?? false) return false;
+          desktop.say(a.text.slice(0, 140), { voice: 'none' });
+          notifyIsland({ kind: 'info', status: 'attention', title: a.title, body: a.text });
+          return true;
+        },
       });
       usage.registerIpc();
       usage.start();
@@ -335,6 +342,16 @@ export class Application implements IApplication {
         logger: this.logger as never,
         desktop,
         isQuiet: () => desktop.notifyPolicy?.quiet() ?? false,
+        // CodingMonitor 显示会话累计用量；任务结束播报（总结播报开着时）附带「本次花费」
+        usageOf: (source, session) =>
+          getUsageService()?.sessionUsage(source as never, session) ?? null,
+        taskCost: async (q) => {
+          const u = getUsageService();
+          if (!u) return null;
+          // 日志有延迟：先追平一次再算（路由 / Nomi 对话的记录本来就是即时的）
+          await u.scan().catch(() => undefined);
+          return u.taskCostLine({ source: q.source as never, session: q.session, since: q.since });
+        },
       });
       agents.registerIpc();
       if (agents.state().settings.enabled) agents.start();

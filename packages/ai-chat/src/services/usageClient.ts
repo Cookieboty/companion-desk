@@ -24,6 +24,10 @@ export interface UsageSettings {
   cnyPerUsd: number;
   customPrices: UsageCustomPrice[];
   clearedAt: number;
+  /** 日 / 月预算、单任务提醒线（当前币种金额；0 = 不提醒） */
+  dailyBudget: number;
+  monthlyBudget: number;
+  taskAlert: number;
 }
 
 export interface UsageBuiltinPrice extends UsageCustomPrice {

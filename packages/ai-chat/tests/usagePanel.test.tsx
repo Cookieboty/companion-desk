@@ -108,6 +108,9 @@ const STATE = {
     cnyPerUsd: 7.2,
     customPrices: [],
     clearedAt: 0,
+    dailyBudget: 0,
+    monthlyBudget: 0,
+    taskAlert: 0,
   },
   detected: ['claude', 'codex'],
   records: 42,
@@ -199,6 +202,9 @@ function install() {
         case 'ai:usage:set-settings':
           state = { ...state, settings: { ...state.settings, ...(a[0] as object) } };
           return state.settings;
+        case 'ai:usage:clear':
+          state = { ...state, records: 0 };
+          return state;
         case 'ai:usage:scan':
           return { ...state, added: 0, files: 0 };
       }
@@ -391,5 +397,79 @@ describe('UsagePanel 明细 / 价格', () => {
           c[0] === 'ai:usage:set-settings' && (c[1] as { customPrices?: unknown }).customPrices,
       ),
     ).toBe(false);
+  });
+});
+
+describe('UsagePanel 预算与隐私', () => {
+  const open = async () => {
+    const r = render(<UsagePanel />);
+    await r.findByTestId('usage-card-cost');
+    fireEvent.click(r.getByRole('tab', { name: '预算与隐私' }));
+    await r.findByTestId('usage-budget');
+    return r;
+  };
+  const patches = () =>
+    calls
+      .filter((c) => c[0] === 'ai:usage:set-settings')
+      .map((c) => c[1] as Record<string, unknown>);
+
+  it('填预算：失焦保存；留空 = 0；非法值提示且不保存', async () => {
+    const { getByTestId, findByText } = await open();
+    const daily = getByTestId('usage-budget-daily') as HTMLInputElement;
+    fireEvent.change(daily, { target: { value: '12.5' } });
+    fireEvent.blur(daily);
+    await waitFor(() => expect(patches()).toContainEqual({ dailyBudget: 12.5 }));
+    fireEvent.change(getByTestId('usage-budget-task'), { target: { value: '3' } });
+    fireEvent.keyDown(getByTestId('usage-budget-task'), { key: 'Enter' });
+    await waitFor(() => expect(patches()).toContainEqual({ taskAlert: 3 }));
+    // 清空 → 0
+    fireEvent.change(daily, { target: { value: '' } });
+    fireEvent.blur(daily);
+    await waitFor(() => expect(patches()).toContainEqual({ dailyBudget: 0 }));
+    // 非法
+    const n = patches().length;
+    fireEvent.change(getByTestId('usage-budget-monthly'), { target: { value: '-5' } });
+    fireEvent.blur(getByTestId('usage-budget-monthly'));
+    expect(await findByText(/金额需要是不小于 0 的数字/)).toBeTruthy();
+    expect(patches()).toHaveLength(n);
+  });
+
+  it('币种符号随当前币种；已有预算回填输入框', async () => {
+    state.settings.dailyBudget = 20;
+    state.settings.currency = 'CNY';
+    const { getByTestId } = await open();
+    expect((getByTestId('usage-budget-daily') as HTMLInputElement).value).toBe('20');
+    expect(getByTestId('usage-budget').textContent).toContain('¥');
+  });
+
+  it('隐私：总开关 / 读取日志开关 / 保留时长写入设置；总开关关闭时日志开关禁用', async () => {
+    const { getByTestId } = await open();
+    const logs = getByTestId('usage-read-logs') as HTMLInputElement;
+    expect(logs.disabled).toBe(false);
+    fireEvent.click(logs);
+    await waitFor(() => expect(patches()).toContainEqual({ readToolLogs: false }));
+    fireEvent.click(getByTestId('usage-enabled'));
+    await waitFor(() => expect(patches()).toContainEqual({ enabled: false }));
+    await waitFor(() =>
+      expect((getByTestId('usage-read-logs') as HTMLInputElement).disabled).toBe(true),
+    );
+  });
+
+  it('一键清空：确认后才清；取消不动；本地存储说明在页面上', async () => {
+    const confirm = vi.fn();
+    vi.stubGlobal('confirm', confirm);
+    window.confirm = confirm;
+    const { getByTestId } = await open();
+    expect(getByTestId('usage-budget').textContent).toContain('不上传、不做云同步');
+    confirm.mockReturnValueOnce(false);
+    fireEvent.click(getByTestId('usage-clear'));
+    expect(calls.some((c) => c[0] === 'ai:usage:clear')).toBe(false);
+    confirm.mockReturnValueOnce(true);
+    fireEvent.click(getByTestId('usage-clear'));
+    await waitFor(() => expect(calls.some((c) => c[0] === 'ai:usage:clear')).toBe(true));
+    await waitFor(() =>
+      expect((getByTestId('usage-clear') as HTMLButtonElement).disabled).toBe(true),
+    );
+    vi.unstubAllGlobals();
   });
 });

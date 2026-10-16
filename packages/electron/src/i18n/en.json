@@ -521,5 +521,16 @@
   "{0} 个编程任务进行中": "{0} coding task(s) in progress",
   "{0} 完成了任务「{1}」，结果：{2}": "{0} finished \"{1}\": {2}",
   "{0} 的任务「{1}」失败了：{2}": "{0}: task \"{1}\" failed: {2}",
-  "顺利完成": "Completed successfully"
+  "顺利完成": "Completed successfully",
+  "{0}的花费已超过预算（{1} / {2}）。": "{0} spending has exceeded the budget ({1} / {2}).",
+  "{0}的花费已用到预算的 80%（{1} / {2}）。": "{0} spending has reached 80% of the budget ({1} / {2}).",
+  "今天": "Today's",
+  "本月": "This month's",
+  "（未定价模型不计入）": " (unpriced models are not counted)",
+  "用量预算提醒": "Usage budget alert",
+  "单次任务花费偏高": "A single task is costing a lot",
+  "{0} 这次任务已经花了约 {1}（提醒线 {2}），要不要看一眼？": "{0}: this task has already cost about {1} (alert line {2}). Want to take a look?",
+  "本次约用 {0} Token（模型未定价，费用未计）。": "This task used about {0} tokens (model unpriced, cost not counted).",
+  "本次约用 {0} Token，已计价部分约 {1}。": "This task used about {0} tokens; the priced part is about {1}.",
+  "本次约用 {0} Token，花费约 {1}。": "This task used about {0} tokens and cost about {1}."
 }

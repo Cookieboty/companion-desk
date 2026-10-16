@@ -48,6 +48,18 @@ export function formatMoney(usd: number, c: UsageCurrency, cnyPerUsd: number): s
   return `${s}${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
+/** 会话累计用量一行字：「累计 1.2K Token · $0.05」；未定价不编造金额 */
+export function sessionUsageText(
+  u: { tokens: number; costUsd: number | null; unpriced: boolean },
+  c: UsageCurrency,
+  cnyPerUsd: number,
+): string {
+  const tokens = t('累计 {0} Token', formatTokens(u.tokens));
+  if (u.costUsd == null) return [tokens, t('未定价')].join(' · ');
+  const cost = formatMoney(u.costUsd, c, cnyPerUsd);
+  return [tokens, u.unpriced ? t('{0}（部分模型未定价）', cost) : cost].join(' · ');
+}
+
 /** 单价展示（USD / 1M tokens）：保留有效位，去掉多余 0 */
 export function formatPrice(n: number | undefined): string {
   if (n == null) return '—';

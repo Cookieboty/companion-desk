@@ -18,7 +18,10 @@ import {
   type EndpointFilter,
 } from '../../services/agentsClient';
 import { harnessClient } from '../../services/harnessClient';
+import { usageClient } from '../../services/usageClient';
 import { EndpointIcon } from '../EndpointIcon';
+import { sessionUsageText } from '../UsagePanel/format';
+import { useUsageFx } from '../UsagePanel/useFx';
 
 import styles from './index.module.css';
 
@@ -39,6 +42,7 @@ export const CodingMonitor: React.FC<{
 }> = ({ onOpenedTab, onOpenNotify }) => {
   const [agents, setAgents] = useState<AgentWatchState | null>(null);
   const [agentFilter, setAgentFilter] = useState<EndpointFilter>('all');
+  const fx = useUsageFx();
 
   const loadAgents = useCallback(() => {
     if (!agentsClient.available()) return;
@@ -52,7 +56,13 @@ export const CodingMonitor: React.FC<{
   }, []);
   useEffect(() => {
     loadAgents();
-    return agentsClient.onChanged(() => loadAgents());
+    const offAgents = agentsClient.onChanged(() => loadAgents());
+    // 用量变化（节流过的广播）时刷新，会话累计 Token / 费用才会跟着走
+    const offUsage = usageClient.onChanged(() => loadAgents());
+    return () => {
+      offAgents();
+      offUsage();
+    };
   }, [loadAgents]);
 
   return (
@@ -229,7 +239,13 @@ export const CodingMonitor: React.FC<{
                         )}
                       </div>
                       <p className={styles.hint} data-testid="agents-session-meta">
-                        {[s.label, s.project, tr('最后活动 {0}', relTime(s.mtime)), s.summary]
+                        {[
+                          s.label,
+                          s.project,
+                          tr('最后活动 {0}', relTime(s.mtime)),
+                          s.usage ? sessionUsageText(s.usage, fx.currency, fx.rate) : '',
+                          s.summary,
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>

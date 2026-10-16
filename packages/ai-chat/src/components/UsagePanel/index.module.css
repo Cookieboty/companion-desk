@@ -546,3 +546,33 @@ i.heatCell {
   flex-direction: column;
   gap: 14px;
 }
+
+.budgetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 16px;
+  margin-bottom: 4px;
+}
+.budgetField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--cd-font-size-sm);
+  color: var(--cd-color-text-muted);
+}
+.amount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cd-color-text-muted);
+}
+.amount input {
+  flex: 1;
+  min-width: 0;
+}
+.switchCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
