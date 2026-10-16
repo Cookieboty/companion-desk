@@ -30,7 +30,10 @@ const hold = (p: string, from: number, to: number, v: number): Track =>
  * really lands on chin / cheek / hair / chest; `via` chains further targets (e.g. mouth → blow).
  * `rMix`/`lMix` fades the hand piece + sleeve taper in/out continuously (no swap pop).
  */
-const JOINT_LAG = [0, 0.05, 0.1, 0.02] as const;
+const JOINT_LAG = [0.06, -0.08, 0.08, 0.02] as const;
+/** the elbow folds first (fast start) and unfolds last, so the forearm never sweeps out wide while the arm lifts */
+const RISE_EASE = ['io', 'o', 'io', 'io'] as const;
+const FALL_EASE = ['o', 'i', 'io', 'io'] as const;
 function arm(
   side: 'r' | 'l',
   hand: number,
@@ -49,20 +52,51 @@ function arm(
   const last = via.length ? via[via.length - 1][1] : pose;
   const key = (i: number): Key[] => {
     const lag = JOINT_LAG[i];
+    const tLift = Math.max(tAnt + 0.1, tArr + lag);
+    const hold1 = Math.max(t1, (via.length ? via[via.length - 1][0] : 0) + 0.2);
+    if (i === 3) {
+      // reach: while the elbow folds the forearm swings up toward the camera (foreshortened), so the
+      // hand never sweeps sideways off the canvas; it settles to the pose's own reach afterwards
+      const zb = Math.max(pose[3], 0.62);
+      const keys: Key[] = [
+        [0, 0],
+        [tAnt, 0],
+        [tAnt + 0.2, zb, 'o'],
+        [tArr + 0.12, pose[3], 'io'],
+      ];
+      for (const [tv, pv] of via) keys.push([tv, pv[3], 'io']);
+      if (ret) {
+        const end = dur;
+        keys.push(
+          [hold1, last[3]],
+          [hold1 + 0.12, zb, 'io'],
+          [end - 0.12, zb * 0.6, 'io'],
+          [end, 0, 'io'],
+        );
+      } else keys.push([dur, last[3]]);
+      return keys;
+    }
+    // the shoulder first swings IN across the body while the elbow folds (the forearm passes in front
+    // of the torso instead of sweeping out past the canvas edge), then abducts to the pose
+    const dip = Math.min(26, 5 + Math.abs(pose[1]) * 0.13);
     const ant =
-      i === 3 ? 0 : -Math.sign(pose[i] || 1) * Math.min(7, 1.5 + Math.abs(pose[i]) * 0.05);
-    const over = Math.max(-174, Math.min(174, pose[i] * (i === 3 ? 1 : 1.04)));
+      i === 0
+        ? -dip * Math.sign(pose[1] || 1) * (pose[1] < 0 ? 0.35 : 1)
+        : -Math.sign(pose[i] || 1) * Math.min(7, 1.5 + Math.abs(pose[i]) * 0.05);
+    const over = Math.max(-174, Math.min(174, pose[i] * 1.04));
     const keys: Key[] = [
       [0, 0],
-      [tAnt, ant, 'o'],
-      [tArr + lag, over, ease],
-      [tArr + lag + 0.2, pose[i], 'io'],
+      [i === 0 ? tAnt + 0.12 : tAnt, ant, 'o'],
+      [tLift, over, i === 0 || i === 2 ? ease : RISE_EASE[i]],
+      [tLift + 0.2, pose[i], 'io'],
     ];
     for (const [tv, pv] of via) keys.push([tv + lag, pv[i], 'io']);
-    const hold1 = Math.max(t1, (via.length ? via[via.length - 1][0] : 0) + 0.2);
     if (ret) {
-      const end = Math.min(dur, dur - 0.1 + lag);
-      keys.push([hold1, last[i]], [Math.max(hold1 + 0.2, end), 0, 'io']);
+      const end = Math.min(dur, dur - 0.04 - lag);
+      const tEnd = Math.max(hold1 + 0.2, end);
+      keys.push([hold1, last[i]]);
+      if (i === 0 && last[1] > 0) keys.push([hold1 + (tEnd - hold1) * 0.55, -dip * 0.8, 'io']);
+      keys.push([tEnd, 0, i === 0 ? 'io' : FALL_EASE[i]]);
       if (end < dur) keys.push([dur, 0]);
     } else keys.push([dur, last[i]]);
     return keys;
@@ -72,8 +106,8 @@ function arm(
         [0, 0],
         [tAnt, 0],
         [Math.max(tAnt + 0.1, tArr - 0.1), 1, 'io'],
-        [Math.max(t1, dur - 0.45), 1],
-        [dur - 0.08, 0, 'io'],
+        [Math.max(t1, dur - 0.3), 1],
+        [dur - 0.03, 0, 'io'],
         [dur, 0],
       ]
     : [
