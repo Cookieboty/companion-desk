@@ -5,13 +5,14 @@ import React, { useState } from 'react';
 import {
   usageClient,
   type UsageCustomPrice,
+  type UsagePriceSyncResult,
   type UsageSettings,
   type UsageState,
   type UsageSummary,
 } from '../../services/usageClient';
 import { AppIcon } from '../AppIcons';
 
-import { formatPrice } from './format';
+import { formatDateTime, formatPrice, formatTokens } from './format';
 import styles from './index.module.css';
 
 interface Row {
@@ -67,14 +68,35 @@ interface Props {
   state: UsageState;
   unpriced: UsageSummary['unpriced'];
   onSettings: (s: UsageSettings) => void;
+  /** 价格同步后拿到最新状态 */
+  onState?: (s: UsageState) => void;
 }
 
-export const Pricing: React.FC<Props> = ({ state, unpriced, onSettings }) => {
+/** 同步结果 → 一句话（失败时说明原因，并明确已有价格没有被改动） */
+export function priceSyncMessage(r: UsagePriceSyncResult): string {
+  if (r.ok)
+    return r.status === 'not-modified'
+      ? t('价格表已是最新（未重新下载）')
+      : t('已同步 {0} 个模型的价格', r.count);
+  const why: Record<string, string> = {
+    network: t('网络不可用'),
+    timeout: t('连接超时'),
+    http: t('服务器返回了错误（{0}）', r.httpStatus ?? ''),
+    invalid: t('返回的价格表格式不对'),
+    'too-large': t('返回的数据过大'),
+    busy: t('正在同步中'),
+  };
+  return t('同步失败：{0}。继续使用已有价格。', why[r.reason] ?? r.reason);
+}
+
+export const Pricing: React.FC<Props> = ({ state, unpriced, onSettings, onState }) => {
   const st = state.settings;
   const [rows, setRows] = useState<Row[]>(() => st.customPrices.map(toRow));
   const [rate, setRate] = useState(String(st.cnyPerUsd));
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // 外部设置变化（保存 / 另一个窗口修改）时同步表单：渲染期比较，避免 effect 里 setState
   const [seen, setSeen] = useState({ prices: st.customPrices, rate: st.cnyPerUsd });
   if (seen.prices !== st.customPrices || seen.rate !== st.cnyPerUsd) {
@@ -111,6 +133,20 @@ export const Pricing: React.FC<Props> = ({ state, unpriced, onSettings }) => {
     if (!(n > 0 && n < 1000)) return setErr(t('汇率需要是大于 0 的数字'));
     await patch({ cnyPerUsd: n });
   };
+  const sync = state.pricing.sync;
+  const syncPrices = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const { result, ...next } = await usageClient.syncPrices();
+      setSyncMsg({ ok: result.ok, text: priceSyncMessage(result) });
+      onState?.(next as UsageState);
+    } catch (e) {
+      setSyncMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSyncing(false);
+    }
+  };
   const custom = new Set(st.customPrices.map((p) => p.model.toLowerCase()));
   const todo = unpriced.filter(
     (u) => !rows.some((r) => r.model.trim().toLowerCase() === u.model.toLowerCase()),
@@ -145,6 +181,42 @@ export const Pricing: React.FC<Props> = ({ state, unpriced, onSettings }) => {
             '费用统一按 USD 计价，再按这里的汇率折算。默认汇率只是占位值，不是实时汇率，请按需修改。',
           )}
         </p>
+      </section>
+
+      <section className={styles.panel} data-testid="usage-price-sync">
+        <header className={styles.panelHead}>
+          <h3>{t('价格表同步')}</h3>
+          <span className={styles.dim} data-testid="usage-sync-status">
+            {sync && sync.count > 0
+              ? t(
+                  '价格表日期 {0} · 上次同步 {1} · {2} 个模型',
+                  sync.tableDate || '—',
+                  formatDateTime(sync.fetchedAt),
+                  sync.count,
+                )
+              : t('尚未同步，正在使用内置价格表（{0}）', state.pricing.date)}
+          </span>
+        </header>
+        <p className={styles.dim}>
+          {t(
+            '只在你点击时才联网：从 models.dev 下载公开价格表（只取各模型厂商自己的官方价），不上传任何用量或账号信息，也没有后台自动更新。同步失败会继续使用已有价格；优先级：自定义价格 > 同步价格 > 内置价格。',
+          )}
+        </p>
+        <div className={styles.actionsRow}>
+          <Button
+            size="sm"
+            onClick={() => void syncPrices()}
+            disabled={syncing}
+            data-testid="usage-sync-prices"
+          >
+            {syncing ? t('同步中…') : t('同步价格')}
+          </Button>
+          {syncMsg && (
+            <span className={syncMsg.ok ? styles.ok : styles.err} data-testid="usage-sync-result">
+              {syncMsg.text}
+            </span>
+          )}
+        </div>
       </section>
 
       <section className={styles.panel}>
@@ -284,7 +356,18 @@ export const Pricing: React.FC<Props> = ({ state, unpriced, onSettings }) => {
                   <td className={styles.num}>{formatPrice(p.output)}</td>
                   <td className={styles.num}>{formatPrice(p.cacheRead)}</td>
                   <td className={styles.num}>{formatPrice(p.cacheWrite)}</td>
-                  <td className={styles.dim}>{p.note ?? ''}</td>
+                  <td className={styles.dim}>
+                    {p.note ?? ''}
+                    {p.tiers?.map((x) => (
+                      <div key={x.size}>
+                        {t(
+                          '单次请求超过 {0} 时 {1}',
+                          formatTokens(x.size),
+                          `${formatPrice(x.input)} / ${formatPrice(x.output)}`,
+                        )}
+                      </div>
+                    ))}
+                  </td>
                 </tr>
               ))}
             </tbody>

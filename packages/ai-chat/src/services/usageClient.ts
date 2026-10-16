@@ -14,7 +14,24 @@ export interface UsageCustomPrice {
   output: number;
   cacheRead?: number;
   cacheWrite?: number;
+  cacheWrite1h?: number;
 }
+
+/** models.dev 手动价格同步的状态（count = 0 表示从没同步过，用内置表） */
+export interface UsagePriceSyncState {
+  count: number;
+  fetchedAt: number;
+  checkedAt: number;
+  tableDate: string;
+}
+
+export type UsagePriceSyncResult =
+  | { ok: true; status: 'updated' | 'not-modified'; count: number; skipped: number }
+  | {
+      ok: false;
+      reason: 'network' | 'timeout' | 'http' | 'invalid' | 'too-large' | 'busy';
+      httpStatus?: number;
+    };
 
 export interface UsageSettings {
   enabled: boolean;
@@ -35,6 +52,8 @@ export interface UsageSettings {
 export interface UsageBuiltinPrice extends UsageCustomPrice {
   label?: string;
   note?: string;
+  /** 长上下文分档：单次请求提示词超过 size 时的价格 */
+  tiers?: Array<{ size: number; input: number; output: number }>;
 }
 
 export interface UsageState {
@@ -42,7 +61,7 @@ export interface UsageState {
   detected: string[];
   records: number;
   lastScanAt: number;
-  pricing: { date: string; builtin: UsageBuiltinPrice[] };
+  pricing: { date: string; builtin: UsageBuiltinPrice[]; sync?: UsagePriceSyncState };
 }
 
 export interface UsageSummary {
@@ -211,6 +230,8 @@ export const usageClient = {
   csv: (q: UsageDetailQuery) => call<string>('csv', q),
   setSettings: (p: Partial<UsageSettings>) => call<UsageSettings>('set-settings', p),
   scan: () => call<UsageState & { added: number; files: number }>('scan'),
+  /** 手动同步价格：只在用户点击时调用；只下载 models.dev 的公开价格表，不上传任何用量 */
+  syncPrices: () => call<UsageState & { result: UsagePriceSyncResult }>('price-sync'),
   clear: () => call<UsageState>('clear'),
   quota: () => call<UsageQuotaEntry[]>('quota'),
   quotaRefresh: () => call<UsageQuotaRefresh>('quota-refresh'),

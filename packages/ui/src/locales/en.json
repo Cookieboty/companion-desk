@@ -1963,5 +1963,21 @@
   "已关闭「主动刷新额度」：只重读本机已有的数据": "\"Active quota refresh\" is off: only data already on this machine is re-read",
   "上次读取": "Last read",
   "只有以账号 / 订阅登录的工具才有额度；用 API Key、第三方供应商或本地路由的工具（包括 Nomi 对话）按量计费，只统计用量与费用。额度只来自这台电脑上已有的数据，以及你点「刷新」时官方 CLI 自己取到的结果；登录方式也只看官方的登录状态。": "Only tools signed in with an account / subscription have a quota; tools using an API key, a third-party provider or a local route (including Nomi chat) are billed by usage, so only usage and cost are tracked. Quota comes only from data already on this computer and from what the official CLI fetches itself when you click Refresh; the login method is read only from the official login status.",
-  "隐私：Nomi 不读取、不保存、不上传任何登录凭据（不打开 auth.json、.credentials.json 或系统钥匙串），不调用未公开接口，也不估算。点「刷新」时，快照过期才会临时启动官方 CLI（claude -p /usage、codex app-server），由它用自己的登录态去取，Nomi 只保留百分比、窗口、重置时间和套餐；注意 Codex 会因此向 OpenAI 发一次请求。不会自动轮询，同一工具 60 秒内最多刷新一次；可在「隐私与数据」里关闭「主动刷新额度」。": "Privacy: Nomi never reads, stores or uploads any login credentials (it does not open auth.json, .credentials.json or the system keychain), calls no unpublished API and never estimates. When you click Refresh and the snapshot is out of date, the official CLI (claude -p /usage, codex app-server) is started briefly and fetches the quota with its own login; Nomi keeps only the percentage, window, reset time and plan. Note that Codex sends one request to OpenAI for this. There is no automatic polling, and each tool is refreshed at most once per 60 seconds; you can turn off \"Active quota refresh\" under \"Privacy & data\"."
+  "隐私：Nomi 不读取、不保存、不上传任何登录凭据（不打开 auth.json、.credentials.json 或系统钥匙串），不调用未公开接口，也不估算。点「刷新」时，快照过期才会临时启动官方 CLI（claude -p /usage、codex app-server），由它用自己的登录态去取，Nomi 只保留百分比、窗口、重置时间和套餐；注意 Codex 会因此向 OpenAI 发一次请求。不会自动轮询，同一工具 60 秒内最多刷新一次；可在「隐私与数据」里关闭「主动刷新额度」。": "Privacy: Nomi never reads, stores or uploads any login credentials (it does not open auth.json, .credentials.json or the system keychain), calls no unpublished API and never estimates. When you click Refresh and the snapshot is out of date, the official CLI (claude -p /usage, codex app-server) is started briefly and fetches the quota with its own login; Nomi keeps only the percentage, window, reset time and plan. Note that Codex sends one request to OpenAI for this. There is no automatic polling, and each tool is refreshed at most once per 60 seconds; you can turn off \"Active quota refresh\" under \"Privacy & data\".",
+  "价格表已是最新（未重新下载）": "Price table is up to date (nothing downloaded)",
+  "已同步 {0} 个模型的价格": "Synced prices for {0} models",
+  "服务器返回了错误（{0}）": "The server returned an error ({0})",
+  "网络不可用": "Network unavailable",
+  "连接超时": "Connection timed out",
+  "返回的价格表格式不对": "The returned price table has an unexpected format",
+  "返回的数据过大": "The returned data is too large",
+  "正在同步中": "A sync is already running",
+  "同步失败：{0}。继续使用已有价格。": "Sync failed: {0}. Existing prices are still in use.",
+  "价格表同步": "Price table sync",
+  "价格表日期 {0} · 上次同步 {1} · {2} 个模型": "Price table date {0} · last synced {1} · {2} models",
+  "尚未同步，正在使用内置价格表（{0}）": "Not synced yet; using the built-in price table ({0})",
+  "只在你点击时才联网：从 models.dev 下载公开价格表（只取各模型厂商自己的官方价），不上传任何用量或账号信息，也没有后台自动更新。同步失败会继续使用已有价格；优先级：自定义价格 > 同步价格 > 内置价格。": "Goes online only when you click: downloads the public price table from models.dev (only each model maker's own official prices). No usage or account information is uploaded, and there is no background auto-update. If a sync fails, existing prices keep being used. Priority: custom prices > synced prices > built-in prices.",
+  "同步价格": "Sync prices",
+  "同步中…": "Syncing…",
+  "单次请求超过 {0} 时 {1}": "Per request above {0}: {1}"
 }

@@ -249,9 +249,36 @@ describe('源码级约束：用量模块里没有凭据路径 / 未文档接口 
     const c = code(f);
     for (const bad of FORBIDDEN) expect(c).not.toContain(bad);
     // 不是 `.fetch(`（本模块里 Fetcher 的方法名），而是全局 fetch(...) 调用
-    expect(c).not.toMatch(/(?<![.\w])(?<!async )fetch\s*\(/);
+    // 唯一例外：priceSync.ts（用户手动点「同步价格」才下载 models.dev 的公开价格表，见下一条测试）
+    if (f !== 'priceSync.ts') expect(c).not.toMatch(/(?<![.\w])(?<!async )fetch\s*\(/);
     expect(c).not.toMatch(/globalThis\.fetch|XMLHttpRequest|WebSocket/);
     expect(c).not.toMatch(/node:https?['"]/);
     expect(c).not.toMatch(/from 'electron'.*\bnet\b/);
+  });
+});
+
+describe('源码级约束：价格同步（priceSync.ts）只做一次公开 GET', () => {
+  const text = fs.readFileSync(path.resolve(__dirname, '../../../src/usage/priceSync.ts'), 'utf8');
+  const sf = ts.createSourceFile('priceSync.ts', text, ts.ScriptTarget.Latest, true);
+  const code = ts.createPrinter({ removeComments: true }).printFile(sf);
+
+  it('只有一个 URL（models.dev），GET，不带 cookie / 凭据 / 请求体 / 定时器', () => {
+    expect(code.match(/https?:\/\/[^'"`\s]+/g)).toEqual(['https://models.dev/api.json']);
+    expect(code).toContain("method: 'GET'");
+    expect(code).toContain("credentials: 'omit'");
+    expect(code).not.toMatch(/[,{]\s*body\s*:/);
+    expect(code).not.toMatch(/cookie|setInterval|setTimeout\(.*sync|method: '(POST|PUT|PATCH)'/i);
+    // 全局 fetch 只在「默认 fetchImpl」里出现一次
+    expect(code.match(/(?<![.\w])fetch\s*\(/g)).toHaveLength(1);
+  });
+
+  it('只被用户点击触发：UsageService 里只有 IPC 处理器调用 syncPrices，没有定时 / 启动调用', () => {
+    const svc = fs.readFileSync(
+      path.resolve(__dirname, '../../../src/usage/UsageService.ts'),
+      'utf8',
+    );
+    const calls = svc.match(/syncPrices\(|priceSync\.sync\(/g) ?? [];
+    expect(calls).toHaveLength(3); // 方法定义 + 其中的 priceSync.sync() + IPC 处理器
+    expect(svc).toMatch(/handle\('ai:usage:price-sync', \(\) => this\.syncPrices\(\)\)/);
   });
 });
