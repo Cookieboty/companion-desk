@@ -45,13 +45,17 @@
 
 推荐接管实现：优先 **`codex exec --json` 单轮 + resume 续聊**（实现简单、事件模型清晰）；P1 再评估 `codex app-server`（stdio/WS）做真正的长连接 UI。
 
-### 3.3 Cursor Agent CLI
+### 3.3 Grok Build（`@xai-official/grok`）
+
+详见 [cli-harness-grok.md](cli-harness-grok.md)：headless `-p` + `streaming-json`；供应商写 `~/.grok/config.toml`（`api_backend`）；用量读 `updates.jsonl` 的 `turn_completed`；订阅额度暂不支持。
+
+### 3.4 Cursor Agent CLI
 
 - 存在 headless：`agent -p` / `--print`，`--output-format text|json|stream-json`，`--resume`。
 - 鉴权偏 `CURSOR_API_KEY`；会话存储仍为私有 SQLite（监视器只靠 mtime + 进程）。
 - **P0/P1 不纳入「完整接管」**，仅保留监视 + 版本检测；P2 再评估。
 
-### 3.4 CLI 供应商与本地路由（Nomi 自建）
+### 3.5 CLI 供应商与本地路由（Nomi 自建）
 
 | 概念               | 含义                        | Nomi 实现                                                                                                   |
 | ------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------------- |
