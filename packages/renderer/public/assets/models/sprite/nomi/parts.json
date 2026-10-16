@@ -955,11 +955,13 @@
       "nmax": 102.2,
       "character": "right",
       "pieces": {
-        "elbow": [
-          122.25,
-          373.98
+        "joint": [
+          132.88,
+          314.93
         ],
-        "elbowS": 380,
+        "elbowS": 320,
+        "handS": 560,
+        "overlap": 28,
         "layerSize": [
           266,
           678
@@ -967,23 +969,34 @@
         "upper": {
           "file": "layers/arms/arm-l-upper.png",
           "offset": [
-            69,
+            84,
             0
           ],
           "size": [
-            197,
-            381
+            182,
+            348
           ]
         },
         "fore": {
           "file": "layers/arms/arm-l-fore.png",
           "offset": [
             0,
-            364
+            285
           ],
           "size": [
             174,
-            314
+            393
+          ]
+        },
+        "elbow": {
+          "file": "layers/arms/arm-l-elbow.png",
+          "offset": [
+            63,
+            225
+          ],
+          "size": [
+            81,
+            170
           ]
         }
       }
@@ -1002,11 +1015,13 @@
       "nmax": 85.9,
       "character": "left",
       "pieces": {
-        "elbow": [
-          134.23,
-          373.96
+        "joint": [
+          123.58,
+          314.91
         ],
-        "elbowS": 380,
+        "elbowS": 320,
+        "handS": 560,
+        "overlap": 28,
         "layerSize": [
           262,
           678
@@ -1018,36 +1033,47 @@
             0
           ],
           "size": [
-            173,
-            382
+            170,
+            349
           ]
         },
         "fore": {
           "file": "layers/arms/arm-r-fore.png",
           "offset": [
-            88,
-            367
+            80,
+            285
           ],
           "size": [
-            174,
-            311
+            182,
+            393
+          ]
+        },
+        "elbow": {
+          "file": "layers/arms/arm-r-elbow.png",
+          "offset": [
+            113,
+            221
+          ],
+          "size": [
+            67,
+            174
           ]
         }
       }
     }
   },
   "armChain": {
-    "elbowS": 380,
-    "handS": 580,
-    "bendLen": 120,
-    "bendMax": 3.05,
+    "elbowS": 320,
+    "handS": 560,
+    "bendLen": 56,
+    "bendMax": 1.92,
     "wristMerge": 0.6,
     "stump": 90,
     "shoulderZone": 110,
-    "zUpper": 0.78,
-    "zFore": 0.3,
-    "handBase": 0.4,
-    "cuffWidth": 88
+    "zUpper": 0.42,
+    "zFore": 0.28,
+    "handBase": 0.36,
+    "cuffWidth": 96
   },
   "eyes": {
     "l": {

@@ -202,10 +202,10 @@ function reachExact(
     1;
   // coarse grid → local minima of the hand-centre error → Newton polish of each
   const AN = 31;
-  const EN = 44;
+  const EN = 45;
   const grid = new Float64Array(AN * EN);
   const aOf = (i: number) => (-100 + i * 8) * DEG;
-  const eOf = (j: number) => (-175 + j * 8) * DEG;
+  const eOf = (j: number) => (-110 + j * 5) * DEG;
   for (let i = 0; i < AN; i++)
     for (let j = 0; j < EN; j++) {
       const fe = err(aOf(i), eOf(j), wFor(aOf(i), eOf(j)));
@@ -254,7 +254,7 @@ function reachExact(
         de *= 0.2 / m;
       }
       a = Math.max(-1.9, Math.min(2.6, a + da));
-      e = Math.max(-3.05, Math.min(3.05, e + de));
+      e = Math.max(-1.92, Math.min(1.92, e + de));
       w = wFor(a, e);
       fe = err(a, e, w);
       if (Math.hypot(fe[0], fe[1]) < 0.1) break;

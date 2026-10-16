@@ -30,28 +30,29 @@ export interface ArmGeom {
 }
 
 /** spine arc-length (sleeve px) of the elbow, the bend length at 0 flexion, and the hand attach */
-export const ARM_ELBOW_S = 380;
-export const ARM_BEND_LEN = 120;
-export const ARM_HAND_S = 580;
+export const ARM_ELBOW_S = 320;
+export const ARM_BEND_LEN = 28;
+export const ARM_HAND_S = 560;
 /** s where the sleeve taper starts / has finished (merged wrist mode) */
-export const ARM_TAPER_S0 = 430;
+export const ARM_TAPER_S0 = 380;
 export const ARM_TAPER_S1 = ARM_HAND_S - 30;
 /** elbow flexion limit (rad) */
-export const ARM_BEND_MAX = 3.05;
+/** ~137° — beyond this the outer hinge gap stays small with an elbow cap */
+export const ARM_BEND_MAX = 1.92; // ~110° — sharp hinge, not rubber hose
 export const ARM_WRIST_MERGE = 0.6;
 export const ARM_DISSOLVE_S0 = ARM_HAND_S - 12;
 /** foreshortening of the upper arm / forearm at z = 1 */
-export const ARM_Z_UPPER = 0.78;
-export const ARM_Z_FORE = 0.3;
+export const ARM_Z_UPPER = 0.42;
+export const ARM_Z_FORE = 0.28;
 /** the top of the sleeve (shoulder cap) stays seated on the torso; the swing blends in below it */
 export const ARM_STUMP = 90;
 /** length of the shoulder bend zone below the stump (sleeve px): the upper arm is rigid beyond it */
 export const ARM_SHOULDER_ZONE = 110;
 
 /** rendered width (rig px) of every hand piece's sleeve stub: one cuff size for all gestures */
-export const HAND_CUFF_W = 88;
+export const HAND_CUFF_W = 96;
 /** base scale of a hand piece's SKIN part; the per-hand `k` (palm-normalised) multiplies it */
-export const HAND_BASE = 0.4;
+export const HAND_BASE = 0.36;
 
 export const smooth01 = (x: number) => {
   const c = x < 0 ? 0 : x > 1 ? 1 : x;
@@ -132,8 +133,8 @@ export class ArmChain {
     this.lift = lift;
     this.mergeMax = mergeMax;
     this.bend = Math.max(-ARM_BEND_MAX, Math.min(ARM_BEND_MAX, e));
-    // a deep fold needs a longer, gentler bend zone or the sleeve pinches
-    this.bendLen = ARM_BEND_LEN * (1 + 0.55 * smooth01(Math.abs(this.bend) / 2.6));
+    // rigid hinge: short bend zone so φ jumps at the elbow (upper / fore drawn as pieces)
+    this.bendLen = ARM_BEND_LEN;
     this.b0 = ARM_ELBOW_S - this.bendLen / 2;
     this.b1 = ARM_ELBOW_S + this.bendLen / 2;
     this.fu = 1 - ARM_Z_UPPER * this.z;
@@ -153,12 +154,14 @@ export class ArmChain {
     return smooth01((s - stump) / ARM_SHOULDER_ZONE);
   }
 
-  /** spine rotation (rad) at s, relative to the rest axis */
+  /** spine rotation (rad) at s, relative to the rest axis (rigid upper / fore) */
   phi0(s: number): number {
-    return (
-      this.sgnRot *
-      (this.a * this.shoulderBlend(s) + this.bend * smooth01((s - this.b0) / this.bendLen))
-    );
+    const sh = this.a * this.shoulderBlend(s);
+    // hard hinge at the elbow: fore carries full bend past b1, upper carries none past b0
+    let el = 0;
+    if (s >= this.b1) el = this.bend;
+    else if (s > this.b0) el = this.bend * smooth01((s - this.b0) / this.bendLen);
+    return this.sgnRot * (sh + el);
   }
 
   /** same incl. the wrist share folded into the sleeve end */
@@ -176,11 +179,11 @@ export class ArmChain {
     return 1 + (this.fu - 1) * smooth01((s - stump) / 80);
   }
 
-  /** centre-line point at sleeve arc-length s */
+  /** centre-line point at sleeve arc-length s (rigid 2-bone with a short shoulder blend) */
   pos(s: number, out: number[] | Float64Array): void {
     let x = this.pxP;
     let y = this.pyP;
-    const steps = Math.max(1, Math.ceil(Math.abs(s - this.sp) / 6));
+    const steps = Math.max(1, Math.ceil(Math.abs(s - this.sp) / 5));
     const h = (s - this.sp) / steps;
     for (let i = 0; i < steps; i++) {
       const sm = this.sp + h * (i + 0.5);
@@ -193,6 +196,18 @@ export class ArmChain {
     }
     out[0] = x;
     out[1] = y;
+  }
+
+  /** posed elbow joint (rig px) and the upper / fore rigid angles (rad relative to rest axis) */
+  elbowFrame(): { x: number; y: number; phiU: number; phiF: number } {
+    const t = [0, 0];
+    this.pos(ARM_ELBOW_S, t);
+    return {
+      x: t[0],
+      y: t[1],
+      phiU: this.sgnRot * this.a,
+      phiF: this.sgnRot * (this.a + this.bend),
+    };
   }
 
   /** hand attach point + piece rotation (the piece is authored fingers-up) */

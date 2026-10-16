@@ -101,7 +101,24 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
             // hand pieces of the mesh-warped arms (non-brand art, see docs/BRAND.md)
             ...Object.entries(rig.hands ?? {}).map(([n, h]) => load(`hand-${n}`, h.file)),
           ];
-          return Promise.all(rigLoads).then(() => {
+          // rigid upper / forearm / elbow-cap cuts of the official sleeve
+          const piecesLoad = fetch(`${baseUrl}layers/arms/pieces.json`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((meta) => {
+              if (!meta) return;
+              (rig as { armPieces?: unknown }).armPieces = meta;
+              const loads: Promise<void>[] = [];
+              for (const side of ['l', 'r']) {
+                const m = meta[side];
+                if (!m) continue;
+                for (const part of ['upper', 'fore', 'elbow']) {
+                  loads.push(load(`arm-${side}-${part}`, `arms/arm-${side}-${part}.png`));
+                }
+              }
+              return Promise.all(loads);
+            })
+            .catch(() => undefined);
+          return Promise.all([...rigLoads, piecesLoad]).then(() => {
             if (cancelled) return;
             if (!rigImgs.current.has('body') || !rigImgs.current.has('head')) {
               throw new Error('rig layers missing');

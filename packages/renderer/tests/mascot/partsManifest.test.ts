@@ -93,11 +93,12 @@ describe('arm pieces (official sleeve cut at the elbow)', () => {
       theta: number;
       s0: [number, number];
       pieces: {
-        elbow: [number, number];
+        joint: [number, number];
         elbowS: number;
         layerSize: [number, number];
         upper: { file: string; offset: [number, number]; size: [number, number] };
         fore: { file: string; offset: [number, number]; size: [number, number] };
+        elbow: { file: string; offset: [number, number]; size: [number, number] };
       };
     }
   >;
@@ -108,7 +109,7 @@ describe('arm pieces (official sleeve cut at the elbow)', () => {
   it('upper arm and forearm are locked files that fit inside the master sleeve layer', () => {
     for (const side of ['l', 'r']) {
       const a = arms[side];
-      for (const k of ['upper', 'fore'] as const) {
+      for (const k of ['upper', 'fore', 'elbow'] as const) {
         const p = a.pieces[k];
         expect(lock.files[p.file], p.file).toBeTruthy();
         expect(png(p.file), p.file).toEqual(p.size);
@@ -126,8 +127,8 @@ describe('arm pieces (official sleeve cut at the elbow)', () => {
       expect(s).toBe(ARM_ELBOW_S);
       const ex = a.s0[0] + a.sgn * Math.sin(a.theta) * s;
       const ey = a.s0[1] + Math.cos(a.theta) * s;
-      expect(a.pieces.elbow[0]).toBeCloseTo(ex, 1);
-      expect(a.pieces.elbow[1]).toBeCloseTo(ey, 1);
+      expect(a.pieces.joint[0]).toBeCloseTo(ex, 1);
+      expect(a.pieces.joint[1]).toBeCloseTo(ey, 1);
     }
   });
 

@@ -1,47 +1,140 @@
 {
   "l": {
-    "elbow": [
-      122.25,
-      373.98
+    "joint": [
+      132.88,
+      314.93
     ],
-    "elbowS": 380,
+    "handJoint": [
+      90.34,
+      551.13
+    ],
+    "elbowS": 320,
+    "handS": 560,
+    "overlap": 28,
     "layerSize": [
       266,
       678
     ],
+    "pieces": {
+      "upper": {
+        "file": "layers/arms/arm-l-upper.png",
+        "offset": [
+          84,
+          0
+        ],
+        "size": [
+          182,
+          348
+        ]
+      },
+      "fore": {
+        "file": "layers/arms/arm-l-fore.png",
+        "offset": [
+          0,
+          285
+        ],
+        "size": [
+          174,
+          393
+        ]
+      },
+      "elbow": {
+        "file": "layers/arms/arm-l-elbow.png",
+        "offset": [
+          63,
+          225
+        ],
+        "size": [
+          81,
+          170
+        ]
+      }
+    },
     "upper": {
       "file": "layers/arms/arm-l-upper.png",
       "offset": [
-        69,
+        84,
         0
       ],
       "size": [
-        197,
-        381
+        182,
+        348
       ]
     },
     "fore": {
       "file": "layers/arms/arm-l-fore.png",
       "offset": [
         0,
-        364
+        285
       ],
       "size": [
         174,
-        314
+        393
+      ]
+    },
+    "elbow": {
+      "file": "layers/arms/arm-l-elbow.png",
+      "offset": [
+        63,
+        225
+      ],
+      "size": [
+        81,
+        170
       ]
     }
   },
   "r": {
-    "elbow": [
-      134.23,
-      373.96
+    "joint": [
+      123.58,
+      314.91
     ],
-    "elbowS": 380,
+    "handJoint": [
+      166.2,
+      551.1
+    ],
+    "elbowS": 320,
+    "handS": 560,
+    "overlap": 28,
     "layerSize": [
       262,
       678
     ],
+    "pieces": {
+      "upper": {
+        "file": "layers/arms/arm-r-upper.png",
+        "offset": [
+          0,
+          0
+        ],
+        "size": [
+          170,
+          349
+        ]
+      },
+      "fore": {
+        "file": "layers/arms/arm-r-fore.png",
+        "offset": [
+          80,
+          285
+        ],
+        "size": [
+          182,
+          393
+        ]
+      },
+      "elbow": {
+        "file": "layers/arms/arm-r-elbow.png",
+        "offset": [
+          113,
+          221
+        ],
+        "size": [
+          67,
+          174
+        ]
+      }
+    },
     "upper": {
       "file": "layers/arms/arm-r-upper.png",
       "offset": [
@@ -49,19 +142,30 @@
         0
       ],
       "size": [
-        173,
-        382
+        170,
+        349
       ]
     },
     "fore": {
       "file": "layers/arms/arm-r-fore.png",
       "offset": [
-        88,
-        367
+        80,
+        285
       ],
       "size": [
-        174,
-        311
+        182,
+        393
+      ]
+    },
+    "elbow": {
+      "file": "layers/arms/arm-r-elbow.png",
+      "offset": [
+        113,
+        221
+      ],
+      "size": [
+        67,
+        174
       ]
     }
   }

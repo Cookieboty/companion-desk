@@ -16,12 +16,14 @@ import {
   armFrame,
   bodyShoulderFill,
   bodySideFill,
+  drawArmHinge,
   drawArmPieces,
   drawHandPiece,
   handScaleFor,
   sleeveEndWidth,
   shoulderPlug,
   type ArmGeom,
+  type ArmPieces,
   type HandPieceMeta,
 } from './rig/meshArm';
 import { HAND_NAMES, IDX, PARAM_DEFS, type ParamBag } from './rig/params';
@@ -65,6 +67,12 @@ export interface RigManifest {
   dir?: string;
   /** Spine / bounds of the master arm layers, for the mesh-warped arms. */
   arms?: { l?: ArmGeom; r?: ArmGeom };
+  /**
+   * Rigid upper / forearm / elbow-cap cuts of the official sleeve (layers/arms/*).
+   * Images are keyed `arm-{l|r}-upper|fore|elbow`. When present, posed arms are drawn as a
+   * 2-bone hinge instead of a continuous cloth mesh (no rubber-hose elbows).
+   */
+  armPieces?: { l?: ArmPieces; r?: ArmPieces };
   /** Hand pieces (name → meta); images are keyed `hand-${name}`. */
   hands?: Record<string, HandPieceMeta>;
 }
@@ -1736,10 +1744,22 @@ export function drawRig(
       hardEnd: joint,
     };
     const geomArgs = [img, geom, pv, off as [number, number]] as const;
+    const ap = rig.armPieces?.[side];
+    const uImg = imgs.get(`arm-${side}-upper`);
+    const fImg = imgs.get(`arm-${side}-fore`);
+    const eImg = imgs.get(`arm-${side}-elbow`);
+    const hinge = !!(ap && uImg && fImg && eImg);
+    const drawSleeve = () => {
+      if (hinge) {
+        drawArmHinge(ctx, geom, pv, off as [number, number], ap!, uImg!, fImg!, eImg!, armP);
+      } else {
+        drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
+      }
+    };
     if (hasHand && joint) {
       // bilateral prayer: both sleeves rise to the chest centre; the single prayer piece is
       // drawn once at their joint after both arms (see armsPass)
-      drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
+      drawSleeve();
       jointArms.push({
         fx: armFrame.hx,
         fy: armFrame.hy,
@@ -1751,14 +1771,16 @@ export function drawRig(
         mix,
       });
     } else if (hasHand) {
-      // mesh, then the hand piece on top of it, then the sleeve end re-drawn over the piece's
-      // sleeve stub: it tapers to the stub's width and dissolves into it (cloth over cloth, no
-      // semi-transparent edge ever meets the background)
-      drawArmPieces(ctx, ...geomArgs, armP, ARM_HAND_S + 4);
+      drawSleeve();
       drawHandPiece(ctx, himg!, meta!, handFlips(hn, side) ? -1 : 1, mix, hs);
-      drawArmPieces(ctx, ...geomArgs, { ...armP, fromS: ARM_HAND_S - 60 }, ARM_HAND_S + 4);
+      // soft mesh tip only when the continuous sleeve is in use (hinge cuff is already open)
+      if (!hinge) {
+        drawArmPieces(ctx, ...geomArgs, { ...armP, fromS: ARM_HAND_S - 60 }, ARM_HAND_S + 4);
+      }
     } else {
-      drawArmPieces(ctx, ...geomArgs, armP, 1e9);
+      if (hinge)
+        drawArmHinge(ctx, geom, pv, off as [number, number], ap!, uImg!, fImg!, eImg!, armP);
+      else drawArmPieces(ctx, ...geomArgs, armP, 1e9);
     }
   };
   const armsPass = () => {

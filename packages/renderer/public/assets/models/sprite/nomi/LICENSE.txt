@@ -33,4 +33,5 @@ repository's MIT license. They contain no brand-bearing detail.
 layers/arms/*.png (upper arm / forearm) are straight pixel cuts of the official sleeve
 layers arm-l.png / arm-r.png at the elbow, made with
 scripts/brand/build-nomi-arm-pieces.py (no repaint, no generative content); upper +
-forearm composite back to the master sleeve exactly. Same licence as above.
+forearm composite back to the master sleeve exactly; elbow-cap patches are the
+outer-elbow band of the same official sleeve (pixel cut, no repaint). Same licence as above.

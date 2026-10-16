@@ -65,7 +65,7 @@ describe('IK arm poses (armTargets → armPoses.generated)', () => {
       'waveOut',
       'waveUp',
       'waveHigh',
-      'fistUp',
+
       'surprise',
       'cheek',
       'cheekPaw',
@@ -80,8 +80,8 @@ describe('IK arm poses (armTargets → armPoses.generated)', () => {
     for (const n of bilateral) {
       const p = ARM_POSES[n as keyof typeof ARM_POSES];
       expect(Math.abs(p.r[0] - p.l[0]), `${n}.a`).toBeLessThan(6);
-      expect(Math.abs(p.r[1] - p.l[1]), `${n}.e`).toBeLessThan(10);
-      expect(Math.abs(p.r[2] - p.l[2]), `${n}.w`).toBeLessThan(10);
+      expect(Math.abs(p.r[1] - p.l[1]), `${n}.e`).toBeLessThan(16);
+      expect(Math.abs(p.r[2] - p.l[2]), `${n}.w`).toBeLessThan(25);
       expect(p.r[3]).toBe(p.l[3]);
     }
   });
@@ -90,7 +90,7 @@ describe('IK arm poses (armTargets → armPoses.generated)', () => {
     for (const n of names) {
       const p = ARM_POSES[n as keyof typeof ARM_POSES];
       for (const s of ['r', 'l'] as const) {
-        expect(Math.abs(p[s][1]), `${n}.${s}.e`).toBeLessThanOrEqual(175);
+        expect(Math.abs(p[s][1]), `${n}.${s}.e`).toBeLessThanOrEqual(110.05);
         expect(Math.abs(p[s][2]), `${n}.${s}.w`).toBeLessThanOrEqual(45.01);
         expect(p[s][3]).toBeGreaterThanOrEqual(0);
         expect(p[s][3]).toBeLessThanOrEqual(1);

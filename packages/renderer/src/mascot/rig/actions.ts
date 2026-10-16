@@ -83,7 +83,7 @@ function arm(
       i === 0
         ? -dip * Math.sign(pose[1] || 1) * (pose[1] < 0 ? 0.35 : 1)
         : -Math.sign(pose[i] || 1) * Math.min(7, 1.5 + Math.abs(pose[i]) * 0.05);
-    const over = Math.max(-174, Math.min(174, pose[i] * 1.04));
+    const over = Math.max(-109, Math.min(109, pose[i] * 1.04));
     const keys: Key[] = [
       [0, 0],
       [i === 0 ? tAnt + 0.12 : tAnt, ant, 'o'],
