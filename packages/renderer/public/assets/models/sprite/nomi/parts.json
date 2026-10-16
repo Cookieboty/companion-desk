@@ -652,6 +652,13 @@
         285,
         675
       ],
+      "side": "L",
+      "scale": 1,
+      "centre": [
+        153,
+        184
+      ],
+      "cuffY": 445,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "6f6f75326fb5b3a29d8451f88a9b5fa69b42ea619ea6faac893c71b8344cfadf"
@@ -669,6 +676,13 @@
         238,
         487
       ],
+      "side": "R",
+      "scale": 0.92,
+      "centre": [
+        123,
+        79
+      ],
+      "cuffY": 257,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "3359f7f882016ca2a9aa311b11aebc7677c5d14b335b0f80c9a83794c1ce3e24"
@@ -686,6 +700,13 @@
         205,
         480
       ],
+      "side": "R",
+      "scale": 1,
+      "centre": [
+        121,
+        89
+      ],
+      "cuffY": 250,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "61644287465bd039069be1f5fe3416f38a87f9ec73263848e953b65f01b0a026"
@@ -703,6 +724,13 @@
         190,
         583
       ],
+      "side": "R",
+      "scale": 1,
+      "centre": [
+        91,
+        164
+      ],
+      "cuffY": 353,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "697ced6676557425d9c0d29a193dac655ac782f4a2b944d63a9c8ccdd903c6a7"
@@ -720,6 +748,13 @@
         250,
         574
       ],
+      "side": "R",
+      "scale": 0.95,
+      "centre": [
+        142,
+        122
+      ],
+      "cuffY": 344,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "32dfe01414328805cae1953da4a4e6928c5942978ffbcfbbf67c89f03baa90f8"
@@ -737,6 +772,13 @@
         200,
         558
       ],
+      "side": "L",
+      "scale": 1,
+      "centre": [
+        114,
+        134
+      ],
+      "cuffY": 328,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "b75ea85a6993421124982f78bfd02a415b9dabdaa372dfd5601ac28cd53833b2"
@@ -754,6 +796,13 @@
         202,
         539
       ],
+      "side": "S",
+      "scale": 1.15,
+      "centre": [
+        101,
+        114
+      ],
+      "cuffY": 297.9,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "99b073c679d0f1408bca97c7a430cff709176bab001c8646f82966a8d3d6bd44"
@@ -771,6 +820,13 @@
         342,
         702
       ],
+      "side": "L",
+      "scale": 0.92,
+      "centre": [
+        167,
+        217
+      ],
+      "cuffY": 460,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "bf23f99e106a77165a27f12807a3591d5478b528738022142b7f6f0412348dd9"
@@ -788,6 +844,13 @@
         242,
         655
       ],
+      "side": "R",
+      "scale": 0.95,
+      "centre": [
+        135,
+        178
+      ],
+      "cuffY": 413.1,
       "brand": false,
       "note": "hand shape swapped onto the wrist (non-brand)",
       "sha256": "a4e77a414d4a390914c4c1f4fdfd704bf261f34c63941fcd126d4ff86d7a4c57"
@@ -889,7 +952,41 @@
       "smin": -8.6,
       "smax": 694.2,
       "nmin": -79.9,
-      "nmax": 102.2
+      "nmax": 102.2,
+      "character": "right",
+      "pieces": {
+        "elbow": [
+          122.25,
+          373.98
+        ],
+        "elbowS": 380,
+        "layerSize": [
+          266,
+          678
+        ],
+        "upper": {
+          "file": "layers/arms/arm-l-upper.png",
+          "offset": [
+            69,
+            0
+          ],
+          "size": [
+            197,
+            381
+          ]
+        },
+        "fore": {
+          "file": "layers/arms/arm-l-fore.png",
+          "offset": [
+            0,
+            364
+          ],
+          "size": [
+            174,
+            314
+          ]
+        }
+      }
     },
     "r": {
       "layer": "arm-r",
@@ -902,8 +999,55 @@
       "smin": -8.7,
       "smax": 694.1,
       "nmin": -72.2,
-      "nmax": 85.9
+      "nmax": 85.9,
+      "character": "left",
+      "pieces": {
+        "elbow": [
+          134.23,
+          373.96
+        ],
+        "elbowS": 380,
+        "layerSize": [
+          262,
+          678
+        ],
+        "upper": {
+          "file": "layers/arms/arm-r-upper.png",
+          "offset": [
+            0,
+            0
+          ],
+          "size": [
+            173,
+            382
+          ]
+        },
+        "fore": {
+          "file": "layers/arms/arm-r-fore.png",
+          "offset": [
+            88,
+            367
+          ],
+          "size": [
+            174,
+            311
+          ]
+        }
+      }
     }
+  },
+  "armChain": {
+    "elbowS": 380,
+    "handS": 580,
+    "bendLen": 120,
+    "bendMax": 3.05,
+    "wristMerge": 0.6,
+    "stump": 90,
+    "shoulderZone": 110,
+    "zUpper": 0.78,
+    "zFore": 0.3,
+    "handBase": 0.4,
+    "cuffWidth": 88
   },
   "eyes": {
     "l": {

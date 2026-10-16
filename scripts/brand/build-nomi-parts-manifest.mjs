@@ -113,6 +113,11 @@ const hands = Object.entries(rig.hands ?? {}).map(([id, h]) => ({
   group: 'hand',
   anchor: [h.ax, h.ay],
   size: [h.w, h.h],
+  /** native chirality (the character's own hand the art depicts; S = symmetric), palm scale, palm centre */
+  side: h.side,
+  scale: h.k,
+  centre: [h.cx, h.cy],
+  cuffY: h.cuffY,
   brand: false,
   note: 'hand shape swapped onto the wrist (non-brand)',
 }));
@@ -162,6 +167,7 @@ for (const side of ['l', 'r']) {
     tip: [root[0], y1],
   };
 }
+const armPieces = JSON.parse(fs.readFileSync(path.join(MODEL, 'layers/arms/pieces.json'), 'utf8'));
 const out = {
   version: 1,
   generatedBy: 'scripts/brand/build-nomi-parts-manifest.mjs',
@@ -172,7 +178,32 @@ const out = {
   joints,
   spine,
   chains,
-  arms: rig.arms,
+  arms: Object.fromEntries(
+    Object.entries(rig.arms).map(([side, g]) => [
+      side,
+      {
+        ...g,
+        /** character's own arm: the screen-right arm (r) is the character's LEFT arm */
+        character: side === 'r' ? 'left' : 'right',
+        /** official sleeve cut at the elbow (scripts/brand/build-nomi-arm-pieces.py); upper + fore = master */
+        pieces: armPieces[side],
+      },
+    ]),
+  ),
+  /** 2-bone arm chain (packages/renderer/src/mascot/rig/armKin.ts) */
+  armChain: {
+    elbowS: 380,
+    handS: 580,
+    bendLen: 120,
+    bendMax: 3.05,
+    wristMerge: 0.6,
+    stump: 90,
+    shoulderZone: 110,
+    zUpper: 0.78,
+    zFore: 0.3,
+    handBase: 0.4,
+    cuffWidth: 88,
+  },
   eyes: rig.eyes,
 };
 const text = `${JSON.stringify(out, null, 2)}\n`;

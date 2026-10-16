@@ -5,6 +5,10 @@
   "files": {
     "layers/arm-l.png": "14dce4f9e02fd82273cc14de0baa8e9519452c62f55c9152d71807eb18dff8ba",
     "layers/arm-r.png": "c50c2fa326dd849496c95b3b4b60894e357df9e6a8e908871c8328416f485932",
+    "layers/arms/arm-l-fore.png": "f04677e23fc5b69f934f3f2d0ecf05344a54a193a71dc8b221b54f90398098cb",
+    "layers/arms/arm-l-upper.png": "a20113c75b91c3a5fe742e193d39407ab7c5706ccabca173f9d4795c6ca5e402",
+    "layers/arms/arm-r-fore.png": "6218ca2c2678dec974b0aa130fd895688db264223373a76195a4e768efca1462",
+    "layers/arms/arm-r-upper.png": "f301010c4d1b2f2b173a19b3275325d3b980f2b329cbd2f1775ecc7626a6e5a2",
     "layers/badge.png": "04a97af95f186ea5970a3da0a9a813c5b34b89723d3df705a4cde2e2da786736",
     "layers/bangs.png": "33f0200a89409bfa1032e8c2ccf0bc5cce3bbf6c3d6e6a995d71ef1a7ea11129",
     "layers/body-noarm.png": "19e6fac3febe88166c57f10fe67be491142b3fdf27255b09cd9457777e3695dd",

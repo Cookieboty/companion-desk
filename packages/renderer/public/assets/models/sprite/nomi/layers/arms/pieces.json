@@ -1,0 +1,68 @@
+{
+  "l": {
+    "elbow": [
+      122.25,
+      373.98
+    ],
+    "elbowS": 380,
+    "layerSize": [
+      266,
+      678
+    ],
+    "upper": {
+      "file": "layers/arms/arm-l-upper.png",
+      "offset": [
+        69,
+        0
+      ],
+      "size": [
+        197,
+        381
+      ]
+    },
+    "fore": {
+      "file": "layers/arms/arm-l-fore.png",
+      "offset": [
+        0,
+        364
+      ],
+      "size": [
+        174,
+        314
+      ]
+    }
+  },
+  "r": {
+    "elbow": [
+      134.23,
+      373.96
+    ],
+    "elbowS": 380,
+    "layerSize": [
+      262,
+      678
+    ],
+    "upper": {
+      "file": "layers/arms/arm-r-upper.png",
+      "offset": [
+        0,
+        0
+      ],
+      "size": [
+        173,
+        382
+      ]
+    },
+    "fore": {
+      "file": "layers/arms/arm-r-fore.png",
+      "offset": [
+        88,
+        367
+      ],
+      "size": [
+        174,
+        311
+      ]
+    }
+  }
+}
