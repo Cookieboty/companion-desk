@@ -21,6 +21,7 @@ import { guardedHandle } from '../security/guardedIpc';
 
 import { buildCliEnv } from './cliEnv';
 import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
+import { killProcessTree } from './processTree';
 import { createClaudeParser, createDshParser, parseCodexLine } from './streamParse';
 import type {
   HarnessBackend,
@@ -588,18 +589,14 @@ export class CliHarnessService {
     return true;
   }
 
-  /** 测试 / 应用退出：拆除所有长驻 Claude 与残留子进程 */
+  /** 测试 / 应用退出：拆除所有长驻 Claude 与残留子进程（含其子孙进程）、清掉所有定时器 */
   dispose(): void {
     for (const id of [...this.claudeLive.keys()]) this.teardownClaudeLive(id);
     for (const [id, child] of [...this.children.entries()]) {
-      try {
-        child.kill();
-      } catch {
-        /* */
-      }
+      killProcessTree(child);
       this.children.delete(id);
-      this.clearPermissionTimeouts(id);
     }
+    for (const id of [...this.pendingPermissions.keys()]) this.clearPermissionTimeouts(id);
   }
 
   /** 发送一轮到指定标签；多个标签并发，超出上限排队 */
@@ -939,7 +936,7 @@ export class CliHarnessService {
     }
     try {
       if (!child.killed && child.exitCode === null) {
-        child.kill('SIGKILL');
+        killProcessTree(child);
       }
     } catch {
       /* */
@@ -1188,12 +1185,12 @@ export class CliHarnessService {
     }
     const prev = m.get(requestId);
     if (prev) clearTimeout(prev);
-    m.set(
-      requestId,
-      setTimeout(() => {
-        this.replyPermission(tabId, requestId, false);
-      }, PERMISSION_TIMEOUT_MS),
-    );
+    const timer = setTimeout(() => {
+      this.replyPermission(tabId, requestId, false);
+    }, PERMISSION_TIMEOUT_MS);
+    // 权限卡 120s 超时不应拖住进程退出
+    (timer as { unref?: () => void }).unref?.();
+    m.set(requestId, timer);
   }
 
   private clearOnePermissionTimeout(tabId: string, requestId: string) {
