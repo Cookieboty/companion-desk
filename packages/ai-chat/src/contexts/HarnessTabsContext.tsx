@@ -12,6 +12,7 @@ import {
   type HarnessTabMessage,
   type HarnessTabMeta,
   type HarnessTabsState,
+  type HarnessTraceEvent,
 } from '../services/harnessClient';
 
 export interface TabLive {
@@ -19,8 +20,10 @@ export interface TabLive {
   tool?: string;
   /** start | done | error */
   toolStatus?: 'start' | 'done' | 'error';
-  /** 本轮已见过的工具时间线（名 + 状态） */
-  tools?: Array<{ name: string; status: 'start' | 'done' | 'error' }>;
+  /** 本轮的工具调用 / 思考事件（按到达顺序；会话视图据此归并成时间线） */
+  trace?: HarnessTraceEvent[];
+  /** 本轮开始时间（ms），用于「已处理 N 秒」 */
+  startedAt?: number;
   /** Claude can_use_tool 待确认 */
   permission?: { id: string; summary: string };
 }
@@ -90,19 +93,20 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
       const e = raw as HarnessLiveEvent;
       if (!e || typeof e.tabId !== 'string') return;
       setLive((cur) => {
-        const prev = cur[e.tabId] ?? { text: '' };
+        const prev = cur[e.tabId] ?? { text: '', startedAt: Date.now() };
         if (e.type === 'text-delta')
           return { ...cur, [e.tabId]: { ...prev, text: prev.text + e.text } };
         if (e.type === 'text') return { ...cur, [e.tabId]: { ...prev, text: e.text } };
-        if (e.type === 'tool') {
-          const tools = [...(prev.tools ?? [])];
-          const i = tools.findIndex((x) => x.name === e.name && x.status === 'start');
-          if (e.status === 'start') tools.push({ name: e.name, status: 'start' });
-          else if (i >= 0) tools[i] = { name: e.name, status: e.status };
-          else tools.push({ name: e.name, status: e.status });
+        if (e.type === 'tool' || e.type === 'thinking') {
+          const { tabId: _id, ...ev } = e;
+          const traced: HarnessTraceEvent = ev.at === undefined ? { ...ev, at: Date.now() } : ev;
           return {
             ...cur,
-            [e.tabId]: { ...prev, tool: e.name, toolStatus: e.status, tools },
+            [e.tabId]: {
+              ...prev,
+              ...(e.type === 'tool' ? { tool: e.name, toolStatus: e.status } : {}),
+              trace: [...(prev.trace ?? []), traced],
+            },
           };
         }
         if (e.type === 'permission')
@@ -181,7 +185,7 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
   const send = useCallback(
     async (text: string) => {
       if (!isCliTab) return;
-      setLive((cur) => ({ ...cur, [activeId]: { text: '' } }));
+      setLive((cur) => ({ ...cur, [activeId]: { text: '', startedAt: Date.now() } }));
       // 结果经 tab-message 事件进入缓存；这里只吞掉错误（错误也会作为消息写入标签）
       await harnessClient.sendTab(activeId, text).catch(() => undefined);
     },

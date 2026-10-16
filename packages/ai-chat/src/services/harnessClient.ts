@@ -41,11 +41,29 @@ export interface HarnessTabMessage {
   timestamp: number;
   error?: boolean;
   tools?: string[];
+  /** 本轮工具调用 / 思考的结构化轨迹 */
+  trace?: HarnessTraceEvent[];
 }
+
+/** 工具调用 / 思考事件（主进程 stampEvent 带 at 时间戳；detail 为调用 id，codex 为命令行） */
+export type HarnessTraceEvent =
+  | {
+      type: 'tool';
+      name: string;
+      status: 'start' | 'done' | 'error';
+      detail?: string;
+      id?: string;
+      input?: string;
+      output?: string;
+      parentId?: string;
+      at?: number;
+    }
+  | { type: 'thinking'; text: string; at?: number };
 
 export type HarnessLiveEvent =
   | { tabId: string; type: 'text-delta' | 'text'; text: string }
-  | { tabId: string; type: 'tool'; name: string; status: 'start' | 'done' | 'error' }
+  | ({ tabId: string } & Extract<HarnessTraceEvent, { type: 'tool' }>)
+  | ({ tabId: string } & Extract<HarnessTraceEvent, { type: 'thinking' }>)
   | { tabId: string; type: 'done'; text: string; sessionId?: string }
   | { tabId: string; type: 'error'; message: string }
   | { tabId: string; type: 'permission'; id: string; summary: string };
