@@ -22,6 +22,7 @@ import { getBindings, matchShortcut } from '../../services/shortcuts';
 import { AppIcon, FEATURE_ICONS } from '../AppIcons';
 import { EndpointControls } from '../EndpointControls';
 import { ErrorHint } from '../ErrorHint';
+import type { SettingsSection } from '../SettingsView/sections';
 import { VoiceButtons, VoiceSettingsModal, VoiceStatusRow, useChatVoice } from '../VoiceInput';
 
 import styles from './index.module.css';
@@ -43,7 +44,7 @@ interface MessageInputProps {
   onExtClick?: () => void;
   onLocalClick?: () => void;
   /** 打开统一设置页的某个分区 */
-  onSettingsClick?: (section?: string, endpoint?: string) => void;
+  onSettingsClick?: (section?: SettingsSection, endpoint?: string) => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({

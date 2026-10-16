@@ -169,20 +169,17 @@ const TaskEditor: React.FC<{
   );
 };
 
-export type ScheduleTab = Tab;
 export const SchedulePanel: React.FC<{
   isVisible: boolean;
   onClose: () => void;
-  initialTab?: Tab;
-}> = ({ isVisible, onClose, initialTab }) =>
-  isVisible ? <Body onClose={onClose} initialTab={initialTab} /> : null;
+}> = ({ isVisible, onClose }) => (isVisible ? <Body onClose={onClose} /> : null);
 
-const Body: React.FC<{ onClose: () => void; initialTab?: Tab }> = ({ onClose, initialTab }) => {
+const Body: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [st, setSt] = useState<SchedState | null>(null);
   const [results, setResults] = useState<TaskResult[]>([]);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
-  const [tab, setTab] = useState<Tab>(initialTab ?? 'reminders');
+  const [tab, setTab] = useState<Tab>('reminders');
   const [editing, setEditing] = useState<SchedTask | 'new' | null>(null);
   const [busy, setBusy] = useState(false);
 

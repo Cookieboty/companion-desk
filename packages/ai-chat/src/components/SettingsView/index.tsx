@@ -8,36 +8,33 @@ import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
 import { ChevronLeft } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useAiChat } from '../../contexts/AiChatContext';
 import { cliProviderClient } from '../../services/cliProviderClient';
 import { providerClientAvailable } from '../../services/providerClient';
 import { AppIcon } from '../AppIcons';
-import {
-  ConfigPanel,
-  DesktopPanel,
-  ExtensionsPanel,
-  KnowledgePanel,
-  LocalPanel,
-  MemoryPanel,
-  SchedulePanel,
-  ScreenPanel,
-  UsagePanel,
-} from '../lazyPanels';
+import { ConfigPanel, ExtensionsPanel, LocalPanel, ScreenPanel, UsagePanel } from '../lazyPanels';
 import { onboardingClient } from '../Onboarding/client';
 import { ProvidersPage } from '../ProvidersPage';
 
 import { AppIconSettings } from './AppIconSettings';
-import { CalendarSettings } from './CalendarSettings';
 import styles from './index.module.css';
 import { IslandSettings } from './IslandSettings';
+import { KnowledgeSection } from './KnowledgeSection';
 import { LanguageSettings } from './LanguageSettings';
 import { PinsSettings } from './PinsSettings';
-import { SETTINGS_SECTIONS, type SettingsSection } from './sections';
+import { PrivacySection } from './PrivacySection';
+import { ScheduleSection } from './ScheduleSection';
+import {
+  SECTION_TABS,
+  SETTINGS_SECTIONS,
+  tabOf as pickTab,
+  type SettingsSection,
+  type SettingsTab,
+} from './sections';
 import { ShortcutSettings } from './ShortcutSettings';
 import { ThemeSettings } from './ThemeSettings';
 import { UpdateSettings } from './UpdateSettings';
 
-export { SETTINGS_SECTIONS, type SettingsSection };
+export { SETTINGS_SECTIONS, type SettingsSection, type SettingsTab };
 
 const VoiceSection: React.FC = () => {
   const v = useVoice('chat');
@@ -54,11 +51,34 @@ interface Props {
   section: SettingsSection;
   onSection: (s: SettingsSection) => void;
   onClose: () => void;
+  /**
+   * 深链接指定的标签（如从快速视图抽屉「在设置中打开」跳到「知识与记忆 → 长期记忆」）。
+   * 每次新建一个对象表示一次新的跳转；不传则用各分区的第一个标签。
+   */
+  deepLink?: { tab?: SettingsTab };
 }
 
-export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) => {
-  const { actions } = useAiChat();
+type TabState = Partial<Record<keyof typeof SECTION_TABS, string>>;
+
+export const SettingsView: React.FC<Props> = ({ section, onSection, onClose, deepLink }) => {
   const [localTab, setLocalTab] = useState<'export' | undefined>();
+  // 有标签页的分区各自记住当前标签（离开设置页后重置）
+  const [tabs, setTabs] = useState<TabState>(() =>
+    deepLink?.tab && section in SECTION_TABS ? { [section]: deepLink.tab } : {},
+  );
+  useEffect(() => {
+    if (deepLink?.tab && section in SECTION_TABS)
+      setTabs((p) => ({ ...p, [section]: deepLink.tab }));
+  }, [deepLink, section]);
+  const tabOf = <S extends keyof typeof SECTION_TABS>(s: S) =>
+    pickTab(s, tabs[s]) ?? (SECTION_TABS[s][0].id as (typeof SECTION_TABS)[S][number]['id']);
+  const setTab = (s: keyof typeof SECTION_TABS, tab: string) =>
+    setTabs((p) => ({ ...p, [s]: tab }));
+  /** 站内跳转：可同时指定目标分区的标签 */
+  const go = (s: SettingsSection, tab?: SettingsTab) => {
+    if (tab && s in SECTION_TABS) setTab(s as keyof typeof SECTION_TABS, tab);
+    onSection(s);
+  };
   const inline = useMemo(() => ({ mode: 'inline' as const }), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -112,22 +132,16 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return <UsagePanel />;
       case 'voice':
         return <VoiceSection />;
-      case 'kb':
-        return <KnowledgePanel isVisible onClose={noop} />;
-      case 'memory':
-        return <MemoryPanel isVisible onClose={noop} />;
+      case 'knowledge':
+        return <KnowledgeSection tab={tabOf('knowledge')} onTab={(x) => setTab('knowledge', x)} />;
       case 'schedule':
-        return <SchedulePanel key="s" isVisible onClose={noop} />;
+        return <ScheduleSection tab={tabOf('schedule')} onTab={(x) => setTab('schedule', x)} />;
       case 'notify':
         return <IslandSettings />;
-      case 'calendar':
-        return <CalendarSettings />;
       case 'screen':
         return <ScreenPanel isVisible onClose={noop} />;
       case 'ext':
         return <ExtensionsPanel isVisible onClose={noop} />;
-      case 'desktop':
-        return <DesktopPanel isVisible onClose={noop} />;
       case 'local':
         return (
           <LocalPanel
@@ -141,68 +155,15 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
         return <UpdateSettings />;
       case 'privacy':
         return (
-          <section className={styles.block} data-testid="settings-privacy">
-            <h2 className={styles.h2}>{t('隐私与数据')}</h2>
-            <ul className={styles.list}>
-              <li>{t('对话、记忆、知识库索引、屏幕记忆都只保存在这台电脑上，不做云同步。')}</li>
-              <li>{t('编程助手进度只读取本机日志 / 状态文件，不登录、不抓取任何账号。')}</li>
-              <li>{t('Token 用量与费用统计只存在本机，可随时关闭、设保留时长或一键清空。')}</li>
-              <li>{t('屏幕记忆可随时暂停；桌面文件访问需逐个文件夹授权，操作都有记录可撤销。')}</li>
-            </ul>
-            <div className={styles.actions}>
-              <button
-                type="button"
-                className="cd-btn cd-btn--sm"
-                onClick={() => onSection('memory')}
-              >
-                {t('管理记忆')}
-              </button>
-              <button
-                type="button"
-                className="cd-btn cd-btn--sm"
-                onClick={() => onSection('screen')}
-              >
-                {t('屏幕记忆与排除')}
-              </button>
-              <button
-                type="button"
-                className="cd-btn cd-btn--sm"
-                onClick={() => onSection('desktop')}
-              >
-                {t('文件夹授权与操作记录')}
-              </button>
-              <button
-                type="button"
-                className="cd-btn cd-btn--sm"
-                data-testid="privacy-usage"
-                onClick={() => onSection('usage')}
-              >
-                {t('用量统计的隐私设置')}
-              </button>
-              <button
-                type="button"
-                className="cd-btn cd-btn--sm"
-                data-testid="privacy-export"
-                onClick={() => {
-                  setLocalTab('export');
-                  onSection('local');
-                }}
-              >
-                {t('导出本地数据')}
-              </button>
-              <button
-                type="button"
-                className="cd-btn cd-btn--sm cd-btn--danger"
-                data-testid="privacy-clear-chat"
-                onClick={() => {
-                  if (window.confirm(t('清空当前对话的消息？（其它对话不受影响）')))
-                    void actions.clearChatHistory();
-                }}
-              >
-                {t('清空当前对话')}
-              </button>
-            </div>
-          </section>
+          <PrivacySection
+            tab={tabOf('privacy')}
+            onTab={(x) => setTab('privacy', x)}
+            go={go}
+            onExport={() => {
+              setLocalTab('export');
+              onSection('local');
+            }}
+          />
         );
     }
   })();

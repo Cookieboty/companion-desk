@@ -28,8 +28,8 @@ import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
 import {
   SETTINGS_SECTIONS,
-  resolveSection,
   type SettingsSection,
+  type SettingsTab,
 } from './components/SettingsView/sections';
 import { Sidebar } from './components/Sidebar';
 import { AppTitleBar } from './components/TitleBar';
@@ -158,10 +158,9 @@ const AiChatContent: React.FC = () => {
   }, [isDev, tabs.isCliTab, tabs]);
 
   const [settings, setSettings] = useState<SettingsSection | null>(null);
-  const openSettings = useCallback((raw: SettingsSection | string = 'general') => {
-    // 旧入口（providers / agents）折叠到「编程助手」；agents 落在「监视与会话」标签
-    const { section: sec, tab } = resolveSection(raw);
-    if (tab) setProviderEndpoint(tab);
+  const [settingsLink, setSettingsLink] = useState<{ tab?: SettingsTab } | undefined>();
+  const openSettings = useCallback((sec: SettingsSection = 'general', tab?: SettingsTab) => {
+    setSettingsLink(tab ? { tab } : undefined);
     setShowKb(false);
     setShowMem(false);
     setShowSched(false);
@@ -334,17 +333,17 @@ const AiChatContent: React.FC = () => {
   }, [bindings, shortcutActions, tabs, isDev]);
   // 快速视图：右侧抽屉 + 「在设置中打开」
   const drawerHost = useMemo(() => {
-    const mk = (sec: SettingsSection): ModalHost => ({
+    const mk = (sec: SettingsSection, tab?: SettingsTab): ModalHost => ({
       mode: 'drawer',
-      onOpenSettings: () => openSettings(sec),
+      onOpenSettings: () => openSettings(sec, tab),
     });
     return {
-      kb: mk('kb'),
-      memory: mk('memory'),
-      schedule: mk('schedule'),
+      kb: mk('knowledge', 'kb'),
+      memory: mk('knowledge', 'memory'),
+      schedule: mk('schedule', 'reminders'),
       screen: mk('screen'),
       ext: mk('ext'),
-      desktop: mk('desktop'),
+      desktop: mk('privacy', 'desktop'),
       local: mk('local'),
     };
   }, [openSettings]);
@@ -381,6 +380,7 @@ const AiChatContent: React.FC = () => {
         <AppTitleBar />
         <SettingsView
           section={settings}
+          deepLink={settingsLink}
           onSection={setSettings}
           onClose={() => setSettings(null)}
         />

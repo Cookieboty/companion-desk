@@ -15,14 +15,12 @@ import {
   Bot,
   Blocks,
   Brain,
-  CalendarDays,
   Coins,
   Cpu,
   Crop,
   Download,
   Keyboard,
   LibraryBig,
-  Lock,
   Monitor,
   PanelTop,
   Settings,
@@ -59,22 +57,19 @@ export const SETTINGS_ICONS = {
   usage: Coins,
   /** 语音：声波 */
   voice: AudioLines,
-  /** 知识库：书库 */
-  kb: LibraryBig,
-  memory: Brain,
-  /** 日程与提醒：响铃 */
+  /** 知识与记忆：大脑（知识库 / 长期记忆合并） */
+  knowledge: Brain,
+  /** 日程与日历：响铃（提醒 / 日历接入合并） */
   schedule: BellRing,
-  calendar: CalendarDays,
   /** 通知 / 灵动岛：顶部面板 */
   notify: PanelTop,
   screen: Monitor,
   /** 扩展 / MCP：积木模块 */
   ext: Blocks,
-  /** 桌面权限：盾牌 */
-  desktop: ShieldCheck,
   /** 本机小模型：芯片 */
   local: Cpu,
-  privacy: Lock,
+  /** 权限与隐私：盾牌（桌面权限 / 隐私与数据合并） */
+  privacy: ShieldCheck,
   updates: Download,
 } as const;
 

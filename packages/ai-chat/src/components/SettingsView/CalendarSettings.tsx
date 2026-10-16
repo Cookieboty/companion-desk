@@ -1,7 +1,7 @@
 /**
- * 设置 → 日历：连接系统日历（macOS 日历 / 经典 Outlook / Evolution），经同意后创建事件；
+ * 设置 → 日程与日历 →「日历接入」标签：连接系统日历（macOS 日历 / 经典 Outlook / Evolution），经同意后创建事件；
  * 下方沿用本地中心的日历面板（本地事件、导入 .ics、ICS 订阅、CalDAV：Google / iCloud）。
- * 读到的日程会进入「日程与提醒」的每日简报和 AI 的 calendar_list 工具。
+ * 读到的日程会进入「日程提醒」标签里的每日简报和 AI 的 calendar_list 工具。
  */
 import { Badge, Button, Input, t } from '@nomi-ai/ui';
 import React, { useCallback, useEffect, useState } from 'react';
