@@ -593,7 +593,7 @@ export function shoulderPlug(
     const out = new Uint8ClampedArray(src.data);
     // Keep upper sleeve through near-elbow so the body-noarm void stays sealed when the
     // mesh rotates away. Soft feather over ~50px so it does not read as a second cuff.
-    const feather = Math.min(50, cut * 0.45);
+    const feather = Math.min(70, cut * 0.55);
     for (let y = 0; y < ih; y++)
       for (let x = 0; x < iw; x++) {
         const k = (y * iw + x) * 4 + 3;
@@ -684,11 +684,11 @@ export function bodySideFill(
   return out;
 }
 
-const bodyFillCache = new WeakMap<object, CanvasImageSource | null>();
+const bodyFillCache = new WeakMap<object, Record<string, CanvasImageSource | null>>();
 
 /**
  * Pixels that are opaque on `body` but transparent on `body-noarm` near the shoulder —
- * the armpit notch the arm layer never covers. Cached per body image.
+ * the armpit notch the arm layer never covers. Cached per body + shoulder + radius.
  */
 export function bodyShoulderFill(
   body: RigImageSource,
@@ -698,7 +698,10 @@ export function bodyShoulderFill(
   radius = 150,
 ): CanvasImageSource | null {
   const key = body as object;
-  let cached = bodyFillCache.get(key);
+  const store = bodyFillCache.get(key) ?? {};
+  bodyFillCache.set(key, store);
+  const ck = `${Math.round(shoulder[0])}_${Math.round(shoulder[1])}_${Math.round(radius)}`;
+  let cached = store[ck];
   if (cached !== undefined) return cached;
   try {
     const bw = (body as { width: number }).width;
@@ -744,7 +747,7 @@ export function bodyShoulderFill(
   } catch {
     cached = null;
   }
-  bodyFillCache.set(key, cached);
+  store[ck] = cached;
   return cached;
 }
 
@@ -901,7 +904,7 @@ export function drawArmHinge(
   pieces: ArmPieces,
   upperImg: RigImageSource,
   foreImg: RigImageSource,
-  _elbowImg: RigImageSource,
+  elbowImg: RigImageSource,
   p: ArmDrawParams,
 ): void {
   const ch = chainFor(upperImg as object, g, pivot, off);
@@ -913,6 +916,76 @@ export function drawArmHinge(
     ctx.drawImage(img as CanvasImageSource, off[0] + info.offset[0], off[1] + info.offset[1]);
     ctx.restore();
   };
+
+  // Raised-arm medial seal: opaque sleeve-white capsule on the torso side of the upper,
+  // then posed upper (unclipped + light medial dilate) on top. Open-air armpit gaps
+  // (not in body∩!noarm) never flash stage bg.
+  {
+    const raised = Math.abs(p.a) > 0.45;
+    if (raised) {
+      const shx = f.shoulder[0];
+      const shy = f.shoulder[1];
+      const ex = f.elbow[0];
+      const ey = f.elbow[1];
+      const dx = ex - shx;
+      const dy = ey - shy;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      let mx = 480 - shx;
+      let my = 500 - shy;
+      const along = mx * ux + my * uy;
+      mx -= ux * along;
+      my -= uy * along;
+      const ml = Math.hypot(mx, my) || 1;
+      mx /= ml;
+      my /= ml;
+      // ensure medial points toward torso centre (dot with shoulder→torso > 0 after normalize)
+      {
+        const toTx = 480 - shx;
+        const toTy = 500 - shy;
+        if (mx * toTx + my * toTy < 0) {
+          mx = -mx;
+          my = -my;
+        }
+      }
+      // Opaque fabric capsule on the MEDIAL (torso) side only — under the sleeve so
+      // open-air armpit gaps never flash stage bg. Kept sleeve-white (not peach) so it
+      // reads as jacket fabric when a sliver shows past the upper piece.
+      {
+        const rad = Math.max(32, Math.min(46, len * 0.17));
+        const reach = Math.min(len * 0.75, len - 20);
+        const shift = 18;
+        const hx = shx + mx * shift;
+        const hy = shy + my * shift;
+        const ex2 = shx + ux * reach + mx * shift;
+        const ey2 = shy + uy * reach + my * shift;
+        ctx.save();
+        ctx.strokeStyle = 'rgb(248, 236, 226)';
+        ctx.lineWidth = rad * 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(ex2, ey2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(112, 82, 72, 0.55)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(hx + mx * (rad - 1), hy + my * (rad - 1));
+        ctx.lineTo(ex2 + mx * (rad - 1), ey2 + my * (rad - 1));
+        ctx.stroke();
+        ctx.restore();
+      }
+      // posed upper on top — continuous shoulder→elbow volume
+      put(upperImg, f.upper, pieces.upper);
+      for (const s of [8, 16]) {
+        ctx.save();
+        ctx.translate(mx * s, my * s);
+        put(upperImg, f.upper, pieces.upper);
+        ctx.restore();
+      }
+    }
+  }
 
   // mitre plane through the elbow, normal = mean of the two segment directions
   let nx = Math.cos(f.dirU) + Math.cos(f.dirF);
@@ -959,9 +1032,9 @@ export function drawArmHinge(
     f.upper[1] * ch.w0x + f.upper[3] * ch.w0y,
   ];
   const wl = Math.hypot(wv[0], wv[1]) || 1;
-  const outerAng = f.dirU - (sg * Math.PI) / 2;
-  const outerPlus = Math.cos(outerAng) * wv[0] + Math.sin(outerAng) * wv[1] > 0;
-  const R = (outerPlus ? eHi : -eLo) * wl - 1.8;
+  // sleeve half-widths are asymmetric — always cover the WIDER side or the outer corner opens a bg hole
+  const R = Math.max(eHi, -eLo) * wl + 3;
+  void wv;
   const half = (px: number, py: number, dx: number, dy: number, grow: number) => {
     // region (p - elbow)·d ≥ -grow
     const ox = f.elbow[0] - dx * grow;
@@ -993,8 +1066,130 @@ export function drawArmHinge(
       ctx.restore();
     }
   };
+  // destination-over outer pie: only fills empty corner pixels (no halo over good fabric)
+  if (Math.abs(turn) > 0.25) {
+    const a0o = f.dirU - (sg * Math.PI) / 2;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = 'rgb(248, 238, 228)';
+    ctx.beginPath();
+    ctx.moveTo(f.elbow[0], f.elbow[1]);
+    ctx.arc(f.elbow[0], f.elbow[1], R + 4, a0o, a0o + turn, sg < 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Full elbow strip sweep (real sleeve pixels) — closes jagged outer hinge on deep bends.
+  // Drawn before the mitre pass so pieces sit cleanly on top; destination-over pie already
+  // plugged any remaining empty corner under the strip.
+  if (strip && Math.abs(f.sweep) > 0.04) {
+    const axis = Math.atan2(ch.u0y, ch.u0x);
+    const step = 0.032;
+    const n = Math.min(80, Math.ceil(Math.abs(f.sweep) / step));
+    const n0 = strip.n0;
+    const n1 = strip.n1;
+    const sw = n1 - n0 + 1;
+    if (sw > 2) {
+      for (let k = 0; k <= n; k++) {
+        const rot = f.dirU + (f.sweep * k) / n - axis;
+        const cr = Math.cos(rot);
+        const sr = Math.sin(rot);
+        ctx.save();
+        ctx.transform(
+          cr * ch.w0x - sr * ch.w0y,
+          sr * ch.w0x + cr * ch.w0y,
+          cr * ch.u0x - sr * ch.u0y,
+          sr * ch.u0x + cr * ch.u0y,
+          f.elbow[0],
+          f.elbow[1],
+        );
+        ctx.drawImage(
+          elbowImg as CanvasImageSource,
+          0,
+          0,
+          sw,
+          strip.thick,
+          n0,
+          -strip.thick / 2 - 1.0,
+          sw,
+          strip.thick + 2.0,
+        );
+        ctx.restore();
+      }
+    }
+  }
+
   pass(foreImg, f.fore, pieces.fore, 1, 1.2);
   pass(upperImg, f.upper, pieces.upper, -1, 0);
+
+  // Sleeve-underside wedge plugs the INNER crook V (deep pray/clap bends).
+  if (Math.abs(turn) > 0.35) {
+    const sideW = turn >= 0 ? 1 : -1;
+    const i0 = f.dirU - sideW * (Math.PI / 2);
+    const i1 = f.dirU + turn - sideW * (Math.PI / 2);
+    const crookR = Math.max(34, Math.min(56, R * 1.05));
+    ctx.save();
+    ctx.fillStyle = 'rgb(242, 228, 216)';
+    ctx.beginPath();
+    ctx.moveTo(f.elbow[0], f.elbow[1]);
+    ctx.arc(f.elbow[0], f.elbow[1], crookR, i0, i1, !(turn > 0));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    pass(upperImg, f.upper, pieces.upper, -1, 0);
+    pass(foreImg, f.fore, pieces.fore, 1, 1.2);
+  }
+
+  // FINAL outer-corner seal AFTER mitre passes: destination-over pie fills any remaining
+  // empty tip (kept ≤ R so the outline never floats outside the fabric), then OUTER strip.
+  if (Math.abs(turn) > 0.25) {
+    const a0f = f.dirU - (sg * Math.PI) / 2;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = 'rgb(248, 238, 228)';
+    ctx.beginPath();
+    ctx.moveTo(f.elbow[0], f.elbow[1]);
+    ctx.arc(f.elbow[0], f.elbow[1], R + 1, a0f, a0f + turn, sg < 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    if (strip && Math.abs(f.sweep) > 0.04) {
+      const axis = Math.atan2(ch.u0y, ch.u0x);
+      const step = 0.04;
+      const n = Math.min(48, Math.ceil(Math.abs(f.sweep) / step));
+      const sgnS = ch.sgn >= 0 ? 1 : -1;
+      let n0 = strip.n0;
+      let n1 = strip.n1;
+      // outer half only for the final tip stamp
+      if (sgnS > 0) n0 = Math.max(n0, 0);
+      else n1 = Math.min(n1, 0);
+      const srcX = n0 - strip.n0;
+      const sw = n1 - n0 + 1;
+      if (sw > 1) {
+        for (let k = 0; k <= n; k++) {
+          const rot = f.dirU + (f.sweep * k) / n - axis;
+          const cr = Math.cos(rot);
+          const sr = Math.sin(rot);
+          ctx.save();
+          ctx.transform(
+            cr * ch.w0x - sr * ch.w0y,
+            sr * ch.w0x + cr * ch.w0y,
+            cr * ch.u0x - sr * ch.u0y,
+            sr * ch.u0x + cr * ch.u0y,
+            f.elbow[0],
+            f.elbow[1],
+          );
+          ctx.drawImage(
+            elbowImg as CanvasImageSource,
+            srcX, 0, sw, strip.thick,
+            n0, -strip.thick / 2 - 1.2, sw, strip.thick + 2.4,
+          );
+          ctx.restore();
+        }
+      }
+    }
+  }
 
   // outline of the rounded outer corner, in the sleeve's own line colour
   ctx.save();
@@ -1003,7 +1198,7 @@ export function drawArmHinge(
   ctx.lineCap = 'round';
   ctx.beginPath();
   const a0 = f.dirU - (sg * Math.PI) / 2;
-  ctx.arc(f.elbow[0], f.elbow[1], R - 0.9, a0, a0 + turn, sg < 0);
+  ctx.arc(f.elbow[0], f.elbow[1], Math.max(2, R - 2.2), a0, a0 + turn, sg < 0);
   ctx.stroke();
   // the line continues a few px along each straight sleeve edge and fades out (no abrupt start/end)
   const tail = (ang: number, dx: number, dy: number) => {

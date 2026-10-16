@@ -193,10 +193,10 @@ def soften_strap_r(a: np.ndarray) -> np.ndarray:
                 out_al[y, x + dx] = 255
     # soft band: feathered mask, toned colour (official dark pixels lifted toward a warm grey)
     bm = (band & inside_sleeve).astype(np.float32)
-    bm = cv2.GaussianBlur(bm, (0, 0), 2.0)
-    bm = np.clip(bm * 1.15, 0, 1) * (out_al > 0)
+    bm = cv2.GaussianBlur(bm, (0, 0), 3.2)
+    bm = np.clip(bm * 1.05, 0, 1) * (out_al > 0)
     orig_band = rgb.astype(np.float32)
-    toned = orig_band * 0.5 + np.array([120, 102, 96], np.float32) * 0.5
+    toned = orig_band * 0.28 + np.array([148, 132, 124], np.float32) * 0.72
     out = out_rgb.astype(np.float32) * (1 - bm[..., None]) + toned * bm[..., None]
     res = a.copy()
     res[..., :3] = np.clip(out + 0.5, 0, 255).astype(np.uint8)

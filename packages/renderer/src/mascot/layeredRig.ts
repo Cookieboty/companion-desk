@@ -1711,9 +1711,10 @@ export function drawRig(
       const nImg = imgs.get('body-noarm');
       const bOff = L['body'] ?? L['body-noarm'];
       if (bImg && nImg && bOff) {
-        // a strongly swung arm leaves only the shoulder cap behind (no ghost of the rest sleeve)
+        // keep a generous radius so the armpit / jacket-side void stays solid; distal feather
+        // on the plug (not a hard cut) hides the hanging-sleeve ghost
         const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.1) / 0.4));
-        const fillR = Math.round((240 - 180 * swing) / 20) * 20;
+        const fillR = Math.round((230 - 30 * swing) / 20) * 20; // 230 → 200
         const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
         if (f) {
           ctx.save();
@@ -1724,7 +1725,8 @@ export function drawRig(
       }
     }
     const plugSwing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.1) / 0.4));
-    const stump = shoulderPlug(img, geom, Math.round((120 - 36 * plugSwing) / 12) * 12);
+    // keep a long enough stump to seal the jacket armpit; distal feather hides the cuff ghost
+    const stump = shoulderPlug(img, geom, Math.round((140 - 16 * plugSwing) / 12) * 12); // 140 → 124
     if (stump) {
       ctx.save();
       ctx.translate(0, lift);
@@ -1812,16 +1814,24 @@ export function drawRig(
       const bodyImg = imgs.get('body');
       const noarmImg = imgs.get('body-noarm');
       const bodyOff = L['body'] ?? L['body-noarm'];
-      const shoulder = P['arm-r'] ?? P['arm-l'];
-      if (bodyImg && noarmImg && bodyOff && shoulder) {
-        const fill = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], shoulder);
-        // the notch only exists while the arm hangs: a raised arm leaves open air under it
-        const shSwing = ex && rOn > 0.001 ? Math.min(1, Math.max(0, (Math.abs(ex[IDX.rA] * DEG) - 0.2) / 0.5)) : 0;
-        if (fill && shSwing < 0.999) {
-          ctx.save();
-          ctx.globalAlpha = 1 - shSwing * shSwing * (3 - 2 * shSwing);
-          ctx.drawImage(fill as CanvasImageSource, bodyOff[0], bodyOff[1]);
-          ctx.restore();
+      if (bodyImg && noarmImg && bodyOff) {
+        // seal BOTH armpit notches; a raised arm still needs the torso-side of the cutout filled
+        // (only the distal hanging-sleeve ghost must go — that is handled by fillR/plugSwing)
+        for (const side of ['l', 'r'] as const) {
+          const sp = P[side === 'l' ? 'arm-l' : 'arm-r'];
+          if (!sp) continue;
+          const on = side === 'l' ? lOn : rOn;
+          const ia = side === 'l' ? IDX.lA : IDX.rA;
+          const swung = on > 0.001 && ex ? Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.2) / 0.5)) : 0;
+          // never fade the seal to transparent — a raised arm still needs the torso-side fill
+          const rad = Math.round(160 - 25 * swung); // 160 → 135
+          const fillS = bodyShoulderFill(bodyImg, noarmImg, bodyOff as [number, number], sp, rad);
+          if (fillS) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0.85, 1 - 0.15 * swung);
+            ctx.drawImage(fillS as CanvasImageSource, bodyOff[0], bodyOff[1]);
+            ctx.restore();
+          }
         }
       }
     }
