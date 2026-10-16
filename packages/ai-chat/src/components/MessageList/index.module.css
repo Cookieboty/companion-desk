@@ -28,7 +28,7 @@
 }
 
 .messageItem {
-  padding: 0;
+  padding: 0 0 var(--cd-space-5);
   display: flex;
   flex-direction: column;
 }
