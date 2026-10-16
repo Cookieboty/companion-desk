@@ -39,6 +39,7 @@ function fakeWindow(scale: number, x: number, y: number) {
     isVisible: () => true,
     isMinimized: () => false,
     on: jest.fn(),
+    off: jest.fn(),
     setIgnoreMouseEvents: jest.fn(),
     setShape: jest.fn(),
   };

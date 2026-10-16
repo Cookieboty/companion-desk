@@ -75,7 +75,8 @@ const ACTIVE_HOLD_MS = 400;
 /** Linux 用窗口形状做点击穿透（见 setShape） */
 const SHAPE_MODE = process.platform === 'linux';
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-const CURSOR_EVERY = 2; // 每 2 帧（~30Hz）同步一次光标
+/** 光标同步节流：~30Hz。用时间而非帧计数，保证空闲低频 tick 下移动首帧也能立即发出 */
+const CURSOR_MS = 1000 / 30;
 
 /**
  * 看板娘窗口控制器（主进程）：
@@ -106,6 +107,7 @@ export class MascotWindowController {
   private prevV = { vx: 0, vy: 0 };
   private nextWanderAt = 0;
   private lastCursor = { x: NaN, y: NaN };
+  private lastCursorAt = 0;
   private readonly disposers: Array<() => void> = [];
 
   constructor(
@@ -193,6 +195,20 @@ export class MascotWindowController {
     ipcMain.handle('mascot:debug-snapshot', () => this.snapshot());
     this.disposers.push(() => ipcMain.removeHandler('mascot:debug-snapshot'));
     this.win.on('closed', () => this.dispose());
+    // 从隐藏 / 最小化恢复：立即提频，不必等下一个 1s 保活 tick
+    const wake = () => {
+      if (this.win.isDestroyed()) return;
+      this.last = performance.now();
+      this.lastActivityAt = this.last;
+      this.schedule(TICK_MS);
+    };
+    this.win.on('show', wake);
+    this.win.on('restore', wake);
+    this.disposers.push(() => {
+      if (this.win.isDestroyed()) return;
+      this.win.off('show', wake);
+      this.win.off('restore', wake);
+    });
     this.last = performance.now();
     this.lastActivityAt = this.last;
     this.nextWanderAt = this.last + 15000;
@@ -501,9 +517,11 @@ export class MascotWindowController {
     const rx = cursor.x - nx;
     const ry = cursor.y - ny;
     if (rx !== this.lastCursor.x || ry !== this.lastCursor.y) {
-      // 光标在移动：视线跟随需要，保持高频；静止后自然降到空闲频率
+      // 光标在移动：视线跟随需要，保持高频；静止后自然降到空闲频率。
+      // 时间节流（非帧取模），空闲低频下首个移动 tick 也能立即发出，不再丢首帧。
       this.lastActivityAt = now;
-      if (this.frame % CURSOR_EVERY === 0) {
+      if (now - this.lastCursorAt >= CURSOR_MS || Number.isNaN(this.lastCursor.x)) {
+        this.lastCursorAt = now;
         this.lastCursor = { x: rx, y: ry };
         const [w, h] = this.win.getSize();
         this.send('mascot:cursor', {
@@ -516,7 +534,7 @@ export class MascotWindowController {
     // 渲染进程还没回报过命中：保持可交互，避免“点不到”
     if (!this.hitKnown && this.ignoring) this.applyIgnore(false);
 
-    // 自适应调度：拖拽 / 物理运动 / 光标移动后短时间内保持 60Hz，空闲降到 ~5Hz
+    // 自适应调度：拖拽 / 物理运动 / 光标移动后短时间内保持 60Hz，空闲降到 ~8Hz
     const busy = this.drag !== null || moving || now - this.lastActivityAt < ACTIVE_HOLD_MS;
     this.schedule(busy ? TICK_MS : IDLE_TICK_MS);
   }
