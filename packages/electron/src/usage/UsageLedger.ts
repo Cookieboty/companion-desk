@@ -108,11 +108,19 @@ export class UsageLedger {
         cacheWrite: Math.max(prev.cacheWrite, r.cacheWrite),
         ts: Math.min(prev.ts, r.ts),
       };
+      // 新增字段：缺省 = 旧口径；有任何一边带值就取较大 / 较晚声明的（只增不减）
+      const w1h = Math.max(prev.cacheWrite1h ?? 0, r.cacheWrite1h ?? 0);
+      if (w1h) merged.cacheWrite1h = w1h;
+      else delete merged.cacheWrite1h;
+      if (prev.fast || r.fast) merged.fast = true;
+      else delete merged.fast;
       if (
         merged.input === prev.input &&
         merged.output === prev.output &&
         merged.cacheRead === prev.cacheRead &&
-        merged.cacheWrite === prev.cacheWrite
+        merged.cacheWrite === prev.cacheWrite &&
+        (merged.cacheWrite1h ?? 0) === (prev.cacheWrite1h ?? 0) &&
+        !!merged.fast === !!prev.fast
       )
         return false;
       r = merged;

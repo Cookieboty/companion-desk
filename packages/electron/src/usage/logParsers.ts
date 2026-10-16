@@ -54,11 +54,15 @@ const empty = (r: Pick<UsageRecord, 'input' | 'output' | 'cacheRead' | 'cacheWri
 
 /**
  * `~/.claude/projects/<项目>/<会话>.jsonl`：type=assistant 的行带 message.usage。
- * 同一条消息会按内容块拆成多行（usage 相同或递增）→ 以 message.id 为键，账本里取最大值合并；
- * 续接会话会把旧消息复制进新文件 → 同键自然去重。
+ * 同一条消息会按内容块拆成多行（usage 相同或递增）→ 以 message.id 为键，块内先合并（每个字段取最大），
+ * 账本里同键再取最大；续接会话会把旧消息复制进新文件 → 同键自然去重。
+ * requestId 只在消息 id 缺失时当后备键（很多行没有它，不能当必需键）。
+ *
+ * 缓存写分档：cache_creation.ephemeral_1h_input_tokens 记进 cacheWrite1h，其余（5m 档 + 拆不出的余量）按 5 分钟档；
+ * usage.speed === 'fast'（快速模式）打 fast 标记，计价时翻倍。
  */
 export function parseClaudeChunk(text: string): UsageRecord[] {
-  const out: UsageRecord[] = [];
+  const out = new Map<string, UsageRecord>();
   for (const o of lines(text)) {
     if (o.type !== 'assistant') continue;
     const m = obj(o.message);
@@ -67,9 +71,10 @@ export function parseClaudeChunk(text: string): UsageRecord[] {
     const model = str(m.model);
     if (!model || model === '<synthetic>') continue;
     const cc = obj(u.cache_creation);
-    const cacheWrite =
-      num(u.cache_creation_input_tokens) ||
-      num(cc?.ephemeral_5m_input_tokens) + num(cc?.ephemeral_1h_input_tokens);
+    const w5m = num(cc?.ephemeral_5m_input_tokens);
+    const w1hRaw = num(cc?.ephemeral_1h_input_tokens);
+    // 总量字段优先；没有就用分档之和
+    const cacheWrite = num(u.cache_creation_input_tokens) || w5m + w1hRaw;
     const rec = {
       input: num(u.input_tokens),
       output: num(u.output_tokens),
@@ -77,41 +82,86 @@ export function parseClaudeChunk(text: string): UsageRecord[] {
       cacheWrite,
     };
     if (empty(rec)) continue;
+    const cacheWrite1h = Math.min(w1hRaw, cacheWrite);
+    const fast = u.speed === 'fast';
     const id = str(m.id) ?? str(o.requestId) ?? str(o.uuid);
     if (!id) continue;
     const session = str(o.sessionId);
     // Anthropic 的消息 id（msg_…）全局唯一；其它网关的 id 可能撞（chatcmpl-12），要带上会话
     const key = id.startsWith('msg_') || !session ? `claude:${id}` : `claude:${session}:${id}`;
-    out.push({
+    const prev = out.get(key);
+    if (prev) {
+      prev.input = Math.max(prev.input, rec.input);
+      prev.output = Math.max(prev.output, rec.output);
+      prev.cacheRead = Math.max(prev.cacheRead, rec.cacheRead);
+      prev.cacheWrite = Math.max(prev.cacheWrite, rec.cacheWrite);
+      const w = Math.min(Math.max(prev.cacheWrite1h ?? 0, cacheWrite1h), prev.cacheWrite);
+      if (w) prev.cacheWrite1h = w;
+      if (fast) prev.fast = true;
+      continue;
+    }
+    out.set(key, {
       key,
       ts: parseTs(o.timestamp),
       source: 'claude',
       via: 'log',
       model,
       ...rec,
+      ...(cacheWrite1h ? { cacheWrite1h } : {}),
+      ...(fast ? { fast: true } : {}),
       session,
       project: base(o.cwd),
     });
   }
-  return out;
+  return [...out.values()];
 }
 
 // ---------------------------------------------------------------- Codex
+
+/** 分叉 rollout 开头「重放」父会话历史的行间距上限：重放是一次性写入，行间只差几毫秒；真实的第一轮至少隔数秒 */
+const FORK_REPLAY_GAP_MS = 1000;
 
 /**
  * `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`：
  * session_meta 给会话 id / cwd，turn_context 给模型，event_msg(token_count) 给每次请求的用量。
  * token_count 会因为额度信息刷新而重复出现 → 用累计 total_tokens 去重（只在增长时记一条）。
  * input_tokens 含缓存命中，这里拆成「未命中 + 缓存读」。
+ *
+ * fork / subagent：分叉出来的 rollout 第一行 session_meta 带 payload.forked_from_id，随后把父会话的历史
+ * （含 token_count）整段重放进新文件。处理：
+ * - 只有文件里的第一条 session_meta 描述本文件（重放进来的父 session_meta 不能覆盖会话 id / cwd）；
+ * - 分叉文件开头那一段「行间距 < 1 秒」的连续行视为重放，其中的 token_count 不记账，
+ *   遇到第一个 ≥ 1 秒的间隔就永久关闭跳过（真实的第一轮请求总是隔了数秒才出现）；
+ *   重放行若保留了父会话的原时间戳（早于分叉时刻），同样不记账；
+ * - 重放里的累计值照常推进 lastTotal，保证后面真实请求的去重基线正确。
+ * 偏差方向：宁可多算几条重放行的边缘，也不丢真实用量（第一条重放行没有前瞻无法识别，见测试）。
  */
 export function parseCodexChunk(text: string, state: ParseState): UsageRecord[] {
   const out: UsageRecord[] = [];
   for (const o of lines(text)) {
     const p = obj(o.payload);
+    const lineTs = parseTs(o.timestamp);
+    if (state.forked && state.replay) {
+      const prev = state.prevTs as number | undefined;
+      if (!lineTs || (prev !== undefined && (lineTs < prev || lineTs - prev >= FORK_REPLAY_GAP_MS)))
+        state.replay = false;
+      else state.prevTs = lineTs;
+    }
     if (o.type === 'session_meta' && p) {
-      state.sid = str(p.session_id) ?? str(p.id) ?? state.sid;
-      state.cwd = str(p.cwd) ?? state.cwd;
-      state.provider = str(p.model_provider) ?? state.provider;
+      if (!state.metaSeen && !state.sid) {
+        state.metaSeen = true;
+        state.sid = str(p.session_id) ?? str(p.id) ?? state.sid;
+        state.cwd = str(p.cwd) ?? state.cwd;
+        state.provider = str(p.model_provider) ?? state.provider;
+        if (str(p.forked_from_id)) {
+          state.forked = true;
+          state.replay = true;
+          if (lineTs) {
+            state.prevTs = lineTs;
+            state.forkTs = lineTs;
+          }
+        }
+      }
     } else if (o.type === 'turn_context' && p) {
       state.model = str(p.model) ?? state.model;
       state.cwd = str(p.cwd) ?? state.cwd;
@@ -123,6 +173,9 @@ export function parseCodexChunk(text: string, state: ParseState): UsageRecord[] 
       const cum = num(total?.total_tokens);
       if (cum && cum === state.lastTotal) continue;
       if (cum) state.lastTotal = cum;
+      // 继承自父会话的历史（父会话的日志里已经记过）：开头的密集重放段，或时间戳早于分叉时刻的行
+      if (state.forked && (state.replay || (lineTs && lineTs < (state.forkTs as number) - 1000)))
+        continue;
       const cached = num(last.cached_input_tokens);
       const write = num(last.cache_write_input_tokens);
       const rec = {
@@ -134,8 +187,8 @@ export function parseCodexChunk(text: string, state: ParseState): UsageRecord[] 
       if (empty(rec)) continue;
       const sid = (state.sid as string | undefined) ?? 'unknown';
       out.push({
-        key: `codex:${sid}:${cum || parseTs(o.timestamp)}`,
-        ts: parseTs(o.timestamp),
+        key: `codex:${sid}:${cum || lineTs}`,
+        ts: lineTs,
         source: 'codex',
         via: 'log',
         provider: state.provider as string | undefined,
@@ -192,7 +245,12 @@ export function parseCodexRateLimits(
 /**
  * `$DSH_HOME/sessions/<cwd>/session-<uuid>/session.v4.jsonl(.zstd)`：
  * request/context 给 provider / 模型，assistant/message 的 data.usage 给用量；以 seq 为键。
- * 输入口径同 AI SDK：inputTokens 含缓存读。
+ * V0 的 `session.jsonl` 同格式，由扫描器的路径规则一并匹配。
+ *
+ * 输入口径：inputTokens **不含**缓存读写（disjoint）。依据：仓库夹具 dsh-session.jsonl 里
+ * totalTokens = inputTokens + outputTokens + cacheReadTokens（4651+3+3=4657、13+3+4656=4672），
+ * 与调研结论一致。⚠ 只来自夹具与调研，尚未用本机真实 dsh 日志核对（本机没有 dsh 日志）；
+ * cacheWriteTokens 是否同样不含于 inputTokens 也没有样本，这里按同口径处理。待真机核对。
  */
 export function parseDshChunk(text: string, state: ParseState): UsageRecord[] {
   const out: UsageRecord[] = [];
@@ -210,7 +268,7 @@ export function parseDshChunk(text: string, state: ParseState): UsageRecord[] {
       const cacheRead = num(u.cacheReadTokens);
       const cacheWrite = num(u.cacheWriteTokens);
       const rec = {
-        input: Math.max(0, num(u.inputTokens) - cacheRead - cacheWrite),
+        input: num(u.inputTokens),
         output: num(u.outputTokens),
         cacheRead,
         cacheWrite,
@@ -236,19 +294,50 @@ export function parseDshChunk(text: string, state: ParseState): UsageRecord[] {
 // ---------------------------------------------------------------- Gemini CLI
 
 /**
- * `~/.gemini/tmp/<hash>/chats/session-*.json`：整份 JSON，type=gemini 的消息带 tokens。
- * 尽力解析：input 按 Gemini API 口径视为含缓存读；output 含 thoughts。
+ * `~/.gemini/tmp/<项目>/chats/session-*.json`（旧，整份 JSON）或 `session-*.jsonl`（新，逐行追加）；
+ * subagent 在 `chats/<父会话id>/<子会话id>.jsonl`。type=gemini 的消息带 tokens。
+ *
+ * jsonl：同一条消息（同 id）会被整行多次追加 → 按 id 取最后一条；没有 id 的消息按行号区分。
+ * tokens：input 含缓存（要扣掉 cached）、output、thoughts（计入输出）、tool（工具调用提示词，按 API 语义记入输入）。
+ * 尽力解析；格式未在真机逐版本核对。
  */
-export function parseGeminiFile(text: string, fallbackCwd?: string): UsageRecord[] {
-  let j: unknown;
+export function parseGeminiFile(
+  text: string,
+  fallbackCwd?: string,
+  fallbackSession?: string,
+): UsageRecord[] {
+  let msgs: unknown[];
+  let sid: string | undefined;
+  let updated: unknown;
+  let whole: unknown;
   try {
-    j = JSON.parse(text);
+    whole = JSON.parse(text);
   } catch {
-    return [];
+    whole = undefined;
   }
-  const root = obj(j);
-  const msgs = Array.isArray(root?.messages) ? (root!.messages as unknown[]) : [];
-  const sid = str(root?.sessionId) ?? 'unknown';
+  const w = obj(whole);
+  if (w && Array.isArray(w.messages)) {
+    // 旧格式：整份 JSON
+    msgs = w.messages as unknown[];
+    sid = str(w.sessionId);
+    updated = w.lastUpdated;
+  } else {
+    // 新格式：每行一个对象。消息行 / 头部行（带 sessionId）/ 可能的整份消息数组更新行
+    const byId = new Map<string, unknown>();
+    let n = 0;
+    for (const o of lines(text)) {
+      sid = sid ?? str(o.sessionId);
+      updated = o.lastUpdated ?? updated;
+      if (Array.isArray(o.messages)) {
+        for (const x of o.messages as unknown[]) byId.set(str(obj(x)?.id) ?? `#${n++}`, x);
+        continue;
+      }
+      if (o.type !== 'gemini' && o.type !== 'model') continue;
+      byId.set(str(o.id) ?? `#${n++}`, o);
+    }
+    msgs = [...byId.values()];
+  }
+  const session = sid ?? fallbackSession ?? 'unknown';
   const out: UsageRecord[] = [];
   msgs.forEach((raw, i) => {
     const m = obj(raw);
@@ -256,20 +345,20 @@ export function parseGeminiFile(text: string, fallbackCwd?: string): UsageRecord
     if (!m || !t || (m.type !== 'gemini' && m.type !== 'model')) return;
     const cached = num(t.cached);
     const rec = {
-      input: Math.max(0, num(t.input) - cached),
+      input: Math.max(0, num(t.input) - cached) + num(t.tool),
       output: num(t.output) + num(t.thoughts),
       cacheRead: cached,
       cacheWrite: 0,
     };
     if (empty(rec)) return;
     out.push({
-      key: `gemini:${sid}:${str(m.id) ?? i}`,
-      ts: parseTs(m.timestamp) || parseTs(root?.lastUpdated),
+      key: `gemini:${session}:${str(m.id) ?? i}`,
+      ts: parseTs(m.timestamp) || parseTs(updated),
       source: 'gemini',
       via: 'log',
       model: str(m.model) ?? 'unknown',
       ...rec,
-      session: sid === 'unknown' ? undefined : sid,
+      session: session === 'unknown' ? undefined : session,
       project: base(fallbackCwd),
     });
   });

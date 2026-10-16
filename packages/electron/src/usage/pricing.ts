@@ -135,6 +135,7 @@ export function findPrice(model: string, custom: CustomPrice[] = []): PriceMatch
             output: best.output,
             ...(best.cacheRead !== undefined ? { cacheRead: best.cacheRead } : {}),
             ...(best.cacheWrite !== undefined ? { cacheWrite: best.cacheWrite } : {}),
+            ...(best.cacheWrite1h !== undefined ? { cacheWrite1h: best.cacheWrite1h } : {}),
           },
           matched: normalizeModel(best.model),
           custom: isCustom,
@@ -145,19 +146,34 @@ export function findPrice(model: string, custom: CustomPrice[] = []): PriceMatch
   return hit(custom, true) ?? hit(BUILTIN_PRICES, false);
 }
 
-/** 缓存读 / 写没有单独标价时：缓存读按输入价、缓存写按输入价（保守，不凭空打折也不加价） */
+/** 快速模式（Claude usage.speed === 'fast'）的倍率：Anthropic 的缓存价是输入价的倍数且与之叠加，所以整条记录一起翻倍 */
+export const FAST_MULTIPLIER = 2;
+/** 1 小时缓存写相对输入价的倍数（5 分钟档是 1.25 倍，已在表里直接标价） */
+export const CACHE_WRITE_1H_FACTOR = 2;
+
+/**
+ * 缓存读 / 写没有单独标价时：缓存读按输入价、缓存写按输入价（保守，不凭空打折也不加价）。
+ * 缓存写分档：cacheWrite1h 部分按 1 小时档价（表里没标就取 2 × 输入价；该模型连缓存写价都没有就按输入价），
+ * 其余（含拆不出分档的旧账本记录）按 5 分钟档。
+ */
 export function costUsd(
-  r: Pick<UsageRecord, 'input' | 'output' | 'cacheRead' | 'cacheWrite'>,
+  r: Pick<UsageRecord, 'input' | 'output' | 'cacheRead' | 'cacheWrite'> &
+    Partial<Pick<UsageRecord, 'cacheWrite1h' | 'fast'>>,
   pr: ModelPrice,
 ): number {
   const M = 1_000_000;
-  return (
+  const w1h = Math.min(Math.max(0, r.cacheWrite1h ?? 0), r.cacheWrite);
+  const w5m = r.cacheWrite - w1h;
+  const price1h =
+    pr.cacheWrite1h ?? (pr.cacheWrite !== undefined ? pr.input * CACHE_WRITE_1H_FACTOR : pr.input);
+  const base =
     (r.input * pr.input +
       r.output * pr.output +
       r.cacheRead * (pr.cacheRead ?? pr.input) +
-      r.cacheWrite * (pr.cacheWrite ?? pr.input)) /
-    M
-  );
+      w5m * (pr.cacheWrite ?? pr.input) +
+      w1h * price1h) /
+    M;
+  return r.fast ? base * FAST_MULTIPLIER : base;
 }
 
 /** 默认 CNY 汇率（1 USD = ? CNY）：仅是占位常量，界面上标注「可自定义」 */
@@ -177,12 +193,14 @@ export function sanitizeCustomPrices(raw: unknown): CustomPrice[] {
     if (!model || input === undefined || output === undefined) continue;
     const cacheRead = num(o.cacheRead);
     const cacheWrite = num(o.cacheWrite);
+    const cacheWrite1h = num(o.cacheWrite1h);
     out.set(model, {
       model,
       input,
       output,
       ...(cacheRead !== undefined ? { cacheRead } : {}),
       ...(cacheWrite !== undefined ? { cacheWrite } : {}),
+      ...(cacheWrite1h !== undefined ? { cacheWrite1h } : {}),
     });
   }
   return [...out.values()];

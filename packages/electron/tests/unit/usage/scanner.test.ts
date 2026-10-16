@@ -235,4 +235,95 @@ describe('UsageLogScanner：增量游标 + 去重', () => {
     await scanner.scan();
     expect(ledger.size()).toBe(2);
   });
+
+  it('Gemini 新版 jsonl（含 subagent 子目录递归）：同 id 取最后一条，旧 .json 并存', async () => {
+    const { home, ledger, scanner } = mk();
+    const dir = path.join(home, '.gemini', 'tmp', 'myproj', 'chats');
+    fs.mkdirSync(path.join(dir, 'parent-1'), { recursive: true });
+    const msg = (id: string, out: number) =>
+      `${JSON.stringify({
+        id,
+        type: 'gemini',
+        model: 'gemini-2.5-flash',
+        timestamp: NOW,
+        tokens: { input: 10, output: out, cached: 4, thoughts: 1, tool: 0 },
+      })}\n`;
+    const head = `${JSON.stringify({ sessionId: 'main-1', startTime: NOW })}\n`;
+    fs.writeFileSync(path.join(dir, 'session-a.jsonl'), head + msg('m1', 1) + msg('m1', 5));
+    fs.writeFileSync(path.join(dir, 'parent-1', 'sub-9.jsonl'), msg('s1', 2));
+    // 目录里别的 .jsonl 但不是 session- 前缀 → 不读
+    fs.writeFileSync(path.join(dir, 'notes.jsonl'), msg('z1', 3));
+    fs.writeFileSync(
+      path.join(dir, 'session-old.json'),
+      JSON.stringify({
+        sessionId: 'old-1',
+        messages: [
+          {
+            id: 'o1',
+            type: 'gemini',
+            timestamp: NOW,
+            model: 'gemini-2.5-pro',
+            tokens: { input: 7, output: 1 },
+          },
+        ],
+      }),
+    );
+    await scanner.scan();
+    const byKey = Object.fromEntries(ledger.all().map((r) => [r.key, r]));
+    expect(Object.keys(byKey).sort()).toEqual([
+      'gemini:main-1:m1',
+      'gemini:old-1:o1',
+      'gemini:sub-9:s1',
+    ]);
+    expect(byKey['gemini:main-1:m1']).toMatchObject({
+      output: 6,
+      input: 6,
+      cacheRead: 4,
+      project: 'myproj',
+    });
+    expect(byKey['gemini:sub-9:s1']!.session).toBe('sub-9');
+  });
+
+  it('dsh：V0 的 session.jsonl 与 session.v4.jsonl 都能扫到', async () => {
+    const { home, ledger, scanner } = mk();
+    const u = (seq: number) =>
+      `${JSON.stringify({
+        type: 'assistant/message',
+        seq,
+        time: Date.now(),
+        data: { usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 5 } },
+      })}\n`;
+    const a = path.join(home, '.dsh', 'sessions', 'cwd-a', 'session-aaa');
+    const b = path.join(home, '.dsh', 'sessions', 'cwd-b', 'session-bbb');
+    fs.mkdirSync(a, { recursive: true });
+    fs.mkdirSync(b, { recursive: true });
+    fs.writeFileSync(path.join(a, 'session.jsonl'), u(1));
+    fs.writeFileSync(path.join(b, 'session.v4.jsonl'), u(2));
+    await scanner.scan();
+    expect(ledger.all().filter((r) => r.source === 'dsh')).toHaveLength(2);
+    expect(ledger.all()[0]).toMatchObject({ input: 10, cacheRead: 5 });
+  });
+
+  it('Codex 分叉 rollout 经扫描器：不重复计入父会话历史', async () => {
+    const { home, ledger, scanner } = mk();
+    const dir = path.join(home, '.codex', 'sessions', '2026', '10', '14');
+    fs.mkdirSync(dir, { recursive: true });
+    const fxd = path.join(__dirname, '../../fixtures/history');
+    // 夹具时间是 2026-10-14；日志保留窗口内都读，所以直接拷贝
+    fs.copyFileSync(
+      path.join(fxd, 'codex-fork-parent.jsonl'),
+      path.join(dir, 'rollout-parent.jsonl'),
+    );
+    fs.copyFileSync(
+      path.join(fxd, 'codex-fork-child.jsonl'),
+      path.join(dir, 'rollout-child.jsonl'),
+    );
+    await scanner.scan();
+    const recs = ledger.all().filter((r) => r.source === 'codex');
+    expect(recs.map((r) => r.key).sort()).toEqual([
+      'codex:child-0002:3000',
+      'codex:parent-0001:1100',
+      'codex:parent-0001:2400',
+    ]);
+  });
 });

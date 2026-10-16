@@ -101,6 +101,23 @@ function walk(
   return out.sort((a, b) => b.mtime - a.mtime).slice(0, MAX_FILES_PER_KIND);
 }
 
+/** chats 目录下的会话文件：直接子级要 session- 前缀，更深一层（subagent）任意 .json / .jsonl */
+export function isGeminiChatFile(name: string, full: string): boolean {
+  if (!/\.jsonl?$/.test(name)) return false;
+  const parts = full.split(path.sep);
+  const i = parts.lastIndexOf('chats');
+  if (i < 0 || i >= parts.length - 1) return false;
+  return parts.length - 1 === i + 1 ? /^session-/.test(name) : true;
+}
+
+/** Gemini 会话文件 → 项目目录名（tmp/<项目>/chats/…）；是 64 位十六进制哈希就不当项目名 */
+function geminiProject(file: string): string | undefined {
+  const parts = file.split(path.sep);
+  const i = parts.lastIndexOf('chats');
+  const proj = i > 0 ? parts[i - 1] : undefined;
+  return proj && !/^[0-9a-f]{32,}$/i.test(proj) ? proj : undefined;
+}
+
 const tick = () => new Promise<void>((r) => setImmediate(r));
 
 export class UsageLogScanner {
@@ -166,7 +183,8 @@ export class UsageLogScanner {
     // dsh：明文 jsonl 可增量；.zstd 要整份解压
     const dshFiles = walk(
       path.join(this.dshHome, 'sessions'),
-      (n) => /^session\.v\d+\.jsonl(\.zstd)?$/.test(n),
+      // V0 是 session.jsonl，之后是 session.v<N>.jsonl（可能 zstd 压缩）
+      (n) => /^session(\.v\d+)?\.jsonl(\.zstd)?$/.test(n),
       3,
       since,
     );
@@ -180,13 +198,14 @@ export class UsageLogScanner {
       'whole',
       dshFiles.filter((f) => f.path.endsWith('.zstd')),
     );
+    // Gemini：chats/session-*.json(l)；subagent 在 chats/<父id>/<子id>.jsonl（要递归）
     add(
       'gemini',
       'whole',
       walk(
         path.join(this.home, '.gemini', 'tmp'),
-        (n, full) => /^session-.*\.json$/.test(n) && full.includes(`${path.sep}chats${path.sep}`),
-        3,
+        (n, full) => isGeminiChatFile(n, full),
+        5,
         since,
       ),
     );
@@ -329,7 +348,11 @@ export class UsageLogScanner {
     let recs: UsageRecord[] = [];
     if (f.source === 'gemini') {
       const text = await fs.promises.readFile(f.path, 'utf8');
-      recs = parseGeminiFile(text);
+      recs = parseGeminiFile(
+        text,
+        geminiProject(f.path),
+        path.basename(f.path).replace(/\.jsonl?$/, ''),
+      );
     } else if (f.source === 'dsh') {
       const text = await zstdDecode(await fs.promises.readFile(f.path));
       recs = parseDshChunk(text, {});

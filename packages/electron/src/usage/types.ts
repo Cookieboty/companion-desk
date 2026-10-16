@@ -35,7 +35,15 @@ export interface UsageRecord {
   input: number;
   output: number;
   cacheRead: number;
+  /** 缓存写总量（含 1h 档）；旧账本只有这一个字段，整体按 5 分钟档计价 */
   cacheWrite: number;
+  /**
+   * 缓存写里属于 1 小时档的部分（≤ cacheWrite，余量即 5 分钟档）。缺省 = 0，按旧口径全部当 5 分钟档。
+   * 只有能拆出分档的来源（Claude 的 cache_creation.ephemeral_*）才会写它。
+   */
+  cacheWrite1h?: number;
+  /** true = 这次请求走了「快速模式」（Claude usage.speed === 'fast'），输入输出按 2 倍计价；缺省 = 标准速度 */
+  fast?: boolean;
   /** 会话 id（CLI 会话 id / Nomi 对话 id） */
   session?: string;
   /** 项目目录名 */
@@ -51,7 +59,10 @@ export interface ModelPrice {
   input: number;
   output: number;
   cacheRead?: number;
+  /** 缓存写（5 分钟档，没有分档的模型就是唯一的缓存写价） */
   cacheWrite?: number;
+  /** 缓存写 1 小时档；缺省时按 2 × 输入价（Anthropic 公布的倍率） */
+  cacheWrite1h?: number;
 }
 
 export interface PriceEntry extends ModelPrice {
