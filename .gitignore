@@ -75,3 +75,4 @@ e2e-headed/.cache/
 # Source of truth for packaging: NOMI_SHERPA_TTS_MODEL_DIR or ../../models/<id>
 # (relative to packages/electron). Do not commit these weights.
 packages/electron/resources/tts-models/
+/rive/
