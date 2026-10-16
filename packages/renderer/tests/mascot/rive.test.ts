@@ -1,0 +1,101 @@
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { describe, expect, it, vi } from 'vitest';
+
+import { createRiveBackend, RIVE_POC_MOTIONS } from '../../src/mascot/backends/rive';
+import { RIVE_FLAG_KEY, isRiveExperimentEnabled } from '../../src/mascot/riveFlag';
+
+/**
+ * EXPERIMENTAL Rive renderer (docs/brand/rive-eval.md) — guard rails:
+ *  1. it is OFF unless explicitly opted in,
+ *  2. the backend only fires known view-model triggers,
+ *  3. BRAND LOCK: every raster embedded in the .riv is byte-identical to a locked master layer —
+ *     no AI-redrawn / traced / re-encoded art can slip into the Rive scene.
+ */
+describe('rive experiment flag', () => {
+  it('is off by default and only on for ?rive=1 or the localStorage opt-in', () => {
+    const empty = { getItem: () => null };
+    expect(isRiveExperimentEnabled('', empty)).toBe(false);
+    expect(isRiveExperimentEnabled('?rive=0', empty)).toBe(false);
+    expect(isRiveExperimentEnabled('?rive=1', empty)).toBe(true);
+    expect(
+      isRiveExperimentEnabled('', { getItem: (k) => (k === RIVE_FLAG_KEY ? '1' : null) }),
+    ).toBe(true);
+    expect(isRiveExperimentEnabled('', null)).toBe(false);
+  });
+});
+
+describe('rive backend', () => {
+  it('fires the matching trigger and rejects unknown motions', () => {
+    const fire = vi.fn();
+    const trigger = vi.fn((name: string) => ({ trigger: () => fire(name) }));
+    const b = createRiveBackend(() => ({ trigger }));
+    expect(b.kind).toBe('rive');
+    expect(b.playMotion('wave')).toBe(true);
+    expect(fire).toHaveBeenCalledWith('wave');
+    expect(b.playMotion('moonwalk')).toBe(false);
+    expect(b.capabilities().motions).toEqual([...RIVE_POC_MOTIONS]);
+  });
+
+  it('is a no-op while the Rive instance is not ready', () => {
+    const b = createRiveBackend(() => null);
+    expect(b.playMotion('wave')).toBe(false);
+  });
+});
+
+const MODEL = path.join(__dirname, '../../public/assets/models/sprite/nomi');
+const RIV = path.join(__dirname, '../../public/assets/models/rive/nomi-poc.riv');
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const IEND = Buffer.from('IEND');
+
+/** every PNG stream embedded in a .riv (signature … IEND chunk + CRC) */
+function embeddedPngs(buf: Buffer): Buffer[] {
+  const out: Buffer[] = [];
+  let at = 0;
+  for (;;) {
+    const s = buf.indexOf(PNG_SIG, at);
+    if (s < 0) return out;
+    const e = buf.indexOf(IEND, s);
+    if (e < 0) return out;
+    out.push(buf.subarray(s, e + 8));
+    at = e + 8;
+  }
+}
+
+describe('brand lock: Rive scene', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(MODEL, 'brand-lock.json'), 'utf8')) as {
+    files: Record<string, string>;
+  };
+  const locked = new Set(Object.values(lock.files));
+
+  it('embeds only locked master layers, byte for byte', () => {
+    const pngs = embeddedPngs(fs.readFileSync(RIV));
+    expect(pngs.length).toBeGreaterThanOrEqual(20);
+    const names = new Map(Object.entries(lock.files).map(([n, h]) => [h, n]));
+    for (const p of pngs) {
+      const h = createHash('sha256').update(p).digest('hex');
+      expect(locked.has(h), `embedded raster sha256 ${h} is not a locked layer`).toBe(true);
+      expect(names.get(h)).toMatch(/^layers\//);
+    }
+  });
+
+  it('contains the brand-critical layers (face, clip, N-logo body, badge, ribbon)', () => {
+    const have = new Set(
+      embeddedPngs(fs.readFileSync(RIV)).map((p) => createHash('sha256').update(p).digest('hex')),
+    );
+    for (const n of [
+      'head',
+      'bangs',
+      'clip',
+      'body',
+      'badge',
+      'ribbon',
+      'hair-side-l',
+      'hair-side-r',
+    ]) {
+      expect(have.has(lock.files[`layers/${n}.png`]), n).toBe(true);
+    }
+  });
+});

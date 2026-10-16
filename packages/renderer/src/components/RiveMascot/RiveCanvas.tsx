@@ -1,0 +1,107 @@
+import { Alignment, Fit, Layout, Rive, RuntimeLoader } from '@rive-app/canvas-lite';
+import riveWasmUrl from '@rive-app/canvas-lite/rive.wasm?url';
+import React, { useEffect, useRef, useState } from 'react';
+
+import { createRiveBackend } from '../../mascot/backends/rive';
+import { mascotRegistry } from '../../mascot/MascotBackend';
+import { characterBox } from '../../mascot/spriteLayout';
+
+export interface RiveCanvasProps {
+  /** URL of the .riv (default: the PoC under public/assets/models/rive) */
+  src?: string;
+  style?: React.CSSProperties;
+}
+
+const DEFAULT_SRC = './assets/models/rive/nomi-poc.riv';
+
+/**
+ * EXPERIMENTAL Rive renderer (hidden behind isRiveExperimentEnabled()). The wasm is bundled — the
+ * runtime's default CDN URL would be blocked by the app CSP (connect-src 'self') — and the page CSP
+ * needs 'wasm-unsafe-eval' for it to compile (see docs/brand/rive-eval.md).
+ */
+export const RiveCanvas: React.FC<RiveCanvasProps> = ({ src = DEFAULT_SRC, style }) => {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const canvas = canvasRef.current;
+    if (!wrap || !canvas) return undefined;
+    RuntimeLoader.setWasmUrl(riveWasmUrl);
+    let rive: Rive | null = null;
+    let detach: (() => void) | null = null;
+    const place = () => {
+      const b = characterBox(wrap.clientWidth, wrap.clientHeight);
+      Object.assign(canvas.style, {
+        left: `${b.x}px`,
+        top: `${b.y}px`,
+        width: `${b.w}px`,
+        height: `${b.h}px`,
+      });
+      rive?.resizeDrawingSurfaceToCanvas();
+    };
+    place();
+    try {
+      rive = new Rive({
+        src,
+        canvas,
+        autoplay: true,
+        autoBind: true,
+        stateMachines: 'Nomi',
+        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter }),
+        onLoad: () => {
+          place();
+          const backend = createRiveBackend(() => rive?.viewModelInstance);
+          detach = mascotRegistry.attach(backend);
+          if (process.env.NODE_ENV === 'development') {
+            (globalThis as { __nomiMascot?: unknown }).__nomiMascot = backend;
+          }
+        },
+        onLoadError: () => setError('Rive load failed'),
+      });
+    } catch (e) {
+      console.error('[rive] init failed', e);
+    }
+    const ro = new ResizeObserver(place);
+    ro.observe(wrap);
+    return () => {
+      ro.disconnect();
+      detach?.();
+      rive?.cleanup();
+    };
+  }, [src]);
+
+  return (
+    <div
+      ref={wrapRef}
+      data-testid="rive-canvas"
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        background: 'transparent',
+        ...style,
+      }}
+    >
+      <canvas ref={canvasRef} style={{ position: 'absolute', display: 'block' }} />
+      {error && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#f88',
+            fontSize: 13,
+          }}
+        >
+          Rive error: {error}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RiveCanvas;
