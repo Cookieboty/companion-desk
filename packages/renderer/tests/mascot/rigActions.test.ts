@@ -275,20 +275,26 @@ describe('ActionManager', () => {
     expect(outOfRange.slice(0, 5)).toEqual([]);
   });
 
-  it('an arm that only fades out keeps its pose while the sleeve cross-fades', () => {
+  it('an arm that fades out crossfades continuously (no snap to rest, no held-pose pop)', () => {
     const am = new ActionManager(ACTIONS);
     am.play('wave');
     run(am, 1.0);
     const pose = am.out.v[IDX.rA];
     expect(pose).toBeGreaterThan(8);
     am.stop();
-    run(am, 0.1);
-    // still raised (not swinging down), while its weight (rOn) is already falling
-    expect(am.out.v[IDX.rA]).toBeGreaterThan(pose * 0.9);
-    expect(am.out.v[IDX.rOn]).toBeLessThan(1);
+    let prev = pose;
+    let maxStep = 0;
+    for (let i = 0; i < 60; i++) {
+      am.update(1 / 60);
+      maxStep = Math.max(maxStep, Math.abs(am.out.v[IDX.rA] - prev));
+      prev = am.out.v[IDX.rA];
+    }
+    // ≈ pose / fade-time per frame; a snap would move most of the pose in one step
+    expect(maxStep).toBeLessThan(pose * 0.2);
     run(am, 0.6);
     expect(am.busy()).toBe(false);
     expect(am.out.v[IDX.rOn]).toBe(0);
+    expect(am.out.v[IDX.rMix]).toBe(0);
   });
 });
 
@@ -305,7 +311,7 @@ describe('RigAnimator + actions', () => {
     expect(pose.ext!.v[IDX.rHand]).toBe(HAND.wave);
   });
 
-  it('raising an arm swings (forearm foreshortens), settles, then lowers by itself', () => {
+  it('raising an arm swings (reach z rises), settles, then lowers by itself', () => {
     const a = new RigAnimator(3);
     let maxFore = 0;
     let peakA = 0;
@@ -318,12 +324,12 @@ describe('RigAnimator + actions', () => {
         gesture: i === 0 ? { name: 'wave', id: 1 } : undefined,
       });
       if (!pose.ext) continue;
-      maxFore = Math.max(maxFore, pose.ext.v[IDX.rF]);
+      maxFore = Math.max(maxFore, pose.ext.v[IDX.rZ]);
       peakA = Math.max(peakA, pose.ext.v[IDX.rA]);
       lean = Math.min(lean, pose.ext.v[IDX.torsoRot]);
       if (i === Math.round((dur - 0.05) * 60)) atEnd = pose.ext.v[IDX.rA];
     }
-    expect(maxFore).toBeGreaterThan(0.15); // foreshortening during the swing (mild on-canvas poses)
+    expect(maxFore).toBeGreaterThan(0.15); // reach (foreshortening) is keyed with the lift
     expect(peakA).toBeGreaterThan(10);
     expect(lean).toBeLessThan(-0.4); // torso leans away from the raised arm
     expect(atEnd).toBeLessThan(peakA * 0.35); // the arm is lowered before the action ends

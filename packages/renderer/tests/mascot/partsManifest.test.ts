@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { SPINE_BELT, SPINE_CHEST } from '../../src/mascot/layeredRig';
+import { ARM_ELBOW_S } from '../../src/mascot/rig/armKin';
 
 /**
  * parts.json is the shared part / joint list consumed by the canvas rig AND the Rive builder.
@@ -80,5 +81,58 @@ describe('parts.json (shared by canvas rig and Rive)', () => {
       expect(c.bones).toBeGreaterThanOrEqual(3);
       expect(c.tip[1]).toBeGreaterThan(c.root[1]);
     }
+  });
+});
+
+describe('arm pieces (official sleeve cut at the elbow)', () => {
+  const arms = read('parts.json').arms as Record<
+    string,
+    {
+      character: string;
+      sgn: number;
+      theta: number;
+      s0: [number, number];
+      pieces: {
+        elbow: [number, number];
+        elbowS: number;
+        layerSize: [number, number];
+        upper: { file: string; offset: [number, number]; size: [number, number] };
+        fore: { file: string; offset: [number, number]; size: [number, number] };
+      };
+    }
+  >;
+  const png = (f: string) => {
+    const b = fs.readFileSync(path.join(MODEL, f));
+    return [b.readUInt32BE(16), b.readUInt32BE(20)] as const;
+  };
+  it('upper arm and forearm are locked files that fit inside the master sleeve layer', () => {
+    for (const side of ['l', 'r']) {
+      const a = arms[side];
+      for (const k of ['upper', 'fore'] as const) {
+        const p = a.pieces[k];
+        expect(lock.files[p.file], p.file).toBeTruthy();
+        expect(png(p.file), p.file).toEqual(p.size);
+        expect(p.offset[0] + p.size[0]).toBeLessThanOrEqual(a.pieces.layerSize[0]);
+        expect(p.offset[1] + p.size[1]).toBeLessThanOrEqual(a.pieces.layerSize[1]);
+      }
+      expect(png(`layers/arm-${side}.png`)).toEqual(a.pieces.layerSize);
+    }
+  });
+
+  it('the elbow joint lies on the sleeve axis at the shared ARM_ELBOW_S', () => {
+    for (const side of ['l', 'r']) {
+      const a = arms[side];
+      const s = a.pieces.elbowS;
+      expect(s).toBe(ARM_ELBOW_S);
+      const ex = a.s0[0] + a.sgn * Math.sin(a.theta) * s;
+      const ey = a.s0[1] + Math.cos(a.theta) * s;
+      expect(a.pieces.elbow[0]).toBeCloseTo(ex, 1);
+      expect(a.pieces.elbow[1]).toBeCloseTo(ey, 1);
+    }
+  });
+
+  it('screen-right arm = the character’s left arm', () => {
+    expect(arms.r.character).toBe('left');
+    expect(arms.l.character).toBe('right');
   });
 });
