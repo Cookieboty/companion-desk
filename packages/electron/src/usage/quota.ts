@@ -22,12 +22,18 @@ export interface QuotaWindow {
   expired?: boolean;
 }
 
+/** 额度数据从哪来（面板上标出来，让用户知道这份数字是怎么得到的） */
+export type QuotaOrigin = 'statusline' | 'usage-cmd' | 'session-log' | 'app-server';
+
 /** 来源读到的原始额度快照 */
 export interface QuotaReading {
   windows: QuotaWindow[];
   /** 快照产生时间（ms） */
   updatedAt: number;
   plan?: string;
+  origin?: QuotaOrigin;
+  /** 上一次刷新暂时失败（超时 / 网络等），这是更早读到的值 */
+  stale?: boolean;
 }
 
 /**
@@ -43,6 +49,8 @@ export interface QuotaEntry {
   windows: QuotaWindow[];
   updatedAt?: number;
   plan?: string;
+  origin?: QuotaOrigin;
+  stale?: boolean;
 }
 
 /** 额度来源。read 必须是同步、无网络、无凭据读取的；返回 null = 没有可用额度。 */
@@ -83,6 +91,8 @@ export class QuotaRegistry {
               windows,
               updatedAt: r.updatedAt,
               ...(r.plan ? { plan: r.plan } : {}),
+              ...(r.origin ? { origin: r.origin } : {}),
+              ...(r.stale ? { stale: true } : {}),
             }
           : { id: s.id, label: s.label, status: 'unavailable', windows: [] },
       );

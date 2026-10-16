@@ -166,7 +166,19 @@ export const Budget: React.FC<Props> = ({ state, onSettings, onCleared }) => {
             label={t('读取本机编程工具的会话日志')}
             data-testid="usage-read-logs"
           />
+          <Switch
+            checked={st.activeQuotaRefresh}
+            disabled={!st.enabled}
+            onChange={(v) => void patch({ activeQuotaRefresh: v })}
+            label={t('主动刷新额度（点「刷新」时让官方 CLI 去取）')}
+            data-testid="usage-active-quota"
+          />
         </div>
+        <p className={styles.dim}>
+          {t(
+            '开启后，在额度卡点「刷新」且本机数据已过期时，才会临时启动 claude 或 codex（官方 CLI，用它自己的登录态取额度，Codex 会向 OpenAI 发一次请求）。从不自动轮询；关闭后刷新只重读本机已有的数据。',
+          )}
+        </p>
         <p className={styles.dim}>
           {t(
             '只提取时间、模型、Token 数和会话编号，不保存对话内容，也不读取任何账号凭据。关闭后仍会记录 Nomi 对话的用量。',

@@ -81,7 +81,7 @@ describe('statusline 钩子：开启 / 关闭 / 恢复', () => {
   const setup = () => {
     const home = tmp('nomi-sl-home-');
     const root = tmp('nomi-sl-root-');
-    return { home, root, dep: { home, root, platform: 'darwin' as const } };
+    return { home, root, dep: { home, root, env: {}, platform: 'darwin' as const } };
   };
 
   it('没有 settings.json：开启后创建，只加 statusLine；关闭后删除该键并清理文件', () => {
@@ -160,6 +160,24 @@ describe('statusline 钩子：开启 / 关闭 / 恢复', () => {
     put(settingsOf(home), JSON.stringify({ statusLine: mine }));
     disableHook(dep);
     expect(readJson(settingsOf(home)).statusLine).toEqual(mine);
+  });
+});
+
+describe('statusline 钩子：尊重 CLAUDE_CONFIG_DIR', () => {
+  it('配置目录被改到别处时，读写的是那个目录里的 settings.json，不碰默认的 ~/.claude', () => {
+    const home = tmp('nomi-hook-home-');
+    const cfg = tmp('nomi-hook-cfg-');
+    const root = tmp('nomi-hook-root-');
+    put(path.join(home, '.claude', 'settings.json'), '{"theme":"default"}');
+    put(path.join(cfg, 'settings.json'), '{"theme":"custom"}');
+    const dep = { root, home, env: { CLAUDE_CONFIG_DIR: cfg }, platform: 'linux' as const };
+    enableHook(dep);
+    expect(readJson(path.join(cfg, 'settings.json')).statusLine).toBeTruthy();
+    expect(fs.readFileSync(settingsOf(home), 'utf8')).toBe('{"theme":"default"}');
+    expect(hookStatus(dep).enabled).toBe(true);
+    disableHook(dep);
+    expect(readJson(path.join(cfg, 'settings.json')).statusLine).toBeUndefined();
+    expect(readJson(path.join(cfg, 'settings.json')).theme).toBe('custom');
   });
 });
 

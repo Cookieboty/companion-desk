@@ -103,6 +103,7 @@ const STATE = {
   settings: {
     enabled: true,
     readToolLogs: true,
+    activeQuotaRefresh: true,
     retention: '1y',
     currency: 'USD',
     cnyPerUsd: 7.2,
@@ -176,6 +177,8 @@ let calls: Array<[string, ...unknown[]]>;
 let state: typeof STATE;
 let emptyData = false;
 let quota: unknown[] = [];
+let refreshTools: Record<string, unknown> = {};
+let refreshEntries: unknown[] | null = null;
 let hook: Record<string, unknown> = {
   supported: true,
   enabled: false,
@@ -211,6 +214,9 @@ function install() {
           return state.settings;
         case 'ai:usage:quota':
           return quota;
+        case 'ai:usage:quota-refresh':
+          if (refreshEntries) quota = refreshEntries;
+          return { entries: quota, tools: refreshTools };
         case 'ai:usage:quota-hook':
           return hook;
         case 'ai:usage:quota-hook-set':
@@ -230,6 +236,8 @@ function install() {
 
 beforeEach(() => {
   emptyData = false;
+  refreshTools = {};
+  refreshEntries = null;
   hook = { supported: true, enabled: false, hadOwnStatusLine: false, hasSnapshot: false };
   quota = [
     { id: 'codex', label: 'Codex', status: 'unavailable', windows: [] },
@@ -490,6 +498,124 @@ describe('UsagePanel 预算与隐私', () => {
       expect((getByTestId('usage-clear') as HTMLButtonElement).disabled).toBe(true),
     );
     vi.unstubAllGlobals();
+  });
+});
+
+describe('UsagePanel 订阅额度 · 安全刷新', () => {
+  it('卡片标出隐私说明；刷新按钮只在点击时调用 quota-refresh（打开面板不会触发）', async () => {
+    const { findByTestId, getByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-quota-card');
+    const priv = getByTestId('usage-quota-privacy').textContent ?? '';
+    expect(priv).toContain('不读取、不保存、不上传任何登录凭据');
+    expect(priv).toContain('auth.json');
+    expect(priv).toContain('Codex 会因此向 OpenAI 发一次请求');
+    expect(priv).toContain('不会自动轮询');
+    expect(calls.some((c) => c[0] === 'ai:usage:quota-refresh')).toBe(false);
+    fireEvent.click(getByTestId('usage-quota-refresh'));
+    await waitFor(() =>
+      expect(calls.filter((c) => c[0] === 'ai:usage:quota-refresh')).toHaveLength(1),
+    );
+  });
+
+  it('刷新结果：显示来源、「上次读取」标记，以及每个工具的结果说明', async () => {
+    const now = Date.now();
+    refreshEntries = [
+      {
+        id: 'claude',
+        label: 'Claude Code',
+        status: 'ok',
+        auth: 'subscription',
+        origin: 'usage-cmd',
+        plan: 'Max',
+        updatedAt: now,
+        windows: [
+          { id: 'five_hour', usedPercent: 12, windowMinutes: 300, resetAt: now + 3_600_000 },
+        ],
+      },
+      {
+        id: 'codex',
+        label: 'Codex',
+        status: 'ok',
+        auth: 'subscription',
+        origin: 'app-server',
+        stale: true,
+        updatedAt: now - 600_000,
+        windows: [{ id: 'primary', usedPercent: 33, windowMinutes: 300 }],
+      },
+    ];
+    refreshTools = {
+      claude: { state: 'ok' },
+      codex: { state: 'transient', reason: 'timeout', stale: true },
+    };
+    const { findByTestId, getByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-quota-card');
+    fireEvent.click(getByTestId('usage-quota-refresh'));
+    const notes = await findByTestId('usage-quota-notes');
+    expect(notes.textContent).toContain('Claude Code：已让官方 CLI（claude -p /usage）刷新。');
+    expect(notes.textContent).toContain('显示的是上次读到的值');
+    expect(getByTestId('usage-quota-origin-claude').textContent).toContain('claude /usage');
+    expect(getByTestId('usage-quota-origin-codex').textContent).toContain('codex app-server');
+    expect(getByTestId('usage-quota-codex').textContent).toContain('上次读取');
+    expect(getByTestId('usage-quota-claude').textContent).not.toContain('上次读取');
+  });
+
+  it('各种结果说明：认证失效 / 节流 / 本机数据够新 / 已关闭主动刷新 / 版本不支持', async () => {
+    refreshTools = {
+      claude: { state: 'auth', reason: 'denied' },
+      codex: { state: 'throttled', retryInSec: 42 },
+    };
+    const { findByTestId, getByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-quota-card');
+    fireEvent.click(getByTestId('usage-quota-refresh'));
+    let notes = await findByTestId('usage-quota-notes');
+    expect(notes.textContent).toContain('已清除旧额度');
+    expect(notes.textContent).toContain('42 秒后可再次刷新');
+
+    refreshTools = {
+      claude: { state: 'transient', reason: 'unsupported', stale: false },
+      codex: { state: 'skipped', reason: 'disabled' },
+    };
+    fireEvent.click(getByTestId('usage-quota-refresh'));
+    await waitFor(() =>
+      expect(getByTestId('usage-quota-notes').textContent).toContain('不支持非交互读取额度'),
+    );
+    notes = getByTestId('usage-quota-notes');
+    expect(notes.textContent).toContain('已关闭「主动刷新额度」');
+
+    refreshTools = { claude: { state: 'fresh-local' } };
+    fireEvent.click(getByTestId('usage-quota-refresh'));
+    await waitFor(() =>
+      expect(getByTestId('usage-quota-notes').textContent).toContain('没有拉起官方 CLI'),
+    );
+  });
+
+  it('设置里的「主动刷新额度」开关写入设置', async () => {
+    const { getByRole, findByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-quota-card');
+    fireEvent.click(getByRole('tab', { name: '预算与隐私' }));
+    const sw = await findByTestId('usage-active-quota');
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(sw);
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) =>
+            c[0] === 'ai:usage:set-settings' &&
+            (c[1] as { activeQuotaRefresh?: boolean }).activeQuotaRefresh === false,
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it('API 计费的工具仍显示「API 计费，无订阅额度」', async () => {
+    quota = [
+      { id: 'claude', label: 'Claude Code', status: 'api', auth: 'api', windows: [] },
+      { id: 'codex', label: 'Codex', status: 'api', auth: 'api', windows: [] },
+    ];
+    const { findByTestId, getByTestId } = render(<UsagePanel />);
+    await findByTestId('usage-quota-card');
+    expect(getByTestId('usage-quota-claude').getAttribute('data-status')).toBe('api');
+    expect(getByTestId('usage-quota-claude').textContent).toContain('API 计费，无订阅额度');
   });
 });
 

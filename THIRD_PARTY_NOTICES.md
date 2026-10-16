@@ -88,6 +88,13 @@ Node.js permission model (both MIT, already listed). No code from Open Interpret
 or other copyleft agents was used; no new dependencies were added. Python, when used, is the
 user's own system interpreter and is not redistributed.
 
+## Subscription quota readers
+
+Clean-room TypeScript in `packages/electron/src/usage/`; no dependencies added. The restricted
+`claude -p /usage` subprocess and the reset-time parser are written from scratch against the
+official CLIs' documented behaviour. Codex quota is read through the official `codex app-server`
+JSON-RPC (`account/rateLimits/read`), so credentials never leave the CLI.
+
 ## Production dependencies (generated with `pnpm licenses list --prod -r`)
 
 | Package                                                   | Version(s)    | Licence                   |

@@ -5,9 +5,13 @@
  * - Claude Code：官方命令 `claude auth status`（JSON，只取 authMethod 字段；输出里的邮箱等一律丢弃）。
  * - Codex：官方命令 `codex login status`（只看是 ChatGPT 还是 API Key；输出里的 Key 片段一律丢弃）。
  *   这两个命令由官方 CLI 自己读它的凭据，Nomi 只看到「登录方式」这一个结论。
- * - CLI 不可用 / 超时时的本地兜底，只检查「配置里有没有出现某个键名 / 字段」，不读取值：
- *   Claude：~/.claude/settings.json 的 env 里有 ANTHROPIC_API_KEY / AUTH_TOKEN / BASE_URL / 云厂商开关 → API；
- *   Codex：config.toml 的 forced_login_method / 自定义 model_provider；日志里有带套餐的 rate_limits → 订阅。
+ * - 身份指纹：`claude auth status` 的 JSON 里有邮箱 / 组织 id，这里只用「随机盐 + sha256」算出一个短指纹，
+ *   明文丢弃（见 quotaIdentity.ts），用来判断是否换号。
+ * - CLI 不可用 / 超时时的本地兜底，只检查配置里是否「配了」某个键，不保存也不记录值：
+ *   Claude：<CLAUDE_CONFIG_DIR 或 ~/.claude>/settings.json 与 settings.local.json 的 apiKeyHelper，
+ *   以及 env 里的 ANTHROPIC_API_KEY / AUTH_TOKEN / BASE_URL / 云厂商开关 → API；
+ *   Codex：<CODEX_HOME 或 ~/.codex>/config.toml 的 forced_login_method / 自定义 model_provider；
+ *   日志里有带套餐的 rate_limits → 订阅。绝不打开 auth.json / .credentials.json / 系统钥匙串。
  * - dsh（DeepSeek 官方接口 / 自配供应商）与 Nomi 对话都走 API Key：固定 API。
  */
 import { execFile } from 'node:child_process';
@@ -18,14 +22,16 @@ import { promisify } from 'node:util';
 
 import { resolveCliBinAsync, withCliPath } from '../cli/detect';
 
+import { claudeConfigDir, codexHomeDir } from './cliHomes';
 import type { QuotaEntry } from './quota';
+import { fingerprint } from './quotaIdentity';
 
 const execFileP = promisify(execFile);
 
 /** subscription = 账号 / 订阅登录；api = API Key / 第三方供应商 / 本地路由；unknown = 没登录或判断不了 */
 export type AuthMode = 'subscription' | 'api' | 'unknown';
 
-/** `claude auth status` 的 JSON：只认 authMethod（官方 CLI 参考列出的取值） */
+/** `claude auth status` 的 JSON：只认 authMethod / apiProvider（官方 CLI 参考列出的取值） */
 export function parseClaudeAuthStatus(text: string): AuthMode | null {
   let o: unknown;
   try {
@@ -33,12 +39,46 @@ export function parseClaudeAuthStatus(text: string): AuthMode | null {
   } catch {
     return null;
   }
-  const m = (o as { authMethod?: unknown } | null)?.authMethod;
+  const j = o as { authMethod?: unknown; apiProvider?: unknown } | null;
+  const m = j?.authMethod;
   if (typeof m !== 'string') return null;
-  if (m === 'claude.ai' || m === 'oauth_token') return 'subscription';
+  if (m === 'claude.ai' || m === 'oauth_token') {
+    // 账号登录但走的不是 Anthropic 官方（Bedrock / Vertex / Foundry）：没有订阅额度
+    if (typeof j?.apiProvider === 'string' && j.apiProvider !== 'firstParty') return 'api';
+    return 'subscription';
+  }
   if (m === 'api_key' || m === 'api_key_helper' || m === 'third_party') return 'api';
   if (m === 'none') return 'unknown';
   return null;
+}
+
+const clip = (v: unknown, max: number): string | null =>
+  typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;
+
+/**
+ * 从 `claude auth status` 的 JSON 里取「身份指纹 + 套餐」：邮箱 / 组织 id 只进 sha256，明文丢弃；
+ * 套餐（subscriptionType，如 pro / max）是非敏感的展示信息。
+ */
+export function parseClaudeIdentity(
+  text: string,
+  salt: string,
+): { fp: string | null; plan?: string } {
+  let o: Record<string, unknown> | null = null;
+  try {
+    const j = JSON.parse(text) as unknown;
+    if (j && typeof j === 'object' && !Array.isArray(j)) o = j as Record<string, unknown>;
+  } catch {
+    /* 不是 JSON */
+  }
+  if (!o) return { fp: null };
+  const plan = clip(o.subscriptionType, 24);
+  const email = clip(o.email, 320);
+  // 没有邮箱就没有可靠身份：返回 null（不把不同账号误判为同一个）
+  const fp = fingerprint(salt, [email, clip(o.orgId, 80) ?? clip(o.organizationId, 80), plan]);
+  return {
+    fp,
+    ...(plan ? { plan: plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase() } : {}),
+  };
 }
 
 /** `codex login status` 的输出：Logged in using ChatGPT / Logged in using an API key - … / Not logged in */
@@ -59,29 +99,59 @@ const CLAUDE_API_KEYS = [
   'CLAUDE_CODE_USE_FOUNDRY',
 ];
 
-/** 兜底：settings.json 的 env 块里出现 API 相关键名 → API（只看键名，不看值） */
-export function claudeAuthFromConfig(home: string, env: NodeJS.ProcessEnv): AuthMode | null {
-  if (CLAUDE_API_KEYS.some((k) => !!env[k])) return 'api';
-  try {
-    const o = JSON.parse(fs.readFileSync(path.join(home, '.claude', 'settings.json'), 'utf8')) as {
-      env?: Record<string, unknown>;
-    };
-    const e = o && typeof o.env === 'object' && o.env ? o.env : {};
-    if (CLAUDE_API_KEYS.some((k) => k in e)) return 'api';
-  } catch {
-    /* 没有 / 不是合法 JSON */
+/** 「配了」：非空字符串且不是 0 / false；布尔取其值；其它非空值算配了。只判断有没有，值本身不保存 */
+function isConfigured(v: unknown): boolean {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'string') {
+    const n = v.trim().toLowerCase();
+    return n !== '' && n !== '0' && n !== 'false';
   }
-  return null;
+  return v !== null && v !== undefined;
+}
+
+const asRecord = (v: unknown): Record<string, unknown> | null =>
+  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+
+/** 配置里是否把 Claude Code 指向了官方订阅之外（环境变量 / settings 的 env / apiKeyHelper） */
+export function hasCustomClaudeConfiguration(
+  env: NodeJS.ProcessEnv | Record<string, unknown>,
+  settingsDocuments: unknown[] = [],
+): boolean {
+  if (CLAUDE_API_KEYS.some((k) => isConfigured(env[k]))) return true;
+  for (const d of settingsDocuments) {
+    const s = asRecord(d);
+    if (!s) continue;
+    if (isConfigured(s.apiKeyHelper)) return true;
+    const e = asRecord(s.env);
+    if (e && CLAUDE_API_KEYS.some((k) => isConfigured(e[k]))) return true;
+  }
+  return false;
+}
+
+/** 读 settings.json / settings.local.json（只在内存里判断是否配了自定义供应商，不记录任何值） */
+export function readClaudeSettingsDocs(home: string, env: NodeJS.ProcessEnv): unknown[] {
+  const dir = claudeConfigDir(home, env);
+  const out: unknown[] = [];
+  for (const name of ['settings.json', 'settings.local.json']) {
+    try {
+      out.push(JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')));
+    } catch {
+      /* 没有 / 不是合法 JSON */
+    }
+  }
+  return out;
+}
+
+/** 兜底：自定义供应商 / apiKeyHelper → API（settings.json + settings.local.json，尊重 CLAUDE_CONFIG_DIR） */
+export function claudeAuthFromConfig(home: string, env: NodeJS.ProcessEnv): AuthMode | null {
+  return hasCustomClaudeConfiguration(env, readClaudeSettingsDocs(home, env)) ? 'api' : null;
 }
 
 /** 兜底：config.toml 里的 forced_login_method / 自定义 model_provider（只看这两个字段，不碰 auth.json） */
 export function codexAuthFromConfig(home: string, env: NodeJS.ProcessEnv): AuthMode | null {
   let toml: string;
   try {
-    toml = fs.readFileSync(
-      path.join(env.CODEX_HOME || path.join(home, '.codex'), 'config.toml'),
-      'utf8',
-    );
+    toml = fs.readFileSync(path.join(codexHomeDir(home, env), 'config.toml'), 'utf8');
   } catch {
     return null;
   }
@@ -103,6 +173,16 @@ export interface AuthDeps {
   run?: (kind: 'claude' | 'codex') => Promise<string | null>;
   /** 兜底之外的本地线索：来源里已经有带套餐的额度快照 */
   hasSubscriptionData?: (id: 'claude' | 'codex') => boolean;
+  /** 身份指纹用的本机随机盐（见 quotaIdentity.ts）；不给则不产生指纹 */
+  salt?: () => string;
+}
+
+/** 登录方式 + 非敏感的身份信息（指纹 / 套餐） */
+export interface AuthInfo {
+  mode: AuthMode;
+  /** 账号指纹（换号检测用）；取不到可靠身份时为 null */
+  fp: string | null;
+  plan?: string;
 }
 
 const TTL_MS = 5 * 60_000;
@@ -130,8 +210,8 @@ async function runStatus(kind: 'claude' | 'codex'): Promise<string | null> {
 }
 
 export class AuthModeDetector {
-  private readonly cache = new Map<string, { at: number; mode: AuthMode }>();
-  private readonly inflight = new Map<string, Promise<AuthMode>>();
+  private readonly cache = new Map<string, { at: number; info: AuthInfo }>();
+  private readonly inflight = new Map<string, Promise<AuthInfo>>();
 
   constructor(private readonly d: AuthDeps = {}) {}
 
@@ -140,17 +220,22 @@ export class AuthModeDetector {
   }
 
   /** nomi / dsh 固定 API；claude / codex 先问官方命令，再用本地配置兜底 */
-  detect(id: string): Promise<AuthMode> {
-    if (id === 'nomi' || id === 'dsh') return Promise.resolve('api');
-    if (id !== 'claude' && id !== 'codex') return Promise.resolve('unknown');
+  async detect(id: string): Promise<AuthMode> {
+    return (await this.detectFull(id)).mode;
+  }
+
+  /** 同 detect，同时带上身份指纹 / 套餐（来自同一次官方命令输出，不额外起进程） */
+  detectFull(id: string): Promise<AuthInfo> {
+    if (id === 'nomi' || id === 'dsh') return Promise.resolve({ mode: 'api', fp: null });
+    if (id !== 'claude' && id !== 'codex') return Promise.resolve({ mode: 'unknown', fp: null });
     const hit = this.cache.get(id);
-    if (hit && this.now() - hit.at < TTL_MS) return Promise.resolve(hit.mode);
+    if (hit && this.now() - hit.at < TTL_MS) return Promise.resolve(hit.info);
     const pending = this.inflight.get(id);
     if (pending) return pending;
     const p = this.probe(id)
-      .then((mode) => {
-        this.cache.set(id, { at: this.now(), mode });
-        return mode;
+      .then((info) => {
+        this.cache.set(id, { at: this.now(), info });
+        return info;
       })
       .finally(() => this.inflight.delete(id));
     this.inflight.set(id, p);
@@ -161,9 +246,12 @@ export class AuthModeDetector {
     this.cache.clear();
   }
 
-  private async probe(id: 'claude' | 'codex'): Promise<AuthMode> {
+  private async probe(id: 'claude' | 'codex'): Promise<AuthInfo> {
     const home = this.d.home ?? os.homedir();
     const env = this.d.env ?? process.env;
+    // Claude：配置里指向了自定义供应商 / apiKeyHelper → 一律按 API（不再调用 CLI）
+    if (id === 'claude' && claudeAuthFromConfig(home, env) === 'api')
+      return { mode: 'api', fp: null };
     const text: string | null = await (this.d.run ?? runStatus)(id).catch(() => null);
     const fromCli = text
       ? id === 'claude'
@@ -171,11 +259,15 @@ export class AuthModeDetector {
         : parseCodexLoginStatus(text)
       : null;
     // 官方命令说「没登录」时，仍允许下面的兜底再判断（例如只用环境变量的 API Key）
-    if (fromCli && fromCli !== 'unknown') return fromCli;
+    if (fromCli && fromCli !== 'unknown') {
+      const ident =
+        id === 'claude' && text && this.d.salt ? parseClaudeIdentity(text, this.d.salt()) : null;
+      return { mode: fromCli, fp: ident?.fp ?? null, ...(ident?.plan ? { plan: ident.plan } : {}) };
+    }
     const cfg = id === 'claude' ? claudeAuthFromConfig(home, env) : codexAuthFromConfig(home, env);
-    if (cfg) return cfg;
-    if (this.d.hasSubscriptionData?.(id)) return 'subscription';
-    return 'unknown';
+    if (cfg) return { mode: cfg, fp: null };
+    if (this.d.hasSubscriptionData?.(id)) return { mode: 'subscription', fp: null };
+    return { mode: 'unknown', fp: null };
   }
 }
 

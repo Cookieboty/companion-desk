@@ -638,6 +638,15 @@ i.heatCell {
   font-size: var(--cd-font-size-sm);
   color: var(--cd-color-text-muted);
 }
+.quotaNotes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--cd-font-size-sm);
+}
 .quotaHook {
   display: flex;
   flex-direction: column;

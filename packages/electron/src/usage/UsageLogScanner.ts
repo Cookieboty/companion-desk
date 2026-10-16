@@ -13,6 +13,7 @@ import path from 'node:path';
 
 import { zstdDecode } from '../cli/SessionHistoryService';
 
+import { claudeConfigDir, codexHomeDir } from './cliHomes';
 import {
   parseAiderChunk,
   parseClaudeChunk,
@@ -133,13 +134,11 @@ export class UsageLogScanner {
   }
 
   private claudeDir(): string {
-    const env = process.env.CLAUDE_CONFIG_DIR?.trim();
-    return path.join(env ? path.resolve(env) : path.join(this.home, '.claude'), 'projects');
+    return path.join(claudeConfigDir(this.home), 'projects');
   }
 
   private codexDir(): string {
-    const env = process.env.CODEX_HOME?.trim();
-    return path.join(env ? path.resolve(env) : path.join(this.home, '.codex'), 'sessions');
+    return path.join(codexHomeDir(this.home), 'sessions');
   }
 
   /** 候选文件（各工具 mtime 倒序；只含回看窗口内修改过的） */

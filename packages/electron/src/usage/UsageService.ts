@@ -41,6 +41,8 @@ import {
   SNAPSHOT_FILE,
   type HookStatus,
 } from './claudeStatusline';
+import { ClaudeUsageFetcher, type ClaudeFetcherDeps } from './claudeSubscription';
+import { CodexRateLimitReader, type CodexRpcDeps } from './codexRateLimits';
 import { formatAmount, formatMoney, formatTokens } from './money';
 import {
   BUILTIN_PRICES,
@@ -48,7 +50,16 @@ import {
   PRICING_TABLE_DATE,
   sanitizeCustomPrices,
 } from './pricing';
-import { QuotaRegistry, sanitizeWindows, type QuotaEntry, type QuotaWindow } from './quota';
+import {
+  QuotaRegistry,
+  sanitizeWindows,
+  type QuotaEntry,
+  type QuotaOrigin,
+  type QuotaReading,
+  type QuotaWindow,
+} from './quota';
+import { IdentityQuotaCache, type RefreshResult } from './quotaCache';
+import { loadSalt } from './quotaIdentity';
 import type { SniffedUsage } from './sniff';
 import type { CustomPrice, Currency, UsageRecord, UsageSource } from './types';
 import { UsageLedger, type Retention } from './UsageLedger';
@@ -61,6 +72,11 @@ export interface UsageSettings {
   enabled: boolean;
   /** 读取本机编程工具自己的会话日志（Claude Code / Codex / dsh …） */
   readToolLogs: boolean;
+  /**
+   * 主动刷新额度：用户点「刷新」时，才拉起官方 CLI（claude -p /usage、codex app-server）去取额度。
+   * 关闭后刷新只重读本机已有的数据（会话日志 / 状态栏快照），不会启动任何 CLI。
+   */
+  activeQuotaRefresh: boolean;
   retention: Retention;
   currency: Currency;
   /** 1 USD = ? CNY；默认只是占位常量，界面标注「可自定义」 */
@@ -79,6 +95,7 @@ export interface UsageSettings {
 export const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   enabled: true,
   readToolLogs: true,
+  activeQuotaRefresh: true,
   retention: '1y',
   currency: 'USD',
   cnyPerUsd: DEFAULT_CNY_PER_USD,
@@ -98,6 +115,7 @@ export function sanitizeUsageSettings(
   return {
     enabled: b(o.enabled, base.enabled),
     readToolLogs: b(o.readToolLogs, base.readToolLogs),
+    activeQuotaRefresh: b(o.activeQuotaRefresh, base.activeQuotaRefresh),
     retention:
       o.retention === '90d' || o.retention === '1y' || o.retention === 'forever'
         ? o.retention
@@ -141,6 +159,35 @@ type Deps = {
   authRun?: AuthDeps['run'];
   /** 平台（测试注入）：statusline 快照脚本需要 sh，Windows 暂不支持 */
   platform?: NodeJS.Platform;
+  /** 环境变量（测试注入）：CLAUDE_CONFIG_DIR / CODEX_HOME 等；默认 process.env */
+  env?: NodeJS.ProcessEnv;
+  /** 主动刷新额度所用的官方 CLI 调用（测试注入） */
+  claudeUsage?: ClaudeFetcherDeps;
+  codexRpc?: Partial<CodexRpcDeps>;
+};
+
+/** 单个工具这次「刷新」的结果（面板提示用，不含任何账号信息） */
+export type ToolRefresh =
+  | { state: 'fresh-local' }
+  | { state: 'ok' }
+  | { state: 'throttled'; retryInSec: number }
+  | { state: 'transient'; reason: string; stale: boolean }
+  | { state: 'auth'; reason: string }
+  | { state: 'skipped'; reason: 'disabled' | 'not-subscription' };
+
+export interface QuotaRefreshReport {
+  entries: QuotaEntry[];
+  tools: Partial<Record<'claude' | 'codex', ToolRefresh>>;
+}
+
+/** 本机已有的额度快照多久算「还新」：更新鲜就不拉起官方 CLI */
+export const QUOTA_FRESH_MS = 5 * 60_000;
+
+type CodexStore = {
+  ts: number;
+  windows: QuotaWindow[];
+  plan?: string;
+  origin: QuotaOrigin;
 };
 
 export interface UsageAlert {
@@ -241,7 +288,18 @@ export class UsageService {
   >();
   private readonly quotaPath: string;
   /** Codex 日志里最近一次额度快照（落盘，重启后还能看到上次的） */
-  private codexQuota: { ts: number; windows: QuotaWindow[]; plan?: string } | null = null;
+  private codexQuota: CodexStore | null = null;
+  /** 账号变化 / 认证失效后，早于这个时间的日志额度快照不再采用（避免旧账号的数字回流） */
+  private quotaFloor = 0;
+  /** 上次读到的账号指纹（非敏感，见 quotaIdentity.ts）：用来发现换号 */
+  private codexFp: string | null = null;
+  private claudeFp: string | null = null;
+  private readonly salt: string;
+  private readonly claudeCache: IdentityQuotaCache;
+  private readonly codexCache: IdentityQuotaCache;
+  private readonly claudeFetcher: ClaudeUsageFetcher;
+  private readonly codexReader: CodexRateLimitReader;
+  private refreshing: Promise<QuotaRefreshReport> | null = null;
   readonly quotaSources = new QuotaRegistry();
   private readonly auth: AuthModeDetector;
   private sessionCache: {
@@ -257,11 +315,22 @@ export class UsageService {
     this.quotaPath = path.join(d.root, 'quota.json');
     this.load();
     this.loadAlerts();
+    this.salt = loadSalt(d.root);
+    this.claudeCache = new IdentityQuotaCache(() => this.now());
+    this.codexCache = new IdentityQuotaCache(() => this.now());
     this.loadQuota();
+    this.claudeFetcher = new ClaudeUsageFetcher({ now: d.now, ...d.claudeUsage });
+    this.codexReader = new CodexRateLimitReader({
+      now: d.now,
+      salt: () => this.salt,
+      ...d.codexRpc,
+    });
     this.auth = new AuthModeDetector({
       home: d.home,
+      env: d.env,
       now: d.now,
       run: d.authRun,
+      salt: () => this.salt,
       // 日志 / 快照里已经有带额度的数据，说明是订阅登录
       hasSubscriptionData: (id) =>
         id === 'codex' ? !!this.codexQuota?.plan : !!readStatuslineSnapshot(d.root),
@@ -270,19 +339,33 @@ export class UsageService {
       id: 'codex',
       label: 'Codex',
       read: () =>
-        this.settings.enabled && this.settings.readToolLogs && this.codexQuota
+        this.settings.enabled &&
+        this.codexQuota &&
+        (this.codexQuota.origin === 'app-server' || this.settings.readToolLogs)
           ? {
               windows: this.codexQuota.windows,
               updatedAt: this.codexQuota.ts,
               plan: this.codexQuota.plan,
+              origin: this.codexQuota.origin,
+              ...(this.codexQuota.origin === 'app-server' && this.codexCache.isStale()
+                ? { stale: true }
+                : {}),
             }
           : null,
     });
     this.quotaSources.register({
       id: 'claude',
       label: 'Claude Code',
-      // 用户开启 statusline 快照后，由官方 statusline 输入里的 rate_limits 提供
-      read: () => (this.settings.enabled ? readStatuslineSnapshot(this.d.root) : null),
+      // 状态栏快照（用户开启后由官方 statusline 输入里的 rate_limits 提供）与「刷新」时
+      // `claude -p /usage` 取到的值，谁新用谁
+      read: () => {
+        if (!this.settings.enabled) return null;
+        const snap = readStatuslineSnapshot(this.d.root);
+        const snapR: QuotaReading | null = snap ? { ...snap, origin: 'statusline' } : null;
+        const cmd = this.claudeCache.get();
+        if (snapR && cmd) return snapR.updatedAt >= cmd.updatedAt ? snapR : cmd;
+        return snapR ?? cmd;
+      },
     });
     this.ledger = new UsageLedger({ root: d.root, logger: d.logger, now: d.now });
     this.scanner = new UsageLogScanner({
@@ -334,15 +417,25 @@ export class UsageService {
   private loadQuota(): void {
     try {
       const o = JSON.parse(fs.readFileSync(this.quotaPath, 'utf8')) as {
-        codex?: { ts?: unknown; windows?: unknown; plan?: unknown };
+        codex?: { ts?: unknown; windows?: unknown; plan?: unknown; origin?: unknown };
+        codexFp?: unknown;
+        claudeFp?: unknown;
+        floor?: unknown;
       };
+      const fp = (v: unknown) => (typeof v === 'string' && /^[0-9a-f]{16}$/.test(v) ? v : null);
+      this.codexFp = fp(o.codexFp);
+      this.claudeFp = fp(o.claudeFp);
+      this.codexCache.observeIdentity(this.codexFp);
+      this.claudeCache.observeIdentity(this.claudeFp);
+      if (typeof o.floor === 'number' && o.floor > 0) this.quotaFloor = o.floor;
       const c = o.codex;
-      if (c && typeof c.ts === 'number' && Array.isArray(c.windows)) {
+      if (c && typeof c.ts === 'number' && Array.isArray(c.windows) && c.ts >= this.quotaFloor) {
         const windows = sanitizeWindows(c.windows as QuotaWindow[], 0);
         if (windows.length)
           this.codexQuota = {
             ts: c.ts,
             windows,
+            origin: c.origin === 'app-server' ? 'app-server' : 'session-log',
             ...(typeof c.plan === 'string' ? { plan: c.plan } : {}),
           };
       }
@@ -351,15 +444,55 @@ export class UsageService {
     }
   }
 
-  private setCodexQuota(q: { ts: number; windows: QuotaWindow[]; plan?: string }): void {
-    if (this.codexQuota && q.ts < this.codexQuota.ts) return;
-    this.codexQuota = q;
+  private saveQuota(): void {
     try {
-      writePrivateFile(this.quotaPath, JSON.stringify({ codex: q }));
+      writePrivateFile(
+        this.quotaPath,
+        JSON.stringify({
+          ...(this.codexQuota ? { codex: this.codexQuota } : {}),
+          ...(this.codexFp ? { codexFp: this.codexFp } : {}),
+          ...(this.claudeFp ? { claudeFp: this.claudeFp } : {}),
+          ...(this.quotaFloor ? { floor: this.quotaFloor } : {}),
+        }),
+      );
     } catch (e) {
       this.d.logger.warn('usage quota save failed', { e: String(e) });
     }
+  }
+
+  private setCodexQuota(q: { ts: number; windows: QuotaWindow[]; plan?: string }): void {
+    this.storeCodexQuota({ ...q, origin: 'session-log' });
+  }
+
+  private storeCodexQuota(q: CodexStore): void {
+    if (q.ts < this.quotaFloor) return;
+    if (this.codexQuota && q.ts < this.codexQuota.ts) return;
+    this.codexQuota = q;
+    this.saveQuota();
     this.changed();
+  }
+
+  /** 换号 / 认证失效：清掉旧值，并让早于现在的日志快照不再回流 */
+  private dropCodexQuota(floor = this.now()): void {
+    this.codexQuota = null;
+    this.quotaFloor = Math.max(this.quotaFloor, floor);
+    this.saveQuota();
+  }
+
+  private dropClaudeQuota(): void {
+    this.claudeCache.clear();
+    fs.rmSync(path.join(this.d.root, SNAPSHOT_FILE), { force: true });
+  }
+
+  /** Claude 账号指纹变了（换号）：清掉状态栏快照和缓存里上一个账号的额度 */
+  private observeClaudeIdentity(fp: string | null): void {
+    if (!fp) return;
+    if (this.claudeFp && this.claudeFp !== fp) this.dropClaudeQuota();
+    if (this.claudeFp !== fp) {
+      this.claudeFp = fp;
+      this.saveQuota();
+    }
+    this.claudeCache.observeIdentity(fp);
   }
 
   /** 订阅额度：来源读不到就是「不可用」（面板显示「暂未返回可用额度」），从不估算 */
@@ -378,13 +511,120 @@ export class UsageService {
    */
   async quotaView(): Promise<QuotaEntry[]> {
     const modes: Record<string, AuthMode> = {};
-    for (const id of ['claude', 'codex', 'dsh', 'nomi'])
-      modes[id] = await this.auth.detect(id).catch(() => 'unknown' as AuthMode);
+    for (const id of ['claude', 'codex', 'dsh', 'nomi']) {
+      const info = await this.auth.detectFull(id).catch(() => null);
+      modes[id] = info?.mode ?? 'unknown';
+      if (id === 'claude' && info) this.observeClaudeIdentity(info.fp);
+    }
     return applyAuthModes(this.quota(), modes, new Set(this.scanner.detected()));
   }
 
+  /**
+   * 用户点「刷新」：先重读本机已有的数据（会话日志）；快照缺失 / 过期 / 超过 5 分钟才会拉起官方 CLI：
+   * - Claude Code：`claude -p /usage --output-format json`；
+   * - Codex：`codex app-server` 的 `account/rateLimits/read`。
+   * 两者都是官方 CLI 用自己的登录态去取，Nomi 不接触凭据；每个来源 60 秒内最多真实拉取一次；
+   * 「主动刷新额度」关闭时一律不拉起 CLI。从不自动轮询，只在这里被调用时才会触发。
+   */
+  refreshQuota(): Promise<QuotaRefreshReport> {
+    if (this.refreshing) return this.refreshing;
+    const p = this.doRefreshQuota();
+    this.refreshing = p;
+    void p
+      .finally(() => {
+        if (this.refreshing === p) this.refreshing = null;
+      })
+      .catch(() => undefined);
+    return p;
+  }
+
+  private fresh(r: QuotaReading | null): boolean {
+    if (!r) return false;
+    const now = this.now();
+    if (now - r.updatedAt > QUOTA_FRESH_MS) return false;
+    return !sanitizeWindows(r.windows, now).some((w) => w.expired);
+  }
+
+  private mapRefresh(r: RefreshResult, cache: IdentityQuotaCache): ToolRefresh {
+    switch (r.state) {
+      case 'ok':
+        return { state: 'ok' };
+      case 'throttled':
+        return { state: 'throttled', retryInSec: Math.max(1, Math.ceil(cache.retryInMs() / 1000)) };
+      case 'transient':
+        return { state: 'transient', reason: r.reason, stale: r.stale };
+      default:
+        return { state: 'auth', reason: r.reason };
+    }
+  }
+
+  private async doRefreshQuota(): Promise<QuotaRefreshReport> {
+    const tools: QuotaRefreshReport['tools'] = {};
+    if (this.settings.enabled && this.settings.readToolLogs)
+      await this.scan().catch(() => undefined);
+    // 重新问一遍官方登录状态（换号 / 退出登录马上生效）
+    this.auth.invalidate();
+    const active = this.settings.enabled && this.settings.activeQuotaRefresh;
+
+    const cl = await this.auth.detectFull('claude').catch(() => null);
+    if (cl) this.observeClaudeIdentity(cl.fp);
+    if (cl?.mode === 'subscription') {
+      if (!active) tools.claude = { state: 'skipped', reason: 'disabled' };
+      else {
+        const snap = readStatuslineSnapshot(this.d.root);
+        if (this.fresh(snap) || this.fresh(this.claudeCache.get()))
+          tools.claude = { state: 'fresh-local' };
+        else {
+          const r = await this.claudeCache.refresh(cl.fp, () => this.claudeFetcher.fetch(cl.plan));
+          if (r.state === 'auth') this.dropClaudeQuota();
+          tools.claude = this.mapRefresh(r, this.claudeCache);
+        }
+      }
+    } else if (cl) tools.claude = { state: 'skipped', reason: 'not-subscription' };
+
+    const cx = await this.auth.detectFull('codex').catch(() => null);
+    if (cx?.mode === 'subscription') {
+      if (!active) tools.codex = { state: 'skipped', reason: 'disabled' };
+      else if (this.codexQuota && this.fresh({ ...this.codexQuota, updatedAt: this.codexQuota.ts }))
+        tools.codex = { state: 'fresh-local' };
+      else {
+        const r = await this.codexCache.refresh(null, () => this.codexReader.fetch());
+        if (r.state === 'auth') {
+          this.codexFp = null;
+          this.codexCache.clear();
+          this.dropCodexQuota();
+        } else if (r.state === 'ok') {
+          const fp = this.codexCache.currentIdentity();
+          const v = this.codexCache.get();
+          // 换号：旧账号的值与更早的日志快照一起清掉
+          if (this.codexFp && fp && this.codexFp !== fp)
+            this.dropCodexQuota(v?.updatedAt ?? this.now());
+          if (fp) this.codexFp = fp;
+          if (v) {
+            this.codexQuota = null;
+            this.storeCodexQuota({
+              ts: v.updatedAt,
+              windows: v.windows,
+              ...(v.plan ? { plan: v.plan } : {}),
+              origin: 'app-server',
+            });
+          }
+        }
+        tools.codex = this.mapRefresh(r, this.codexCache);
+      }
+    } else if (cx) tools.codex = { state: 'skipped', reason: 'not-subscription' };
+
+    this.changed();
+    return { entries: await this.quotaView(), tools };
+  }
+
   quotaHookStatus(): HookStatus {
-    return hookStatus({ root: this.d.root, home: this.d.home, platform: this.d.platform });
+    return hookStatus({
+      root: this.d.root,
+      home: this.d.home,
+      env: this.d.env,
+      platform: this.d.platform,
+    });
   }
 
   /** 开启 / 关闭 Claude Code statusline 额度快照（用户在面板里主动操作） */
@@ -392,6 +632,7 @@ export class UsageService {
     const dep = {
       root: this.d.root,
       home: this.d.home,
+      env: this.d.env,
       platform: this.d.platform,
       now: this.d.now,
     };
@@ -856,6 +1097,11 @@ export class UsageService {
     this.save();
     this.ledger.clear();
     this.codexQuota = null;
+    this.codexFp = null;
+    this.claudeFp = null;
+    this.quotaFloor = 0;
+    this.codexCache.clear();
+    this.claudeCache.clear();
     try {
       fs.rmSync(this.quotaPath, { force: true });
       fs.rmSync(path.join(this.d.root, SNAPSHOT_FILE), { force: true });
@@ -917,6 +1163,7 @@ export class UsageService {
     handle('ai:usage:csv', (q) => this.csv(dq(q)));
     handle('ai:usage:set-settings', (p) => this.setSettings((p ?? {}) as Partial<UsageSettings>));
     handle('ai:usage:quota', () => this.quotaView());
+    handle('ai:usage:quota-refresh', () => this.refreshQuota());
     handle('ai:usage:quota-hook', () => this.quotaHookStatus());
     handle('ai:usage:quota-hook-set', (v) => this.setQuotaHook(v === true));
     handle('ai:usage:scan', async () => {
