@@ -1293,8 +1293,8 @@ const SPINE_MIN = 0.0015;
 /** the bent figure is rendered once at this multiple of rig px, then re-sliced along the spine */
 export const SPINE_SCRATCH_SCALE = 1.25;
 /** spine curve: fixed below the belt line, fully leaning from the chest up (rig px from the top) */
-const SPINE_BELT = 0.94;
-const SPINE_CHEST = 0.46;
+export const SPINE_BELT = 0.94;
+export const SPINE_CHEST = 0.46;
 const SPINE_STRIP = 4;
 let spineCanvas: HTMLCanvasElement | OffscreenCanvas | undefined;
 
