@@ -86,12 +86,16 @@ export function createElectronIpcAdapter(): IpcAdapter {
       ipcMain.removeHandler(channel);
     },
     on(channel, listener) {
-      const wrapped = (e: unknown, ...args: unknown[]) => listener(wrap(e as never), ...args);
       let byChannel = wrappedListeners.get(listener);
       if (!byChannel) {
         byChannel = new Map();
         wrappedListeners.set(listener, byChannel);
       }
+      // 同一 (channel, listener) 重复注册：先摘掉旧包装函数，
+      // 否则 Map 覆盖后旧监听器仍挂在 ipcMain 上，无法再注销
+      const prev = byChannel.get(channel);
+      if (prev) ipcMain.off(channel, prev);
+      const wrapped = (e: unknown, ...args: unknown[]) => listener(wrap(e as never), ...args);
       byChannel.set(channel, wrapped);
       ipcMain.on(channel, wrapped);
     },
