@@ -28,7 +28,7 @@ MODEL = ROOT / 'packages/renderer/public/assets/models/sprite/nomi'
 # Keep in sync with packages/renderer/src/mascot/rig/armKin.ts
 ELBOW_S = 340
 HAND_S = 560
-OVERLAP = 48  # px of feathered overlap — keep hinge sharp (was 56)
+OVERLAP = 125  # px each piece extends past the elbow plane so the renderer can MITRE them (hard cut at draw time)
 
 
 def feather(alpha: np.ndarray, dist: np.ndarray, lo: float, hi: float, into: str) -> np.ndarray:
@@ -39,6 +39,7 @@ def feather(alpha: np.ndarray, dist: np.ndarray, lo: float, hi: float, into: str
         return (alpha * (1 - t)).astype(np.uint8)
     return (alpha * t).astype(np.uint8)
 
+ELBOW_EDGES: list = [0.0, 0.0, 0.0]
 CUFF_W = 102.0  # rendered cuff width (rig px) the forearm tapers to: matches sleeveEndWidth() in meshArm.ts
 
 
@@ -47,7 +48,7 @@ def smooth(x: np.ndarray, k: int) -> np.ndarray:
     return np.convolve(pad, np.ones(2 * k + 1) / (2 * k + 1), mode='same')[k:-k]
 
 
-def taper_forearm(a: np.ndarray, geom: dict, ux, uy, wx, wy) -> np.ndarray:
+def taper_forearm(a: np.ndarray, geom: dict, ux, uy, wx, wy, s_start=None, flare=True) -> np.ndarray:
     """Resample the sleeve across its width so the forearm keeps ~the upper-arm width at the elbow
     and ends at the cuff width (the master art flares into a wide bell). Pure resample of the
     official pixels along the sleeve normal, no repaint."""
@@ -70,15 +71,16 @@ def taper_forearm(a: np.ndarray, geom: dict, ux, uy, wx, wy) -> np.ndarray:
     lo, hi = smooth(lo, 12), smooth(hi, 12)
     centre, width = (lo + hi) / 2, hi - lo
     w_el = width[ELBOW_S]
+    ELBOW_EDGES[:] = [float(lo[ELBOW_S]), float(hi[ELBOW_S]), float(centre[ELBOW_S])]
     def ramp(sv):
         t_ = np.clip((sv - ELBOW_S) / (HAND_S - ELBOW_S), 0, 1)
         return t_ * t_ * (3 - 2 * t_)
     si = np.clip(s, 0, len(S) - 1)
     c_s = np.interp(si, S, centre)
     w_src = np.interp(si, S, width)
-    w_tgt = w_el + (CUFF_W - w_el) * ramp(s)
-    ratio = np.where(s > ELBOW_S - OVERLAP, w_src / np.maximum(w_tgt, 1.0), 1.0)
-    ratio = np.where(s > ELBOW_S - OVERLAP, ratio, 1.0)
+    s_start = ELBOW_S - OVERLAP if s_start is None else s_start
+    w_tgt = w_el + (CUFF_W - w_el) * ramp(s) if flare else np.full_like(s, w_el)
+    ratio = np.where(s > s_start, w_src / np.maximum(w_tgt, 1.0), 1.0)
     n_src = c_s + (n - c_s) * ratio
     # source pixel for each destination pixel
     sx = geom['s0'][0] + ux * s + wx * n_src - 0.5
@@ -99,9 +101,33 @@ def taper_forearm(a: np.ndarray, geom: dict, ux, uy, wx, wy) -> np.ndarray:
     out = np.concatenate([rgb, al], axis=2)
     out = np.clip(out + 0.5, 0, 255).astype(np.uint8)
     # unchanged rows (proximal of the taper) stay byte-identical to the master
-    same = (s <= ELBOW_S - OVERLAP)[..., None]
+    same = (s <= s_start)[..., None]
     out = np.where(same, a, out)
     return out
+
+
+def mirror_back(f: np.ndarray, s: np.ndarray, ux: float, uy: float) -> np.ndarray:
+    """The forearm's back extension (s < ELBOW_S, only ever seen as the OUTER mitre corner) must be plain
+    sleeve fabric, never the strap/hardware that sits just above the elbow in the master. Mirror the
+    fabric just below the elbow across the elbow plane (same pixels, flipped along the sleeve axis)."""
+    h, w = f.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w]
+    d = 2.0 * (ELBOW_S - s)
+    sx = xs + ux * d
+    sy = ys + uy * d
+    x0 = np.floor(sx).astype(int); y0 = np.floor(sy).astype(int)
+    fx = (sx - x0)[..., None]; fy = (sy - y0)[..., None]
+    pm = f.astype(np.float64); pm[..., :3] *= pm[..., 3:4] / 255.0
+    def g(yy, xx):
+        ok = ((yy >= 0) & (yy < h) & (xx >= 0) & (xx < w))[..., None]
+        return pm[np.clip(yy, 0, h - 1), np.clip(xx, 0, w - 1)] * ok
+    v = (g(y0, x0) * (1 - fx) * (1 - fy) + g(y0, x0 + 1) * fx * (1 - fy)
+         + g(y0 + 1, x0) * (1 - fx) * fy + g(y0 + 1, x0 + 1) * fx * fy)
+    al = v[..., 3:4]
+    rgb = np.where(al > 0.5, v[..., :3] / np.maximum(al, 1e-6) * 255.0, 0)
+    m = np.clip(np.concatenate([rgb, al], axis=2) + 0.5, 0, 255).astype(np.uint8)
+    back = ((s < ELBOW_S) & (s > ELBOW_S - OVERLAP))[..., None]
+    return np.where(back, m, f)
 
 
 def cut(side: str, geom: dict):
@@ -120,34 +146,16 @@ def cut(side: str, geom: dict):
     n = (xs + 0.5 - geom['s0'][0]) * wx + (ys + 0.5 - geom['s0'][1]) * wy
     out = {}
 
-    # --- upper / fore: generous INNER overlap seals the crook; OUTER hard-cut prevents balloon.
-    upper = a.copy()
-    keep = s < ELBOW_S + OVERLAP
-    upper[~keep] = 0
-    upper[..., 3] = feather(upper[..., 3], s, ELBOW_S + OVERLAP * 0.2, ELBOW_S + OVERLAP, 'hi')
-    fore = taper_forearm(a, geom, ux, uy, wx, wy)
+    # --- upper / fore: rigid sleeve pieces that each run PAST the elbow plane (OVERLAP px). The renderer
+    # miters them (clip both to the bend bisector) so the joint is two opaque, hard-edged pieces that
+    # meet exactly: sharp outer corner, closed inner crook, continuous outline, no feathered alpha.
+    # Both are width-normalised to the elbow width around the joint so the mitre corners coincide.
+    upper = taper_forearm(a, geom, ux, uy, wx, wy, s_start=ELBOW_S, flare=False)
+    upper[s >= ELBOW_S + OVERLAP] = 0
+    fore = taper_forearm(a, geom, ux, uy, wx, wy, s_start=ELBOW_S - OVERLAP)
+    fore = mirror_back(fore, s, ux, uy)
     keep = (s > ELBOW_S - OVERLAP) & (s < HAND_S + 6)
     fore[~keep] = 0
-    fore[..., 3] = feather(fore[..., 3], s, ELBOW_S - OVERLAP, ELBOW_S - OVERLAP * 0.2, 'lo')
-    outer = n * sgn
-    outer_w = np.clip(outer / 32, 0, 1)
-    kill_u = np.clip((s - (ELBOW_S - 4)) / 18, 0, 1) * outer_w
-    kill_u = kill_u * kill_u * (3 - 2 * kill_u)
-    upper[..., 3] = (upper[..., 3].astype(np.float64) * (1 - kill_u)).astype(np.uint8)
-    kill_f = np.clip(((ELBOW_S + 4) - s) / 18, 0, 1) * outer_w
-    kill_f = kill_f * kill_f * (3 - 2 * kill_f)
-    fore[..., 3] = (fore[..., 3].astype(np.float64) * (1 - kill_f)).astype(np.uint8)
-    # Soft-fade master's elbow crease on distal upper (prevents ghost line through the fore).
-    # Keep most opacity so the crook stays solid when upper sits over fore.
-    crease = np.clip((s - (ELBOW_S - 30)) / 30, 0, 1)
-    upper[..., 3] = (upper[..., 3].astype(np.float64) * (1 - 0.4 * crease * crease)).astype(np.uint8)
-    # Clamp strap / hardware: fade dark pixels on the distal tip (last ~36px of upper)
-    # so buckle/strap ends never float in the crook when the sleeve bends.
-    tip = np.clip((s - (ELBOW_S - 48)) / 48, 0, 1)
-    dark = (upper[..., 0].astype(np.float64) + upper[..., 1] + upper[..., 2]) / 3.0
-    is_hw = (dark < 110) & (upper[..., 3] > 60)
-    kill_hw = (tip * is_hw.astype(np.float64))  # linear fade over tip — full kill at elbow
-    upper[..., 3] = (upper[..., 3].astype(np.float64) * (1.0 - kill_hw)).astype(np.uint8)
     # --- elbow sweep strip: the sleeve cross-section at the elbow (official pixels, averaged over a
     # few px of s). The renderer sweeps it through the bend angle about the elbow, so the OUTER corner
     # is a clean round hinge in the sleeve's own outline colour, and the inner crook is solid.
@@ -175,7 +183,8 @@ def cut(side: str, geom: dict):
     rgb = np.where(al > 0.5, acc[:, :3] / np.maximum(al, 1e-6) * 255.0, 0)
     row = np.clip(np.concatenate([rgb, al], axis=1) + 0.5, 0, 255).astype(np.uint8)
     strip_img = np.repeat(row[None, :, :], THICK, axis=0)
-    strip_meta = {'n0': n_lo, 'n1': n_hi, 'thick': THICK}
+    strip_meta = {'n0': n_lo, 'n1': n_hi, 'thick': THICK,
+                  'edgeLo': round(ELBOW_EDGES[0], 2), 'edgeHi': round(ELBOW_EDGES[1], 2)}
 
     for name, piece in (('upper', upper), ('fore', fore)):
         alpha = piece[..., 3]

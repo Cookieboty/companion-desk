@@ -1708,7 +1708,7 @@ export function drawRig(
       if (bImg && nImg && bOff) {
         // a strongly swung arm leaves only the shoulder cap behind (no ghost of the rest sleeve)
         const swing = Math.min(1, Math.max(0, (Math.abs(ex[ia] * DEG) - 0.35) / 0.5));
-        const fillR = Math.round((240 - 130 * swing) / 20) * 20;
+        const fillR = Math.round((240 - 180 * swing) / 20) * 20;
         const f = bodySideFill(bImg, nImg, side, [pv[0] - bOff[0], pv[1] - bOff[1]], fillR);
         if (f) {
           ctx.save();

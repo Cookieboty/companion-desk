@@ -73,6 +73,8 @@ export interface ArmDrawParams {
   hardEnd?: boolean;
 }
 
+/** mitre plane offset along the bend bisector (px) — keeps the strap hardware on one piece */
+const MITRE_SHIFT = 0;
 const MAX_ROWS = 40;
 const COLS = 6;
 const rowS = new Float64Array(MAX_ROWS);
@@ -359,6 +361,112 @@ export function drawArmStrip(
   ch.hand(armFrame);
 }
 
+/**
+ * The shipped hand plates are paler and have much lighter linework than the face art
+ * (skin ≈ 252,225,210 vs the face's 251,215,195; outline ≈ 140,99,79 vs 69,44,32). Re-grade them
+ * ONCE per image (cached) so a raised hand matches the face: skin tone multiplied onto the face
+ * colour, outline darkened to the face's line weight, pale fringe pixels pulled toward skin.
+ * Only the hand above the cuff is touched; the white sleeve stub keeps its colour.
+ */
+const FACE_SKIN: readonly [number, number, number] = [251.4, 215.1, 195];
+const HAND_SKIN: readonly [number, number, number] = [252, 225.1, 209.9];
+const gradedHands = new WeakMap<object, RigImageSource>();
+function gradedHand(img: RigImageSource, meta: HandPieceMeta): RigImageSource {
+  const hit = gradedHands.get(img as object);
+  if (hit) return hit;
+  let out: RigImageSource;
+  try {
+    const w = (img as { width: number }).width;
+    const h = (img as { height: number }).height;
+    const c: OffscreenCanvas | HTMLCanvasElement =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(w, h)
+        : Object.assign(document.createElement('canvas'), { width: w, height: h });
+    const g = c.getContext('2d') as CanvasRenderingContext2D;
+    g.drawImage(img as CanvasImageSource, 0, 0);
+    const d = g.getImageData(0, 0, w, h);
+    const px = d.data;
+    const cuff = meta.cuffY || meta.ay * 0.6;
+    const kr = FACE_SKIN[0] / HAND_SKIN[0];
+    const kg = FACE_SKIN[1] / HAND_SKIN[1];
+    const kb = FACE_SKIN[2] / HAND_SKIN[2];
+    for (let y = 0; y < h; y++) {
+      const wy = y <= cuff ? 1 : Math.max(0, 1 - (y - cuff) / 30);
+      if (wy <= 0) continue;
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const a = px[i + 3];
+        if (a < 4) continue;
+        let r = px[i];
+        let gg = px[i + 1];
+        let b = px[i + 2];
+        r += (r * kr - r) * wy;
+        gg += (gg * kg - gg) * wy;
+        b += (b * kb - b) * wy;
+        const lum = 0.3 * r + 0.59 * gg + 0.11 * b;
+        // outline: darken toward the face's line weight (skin ≳ 200 is left alone)
+        const t = Math.max(0, Math.min(1, (lum - 70) / 130));
+        const f = 1 - wy * 0.5 * (1 - t * t * (3 - 2 * t));
+        r *= f;
+        gg *= f;
+        b *= f;
+        // pale anti-alias fringe → skin tone, so the hand has no white halo
+        if (a < 240) {
+          const fr = 1 - wy * 0.1 * (1 - a / 240);
+          r *= fr;
+          gg *= fr;
+          b *= fr;
+        }
+        px[i] = r;
+        px[i + 1] = gg;
+        px[i + 2] = b;
+      }
+    }
+    // contour: the plates carry only a hairline (and a pale halo) at the silhouette, which
+    // vanishes at hand scale. Add a thin dark-brown line just outside the alpha edge (cached).
+    const R = 4;
+    const al = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) al[i] = px[i * 4 + 3];
+    const hz = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let m = 0;
+        for (let k = Math.max(0, x - R); k <= Math.min(w - 1, x + R); k++) {
+          const v = al[y * w + k];
+          if (v > m) m = v;
+        }
+        hz[y * w + x] = m;
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        const wy = y <= cuff - 90 ? 1 : Math.max(0, (cuff - y) / 90);
+        if (wy <= 0) continue;
+        let m = 0;
+        for (let k = Math.max(0, y - R); k <= Math.min(h - 1, y + R); k++) {
+          const v = hz[k * w + x];
+          if (v > m) m = v;
+        }
+        const i = (y * w + x) * 4;
+        const a = px[i + 3] / 255;
+        const oa = (m / 255) * 0.75 * wy * (1 - a);
+        if (oa <= 0.003) continue;
+        const na = a + oa;
+        px[i] = (px[i] * a + 88 * oa) / na;
+        px[i + 1] = (px[i + 1] * a + 56 * oa) / na;
+        px[i + 2] = (px[i + 2] * a + 44 * oa) / na;
+        px[i + 3] = na * 255;
+      }
+    }
+    g.putImageData(d, 0, 0);
+    out = c as unknown as RigImageSource;
+  } catch {
+    out = img;
+  }
+  gradedHands.set(img as object, out);
+  return out;
+}
+
 /** Scale of the hand (skin) part of a piece; every variant is fitted to the same palm size. */
 export function handScaleFor(meta: HandPieceMeta): number {
   return HAND_BASE * (meta.k ?? 1);
@@ -384,6 +492,9 @@ export function drawHandPiece(
   keepBelowCuff?: number,
 ): void {
   if (alpha <= 0.004) return;
+  // the hand is fully opaque from 60% mix on (no long semi-transparent ghost while it fades in/out)
+  alpha = smooth01(Math.min(1, alpha / 0.6));
+  img = gradedHand(img, meta);
   const prev = ctx.globalAlpha;
   ctx.globalAlpha = prev * alpha;
   ctx.save();
@@ -610,7 +721,7 @@ export interface ArmPieceInfo {
   offset: readonly [number, number];
   size: readonly [number, number];
   /** elbow sweep strip: sleeve-normal range [n0, n1] (px) and strip thickness along the spine */
-  strip?: { n0: number; n1: number; thick: number };
+  strip?: { n0: number; n1: number; thick: number; edgeLo?: number; edgeHi?: number };
 }
 
 export interface ArmPieces {
@@ -742,12 +853,13 @@ export function hingeFrames(
 }
 
 /**
- * Draw the arm as two rigid sleeve pieces (upper + forearm) hinged at the elbow with an official-art
- * elbow cap over the OUTER corner. The INNER crook is solid because the upper piece is drawn over
- * the forearm's proximal end. Joints, lengths and the hand attach are the ArmChain / IK values
- * (hingeFrames), so the wrist lands exactly on the solved target.
+ * Draw the arm as two rigid sleeve pieces (upper + forearm) joined by a MITRE: both pieces run past
+ * the elbow plane and are clipped to the two halves of the bend bisector. They meet exactly — sharp
+ * outer corner (the jacket hinge), closed inner crook, the official sleeve outline running unbroken
+ * around the corner — with fully opaque hard edges (no feathered overlap, no swept strip, no wedge).
+ * Joints, lengths and the hand attach are the ArmChain / IK values (hingeFrames), so the wrist lands
+ * exactly on the solved target.
  */
-
 export function drawArmHinge(
   ctx: Ctx,
   g: ArmGeom,
@@ -756,7 +868,7 @@ export function drawArmHinge(
   pieces: ArmPieces,
   upperImg: RigImageSource,
   foreImg: RigImageSource,
-  elbowImg: RigImageSource,
+  _elbowImg: RigImageSource,
   p: ArmDrawParams,
 ): void {
   const ch = chainFor(upperImg as object, g, pivot, off);
@@ -769,64 +881,98 @@ export function drawArmHinge(
     ctx.restore();
   };
 
-  put(foreImg, f.fore, pieces.fore);
-
-  // OUTER-only elbow strip → hard anime jacket hinge (never fan the inner half into a
-  // hollow white pie / grey edge). Crook seal is a dark underside wedge drawn AFTER upper
-  // so it also clamps strap tips that poke into the V.
-  const strip = pieces.elbow.strip;
-  if (strip && Math.abs(f.sweep) > 0.04) {
-    const axis = Math.atan2(ch.u0y, ch.u0x);
-    const step = 0.045;
-    const n = Math.min(56, Math.ceil(Math.abs(f.sweep) / step));
-    const sgn = ch.sgn >= 0 ? 1 : -1;
-    let n0 = strip.n0;
-    let n1 = strip.n1;
-    if (sgn > 0) n0 = Math.max(n0, -4);
-    else n1 = Math.min(n1, 4);
-    const srcX = n0 - strip.n0;
-    const sw = n1 - n0 + 1;
-    if (sw > 2) {
-      for (let k = 0; k <= n; k++) {
-        const rot = f.dirU + (f.sweep * k) / n - axis;
-        const cr = Math.cos(rot);
-        const sr = Math.sin(rot);
-        ctx.save();
-        ctx.transform(
-          cr * ch.w0x - sr * ch.w0y,
-          sr * ch.w0x + cr * ch.w0y,
-          cr * ch.u0x - sr * ch.u0y,
-          sr * ch.u0x + cr * ch.u0y,
-          f.elbow[0],
-          f.elbow[1],
-        );
-        ctx.drawImage(
-          elbowImg as CanvasImageSource,
-          srcX, 0, sw, strip.thick,
-          n0, -strip.thick / 2 - 0.4, sw, strip.thick + 0.8,
-        );
-        ctx.restore();
-      }
-    }
+  // mitre plane through the elbow, normal = mean of the two segment directions
+  let nx = Math.cos(f.dirU) + Math.cos(f.dirF);
+  let ny = Math.sin(f.dirU) + Math.sin(f.dirF);
+  const nl = Math.hypot(nx, ny);
+  if (nl < 1e-3) {
+    nx = Math.cos(f.dirU);
+    ny = Math.sin(f.dirU);
+  } else {
+    nx /= nl;
+    ny /= nl;
   }
-
-  // Sleeve-underside wedge UNDER upper: plugs the crook V. Color matched to jacket
-  // shadow (not a bright white pie, not a brown blob, no stroke — strokes read as floating strap).
-  if (Math.abs(f.sweep) > 0.4) {
-    const side = f.sweep >= 0 ? 1 : -1;
-    const i0 = f.dirU - side * (Math.PI / 2);
-    const i1 = f.dirU + f.sweep - side * (Math.PI / 2);
-    ctx.save();
-    ctx.fillStyle = 'rgb(232, 214, 204)';
+  const cx = f.elbow[0] + nx * MITRE_SHIFT;
+  const cy = f.elbow[1] + ny * MITRE_SHIFT;
+  const L = 1600;
+  const tx = -ny;
+  const ty = nx;
+  /** clip to the half plane `side * (p - c)·n ≥ -grow` */
+  const clipHalf = (side: 1 | -1, grow: number) => {
+    const ox = cx - side * nx * grow;
+    const oy = cy - side * ny * grow;
     ctx.beginPath();
-    ctx.moveTo(f.elbow[0], f.elbow[1]);
-    ctx.arc(f.elbow[0], f.elbow[1], 32, i0, i1, !(f.sweep > 0));
+    ctx.moveTo(ox - tx * L, oy - ty * L);
+    ctx.lineTo(ox + tx * L, oy + ty * L);
+    ctx.lineTo(ox + tx * L + side * nx * L, oy + ty * L + side * ny * L);
+    ctx.lineTo(ox - tx * L + side * nx * L, oy - ty * L + side * ny * L);
     ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
+    ctx.clip();
+  };
 
-  put(upperImg, f.upper, pieces.upper);
+  // round outer corner: each rigid piece is cut flat at its own elbow perpendicular, and a disc of
+  // sleeve-half-width radius around the elbow rounds the OUTER corner (a hard jacket hinge, never
+  // the long spike a deep mitre would make). The mitre plane splits the disc between the pieces.
+  const uU: [number, number] = [Math.cos(f.dirU), Math.sin(f.dirU)];
+  const uF: [number, number] = [Math.cos(f.dirF), Math.sin(f.dirF)];
+  const turn = Math.atan2(Math.sin(f.dirF - f.dirU), Math.cos(f.dirF - f.dirU));
+  const sg = turn >= 0 ? 1 : -1;
+  const strip = pieces.elbow.strip;
+  const eLo = strip?.edgeLo ?? -40;
+  const eHi = strip?.edgeHi ?? 40;
+  // piece sleeve-normal → screen: |A·w| and which side of the axis is the outer side of the fold
+  const wv: [number, number] = [
+    f.upper[0] * ch.w0x + f.upper[2] * ch.w0y,
+    f.upper[1] * ch.w0x + f.upper[3] * ch.w0y,
+  ];
+  const wl = Math.hypot(wv[0], wv[1]) || 1;
+  const outerAng = f.dirU - (sg * Math.PI) / 2;
+  const outerPlus = Math.cos(outerAng) * wv[0] + Math.sin(outerAng) * wv[1] > 0;
+  const R = (outerPlus ? eHi : -eLo) * wl + 1.5;
+  const half = (px: number, py: number, dx: number, dy: number, grow: number) => {
+    // region (p - elbow)·d ≥ -grow
+    const ox = f.elbow[0] - dx * grow;
+    const oy = f.elbow[1] - dy * grow;
+    const ex = -dy;
+    const ey = dx;
+    ctx.beginPath();
+    ctx.moveTo(ox - ex * L, oy - ey * L);
+    ctx.lineTo(ox + ex * L, oy + ey * L);
+    ctx.lineTo(ox + ex * L + dx * L, oy + ey * L + dy * L);
+    ctx.lineTo(ox - ex * L + dx * L, oy - ey * L + dy * L);
+    ctx.closePath();
+    void px;
+    void py;
+  };
+  const disc = () => {
+    ctx.beginPath();
+    ctx.arc(f.elbow[0], f.elbow[1], R, 0, Math.PI * 2);
+  };
+  const pass = (img: RigImageSource, m: Affine, info: ArmPieceInfo, side: 1 | -1, grow: number) => {
+    const d: [number, number] = side > 0 ? uF : [-uU[0], -uU[1]];
+    for (const shape of ['flat', 'disc'] as const) {
+      ctx.save();
+      clipHalf(side, grow);
+      if (shape === 'flat') half(0, 0, d[0], d[1], 0.8);
+      else disc();
+      ctx.clip();
+      put(img, m, info);
+      ctx.restore();
+    }
+  };
+  pass(foreImg, f.fore, pieces.fore, 1, 1.2);
+  pass(upperImg, f.upper, pieces.upper, -1, 0);
+
+  // outline of the rounded outer corner, in the sleeve's own line colour
+  ctx.save();
+  ctx.strokeStyle = 'rgba(78, 54, 46, 0.92)';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const a0 = f.dirU - (sg * Math.PI) / 2;
+  ctx.arc(f.elbow[0], f.elbow[1], R - 1.6, a0, a0 + turn, sg < 0);
+  ctx.stroke();
+  ctx.restore();
 
   ch.hand(armFrame);
 }
