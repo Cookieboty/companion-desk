@@ -1,6 +1,8 @@
 import type { ToolDefinition } from '@nomi-ai/bundle-ig-base';
 import { z } from 'zod';
 
+import { isPrivateHost } from '../security/netGuard';
+
 import type { Danger } from './consent';
 import { ToolError } from './toolError';
 
@@ -99,7 +101,9 @@ export function checkUrl(raw: string): URL {
     /^169\.254\./.test(h) ||
     /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
     /^f[cd][0-9a-f]{2}:/.test(h) ||
-    /^fe80:/.test(h);
+    /^fe80:/.test(h) ||
+    // 非常规写法（十进制 / 八进制 / 十六进制 IPv4、IPv4-mapped IPv6 等）也一并拦截
+    isPrivateHost(h);
   if (priv) throw new ToolError('blocked_url', '出于安全考虑，不能打开本机或局域网地址');
   return u;
 }

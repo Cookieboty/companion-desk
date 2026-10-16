@@ -32,6 +32,13 @@ function upstream(handler: (res: http.ServerResponse) => void) {
   );
 }
 
+/** 带上本地路由令牌的 fetch（路由要求 x-api-key / Bearer 令牌） */
+const routeFetch = (svc: CliRouteService, input: string, init: RequestInit = {}) =>
+  fetch(input, {
+    ...init,
+    headers: { 'x-api-key': svc.authToken(), ...((init.headers as Record<string, string>) ?? {}) },
+  });
+
 async function route(kind: 'claude' | 'codex', baseUrl: string, apiFormat: CliApiFormat) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-route-usage-'));
   const probe = http.createServer();
@@ -77,7 +84,7 @@ describe('本地路由 → 用量记账', () => {
       );
     });
     const { svc, url } = await route('claude', up.base, 'anthropic_messages');
-    const r = await fetch(`${url}/v1/messages`, {
+    const r = await routeFetch(svc, `${url}/v1/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ model: 'x', messages: [] }),
@@ -111,7 +118,7 @@ describe('本地路由 → 用量记账', () => {
       res.end('data: [DONE]\n\n');
     });
     const { svc, url } = await route('claude', up.base, 'openai_chat_completions');
-    const r = await fetch(`${url}/v1/messages`, {
+    const r = await routeFetch(svc, `${url}/v1/messages`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -137,7 +144,7 @@ describe('本地路由 → 用量记账', () => {
       res.end('{"error":"boom"}');
     });
     const { svc, url } = await route('codex', up.base, 'openai_responses');
-    const r = await fetch(`${url}/v1/responses`, {
+    const r = await routeFetch(svc, `${url}/v1/responses`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ model: 'x', input: 'a' }),

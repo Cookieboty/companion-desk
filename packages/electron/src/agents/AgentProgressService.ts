@@ -7,13 +7,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { BrowserWindow, Notification, ipcMain } from 'electron';
+import { BrowserWindow, Notification } from 'electron';
 
 import { broadcastMascotCommand } from '../ai/mascotCommand';
 import { iconImage } from '../core/appIcon';
 import type { DesktopService } from '../desktop/DesktopService';
 import { t as tr } from '../i18n';
 import { notifyIsland } from '../island/IslandService';
+import { guardedHandle } from '../security/guardedIpc';
 
 import {
   type AgentKind,
@@ -1045,16 +1046,8 @@ export class AgentProgressService {
   }
 
   registerIpc(): void {
-    const handle = (ch: string, fn: (...a: unknown[]) => unknown) => {
-      ipcMain.removeHandler(ch);
-      ipcMain.handle(ch, (_e, ...a) => {
-        try {
-          return fn(...a);
-        } catch (err) {
-          return { __error: { message: err instanceof Error ? err.message : String(err) } };
-        }
-      });
-    };
+    const handle = (ch: string, fn: (...a: unknown[]) => unknown) =>
+      guardedHandle(ch, fn, { owner: 'AgentProgressService' });
     handle('ai:agents:state', () => this.state());
     handle('ai:agents:set-settings', (p) =>
       this.setSettings((p ?? {}) as Partial<AgentWatchSettings>),
