@@ -160,6 +160,11 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
     let probeAction = '';
     let frameMs = 0;
     let frameN = 0;
+    // canvas 视口矩形缓存：窗口缩放时失效（位置移动不影响 client 坐标）
+    let cachedRect: DOMRect | null = null;
+    const onResize = () => {
+      cachedRect = null;
+    };
     const tick = (now: number) => {
       // pause entirely while the window is hidden / minimised (resumed by visibilitychange)
       if (document.hidden) {
@@ -235,7 +240,9 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
           ds.mascotPaintMs = frameMs.toFixed(2);
         }
         const view = rigTransform(rig, w, h, box);
-        const r = canvas.getBoundingClientRect();
+        // canvas 固定铺满窗口，位置只在窗口移动/缩放时变；缓存避免每帧强制布局
+        cachedRect ??= canvas.getBoundingClientRect();
+        const r = cachedRect;
         const shift = (b: { left: number; right: number; top: number; bottom: number } | null) =>
           b && {
             left: b.left + r.left,
@@ -313,11 +320,13 @@ export const SpriteCanvas: React.FC<SpriteCanvasProps> = ({
       }
     };
     document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('resize', onResize);
 
     return () => {
       cancelled = true;
       window.clearTimeout(greetTimer);
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('resize', onResize);
       cancelAnimationFrame(raf);
       detach?.();
       backendRef.current?.dispose();
