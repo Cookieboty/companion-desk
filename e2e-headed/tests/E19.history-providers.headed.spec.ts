@@ -411,7 +411,7 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     await shot(chat, '13-providers-dsh');
 
     // 回到对话：Claude 标签的输入栏只显示 Claude 自己启用的档案 + 模型；Codex 标签显示默认
-    await chat.getByText('‹ 返回对话').click();
+    await chat.locator('[data-testid="settings-back"]').click();
 
     // 顶栏「知识 · 记忆 · 日程」→ 日程标签：没有「编程助手」标签
     await chat.click('[data-testid="open-hub-panel"]');
@@ -452,7 +452,7 @@ test.describe('E19 · endpoints · history sessions · provider page', () => {
     expect(readFileSync(settingsPath, 'utf8')).not.toContain('ANTHROPIC_BASE_URL');
 
     // ── 普通模式：侧栏只剩 Nomi 会话，没有「全部 / 按端」与 CLI 历史 ─────────────
-    await chat.getByText('‹ 返回对话').click();
+    await chat.locator('[data-testid="settings-back"]').click();
     await chat.click('[data-testid="chat-mode-normal"]');
     await expect(chat.locator('[data-testid="list-view-all"]')).toHaveCount(0);
     await expect(chat.locator('[data-testid="cli-history"]')).toHaveCount(0);
