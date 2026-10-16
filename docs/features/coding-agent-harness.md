@@ -553,3 +553,18 @@ Nomi 用 Nomi 应用标志；Codex 用 OpenAI 标志；dsh 用 DeepSeek 鲸鱼�
 - 实现：主进程 `desktop:bubble` 载荷新增 `voice`（`full` / `cue` / `none`）与 `kind`（`digest` / `done` / `fail`），渲染进程 `MascotAudioBridge` 据此决定出声方式；未带 `voice` 的旧气泡沿用原有行为。
 
 **测试**：`packages/electron/tests/unit/agents/agentDigest.test.ts`（fake timers：开始不提示、10 分钟汇总与分组、0 个不提示、总结播报开 / 关、与结束提示去重、免打扰、关闭监听 / `stop` 清理定时器）、`agentProgress.test.ts` / `agentEndpoints.test.ts`、`HarnessTabs.test.ts`（`progressHint`）、`packages/renderer/tests/mascot/audioBridgeBubble.test.tsx`（三种出声方式）、`packages/ai-chat/tests/providersPage.test.tsx`（开关）。**未验证**：真实语音听感，以及 Windows / macOS 真机上的气泡、灵动岛与定时行为。
+
+## 14. 会话视图改版（2026-10-16，工具调用不再是纯文本流）
+
+验收反馈：开发模式下工具调用是一长串绿色「工具完成：xxx」纯文本。改为参考 Codex Desktop 的交互思路（自行实现）：
+
+- **数据**：主进程解析各后端的工具参数 / 输出 / 思考 / 子代理父子关系（`streamParse.ts`），给事件打时间戳，
+  每轮结束把有界的 `trace` 写进助手消息（`traceBuilder.ts`，≤300 条、≤400 KB，超限先丢最早的输出）。
+  旧消息只有 `tools: string[]`，渲染端回退成已结束的调用。
+- **渲染**（`ai-chat/src/components/CliConversation`）：用户气泡右对齐；助手正文走自带的轻量 Markdown（AST → React，无 innerHTML，
+  链接只放行 http/https/mailto）；工具调用为紧凑行（lucide 图标 + 动作摘要 + 状态 + 耗时）。
+- **分组**（`utils/toolTrace.ts`）：连续的「探索」（读 / 搜 / 列 / 联网）、「命令」、「编辑」、「其它」各 ≥2 个折叠成一组
+  （「已探索 3 个文件、5 次搜索」），默认折叠；单个调用保持单行；单个编辑默认展开 diff；子代理（Task / spawn_subagent）独立成块，
+  内部调用按 `parentId` 嵌套；思考可折叠。
+- **滚动**：贴底才自动跟随，上滑不抢滚动条并出现「回到底部」；自己发消息或切标签回到底部。
+- **Mock**：`NOMI_MOCK_TOOLS=rich`（Claude）/ `NOMI_MOCK_SCENARIO=rich`（Grok）+ `NOMI_MOCK_STEP_MS` 产生多种工具调用，见 E24。
