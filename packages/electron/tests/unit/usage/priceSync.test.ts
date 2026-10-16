@@ -178,7 +178,9 @@ describe('PriceSync（mock fetch，不联网）', () => {
     // 落盘后重新载入（回退用的缓存）
     const again = new PriceSync({ root });
     expect(again.entries().length).toBe(sync.entries().length);
-    expect(fs.statSync(path.join(root, 'price-sync.json')).mode & 0o777).toBe(0o600);
+    // 文件权限仅当前用户（POSIX）
+    if (process.platform !== 'win32')
+      expect(fs.statSync(path.join(root, 'price-sync.json')).mode & 0o777).toBe(0o600);
   });
 
   it('第二次带 If-None-Match；304 不下载、保留缓存、只更新核对时间', async () => {

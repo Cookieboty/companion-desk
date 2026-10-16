@@ -123,6 +123,8 @@ describe('绝不触碰登录凭据（mock fs / child_process 校验）', () => {
   });
 
   it('完整刷新流程（官方 CLI 为假脚本）：没打开 auth.json / .credentials.json / 钥匙串，没有任何 HTTP，命令只有固定参数', async () => {
+    // 假 CLI 脚本靠 shebang + 可执行位启动，仅 POSIX 可用
+    if (process.platform === 'win32') return;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-priv-bin-'));
     const claude = path.join(dir, 'claude');
     const codex = path.join(dir, 'codex');

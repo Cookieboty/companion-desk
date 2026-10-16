@@ -258,6 +258,8 @@ describe('CodexRateLimitReader：app-server 流程（mock）', () => {
 
 describe('真实子进程（假的 codex 脚本）', () => {
   it('脚本经 stdio 走完握手；结束后进程退出', async () => {
+    // 假 CLI 脚本靠 shebang + 可执行位启动，仅 POSIX 可用
+    if (process.platform === 'win32') return;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-fakecodex-'));
     const bin = path.join(dir, 'codex');
     fs.writeFileSync(

@@ -96,7 +96,8 @@ describe('statusline 钩子：开启 / 关闭 / 恢复', () => {
     const sl = readJson(settingsOf(home)).statusLine;
     expect(sl.type).toBe('command');
     expect(sl.command).toContain(path.join(root, SCRIPT_FILE));
-    expect(fs.statSync(path.join(root, SCRIPT_FILE)).mode & 0o111).not.toBe(0);
+    if (process.platform !== 'win32')
+      expect(fs.statSync(path.join(root, SCRIPT_FILE)).mode & 0o111).not.toBe(0);
     disableHook(dep);
     expect(readJson(settingsOf(home)).statusLine).toBeUndefined();
     expect(fs.existsSync(path.join(root, SCRIPT_FILE))).toBe(false);
@@ -123,7 +124,7 @@ describe('statusline 钩子：开启 / 关闭 / 恢复', () => {
     });
     expect(out.trim()).toBe('ORIGINAL-LINE');
     const snap = path.join(root, SNAPSHOT_FILE);
-    expect(fs.statSync(snap).mode & 0o077).toBe(0);
+    if (process.platform !== 'win32') expect(fs.statSync(snap).mode & 0o077).toBe(0);
     expect(readStatuslineSnapshot(root)!.windows.map((w) => w.id)).toEqual([
       'five_hour',
       'seven_day',

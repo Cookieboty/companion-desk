@@ -131,6 +131,8 @@ describe('ClaudeUsageFetcher：claude -p /usage（受限）', () => {
   });
 
   it('真实子进程（假的 claude 脚本）：stderr 里的内容不会进入结果，stdout 超限被终止', async () => {
+    // 假 CLI 脚本靠 shebang + 可执行位启动，仅 POSIX 可用
+    if (process.platform === 'win32') return;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nomi-fakeclaude-'));
     const bin = path.join(dir, 'claude');
     const script = (body: string) =>
