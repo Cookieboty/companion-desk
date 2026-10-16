@@ -8,7 +8,6 @@
  *
  * 受限子进程：临时目录当 cwd；--tools '' --strict-mcp-config --setting-sources '' --no-session-persistence；
  * 关遥测 / 错误上报 / 自动更新；超时 15 秒；stdout 上限 256KB；stderr 丢弃；Windows .cmd 垫片逐参引号；GUI PATH 补全。
- * 参考 juejin-usage（MIT）的 claude-subscription.ts，见 THIRD_PARTY_NOTICES.md。
  */
 import fs from 'node:fs';
 import os from 'node:os';

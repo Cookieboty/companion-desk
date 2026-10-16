@@ -6,9 +6,6 @@
  *   Current week (all models): 40% used · resets Oct 20, 3pm (Asia/Shanghai)
  * 这样的行；重置时间是自然语言（可能带 IANA 时区，可能跨夏令时），这里换算成时间戳。
  * 取不到就返回空，不猜。
- *
- * 解析思路参考 juejin-usage（MIT，https://github.com/juejin-cn/juejin-usage）的
- * claude-usage-parser.ts，见 THIRD_PARTY_NOTICES.md。
  */
 import type { QuotaWindow } from './quota';
 
