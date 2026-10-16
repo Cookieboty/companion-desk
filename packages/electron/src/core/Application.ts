@@ -38,6 +38,7 @@ import { ConfigService } from '../services/ConfigService';
 import { LoggerService, LogLevel } from '../services/LoggerService';
 import { getUpdateService } from '../services/UpdateService';
 import { ThemeService } from '../theme/ThemeService';
+import { getUsageService, initUsageService } from '../usage/UsageService';
 import { GlobalErrorHandler } from '../utils/ErrorHandler';
 import { perfMark } from '../utils/perfMarks';
 import { getVoiceService } from '../voice/VoiceService';
@@ -320,6 +321,15 @@ export class Application implements IApplication {
       });
       island.registerIpc();
 
+      // 用量与计费：Nomi 对话 / 本地路由 / 编程工具会话日志，全部只存本机
+      const usage = initUsageService({
+        root: path.join(app.getPath('userData'), 'usage'),
+        logger: this.logger as never,
+        providerName: (id) => this.aiRuntime?.listProviders().find((p) => p.id === id)?.name,
+      });
+      usage.registerIpc();
+      usage.start();
+
       const agents = initAgentProgressService({
         root: path.join(app.getPath('userData'), 'agents'),
         logger: this.logger as never,
@@ -516,6 +526,7 @@ export class Application implements IApplication {
       /* not started */
     }
     getAgentProgressService()?.stop();
+    getUsageService()?.stop();
     this.trayManager?.dispose();
     this.trayManager = undefined;
     if (!this.aiRuntime) return;

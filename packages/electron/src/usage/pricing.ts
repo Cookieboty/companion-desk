@@ -1,0 +1,189 @@
+/**
+ * 内置主流模型单价表（USD / 1M tokens）+ 别名 / 前缀匹配 + 费用计算。
+ *
+ * 数据来源：各家官方定价页（Anthropic / OpenAI / Google），整理于 PRICING_TABLE_DATE。
+ * 原则：没有把握的模型不放进表里 —— 查不到就是「未定价」，不估价、不编造；
+ * 用户可在设置里改价或新增自定义模型（0 也是合法的价格，例如本地模型）。
+ * 有分段计价的模型（按上下文长度 / 高峰时段）只收录基础档并在 note 里说明。
+ */
+import type { CustomPrice, ModelPrice, PriceEntry, UsageRecord } from './types';
+
+export const PRICING_TABLE_DATE = '2026-10-16';
+
+const p = (
+  model: string,
+  input: number,
+  output: number,
+  cacheRead?: number,
+  cacheWrite?: number,
+  note?: string,
+): PriceEntry => ({
+  model,
+  input,
+  output,
+  ...(cacheRead !== undefined ? { cacheRead } : {}),
+  ...(cacheWrite !== undefined ? { cacheWrite } : {}),
+  ...(note ? { note } : {}),
+});
+
+export const BUILTIN_PRICES: PriceEntry[] = [
+  // ---- Anthropic（缓存写按 5 分钟档）----
+  p('claude-fable-5-1', 10, 50, 0.25, 12.5),
+  p('claude-fable-5', 10, 50, 1, 12.5),
+  p('claude-opus-5-5', 4, 20, 0.2, 5),
+  p('claude-opus-5', 5, 25, 0.5, 6.25),
+  p('claude-opus-4-8', 5, 25, 0.5, 6.25),
+  p('claude-opus-4-7', 5, 25, 0.5, 6.25),
+  p('claude-opus-4-6', 5, 25, 0.5, 6.25),
+  p('claude-opus-4-5', 5, 25, 0.5, 6.25),
+  p('claude-opus-4-1', 15, 75, 1.5, 18.75),
+  p('claude-opus-4', 15, 75, 1.5, 18.75),
+  p('claude-sonnet-5-5', 2, 10, 0.1, 2.5),
+  p('claude-sonnet-5', 2, 10, 0.2, 2.5),
+  p('claude-sonnet-4-6', 3, 15, 0.3, 3.75),
+  p('claude-sonnet-4-5', 3, 15, 0.3, 3.75),
+  p('claude-sonnet-4', 3, 15, 0.3, 3.75),
+  p('claude-haiku-4-5', 1, 5, 0.1, 1.25),
+  p('claude-3-5-haiku', 0.8, 4, 0.08, 1),
+  // ---- OpenAI ----
+  p('gpt-6-astra', 10, 50, 1, 12.5, '≤272K'),
+  p('gpt-6-1-sol', 2, 10, 0.1, 2.5, '≤272K'),
+  p('gpt-6-sol', 2, 10, 0.2, 2.5, '≤272K'),
+  p('gpt-6-luna', 0.1, 0.5, 0.01, 0.125, '≤272K'),
+  p('gpt-5-6-sol', 4, 20, 0.4, 5, '≤272K'),
+  p('gpt-5-6-terra', 2, 12, 0.2, 2.5, '≤272K'),
+  p('gpt-5-6-luna', 0.2, 1.2, 0.02, 0.25, '≤272K'),
+  p('gpt-5-5', 5, 30, 0.5, undefined, '≤272K'),
+  p('gpt-5-4-mini', 0.75, 4.5, 0.075),
+  p('gpt-5-4-nano', 0.2, 1.25, 0.02),
+  p('gpt-5-4', 2.5, 15, 0.25, undefined, '≤272K'),
+  p('gpt-5-3-codex', 1.75, 14, 0.175),
+  p('gpt-5-2', 1.75, 14, 0.175),
+  p('gpt-5-1', 1.25, 10, 0.125),
+  p('gpt-5-mini', 0.25, 2, 0.025),
+  p('gpt-5-nano', 0.05, 0.4, 0.005),
+  p('gpt-5', 1.25, 10, 0.125),
+  p('gpt-4-1-mini', 0.4, 1.6, 0.1),
+  p('gpt-4-1-nano', 0.1, 0.4, 0.025),
+  p('gpt-4-1', 2, 8, 0.5),
+  p('gpt-4o-2024-05-13', 5, 15),
+  p('gpt-4o-mini', 0.15, 0.6, 0.075),
+  p('gpt-4o', 2.5, 10, 1.25),
+  p('o4-mini', 1.1, 4.4, 0.275),
+  p('o3-mini', 1.1, 4.4, 0.55),
+  p('o3', 2, 8, 0.5),
+  p('o1', 15, 60, 7.5),
+  // ---- Google Gemini（≤200K 提示词档）----
+  p('gemini-3-1-pro-preview', 2, 12, 0.2, undefined, '≤200K'),
+  p('gemini-3-1-flash-lite', 0.25, 1.5, 0.025),
+  p('gemini-3-flash-preview', 0.5, 3, 0.05),
+  p('gemini-2-5-pro', 1.25, 10, 0.125, undefined, '≤200K'),
+  p('gemini-2-5-flash-lite', 0.1, 0.4, 0.01),
+  p('gemini-2-5-flash', 0.3, 2.5, 0.03),
+];
+
+/**
+ * 模型名规范化：小写、去供应商前缀（anthropic/、openai/、models/ …）、去 [1m] 等后缀标记、
+ * 版本号里的点统一成 `-`（claude-opus-4.5 → claude-opus-4-5）。
+ */
+export function normalizeModel(raw: string): string {
+  let s = (raw || '').trim().toLowerCase();
+  if (!s) return '';
+  s = s.replace(/\[[^\]]*\]$/, '').trim();
+  const slash = s.lastIndexOf('/');
+  if (slash >= 0) s = s.slice(slash + 1);
+  s = s.replace(/^(models|anthropic|openai|google|azure)[.:]/, '');
+  // 点号版本 → 连字符；其它标点保持
+  s = s.replace(/(\d)\.(\d)/g, '$1-$2').replace(/_/g, '-');
+  return s;
+}
+
+/** 允许跟在已知模型名后面的「纯版本后缀」：日期、-latest、-preview、4 位日期码；其余视为另一个模型 */
+const VERSION_SUFFIX = /^(-(\d{8}|\d{4}-\d{2}-\d{2}|\d{4}|latest|preview|\d{2}-\d{4}))*$/;
+
+export interface PriceMatch {
+  price: ModelPrice;
+  /** 命中的表项（规范化名） */
+  matched: string;
+  custom: boolean;
+  note?: string;
+}
+
+/**
+ * 找单价：用户自定义（精确 → 前缀）优先于内置表（精确 → 最长前缀 + 版本后缀）。
+ * 找不到返回 null = 「未定价」。
+ */
+export function findPrice(model: string, custom: CustomPrice[] = []): PriceMatch | null {
+  const name = normalizeModel(model);
+  if (!name) return null;
+  const hit = (
+    list: Array<{ model: string } & ModelPrice & { note?: string }>,
+    isCustom: boolean,
+  ): PriceMatch | null => {
+    let best: (typeof list)[number] | null = null;
+    for (const e of list) {
+      const key = normalizeModel(e.model);
+      if (!key) continue;
+      const ok =
+        name === key || (name.startsWith(key) && VERSION_SUFFIX.test(name.slice(key.length)));
+      if (ok && (!best || normalizeModel(best.model).length < key.length)) best = e;
+    }
+    return best
+      ? {
+          price: {
+            input: best.input,
+            output: best.output,
+            ...(best.cacheRead !== undefined ? { cacheRead: best.cacheRead } : {}),
+            ...(best.cacheWrite !== undefined ? { cacheWrite: best.cacheWrite } : {}),
+          },
+          matched: normalizeModel(best.model),
+          custom: isCustom,
+          ...(best.note ? { note: best.note } : {}),
+        }
+      : null;
+  };
+  return hit(custom, true) ?? hit(BUILTIN_PRICES, false);
+}
+
+/** 缓存读 / 写没有单独标价时：缓存读按输入价、缓存写按输入价（保守，不凭空打折也不加价） */
+export function costUsd(
+  r: Pick<UsageRecord, 'input' | 'output' | 'cacheRead' | 'cacheWrite'>,
+  pr: ModelPrice,
+): number {
+  const M = 1_000_000;
+  return (
+    (r.input * pr.input +
+      r.output * pr.output +
+      r.cacheRead * (pr.cacheRead ?? pr.input) +
+      r.cacheWrite * (pr.cacheWrite ?? pr.input)) /
+    M
+  );
+}
+
+/** 默认 CNY 汇率（1 USD = ? CNY）：仅是占位常量，界面上标注「可自定义」 */
+export const DEFAULT_CNY_PER_USD = 7.2;
+
+export function sanitizeCustomPrices(raw: unknown): CustomPrice[] {
+  if (!Array.isArray(raw)) return [];
+  const out = new Map<string, CustomPrice>();
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined;
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue;
+    const o = x as Record<string, unknown>;
+    const model = typeof o.model === 'string' ? normalizeModel(o.model) : '';
+    const input = num(o.input);
+    const output = num(o.output);
+    if (!model || input === undefined || output === undefined) continue;
+    const cacheRead = num(o.cacheRead);
+    const cacheWrite = num(o.cacheWrite);
+    out.set(model, {
+      model,
+      input,
+      output,
+      ...(cacheRead !== undefined ? { cacheRead } : {}),
+      ...(cacheWrite !== undefined ? { cacheWrite } : {}),
+    });
+  }
+  return [...out.values()];
+}

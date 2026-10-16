@@ -10,6 +10,14 @@ import path from 'node:path';
 import { ipcMain } from 'electron';
 
 import {
+  emptySniffed,
+  hasTokens,
+  mergeUsage,
+  SseUsageTap,
+  usageFromObject,
+} from '../../usage/sniff';
+import { getUsageService } from '../../usage/UsageService';
+import {
   type ClaudeApiFormat,
   type CodexApiFormat,
   type CliApiFormat,
@@ -116,6 +124,15 @@ function nativeStreamPlan(
   return url.includes('chat/completions')
     ? { from: 'chat', to: 'chat' }
     : { from: 'responses', to: 'responses' };
+}
+
+/** 上游地址的主机名（用量面板里作为「供应商」显示） */
+function hostOf(baseUrl: string): string | undefined {
+  try {
+    return new URL(baseUrl).host || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function trimSlash(u: string): string {
@@ -236,6 +253,9 @@ export class CliRouteService {
   }
 
   private async handle(req: http.IncomingMessage, res: http.ServerResponse) {
+    // 用量与计费：记录经过本地路由的请求（响应里的 usage；取不到就不记，避免编造）
+    let track: { kind: 'claude' | 'codex'; startedAt: number; up: RouteUpstream } | null = null;
+    let sniffed = emptySniffed();
     try {
       if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
         sendJson(res, 200, { ok: true, service: 'nomi-cli-route', settings: this.getSettings() });
@@ -263,6 +283,8 @@ export class CliRouteService {
       if (formatNeedsRouting(kind, up.apiFormat) === false && kind === 'claude') {
         // native passthrough still ok via route
       }
+      track = { kind, startedAt: Date.now(), up };
+      getUsageService()?.routeBegin(kind);
       const body = await readJson(req);
       const wantsStream =
         Boolean(body) && typeof body === 'object' && (body as { stream?: unknown }).stream === true;
@@ -309,7 +331,9 @@ export class CliRouteService {
       });
       const isSse = (upstreamRes.headers.get('content-type') ?? '').includes('text/event-stream');
       if (wantsStream && upstreamRes.ok && isSse && upstreamRes.body) {
-        await this.pipeStream(upstreamRes.body, res, stream, convOpts);
+        const tap = new SseUsageTap();
+        await this.pipeStream(upstreamRes.body, res, stream, convOpts, tap);
+        sniffed = tap.end();
         return;
       }
       const text = await upstreamRes.text();
@@ -318,6 +342,10 @@ export class CliRouteService {
         parsed = JSON.parse(text);
       } catch {
         /* keep text */
+      }
+      if (upstreamRes.ok) {
+        const part = usageFromObject(parsed);
+        if (part) sniffed = mergeUsage(sniffed, part);
       }
       if (!upstreamRes.ok) {
         res.writeHead(upstreamRes.status, { 'Content-Type': 'application/json' });
@@ -348,6 +376,16 @@ export class CliRouteService {
         return;
       }
       sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      if (track) {
+        const t = track;
+        getUsageService()?.routeEnd(t.kind, {
+          startedAt: t.startedAt,
+          provider: hostOf(t.up.baseUrl),
+          model: t.up.model,
+          usage: hasTokens(sniffed) ? sniffed : null,
+        });
+      }
     }
   }
 
@@ -357,6 +395,7 @@ export class CliRouteService {
     res: http.ServerResponse,
     stream: StreamPlan,
     convOpts: { model?: string; customTools?: ReadonlySet<string> },
+    tap?: SseUsageTap,
   ): Promise<void> {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -371,11 +410,13 @@ export class CliRouteService {
         const { done, value } = await reader.read();
         if (done) break;
         if (res.destroyed) return;
+        const text = tap || conv ? decoder.decode(value, { stream: true }) : '';
+        tap?.push(text);
         if (!conv) {
           res.write(Buffer.from(value));
           continue;
         }
-        const outChunk = conv.push(decoder.decode(value, { stream: true }));
+        const outChunk = conv.push(text);
         if (outChunk) res.write(outChunk);
       }
       if (conv) {
