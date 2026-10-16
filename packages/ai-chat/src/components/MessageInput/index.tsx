@@ -1,5 +1,5 @@
 import { t as tr, Icon } from '@nomi-ai/ui';
-import { BookOpen, Pin, X, ArrowUp, Plus } from 'lucide-react';
+import { BookOpen, Pin, X, ArrowUp, Plus, Square } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -288,6 +288,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const isDisabled =
     disabled ||
     (busyOverride !== undefined ? busyOverride : state.isLoading || !state.currentModelId);
+
+  // Nomi 流式生成中：发送键变为「停止」（CLI 标签自带忙碌状态，不走这里）
+  const canStop = busyOverride === undefined && state.streaming;
 
   // 语音：自动发送（对话空闲时）或填入输入框
   const busyRef = useRef(false);
@@ -653,19 +656,32 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </div>
           <span className={styles.spacer} />
           <VoiceButtons cv={cv} disabled={disabled || !state.currentModelId} />
-          <button
-            onClick={handleSend}
-            disabled={isDisabled || (!message.trim() && !images.length)}
-            className={styles.sendButton}
-            title={tr('发送消息 (Enter)')}
-            aria-label={tr('发送')}
-          >
-            {(busyOverride ?? state.isLoading) ? (
-              <div className={styles.loadingSpinner} />
-            ) : (
-              <Icon icon={ArrowUp} />
-            )}
-          </button>
+          {canStop ? (
+            <button
+              type="button"
+              onClick={actions.stopGeneration}
+              className={styles.sendButton}
+              title={tr('停止生成')}
+              aria-label={tr('停止生成')}
+              data-testid="stop-button"
+            >
+              <Icon icon={Square} />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={isDisabled || (!message.trim() && !images.length)}
+              className={styles.sendButton}
+              title={tr('发送消息 (Enter)')}
+              aria-label={tr('发送')}
+            >
+              {(busyOverride ?? state.isLoading) ? (
+                <div className={styles.loadingSpinner} />
+              ) : (
+                <Icon icon={ArrowUp} />
+              )}
+            </button>
+          )}
         </div>
       </div>
       <VoiceSettingsModal cv={cv} />

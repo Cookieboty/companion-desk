@@ -33,7 +33,12 @@ const MessageItem = ({
  */
 export function visibleMessages(messages: ChatMessage[]): ChatMessage[] {
   return messages.filter(
-    (m) => m.role !== 'assistant' || !!m.error || !!m.images?.length || !!m.content?.trim(),
+    (m) =>
+      m.role !== 'assistant' ||
+      !!m.error ||
+      !!m.stopped ||
+      !!m.images?.length ||
+      !!m.content?.trim(),
   );
 }
 

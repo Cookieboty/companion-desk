@@ -69,6 +69,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             )}
           </div>
         )}
+        {message.stopped && (
+          <div className={styles.stoppedNote} data-testid="stopped-note">
+            {t('已停止生成')}
+          </div>
+        )}
         {sources.length > 0 && (
           <details className={styles.stepRow} open>
             <summary>
