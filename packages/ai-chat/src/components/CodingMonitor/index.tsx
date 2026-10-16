@@ -174,7 +174,7 @@ export const CodingMonitor: React.FC<{
                     data-testid={`agents-filter-${k}`}
                     onClick={() => setAgentFilter(k)}
                   >
-                    {k === 'claude' || k === 'codex' || k === 'dsh' ? (
+                    {k === 'claude' || k === 'codex' || k === 'dsh' || k === 'grok' ? (
                       <EndpointIcon backend={k} size={14} decorative />
                     ) : null}
                     {k === 'all'

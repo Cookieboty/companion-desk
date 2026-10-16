@@ -26,13 +26,14 @@ export interface ChatMessage {
 }
 
 /** 对话所属后端：与 harness 后端一致；侧栏列表按此后端隔离 */
-export type ConversationBackend = 'nomi' | 'claude' | 'codex' | 'dsh';
+export type ConversationBackend = 'nomi' | 'claude' | 'codex' | 'dsh' | 'grok';
 
 export const CONVERSATION_BACKENDS: readonly ConversationBackend[] = [
   'nomi',
   'claude',
   'codex',
   'dsh',
+  'grok',
 ] as const;
 
 export function isConversationBackend(v: unknown): v is ConversationBackend {

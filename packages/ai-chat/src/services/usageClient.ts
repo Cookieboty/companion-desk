@@ -246,6 +246,7 @@ export const USAGE_SOURCE_LABEL: Record<string, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
+  grok: 'Grok',
   gemini: 'Gemini CLI',
   qwen: 'Qwen Code',
   opencode: 'OpenCode',

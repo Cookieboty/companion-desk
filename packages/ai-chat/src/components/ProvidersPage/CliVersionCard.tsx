@@ -24,6 +24,7 @@ const NAME: Record<CliUpdatableKind, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
   dsh: 'dsh',
+  grok: 'Grok',
 };
 
 export type VersionState = 'missing' | 'outdated' | 'current' | 'unknown';

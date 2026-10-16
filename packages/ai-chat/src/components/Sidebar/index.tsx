@@ -438,7 +438,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const counts = useMemo(() => {
-    const c: Record<ConversationBackend, number> = { nomi: 0, claude: 0, codex: 0, dsh: 0 };
+    const c: Record<ConversationBackend, number> = {
+      nomi: 0,
+      claude: 0,
+      codex: 0,
+      dsh: 0,
+      grok: 0,
+    };
     for (const x of navList) c[x.backend] = (c[x.backend] ?? 0) + 1;
     return c;
   }, [navList]);

@@ -144,5 +144,11 @@ export const CliProviderChip: React.FC<{
 };
 
 function backendName(b: CliProviderKind): string {
-  return b === 'claude' ? t('Claude Code') : b === 'codex' ? t('Codex') : 'dsh';
+  return b === 'claude'
+    ? t('Claude Code')
+    : b === 'codex'
+      ? t('Codex')
+      : b === 'grok'
+        ? 'Grok'
+        : 'dsh';
 }

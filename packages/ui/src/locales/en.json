@@ -1572,7 +1572,6 @@
   "接管 {0}": "Route {0} through it",
   "档案库：{0}": "Profile store: {0}",
   "写入位置：{0}": "Written to: {0}",
-  "Nomi 自有 AI 的供应商，配置存在 Nomi 自己的 ai-providers.json（密钥加密保存）。Claude Code / Codex / dsh 不会读取这里，这里也不会写它们的配置。": "Providers for Nomi's own AI, stored in Nomi's own ai-providers.json (keys are encrypted). Claude Code / Codex / dsh never read this, and nothing here writes their configs.",
   "任务路由（对话 / 工具 / 摘要）只属于 Nomi，在下方「任务路由」里设置。": "Task routing (chat / agent tools / summary) belongs to Nomi only and is set under \"Task routing\" below.",
   "对话操作": "Conversation actions",
   "重命名": "Rename",
@@ -1628,7 +1627,6 @@
   "已保存 {0}（留空则不修改）": "Saved {0} (leave blank to keep it)",
   "{0} 启动时使用的模型；可从上游获取列表，也可手填 ID。": "The model {0} starts with; fetch the list from the upstream or type an ID.",
   "「{0}」不是该端点的原生格式：CLI 仍发原生协议，由本机路由转换后再转发。启用前请先在页面底部的「高级」里开启本地路由。": "“{0}” is not this endpoint's native format: the CLI still speaks its native protocol and the local router converts it before forwarding. Turn on local routing under “Advanced” at the bottom of the page before enabling.",
-  "管理 Nomi 和 Claude Code / Codex / dsh：版本、第三方供应商与本地路由，以及本机编程助手的进度监视。每个端点的配置互相独立，在这里切换只是换一个视图。": "Manage Nomi and Claude Code / Codex / dsh: versions, third-party providers and local routing, plus progress monitoring of local coding assistants. Each endpoint is configured independently; switching here only changes the view.",
   "编程助手分区": "Coding assistant sections",
   "监视与会话": "Monitor & sessions",
   "想完全离线看图：在「设置 → 编程助手 → Nomi」里添加 Ollama，并拉取视觉模型，例如": "To look at images fully offline: add Ollama under “Settings → Coding assistants → Nomi” and pull a vision model, e.g.",
@@ -1987,5 +1985,12 @@
   "重置大小": "Reset size",
   "重置为默认": "Reset to default",
   "也可以在看板娘身上按住 Ctrl（macOS 为 ⌘）并滚动滚轮，或右键选择放大 / 缩小。": "You can also hold Ctrl (⌘ on macOS) and scroll over the mascot, or right-click it and choose Zoom in / Zoom out.",
-  "当前屏幕最大 {0}%": "Largest on this display: {0}%"
+  "当前屏幕最大 {0}%": "Largest on this display: {0}%",
+  "无需路由：Grok 原生支持三种上游协议": "No routing needed: Grok natively supports all three upstream protocols",
+  "Grok 原生支持 responses / chat_completions / messages（api_backend），不需要本地路由。": "Grok natively supports responses / chat_completions / messages (api_backend); no local routing needed.",
+  "启用档案时只写入 {0} 里带 Nomi 标记的 [model.nomi] 区块并设置 default；密钥不落盘，只在 Nomi 启动 Grok 时通过环境变量注入。": "When enabling a profile, only the Nomi-marked [model.nomi] block (and default) is written to {0}; the API key is not stored on disk and is injected via env when Nomi starts Grok.",
+  "未找到 Grok（可设 NOMI_USE_MOCK_CLI=1）": "Grok not found (set NOMI_USE_MOCK_CLI=1 for the mock CLI)",
+  "Grok 错误": "Grok error",
+  "管理 Nomi 和 Claude Code / Codex / dsh / Grok：版本、第三方供应商与本地路由，以及本机编程助手的进度监视。每个端点的配置互相独立，在这里切换只是换一个视图。": "Manage Nomi and Claude Code / Codex / dsh / Grok: versions, third-party providers, local routing, and coding-agent progress monitoring. Each endpoint has its own config; switching tabs only changes the view.",
+  "Nomi 自有 AI 的供应商，配置存在 Nomi 自己的 ai-providers.json（密钥加密保存）。Claude Code / Codex / dsh / Grok 不会读取这里，这里也不会写它们的配置。": "Nomi's own AI providers live in Nomi's ai-providers.json (keys encrypted). Claude Code / Codex / dsh / Grok do not read this store, and this page does not write their configs."
 }

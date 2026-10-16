@@ -1,6 +1,6 @@
 import { t } from '@nomi-ai/ui';
 
-export type HarnessBackend = 'nomi' | 'claude' | 'codex' | 'dsh';
+export type HarnessBackend = 'nomi' | 'claude' | 'codex' | 'dsh' | 'grok';
 
 export interface HarnessState {
   backend: HarnessBackend;

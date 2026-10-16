@@ -58,7 +58,7 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
   const [lastBackend, setLastBackend] = useState<HarnessBackend>(() => {
     try {
       const v = localStorage.getItem(LAST_BACKEND_KEY);
-      return v === 'codex' || v === 'dsh' ? v : 'claude';
+      return v === 'codex' || v === 'dsh' || v === 'grok' ? v : 'claude';
     } catch {
       return 'claude';
     }
