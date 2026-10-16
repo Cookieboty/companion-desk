@@ -88,8 +88,26 @@ export type HarnessEvent =
     }
   | { type: 'thinking'; text: string; at?: number }
   | { type: 'permission'; id: string; summary: string }
-  | { type: 'done'; sessionId?: string; text: string }
+  /** 非文本的等待 / 恢复状态：重试、重连、上下文压缩（clear 表示恢复正常） */
+  | {
+      type: 'status';
+      kind: 'retry' | 'reconnect' | 'compact' | 'clear';
+      text?: string;
+      attempt?: number;
+      max?: number;
+    }
+  | { type: 'done'; sessionId?: string; text: string; usage?: HarnessUsage }
   | { type: 'error'; message: string };
+
+/** 一轮的用量（有数据时才有字段） */
+export interface HarnessUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  costUsd?: number;
+  /** CLI 自己上报的总耗时（ms） */
+  durationMs?: number;
+}
 
 export interface HarnessSendResult {
   text: string;
@@ -109,6 +127,12 @@ export interface HarnessTabMessage {
   tools?: string[];
   /** 本轮工具调用 / 思考的结构化轨迹（会话视图据此渲染分组、diff、耗时） */
   trace?: HarnessTraceEvent[];
+  /** 本轮耗时（ms，从发出到结束） */
+  durationMs?: number;
+  /** 本轮用量（CLI 上报时才有） */
+  usage?: HarnessUsage;
+  /** 被用户中断 */
+  stopped?: true;
 }
 
 /** 持久化到消息里的轨迹事件：HarnessEvent 里的 tool / thinking */

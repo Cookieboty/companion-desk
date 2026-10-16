@@ -43,6 +43,17 @@ export interface HarnessTabMessage {
   tools?: string[];
   /** 本轮工具调用 / 思考的结构化轨迹 */
   trace?: HarnessTraceEvent[];
+  durationMs?: number;
+  usage?: HarnessUsage;
+  stopped?: true;
+}
+
+export interface HarnessUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  costUsd?: number;
+  durationMs?: number;
 }
 
 /** 工具调用 / 思考事件（主进程 stampEvent 带 at 时间戳；detail 为调用 id，codex 为命令行） */
@@ -64,7 +75,15 @@ export type HarnessLiveEvent =
   | { tabId: string; type: 'text-delta' | 'text'; text: string }
   | ({ tabId: string } & Extract<HarnessTraceEvent, { type: 'tool' }>)
   | ({ tabId: string } & Extract<HarnessTraceEvent, { type: 'thinking' }>)
-  | { tabId: string; type: 'done'; text: string; sessionId?: string }
+  | {
+      tabId: string;
+      type: 'status';
+      kind: 'retry' | 'reconnect' | 'compact' | 'clear';
+      text?: string;
+      attempt?: number;
+      max?: number;
+    }
+  | { tabId: string; type: 'done'; text: string; sessionId?: string; usage?: HarnessUsage }
   | { tabId: string; type: 'error'; message: string }
   | { tabId: string; type: 'permission'; id: string; summary: string };
 
@@ -105,6 +124,11 @@ export const harnessClient = {
   onChanged: (fn: (s: HarnessState) => void) =>
     bridge()?.on('ai:harness:changed', (p) => fn(p as HarnessState)) ?? (() => undefined),
   onEvent: (fn: (e: unknown) => void) => bridge()?.on('ai:harness:event', fn) ?? (() => undefined),
+  /** 主进程按帧合批后的实时事件（相邻 text-delta 已拼接） */
+  onEvents: (fn: (batch: unknown[]) => void) =>
+    bridge()?.on('ai:harness:events', (p) => {
+      if (Array.isArray(p)) fn(p);
+    }) ?? (() => undefined),
   tabs: () => call<HarnessTabsState>('tabs'),
   createTab: (o: {
     backend: HarnessBackend;

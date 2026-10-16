@@ -9,6 +9,7 @@ import {
   Brain,
   Check,
   ChevronRight,
+  ChevronsUp,
   CircleAlert,
   Compass,
   FileDiff as FileDiffIcon,
@@ -24,7 +25,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import React, { useId, useState } from 'react';
+import React, { memo, useId, useState } from 'react';
 
 import {
   callDuration,
@@ -237,7 +238,7 @@ const CallLabel: React.FC<{ call: ToolCall }> = ({ call }) => {
   );
 };
 
-export const ToolCallRow: React.FC<{ call: ToolCall }> = ({ call }) => {
+const ToolCallRowInner: React.FC<{ call: ToolCall }> = ({ call }) => {
   const kind = describeCall(call).kind;
   // 单个编辑默认展开：直接看到改了什么
   const diffOpen = (kind === 'edit' || kind === 'write') && diffsOf(call).length > 0;
@@ -257,6 +258,22 @@ export const ToolCallRow: React.FC<{ call: ToolCall }> = ({ call }) => {
   );
 };
 
+/** reduceTrace 每次都会生成新的 ToolCall 对象：按内容比较，已结束的行不随流式更新重渲染 */
+export function sameCall(a: ToolCall, b: ToolCall): boolean {
+  return (
+    a === b ||
+    (a.id === b.id &&
+      a.name === b.name &&
+      a.status === b.status &&
+      a.input === b.input &&
+      a.output === b.output &&
+      a.startedAt === b.startedAt &&
+      a.endedAt === b.endedAt)
+  );
+}
+
+export const ToolCallRow = memo(ToolCallRowInner, (p, n) => sameCall(p.call, n.call));
+
 const GroupSummaryMeta: React.FC<{ bucket: Bucket; calls: ToolCall[] }> = ({ bucket, calls }) => {
   const s = groupStats(calls);
   return (
@@ -272,7 +289,7 @@ const GroupSummaryMeta: React.FC<{ bucket: Bucket; calls: ToolCall[] }> = ({ buc
   );
 };
 
-const ToolGroup: React.FC<{ bucket: Bucket; calls: ToolCall[]; id: string }> = ({
+const ToolGroupInner: React.FC<{ bucket: Bucket; calls: ToolCall[]; id: string }> = ({
   bucket,
   calls,
   id,
@@ -301,6 +318,15 @@ const ToolGroup: React.FC<{ bucket: Bucket; calls: ToolCall[]; id: string }> = (
     </Disclosure>
   );
 };
+
+const ToolGroup = memo(
+  ToolGroupInner,
+  (p, n) =>
+    p.id === n.id &&
+    p.bucket === n.bucket &&
+    p.calls.length === n.calls.length &&
+    p.calls.every((c, i) => sameCall(c, n.calls[i]!)),
+);
 
 const Subagent: React.FC<{ call: ToolCall; children: TimelineItem[] }> = ({ call, children }) => {
   const o = parseInput(call.input);
@@ -353,28 +379,48 @@ function countCalls(items: TimelineItem[]): number {
   }, 0);
 }
 
-const Thinking: React.FC<{ text: string; running: boolean }> = ({ text, running }) => (
-  <Disclosure
-    icon={Brain}
-    label={<span className={styles.verb}>{running ? t('正在思考') : t('思考过程')}</span>}
-    status={running ? 'running' : 'done'}
-    testId="tool-thinking"
-  >
-    <div className={styles.thinkText}>{text}</div>
-  </Disclosure>
-);
+const Thinking = memo(function Thinking({ text, running }: { text: string; running: boolean }) {
+  return (
+    <Disclosure
+      icon={Brain}
+      label={<span className={styles.verb}>{running ? t('正在思考') : t('思考过程')}</span>}
+      status={running ? 'running' : 'done'}
+      testId="tool-thinking"
+    >
+      <div className={styles.thinkText}>{text}</div>
+    </Disclosure>
+  );
+});
+
+/** 顶层时间线一次最多渲染的条目数；更早的折叠成一行，点击展开（长任务不会一次渲染上千行） */
+export const TIMELINE_WINDOW = 60;
 
 export const ToolTimeline: React.FC<{ items: TimelineItem[]; nested?: boolean }> = ({
   items,
   nested,
 }) => {
+  const [showAll, setShowAll] = useState(false);
   if (!items.length) return null;
+  const hidden =
+    !nested && !showAll && items.length > TIMELINE_WINDOW ? items.length - TIMELINE_WINDOW : 0;
+  const visible = hidden ? items.slice(hidden) : items;
   return (
     <div
       className={`${styles.timeline} ${nested ? styles.nested : ''}`}
       data-testid={nested ? undefined : 'tool-timeline'}
     >
-      {items.map((it) => {
+      {hidden > 0 && (
+        <button
+          type="button"
+          className={styles.earlier}
+          data-testid="tool-show-earlier"
+          onClick={() => setShowAll(true)}
+        >
+          <Icon icon={ChevronsUp} size={13} />
+          {t('显示更早的 {0} 步', hidden)}
+        </button>
+      )}
+      {visible.map((it) => {
         switch (it.type) {
           case 'thinking':
             return <Thinking key={it.id} text={it.text} running={it.running} />;

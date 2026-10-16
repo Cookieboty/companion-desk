@@ -3,7 +3,7 @@ import { Icon, t } from '@nomi-ai/ui';
 import { Check, Copy } from 'lucide-react';
 import React, { memo, useMemo, useState } from 'react';
 
-import { parseMarkdown, type Block, type Inline } from '../../utils/markdown';
+import { parseMarkdown, splitMarkdownChunks, type Block, type Inline } from '../../utils/markdown';
 
 import styles from './Markdown.module.css';
 
@@ -130,12 +130,20 @@ function renderBlocks(blocks: Block[]): React.ReactNode[] {
   });
 }
 
+/** 一段（块边界之间）的渲染：文本不变就不重新解析 / 渲染；流式输出时只有最后一段在变 */
+const MarkdownChunk = memo(function MarkdownChunk({ text }: { text: string }) {
+  const blocks = useMemo(() => parseMarkdown(text), [text]);
+  return <>{renderBlocks(blocks)}</>;
+});
+
 export const Markdown: React.FC<{ text: string; className?: string }> = memo(
   ({ text, className }) => {
-    const blocks = useMemo(() => parseMarkdown(text), [text]);
+    const chunks = useMemo(() => splitMarkdownChunks(text), [text]);
     return (
       <div className={`${styles.md} ${className ?? ''}`} data-testid="markdown">
-        {renderBlocks(blocks)}
+        {chunks.map((c, i) => (
+          <MarkdownChunk key={i} text={c} />
+        ))}
       </div>
     );
   },

@@ -43,3 +43,32 @@ export function buildTrace(events: HarnessEvent[]): HarnessTraceEvent[] {
   }
   return trimmed;
 }
+
+/** 单个标签的消息文件体积上限；超出后较早消息的轨迹只保留骨架（名称 / 状态 / 时间），丢掉参数与输出 */
+export const MAX_TAB_FILE_BYTES = 6_000_000;
+/** 体积压缩时完整保留轨迹的最近消息数 */
+export const KEEP_FULL_TRACE_MESSAGES = 20;
+
+/** 把较早消息的轨迹压成骨架（原地修改）；返回是否有改动 */
+export function compactOldTraces(
+  list: Array<{ trace?: HarnessTraceEvent[] }>,
+  keepRecent = KEEP_FULL_TRACE_MESSAGES,
+): boolean {
+  let changed = false;
+  for (let i = 0; i < list.length - keepRecent; i++) {
+    const trace = list[i]!.trace;
+    if (!trace) continue;
+    for (const ev of trace) {
+      if (ev.type !== 'tool') continue;
+      if (ev.output !== undefined) {
+        delete ev.output;
+        changed = true;
+      }
+      if (ev.input !== undefined) {
+        delete ev.input;
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}

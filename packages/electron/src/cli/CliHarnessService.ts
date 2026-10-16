@@ -21,6 +21,7 @@ import { guardedHandle } from '../security/guardedIpc';
 
 import { buildCliEnv } from './cliEnv';
 import { DSH_MIN_NODE_MAJOR, readPathNodeVersion, resolveCliBin } from './detect';
+import { EventBatcher } from './eventBatcher';
 import { killProcessTree } from './processTree';
 import {
   createClaudeParser,
@@ -28,7 +29,7 @@ import {
   createGrokParser,
   parseCodexLine,
 } from './streamParse';
-import { buildTrace, stampEvent } from './traceBuilder';
+import { MAX_TAB_FILE_BYTES, buildTrace, compactOldTraces, stampEvent } from './traceBuilder';
 import type {
   HarnessBackend,
   HarnessEvent,
@@ -105,6 +106,10 @@ export class CliHarnessService {
   private readonly children = new Map<string, ChildProcessWithoutNullStreams>();
   /** tabId → 当前这一轮最近的输出 / 步骤（轻量进度提示，仅内存；供监视器定时汇总用） */
   private readonly progress = new Map<string, { kind: 'text' | 'tool'; value: string }>();
+  /** 实时事件按帧合批后再广播（见 eventBatcher） */
+  private readonly eventBatcher = new EventBatcher<HarnessEvent & { tabId: string }>((batch) =>
+    this.broadcast('ai:harness:events', batch),
+  );
   /** tabId → requestId → timer；超时自动拒绝 */
   private readonly pendingPermissions = new Map<
     string,
@@ -296,7 +301,10 @@ export class CliHarnessService {
     list.push(msg);
     if (list.length > MAX_TAB_MESSAGES) list.splice(0, list.length - MAX_TAB_MESSAGES);
     try {
-      fs.writeFileSync(this.messagesPath(id), JSON.stringify(list), 'utf8');
+      let json = JSON.stringify(list);
+      // 文件过大：较早消息的轨迹只保留骨架，避免每条消息都整文件同步写几十 MB
+      if (json.length > MAX_TAB_FILE_BYTES && compactOldTraces(list)) json = JSON.stringify(list);
+      fs.writeFileSync(this.messagesPath(id), json, 'utf8');
     } catch (e) {
       this.d.logger.warn('harness tab messages write failed', e);
     }
@@ -892,7 +900,8 @@ export class CliHarnessService {
     for (const ev of live.parseLine(line)) {
       stampEvent(ev);
       if (turn) {
-        turn.events.push(ev);
+        // 流式文本片段已累计在 turn.text 里，不再逐条留存（长回答会有上万个）
+        if (ev.type !== 'text-delta') turn.events.push(ev);
         if (ev.type === 'text-delta' || ev.type === 'text') turn.text += ev.text;
         if (ev.type === 'error') turn.lastError = ev.message;
         if (ev.type === 'done') {
@@ -1083,7 +1092,7 @@ export class CliHarnessService {
       const take = (line: string, live: boolean) => {
         for (const ev of opts.parseLine(line)) {
           stampEvent(ev);
-          events.push(ev);
+          if (ev.type !== 'text-delta') events.push(ev);
           if (live) this.emitEvent(tab.id, ev);
           if (ev.type === 'permission') {
             this.armPermissionTimeout(tab.id, ev.id);
@@ -1158,6 +1167,12 @@ export class CliHarnessService {
   // ───────────────────────── 广播 / IPC ─────────────────────────
 
   private post(channel: string, payload: unknown) {
+    // 其它通道的消息（tab-message / tabs / changed）必须排在已入队的实时事件之后
+    this.eventBatcher.flush();
+    this.broadcast(channel, payload);
+  }
+
+  private broadcast(channel: string, payload: unknown) {
     for (const w of BrowserWindow.getAllWindows()) {
       try {
         w.webContents.send(channel, payload);
@@ -1194,7 +1209,7 @@ export class CliHarnessService {
 
   private emitEvent(tabId: string, ev: HarnessEvent) {
     this.trackProgress(tabId, ev);
-    this.post('ai:harness:event', { ...ev, tabId });
+    this.eventBatcher.push({ ...ev, tabId });
     this.events.emit('event', { tabId, event: ev });
   }
 

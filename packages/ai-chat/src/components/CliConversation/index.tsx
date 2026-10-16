@@ -4,7 +4,7 @@
  * 运行中显示实时时间线 / 流式正文 / 权限卡 / 底部「正在处理」；贴底自动跟随，上滑不抢滚动条。
  */
 import { Icon, t } from '@nomi-ai/ui';
-import { ArrowDown, LoaderCircle, ShieldAlert } from 'lucide-react';
+import { ArrowDown, ChevronsUp, LoaderCircle, ShieldAlert } from 'lucide-react';
 import React, {
   memo,
   useCallback,
@@ -150,6 +150,33 @@ const WorkingIndicator: React.FC<{ startedAt?: number; waiting?: boolean }> = ({
   );
 };
 
+/** 首屏最多渲染的消息条数，以及按内容体量折算的预算（超大消息会让窗口变小） */
+export const WINDOW_MESSAGES = 30;
+export const WINDOW_BUDGET = 400;
+export const LOAD_MORE_STEP = 30;
+
+/** 估算一条消息的渲染成本：正文每 400 字符 1，每个轨迹事件 0.5，至少 1 */
+function messageWeight(m: HarnessTabMessage): number {
+  return Math.max(1, m.content.length / 400 + (m.trace?.length ?? 0) * 0.5);
+}
+
+/**
+ * 长对话分页：从末尾往前取，直到条数达到 limit 或体量预算用完（至少 1 条）；返回起始下标。
+ * `extra` 为用户点「显示更早的消息」追加的条数。
+ */
+export function windowStart(messages: readonly HarnessTabMessage[], extra = 0): number {
+  const limit = WINDOW_MESSAGES + extra;
+  let budget = WINDOW_BUDGET + extra * 10;
+  let i = messages.length;
+  while (i > 0 && messages.length - i < limit) {
+    const w = messageWeight(messages[i - 1]!);
+    if (budget - w < 0 && i < messages.length) break;
+    budget -= w;
+    i--;
+  }
+  return i;
+}
+
 export interface CliConversationProps {
   tab: HarnessTabMeta;
   messages: HarnessTabMessage[];
@@ -169,6 +196,11 @@ const CliConversationInner: React.FC<CliConversationProps> = ({
   const [away, setAway] = useState(false);
   const running = tab.status === 'running';
   const queued = tab.status === 'queued';
+  const [extra, setExtra] = useState(0);
+  const start = useMemo(() => windowStart(messages, extra), [messages, extra]);
+  const shown = start > 0 ? messages.slice(start) : messages;
+  /** 点「显示更早」前的 scrollHeight：加载后据此保持视口不跳 */
+  const anchorRef = useRef<number | null>(null);
 
   const liveTrace = live?.trace;
   const liveItems = useMemo(
@@ -180,6 +212,14 @@ const CliConversationInner: React.FC<CliConversationProps> = ({
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && anchorRef.current !== null) {
+      el.scrollTop += el.scrollHeight - anchorRef.current;
+      anchorRef.current = null;
+    }
+  }, [start]);
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -224,7 +264,21 @@ const CliConversationInner: React.FC<CliConversationProps> = ({
     <div className={styles.root} data-testid="cli-conversation" data-status={tab.status}>
       <div className={styles.scroll} ref={scrollRef} onScroll={onScroll} data-testid="cli-scroll">
         <div className={styles.inner}>
-          {messages.map((m) =>
+          {start > 0 && (
+            <button
+              type="button"
+              className={styles.earlier}
+              data-testid="cli-load-earlier"
+              onClick={() => {
+                anchorRef.current = scrollRef.current?.scrollHeight ?? null;
+                setExtra((v) => v + LOAD_MORE_STEP);
+              }}
+            >
+              <Icon icon={ChevronsUp} size={14} />
+              {t('显示更早的 {0} 条消息', start)}
+            </button>
+          )}
+          {shown.map((m) =>
             m.role === 'user' ? (
               <UserMessage key={m.id} message={m} />
             ) : (

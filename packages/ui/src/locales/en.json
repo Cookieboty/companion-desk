@@ -2021,5 +2021,7 @@
   "正在编辑 {0} 个文件": "Editing {0} files",
   "已编辑 {0} 个文件": "Edited {0} files",
   "正在调用 {0} 个工具": "Calling {0} tools",
-  "已调用 {0} 个工具": "Called {0} tools"
+  "已调用 {0} 个工具": "Called {0} tools",
+  "显示更早的 {0} 步": "Show {0} earlier steps",
+  "显示更早的 {0} 条消息": "Show {0} earlier messages"
 }

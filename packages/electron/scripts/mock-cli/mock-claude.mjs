@@ -148,6 +148,7 @@ async function runOnce(_prompt) {
   }
 
   if (process.env.NOMI_MOCK_TOOLS === 'rich') await richScenario();
+  if (process.env.NOMI_MOCK_TOOLS === 'stress') await stressScenario();
 
   const chunks = text.match(/.{1,8}/gs) || [text];
   for (const c of chunks) {
@@ -168,6 +169,79 @@ async function runOnce(_prompt) {
     result: text,
     subtype: 'success',
   });
+}
+
+/**
+ * 压测场景：持续输出 NOMI_MOCK_STRESS_N（默认 2000）个工具调用（读 / 搜 / 命令 / 编辑循环，输出 1–3KB），
+ * 夹杂思考与 NOMI_MOCK_STRESS_TEXT_KB（默认 200）KB 的 Markdown 流式文本；每 20 条事件让出一次事件循环。
+ */
+async function stressScenario() {
+  const n = Number(process.env.NOMI_MOCK_STRESS_N || 2000);
+  const textKb = Number(process.env.NOMI_MOCK_STRESS_TEXT_KB || 200);
+  const pad = (k) => `line ${k} `.repeat(40).slice(0, 1500 + (k % 3) * 700);
+  let sent = 0;
+  const tick = async () => {
+    if (++sent % 20 === 0) await new Promise((r) => setImmediate(r));
+  };
+  for (let i = 0; i < n; i++) {
+    const id = `stress-${i}`;
+    const kind = i % 4;
+    const [name, input, output] =
+      kind === 0
+        ? ['Read', { file_path: `/repo/src/mod${i % 97}/file${i}.ts` }, pad(i)]
+        : kind === 1
+          ? ['Grep', { pattern: `symbol${i % 31}`, path: 'src' }, pad(i)]
+          : kind === 2
+            ? ['Bash', { command: `pnpm test -- case${i}` }, pad(i)]
+            : [
+                'Edit',
+                {
+                  file_path: `/repo/src/edit${i % 13}.ts`,
+                  old_string: `const a${i} = 1;\nconst b = 2;`,
+                  new_string: `const a${i} = 2;\nconst b = 2;\nconst c = 3;`,
+                },
+                'ok',
+              ];
+    if (i % 50 === 0)
+      emit({
+        type: 'assistant',
+        session_id: sessionId,
+        message: {
+          role: 'assistant',
+          content: [{ type: 'thinking', thinking: `第 ${i} 步思考：`.repeat(20) }],
+        },
+      });
+    emit({
+      type: 'assistant',
+      session_id: sessionId,
+      message: { role: 'assistant', content: [{ type: 'tool_use', id, name, input }] },
+    });
+    await tick();
+    emit({
+      type: 'user',
+      session_id: sessionId,
+      message: {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: id, content: output }],
+      },
+    });
+    await tick();
+  }
+  const para =
+    '## 小结\n\n这是一段 **Markdown** 文本，包含 `inline code`、[链接](https://example.com) 和列表：\n\n- 条目一\n- 条目二\n\n```ts\nconst x = 1;\nconsole.log(x);\n```\n\n';
+  let total = 0;
+  while (total < textKb * 1024) {
+    for (let k = 0; k < para.length; k += 40) {
+      const chunk = para.slice(k, k + 40);
+      emit({
+        type: 'stream_event',
+        session_id: sessionId,
+        event: { delta: { type: 'text_delta', text: chunk } },
+      });
+      total += chunk.length;
+      await tick();
+    }
+  }
 }
 
 /** 多种工具调用演示：思考 / 目录 / 搜索 / 读文件 / 子代理 / 编辑 / 命令（成功与失败） */

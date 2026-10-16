@@ -361,8 +361,21 @@ export interface FileDiff {
   summaryOnly?: boolean;
 }
 
-/** 编辑 / 写入类调用 → 每个文件一份 diff；识别不了返回空数组 */
+const DIFF_CACHE_MAX = 200;
+const diffCache = new Map<string, FileDiff[]>();
+
+/** 编辑 / 写入类调用 → 每个文件一份 diff；识别不了返回空数组（按名称 + 参数缓存，避免每次渲染重算 LCS） */
 export function diffsOf(call: ToolCall): FileDiff[] {
+  const key = `${call.name}\u0000${call.input ?? ''}`;
+  const hit = diffCache.get(key);
+  if (hit) return hit;
+  const out = computeDiffs(call);
+  if (diffCache.size >= DIFF_CACHE_MAX) diffCache.delete(diffCache.keys().next().value as string);
+  diffCache.set(key, out);
+  return out;
+}
+
+function computeDiffs(call: ToolCall): FileDiff[] {
   const kind = classifyTool(call.name);
   if (kind !== 'edit' && kind !== 'write') return [];
   const o = parseInput(call.input);

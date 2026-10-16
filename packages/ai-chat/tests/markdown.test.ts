@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseInline, parseMarkdown, safeHref } from '../src/utils/markdown';
+import { parseInline, parseMarkdown, safeHref, splitMarkdownChunks } from '../src/utils/markdown';
 
 describe('parseMarkdown blocks', () => {
   it('parses headings, paragraphs, lists, quotes and rules', () => {
@@ -69,5 +69,61 @@ describe('parseInline', () => {
     expect(parseInline('<img src=x onerror=alert(1)>')).toEqual([
       { t: 'text', v: '<img src=x onerror=alert(1)>' },
     ]);
+  });
+});
+
+describe('splitMarkdownChunks (incremental streaming)', () => {
+  const doc = [
+    '## 小结',
+    '',
+    '段落 **一**，含 `code`。',
+    '',
+    '- 条目一',
+    '- 条目二',
+    '',
+    '```ts',
+    'const x = 1;',
+    '',
+    'console.log(x);',
+    '```',
+    '',
+    '1. 第一',
+    '',
+    '2. 第二',
+    '',
+    '> 引用一',
+    '',
+    '> 引用二',
+    '',
+    '尾段',
+  ].join('\n');
+
+  it('splits at safe boundaries only: never inside a fence, never between list items', () => {
+    const chunks = splitMarkdownChunks(doc);
+    expect(chunks.length).toBeGreaterThan(3);
+    // 代码块里的空行不是边界
+    expect(chunks.some((c) => c.includes('const x = 1;\n\nconsole.log(x);'))).toBe(true);
+    // 松散的有序列表（第一 / 第二之间有空行）保持在同一段
+    expect(chunks.some((c) => c.includes('1. 第一') && c.includes('2. 第二'))).toBe(true);
+  });
+
+  it('parsing the chunks one by one equals parsing the whole document', () => {
+    const whole = parseMarkdown(doc);
+    const parts = splitMarkdownChunks(doc).flatMap((c) => parseMarkdown(c));
+    expect(parts).toEqual(whole);
+  });
+
+  it('is prefix-stable while streaming: earlier chunks stop changing once a boundary has passed', () => {
+    const full = splitMarkdownChunks(doc);
+    for (let n = 40; n < doc.length; n += 17) {
+      const part = splitMarkdownChunks(doc.slice(0, n));
+      // 除最后一段外，流式中间态的每一段都和最终文本的对应段完全一致
+      for (let i = 0; i < part.length - 1; i++) expect(part[i]).toBe(full[i]);
+    }
+  });
+
+  it('handles unclosed fences and CRLF', () => {
+    expect(splitMarkdownChunks('前文\n\n```bash\nnpm i\n\nnpm test')).toHaveLength(2);
+    expect(splitMarkdownChunks('a\r\n\r\nb')).toEqual(['a\n', 'b']);
   });
 });

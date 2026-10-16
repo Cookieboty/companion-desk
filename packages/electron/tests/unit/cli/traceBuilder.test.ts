@@ -1,4 +1,9 @@
-import { buildTrace, MAX_TRACE_EVENTS, stampEvent } from '../../../src/cli/traceBuilder';
+import {
+  buildTrace,
+  compactOldTraces,
+  MAX_TRACE_EVENTS,
+  stampEvent,
+} from '../../../src/cli/traceBuilder';
 import type { HarnessEvent } from '../../../src/cli/types';
 
 describe('traceBuilder', () => {
@@ -42,5 +47,34 @@ describe('traceBuilder', () => {
     const b = stampEvent({ type: 'text', text: 'x' }, 5) as { at?: number };
     expect(a.at).toBe(5);
     expect(b.at).toBeUndefined();
+  });
+});
+
+describe('compactOldTraces', () => {
+  it('drops input / output bodies of older messages but keeps names, status and timing', () => {
+    const mk = () => ({
+      trace: [
+        {
+          type: 'tool' as const,
+          name: 'Bash',
+          status: 'done' as const,
+          id: '1',
+          input: '{"command":"ls"}',
+          output: 'x'.repeat(100),
+          at: 5,
+        },
+      ],
+    });
+    const list = Array.from({ length: 25 }, mk);
+    expect(compactOldTraces(list, 20)).toBe(true);
+    expect(list[0]!.trace[0]).toEqual({
+      type: 'tool',
+      name: 'Bash',
+      status: 'done',
+      id: '1',
+      at: 5,
+    });
+    expect(list[24]!.trace[0]!.output).toHaveLength(100);
+    expect(compactOldTraces(list, 20)).toBe(false);
   });
 });

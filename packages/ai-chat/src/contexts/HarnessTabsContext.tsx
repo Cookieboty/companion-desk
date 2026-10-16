@@ -2,7 +2,15 @@
  * 对话标签状态：主进程是唯一数据源（标签元数据 + CLI 标签消息），这里只做订阅与缓存。
  * 标签 'main' 为原有对话（消息走 AiChatContext）；其它标签只绑定编程助手后端。
  */
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   MAIN_TAB_ID,
@@ -12,21 +20,13 @@ import {
   type HarnessTabMessage,
   type HarnessTabMeta,
   type HarnessTabsState,
-  type HarnessTraceEvent,
 } from '../services/harnessClient';
+import { applyLiveEvents, type LiveStatus, type TabLive } from '../utils/liveState';
 
-export interface TabLive {
-  text: string;
-  tool?: string;
-  /** start | done | error */
-  toolStatus?: 'start' | 'done' | 'error';
-  /** 本轮的工具调用 / 思考事件（按到达顺序；会话视图据此归并成时间线） */
-  trace?: HarnessTraceEvent[];
-  /** 本轮开始时间（ms），用于「已处理 N 秒」 */
-  startedAt?: number;
-  /** Claude can_use_tool 待确认 */
-  permission?: { id: string; summary: string };
-}
+/** 内存里最多缓存几个标签的消息（含当前）：其余切走后丢弃，回来时重新从主进程读取 */
+const MAX_CACHED_TABS = 4;
+
+export type { TabLive, LiveStatus };
 
 interface HarnessTabsValue {
   available: boolean;
@@ -51,6 +51,7 @@ interface HarnessTabsValue {
 }
 
 const Ctx = createContext<HarnessTabsValue | null>(null);
+const EMPTY_MESSAGES: HarnessTabMessage[] = [];
 const LAST_BACKEND_KEY = 'nomi.tabs.lastBackend';
 
 export function HarnessTabsProvider({ children }: { children: React.ReactNode }) {
@@ -73,13 +74,20 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
       .tabs()
       .then(setState)
       .catch(() => undefined);
+    let flushPending: () => void = () => undefined;
     const off1 = harnessClient.onTabs((s) => {
+      // 先落下已入队的实时事件（主进程保证它们先于本次标签状态到达），再清理已结束的标签
+      flushPending();
       setState(s);
       // 结束运行的标签清掉实时进度
       setLive((cur) => {
-        const next = { ...cur };
-        for (const t of s.tabs) if (t.status !== 'running') delete next[t.id];
-        return next;
+        let next: Record<string, TabLive> | null = null;
+        for (const t of s.tabs)
+          if (t.status !== 'running' && cur[t.id]) {
+            next ??= { ...cur };
+            delete next[t.id];
+          }
+        return next ?? cur;
       });
     });
     const off2 = harnessClient.onTabMessage(({ tabId, message }) =>
@@ -89,42 +97,51 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
           : cur,
       ),
     );
-    const off3 = harnessClient.onEvent((raw) => {
-      const e = raw as HarnessLiveEvent;
-      if (!e || typeof e.tabId !== 'string') return;
+    // 实时事件按帧合批：一帧内到达的所有事件只触发一次 setState（流式文本 / 上千个工具事件不再逐条重渲染）
+    const pending: HarnessLiveEvent[] = [];
+    let raf = 0;
+    let timer = 0;
+    const flush = () => {
+      if (raf) cancelAnimationFrame(raf);
+      if (timer) window.clearTimeout(timer);
+      raf = 0;
+      timer = 0;
+      if (!pending.length) return;
+      const batch = pending.splice(0, pending.length);
+      const byTab = new Map<string, HarnessLiveEvent[]>();
+      for (const e of batch) {
+        const list = byTab.get(e.tabId);
+        if (list) list.push(e);
+        else byTab.set(e.tabId, [e]);
+      }
       setLive((cur) => {
-        const prev = cur[e.tabId] ?? { text: '', startedAt: Date.now() };
-        if (e.type === 'text-delta')
-          return { ...cur, [e.tabId]: { ...prev, text: prev.text + e.text } };
-        if (e.type === 'text') return { ...cur, [e.tabId]: { ...prev, text: e.text } };
-        if (e.type === 'tool' || e.type === 'thinking') {
-          const { tabId: _id, ...ev } = e;
-          const traced: HarnessTraceEvent = ev.at === undefined ? { ...ev, at: Date.now() } : ev;
-          return {
-            ...cur,
-            [e.tabId]: {
-              ...prev,
-              ...(e.type === 'tool' ? { tool: e.name, toolStatus: e.status } : {}),
-              trace: [...(prev.trace ?? []), traced],
-            },
-          };
-        }
-        if (e.type === 'permission')
-          return {
-            ...cur,
-            [e.tabId]: { ...prev, permission: { id: e.id, summary: e.summary } },
-          };
-        if (e.type === 'done' || e.type === 'error') {
-          const { permission: _p, ...rest } = prev;
-          return { ...cur, [e.tabId]: rest };
-        }
-        return cur;
+        const next = { ...cur };
+        for (const [tabId, evs] of byTab) next[tabId] = applyLiveEvents(cur[tabId], evs);
+        return next;
       });
-    });
+    };
+    flushPending = flush;
+    const enqueue = (e: HarnessLiveEvent) => {
+      pending.push(e);
+      if (raf || timer) return;
+      raf = requestAnimationFrame(flush);
+      // 窗口隐藏 / 最小化时 rAF 不触发：用定时器兜底，避免缓冲无限增长
+      timer = window.setTimeout(flush, 100);
+    };
+    const handleRaw = (raw: unknown) => {
+      const e = raw as HarnessLiveEvent;
+      if (e && typeof e.tabId === 'string') enqueue(e);
+    };
+    const off3 = harnessClient.onEvents((batch) => batch.forEach(handleRaw));
+    const off4 = harnessClient.onEvent(handleRaw);
     return () => {
       off1();
       off2();
       off3();
+      off4();
+      pending.length = 0;
+      if (raf) cancelAnimationFrame(raf);
+      if (timer) window.clearTimeout(timer);
     };
   }, [available]);
 
@@ -140,6 +157,21 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
       .then((list) => setCache((cur) => ({ ...cur, [activeId]: list })))
       .catch(() => undefined);
   }, [available, isCliTab, activeId, cache]);
+
+  // 缓存只留最近用过的几个标签：切走后不再占内存，回来时重新读取
+  const recentRef = useRef<string[]>([]);
+  useEffect(() => {
+    recentRef.current = [activeId, ...recentRef.current.filter((x) => x !== activeId)].slice(
+      0,
+      MAX_CACHED_TABS,
+    );
+    setCache((cur) => {
+      if (Object.keys(cur).length <= MAX_CACHED_TABS) return cur;
+      const next: Record<string, HarnessTabMessage[]> = {};
+      for (const k of recentRef.current) if (cur[k]) next[k] = cur[k]!;
+      return next;
+    });
+  }, [activeId, cache]);
 
   const create = useCallback(async (backend: HarnessBackend, cwd?: string) => {
     const tab = await harnessClient.createTab(cwd ? { backend, cwd } : { backend });
@@ -212,25 +244,47 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
     setState(next);
   }, []);
 
-  const value: HarnessTabsValue = {
-    available,
-    state,
-    activeTab,
-    isCliTab,
-    messages: (isCliTab && cache[activeId]) || [],
-    live,
-    create,
-    close,
-    rename,
-    activate,
-    cycle,
-    selectIndex,
-    send,
-    cancel,
-    replyPermission,
-    setMaxConcurrent,
-    lastBackend,
-  };
+  const messages = (isCliTab && cache[activeId]) || EMPTY_MESSAGES;
+  const value = useMemo<HarnessTabsValue>(
+    () => ({
+      available,
+      state,
+      activeTab,
+      isCliTab,
+      messages,
+      live,
+      create,
+      close,
+      rename,
+      activate,
+      cycle,
+      selectIndex,
+      send,
+      cancel,
+      replyPermission,
+      setMaxConcurrent,
+      lastBackend,
+    }),
+    [
+      available,
+      state,
+      activeTab,
+      isCliTab,
+      messages,
+      live,
+      create,
+      close,
+      rename,
+      activate,
+      cycle,
+      selectIndex,
+      send,
+      cancel,
+      replyPermission,
+      setMaxConcurrent,
+      lastBackend,
+    ],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
