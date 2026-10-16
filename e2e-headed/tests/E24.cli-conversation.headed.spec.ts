@@ -117,8 +117,8 @@ test.describe('E24 · coding-agent conversation view · mock CLI', () => {
     await chat.setViewportSize({ width: 1100, height: 430 });
     await newTabAndSend(chat, 'claude', '检查 registerHandler 的实现并重构');
     // 运行中：用户气泡、实时时间线、正在处理
-    await expect(chat.locator('[data-testid="cli-msg-user"]')).toContainText('registerHandler');
-    await expect(chat.locator('[data-testid="cli-working"]')).toBeVisible({ timeout: 20_000 });
+    await expect(chat.locator('[data-testid="msg-user"]')).toContainText('registerHandler');
+    await expect(chat.locator('[data-testid="conv-status"]')).toBeVisible({ timeout: 20_000 });
     await expect(
       chat.locator('[data-testid="tool-timeline"] [data-status="running"]').first(),
     ).toBeVisible({
@@ -131,7 +131,7 @@ test.describe('E24 · coding-agent conversation view · mock CLI', () => {
     await expect(
       chat.locator('[data-testid="tool-row"], [data-testid="tool-group"]'),
     ).not.toHaveCount(0);
-    const scroll = chat.locator('[data-testid="cli-scroll"]');
+    const scroll = chat.locator('[data-testid="conv-scroll"]');
     await expect
       .poll(() => scroll.evaluate((el) => el.scrollHeight - el.clientHeight), { timeout: 20_000 })
       .toBeGreaterThan(80);
@@ -139,26 +139,26 @@ test.describe('E24 · coding-agent conversation view · mock CLI', () => {
       el.scrollTop = 0;
       el.dispatchEvent(new Event('scroll'));
     });
-    await expect(chat.locator('[data-testid="cli-jump-bottom"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="conv-jump-bottom"]')).toBeVisible();
     await chat.waitForTimeout(1600);
     expect(await scroll.evaluate((el) => el.scrollTop)).toBeLessThan(8);
     await shot(chat, '02-claude-scrolled-up-jump-button');
-    await chat.click('[data-testid="cli-jump-bottom"]');
+    await chat.click('[data-testid="conv-jump-bottom"]');
     await expect
       .poll(() => scroll.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight))
       .toBeLessThan(60);
 
     // 完成
-    await expect(chat.locator('[data-testid="cli-working"]')).toHaveCount(0, { timeout: 90_000 });
+    await expect(chat.locator('[data-testid="conv-status"]')).toHaveCount(0, { timeout: 90_000 });
     await chat.setViewportSize({ width: 1100, height: 660 });
-    await expect(chat.locator('[data-testid="cli-msg-assistant"]')).toBeVisible();
+    await expect(chat.locator('[data-testid="msg-assistant"]')).toBeVisible();
     await expect(chat.locator('.ai-chat-app')).not.toContainText('工具完成');
 
     const explore = chat.locator('[data-testid="tool-group"][data-bucket="explore"]').first();
     await expect(explore).toContainText('已探索');
     await expect(explore).toHaveAttribute('data-open', 'false');
     await expect(chat.locator('[data-testid="tool-subagent"]')).toContainText('检查内存泄漏风险');
-    await expect(chat.locator('[data-testid="tool-thinking"]')).toContainText('思考过程');
+    await expect(chat.locator('[data-testid="tool-thinking"]')).toContainText('已思考');
     const editGroup = chat.locator('[data-testid="tool-group"][data-bucket="edit"]').first();
     await expect(editGroup).toContainText('已编辑 2 个文件');
     await expect(editGroup).toHaveAttribute('data-open', 'false');
@@ -213,9 +213,9 @@ test.describe('E24 · coding-agent conversation view · mock CLI', () => {
 
     // Grok 标签
     await newTabAndSend(chat, 'grok', '检查本项目是否存在内存泄露');
-    await expect(chat.locator('[data-testid="cli-working"]')).toBeVisible({ timeout: 20_000 });
+    await expect(chat.locator('[data-testid="conv-status"]')).toBeVisible({ timeout: 20_000 });
     await shot(chat, '08-grok-running');
-    await expect(chat.locator('[data-testid="cli-working"]')).toHaveCount(0, { timeout: 90_000 });
+    await expect(chat.locator('[data-testid="conv-status"]')).toHaveCount(0, { timeout: 90_000 });
     await expect(
       chat.locator('[data-testid="tool-group"][data-bucket="explore"]').first(),
     ).toContainText('已探索');
@@ -249,14 +249,14 @@ test.describe('E24 · coding-agent conversation view · mock CLI', () => {
         NOMI_MOCK_STEP_MS: '0',
       }));
       await newTabAndSend(chat, 'claude', '删除临时文件');
-      const card = chat.locator('[data-testid="cli-permission-card"]');
+      const card = chat.locator('[data-testid="conv-permission-card"]');
       await expect(card).toBeVisible({ timeout: 30_000 });
       await expect(card).toContainText('需要确认工具权限');
-      await expect(chat.locator('[data-testid="cli-working"]')).toContainText('等待你的确认');
+      await expect(chat.locator('[data-testid="conv-status"]')).toContainText('等待你的确认');
       await shot(chat, '11-permission-card');
-      await chat.click('[data-testid="cli-permission-allow"]');
+      await chat.click('[data-testid="conv-permission-allow"]');
       await expect(card).toHaveCount(0);
-      await expect(chat.locator('[data-testid="cli-msg-assistant"]')).toBeVisible({
+      await expect(chat.locator('[data-testid="msg-assistant"]')).toBeVisible({
         timeout: 60_000,
       });
       await shot(chat, '12-permission-allowed-done');

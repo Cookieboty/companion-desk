@@ -6,8 +6,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChatHeader } from './components/ChatHeader';
 import { ChatTabs, cliTabPlaceholder } from './components/ChatTabs';
-import { CliConversation } from './components/CliConversation';
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette';
+import { ConversationView } from './components/Conversation';
+import { nomiSlots } from './components/Conversation/nomiSlots';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ForkTargetMenu } from './components/ForkMenu';
 import type { HubTab } from './components/HubPanel';
@@ -23,7 +24,6 @@ import {
   prefetchPanels,
 } from './components/lazyPanels';
 import { MessageInput } from './components/MessageInput';
-import { MessageList } from './components/MessageList';
 import { OnboardingHost } from './components/Onboarding';
 import { onboardingClient } from './components/Onboarding/client';
 import {
@@ -38,6 +38,7 @@ import { AiChatContextProvider } from './contexts/AiChatContext';
 import { useAiChat } from './contexts/AiChatContext';
 import { HarnessTabsProvider, useHarnessTabs } from './contexts/HarnessTabsContext';
 import { useChatMode } from './hooks/useChatMode';
+import { useSendQueue } from './hooks/useSendQueue';
 import { setProviderEndpoint } from './services/chatPrefs';
 import { desktopClient } from './services/desktopClient';
 import { forkCrossBackend, forkSameBackend } from './services/forkConversation';
@@ -54,12 +55,37 @@ import {
 } from './services/shortcuts';
 import type { ConversationBackend } from './types/chat';
 import { isConversationBackend } from './types/chat';
+import { fromHarnessMessage, splitNomiMessages, tabLiveToConv } from './utils/convAdapters';
 import './App.css';
 
 const AiChatContent: React.FC = () => {
   const { state, actions } = useAiChat();
   const tabs = useHarnessTabs();
   const { isDev, setMode } = useChatMode();
+  // ───── 统一会话视图的数据：Nomi 主对话与编程助手标签走同一个 ConversationView ─────
+  const nomiConv = useMemo(
+    () => splitNomiMessages(state.messages, state.isLoading),
+    [state.messages, state.isLoading],
+  );
+  const cliBackend = tabs.activeTab?.backend ?? 'claude';
+  const cliConvMessages = useMemo(
+    () => (tabs.isCliTab ? tabs.messages.map((m) => fromHarnessMessage(m, cliBackend)) : []),
+    [tabs.isCliTab, tabs.messages, cliBackend],
+  );
+  const nomiQueue = useSendQueue(
+    state.isLoading,
+    (text) => actions.sendStreamMessage(text),
+    state.messages[0]?.id,
+  );
+  /** 重新生成 / 重试：找到这条助手消息之前的用户消息，从那里重发 */
+  const precedingUser = <T extends { id: string; role: string }>(
+    list: readonly T[],
+    id: string,
+  ) => {
+    const i = list.findIndex((m) => m.id === id);
+    for (let k = i - 1; k >= 0; k--) if (list[k]!.role === 'user') return list[k]!;
+    return undefined;
+  };
   const [forkCross, setForkCross] = useState<{
     id: string;
     backend: ConversationBackend;
@@ -424,11 +450,26 @@ const AiChatContent: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <CliConversation
-                  tab={tabs.activeTab!}
-                  messages={tabs.messages}
-                  live={tabs.live[tabs.activeTab!.id]}
+                <ConversationView
+                  scopeId={tabs.activeTab!.id}
+                  messages={cliConvMessages}
+                  live={tabLiveToConv(tabs.live[tabs.activeTab!.id])}
+                  phase={
+                    tabs.activeTab!.status === 'running'
+                      ? 'running'
+                      : tabs.activeTab!.status === 'queued'
+                        ? 'queued'
+                        : 'idle'
+                  }
+                  queued={tabs.queues[tabs.activeTab!.id]}
+                  onRemoveQueued={tabs.removeQueued}
                   onPermission={(id, allow) => void tabs.replyPermission(id, allow)}
+                  onStop={() => void tabs.cancel()}
+                  onRetry={(id) => {
+                    const u = precedingUser(tabs.messages, id);
+                    if (u) void tabs.send(u.content);
+                  }}
+                  onEdit={(_, text) => void tabs.send(text)}
                 />
               )}
             </>
@@ -457,7 +498,21 @@ const AiChatContent: React.FC = () => {
               </div>
             </div>
           ) : (
-            <MessageList messages={state.messages} isLoading={state.isLoading} />
+            <ConversationView
+              scopeId={`nomi:${state.messages[0]?.id ?? 'new'}`}
+              messages={nomiConv.messages}
+              live={nomiConv.live}
+              phase={state.isLoading ? 'running' : 'idle'}
+              queued={nomiQueue.queue}
+              onRemoveQueued={nomiQueue.remove}
+              onStop={state.streaming ? actions.stopGeneration : undefined}
+              onRetry={(id) => {
+                const u = precedingUser(state.messages, id);
+                if (u) void actions.resendFrom(u.id);
+              }}
+              onEdit={(id, text) => void actions.resendFrom(id, text)}
+              slots={nomiSlots}
+            />
           )}
         </main>
 
@@ -470,8 +525,12 @@ const AiChatContent: React.FC = () => {
                   busyOverride:
                     tabs.activeTab!.status === 'running' || tabs.activeTab!.status === 'queued',
                   placeholder: cliTabPlaceholder(tabs.activeTab!),
+                  queue: {
+                    onQueue: (text: string) => void tabs.send(text),
+                    onStop: () => void tabs.cancel(),
+                  },
                 }
-              : {})}
+              : { queue: { onQueue: nomiQueue.enqueue } })}
             onConfigClick={() => setShowConfig(true)}
             onProvidersClick={() => setShowProviders(true)}
             onSettingsClick={(sec, endpoint) => {

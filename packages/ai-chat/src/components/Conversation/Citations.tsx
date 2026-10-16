@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom';
 
 import { kbClient, shortPath, type KbSource } from '../../services/kbClient';
 
-import styles from './MessageBubble.module.css';
+import styles from './Citations.module.css';
 
 /** 把 "…[1][2]…" 拆成文本与引用编号（纯函数，便于测试） */
 export function splitCitations(text: string, valid: Set<number>): Array<string | number> {

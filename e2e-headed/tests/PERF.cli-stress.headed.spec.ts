@@ -169,7 +169,7 @@ test('stress: thousands of tool calls + long markdown stream, then 50 tab switch
       await cdp.send('Profiler.start');
     }
     const input = chat.locator('[data-testid="chat-input"]');
-    const working = chat.locator('[data-testid="cli-working"]');
+    const working = chat.locator('[data-testid="conv-status"]');
     let peak = 0;
     const runStart = Date.now();
     for (let turn = 0; turn < TURNS; turn++) {
@@ -223,7 +223,7 @@ test('stress: thousands of tool calls + long markdown stream, then 50 tab switch
       const target = i % 2 === 0 ? 1 : 2;
       const t1 = Date.now();
       await tabs.nth(target).click();
-      if (target === 1) await chat.locator('[data-testid="cli-msg-assistant"]').first().waitFor();
+      if (target === 1) await chat.locator('[data-testid="msg-assistant"]').first().waitFor();
       renderMs.push(Date.now() - t1);
       if (i % 10 === 9) await sample('switching');
     }
@@ -235,7 +235,7 @@ test('stress: thousands of tool calls + long markdown stream, then 50 tab switch
     // 重开历史：切回长会话的首屏渲染耗时
     const t2 = Date.now();
     await tabs.nth(1).click();
-    await chat.locator('[data-testid="cli-msg-assistant"]').first().waitFor();
+    await chat.locator('[data-testid="msg-assistant"]').first().waitFor();
     const reopenMs = Date.now() - t2;
     await chat.waitForTimeout(1000);
     const afterReopen = await sample('after-reopen', true);

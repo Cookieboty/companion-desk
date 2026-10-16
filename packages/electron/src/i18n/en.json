@@ -535,5 +535,6 @@
   "本次约用 {0} Token，花费约 {1}。": "This task used about {0} tokens and cost about {1}.",
   "本地路由只能监听 127.0.0.1 / localhost / ::1（收到 {0}）": "The local route can only listen on 127.0.0.1 / localhost / ::1 (got {0})",
   "未找到 Grok（可设 NOMI_USE_MOCK_CLI=1）": "Grok not found (set NOMI_USE_MOCK_CLI=1 for the mock CLI)",
-  "Grok 错误": "Grok error"
+  "Grok 错误": "Grok error",
+  "已停止": "Stopped"
 }

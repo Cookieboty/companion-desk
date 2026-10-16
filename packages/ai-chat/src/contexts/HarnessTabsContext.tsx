@@ -42,7 +42,11 @@ interface HarnessTabsValue {
   activate: (id: string) => Promise<void>;
   cycle: (dir: 1 | -1) => void;
   selectIndex: (i: number) => void;
+  /** 发送；当前标签正在运行 / 排队时改为进队列，当前轮结束后自动发送 */
   send: (text: string) => Promise<void>;
+  /** 各标签排队中的待发消息 */
+  queues: Record<string, string[]>;
+  removeQueued: (index: number) => void;
   cancel: () => Promise<void>;
   replyPermission: (requestId: string, allow: boolean) => Promise<void>;
   setMaxConcurrent: (n: number) => Promise<void>;
@@ -59,6 +63,10 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
   const [state, setState] = useState<HarnessTabsState | null>(null);
   const [cache, setCache] = useState<Record<string, HarnessTabMessage[]>>({});
   const [live, setLive] = useState<Record<string, TabLive>>({});
+  const [queues, setQueues] = useState<Record<string, string[]>>({});
+  /** 已派发、尚未观察到标签进入运行态的标签：防止在状态更新前重复派发队列 */
+  const dispatching = useRef(new Set<string>());
+  const [tick, setTick] = useState(0);
   const [lastBackend, setLastBackend] = useState<HarnessBackend>(() => {
     try {
       const v = localStorage.getItem(LAST_BACKEND_KEY);
@@ -186,6 +194,13 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
   const close = useCallback(async (id: string) => {
     if (id === MAIN_TAB_ID) return;
     await harnessClient.closeTab(id);
+    dispatching.current.delete(id);
+    setQueues((cur) => {
+      if (!cur[id]) return cur;
+      const next = { ...cur };
+      delete next[id];
+      return next;
+    });
     setCache((cur) => {
       const next = { ...cur };
       delete next[id];
@@ -214,15 +229,55 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
     },
     [ids],
   );
+  const dispatchSend = useCallback(async (tabId: string, text: string) => {
+    setLive((cur) => ({ ...cur, [tabId]: { text: '', startedAt: Date.now() } }));
+    // 结果经 tab-message 事件进入缓存；这里只吞掉错误（错误也会作为消息写入标签）
+    await harnessClient.sendTab(tabId, text).catch(() => undefined);
+  }, []);
   const send = useCallback(
     async (text: string) => {
       if (!isCliTab) return;
-      setLive((cur) => ({ ...cur, [activeId]: { text: '', startedAt: Date.now() } }));
-      // 结果经 tab-message 事件进入缓存；这里只吞掉错误（错误也会作为消息写入标签）
-      await harnessClient.sendTab(activeId, text).catch(() => undefined);
+      const st = activeTab?.status;
+      if (st === 'running' || st === 'queued' || dispatching.current.has(activeId)) {
+        setQueues((cur) => ({ ...cur, [activeId]: [...(cur[activeId] ?? []), text] }));
+        return;
+      }
+      dispatching.current.add(activeId);
+      await dispatchSend(activeId, text);
+      dispatching.current.delete(activeId);
+      setTick((n) => n + 1);
     },
-    [isCliTab, activeId],
+    [isCliTab, activeId, activeTab?.status, dispatchSend],
   );
+  const removeQueued = useCallback(
+    (index: number) =>
+      setQueues((cur) => {
+        const q = cur[activeId];
+        if (!q || index < 0 || index >= q.length) return cur;
+        return { ...cur, [activeId]: q.filter((_, i) => i !== index) };
+      }),
+    [activeId],
+  );
+
+  // 队列自动发送：标签空闲且队列非空时发出队首；已派发的标签要等它进入运行态后再继续
+  useEffect(() => {
+    if (!state) return;
+    for (const tab of state.tabs) {
+      if (tab.status === 'running' || tab.status === 'queued') {
+        dispatching.current.delete(tab.id);
+        continue;
+      }
+      const q = queues[tab.id];
+      if (!q?.length || dispatching.current.has(tab.id)) continue;
+      dispatching.current.add(tab.id);
+      const [text, ...rest] = q;
+      setQueues((cur) => ({ ...cur, [tab.id]: rest }));
+      void dispatchSend(tab.id, text!).finally(() => {
+        dispatching.current.delete(tab.id);
+        setTick((n) => n + 1);
+      });
+    }
+  }, [state, queues, tick, dispatchSend]);
   const cancel = useCallback(async () => {
     if (isCliTab) await harnessClient.cancelTab(activeId);
   }, [isCliTab, activeId]);
@@ -260,6 +315,8 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
       cycle,
       selectIndex,
       send,
+      queues,
+      removeQueued,
       cancel,
       replyPermission,
       setMaxConcurrent,
@@ -279,6 +336,8 @@ export function HarnessTabsProvider({ children }: { children: React.ReactNode })
       cycle,
       selectIndex,
       send,
+      queues,
+      removeQueued,
       cancel,
       replyPermission,
       setMaxConcurrent,
@@ -302,6 +361,8 @@ const EMPTY: HarnessTabsValue = {
   cycle: () => undefined,
   selectIndex: () => undefined,
   send: async () => undefined,
+  queues: {},
+  removeQueued: () => undefined,
   cancel: async () => undefined,
   replyPermission: async () => undefined,
   setMaxConcurrent: async () => undefined,

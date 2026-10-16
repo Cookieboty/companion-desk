@@ -349,3 +349,26 @@ describe('diffsOf / lineDiff', () => {
     expect(parsePatch('+a\n-b\n c')).toMatchObject({ added: 1, removed: 1 });
   });
 });
+
+describe('buildTimeline：思考块起止时间', () => {
+  const th = (text: string, at: number): HarnessTraceEvent => ({ type: 'thinking', text, at });
+  const call = (name: string, at: number): HarnessTraceEvent => ({
+    type: 'tool',
+    name,
+    status: 'start',
+    id: `${name}-${at}`,
+    at,
+  });
+
+  it('思考结束于下一步开始；末尾思考用整轮结束时间；运行中无结束', () => {
+    const items = buildTimeline(reduceTrace([th('a', 1000), th('b', 1500), call('grep', 4000)]));
+    const t = items[0]!;
+    expect(t.type === 'thinking' && [t.startedAt, t.endedAt]).toEqual([1000, 4000]);
+
+    const tail = buildTimeline(reduceTrace([th('a', 1000)]), false, 9000)[0]!;
+    expect(tail.type === 'thinking' && tail.endedAt).toBe(9000);
+
+    const live = buildTimeline(reduceTrace([th('a', 1000)]), true, 9000)[0]!;
+    expect(live.type === 'thinking' && [live.running, live.endedAt]).toEqual([true, undefined]);
+  });
+});

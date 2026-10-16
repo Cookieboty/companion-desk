@@ -26,13 +26,22 @@ export interface ToolCall {
 }
 
 export type TraceEntry =
-  { type: 'thinking'; id: string; text: string; at?: number } | { type: 'tool'; call: ToolCall };
+  | { type: 'thinking'; id: string; text: string; at?: number; lastAt?: number }
+  | { type: 'tool'; call: ToolCall };
 
 /** 分组桶：同桶的连续调用折叠成一组 */
 export type Bucket = 'explore' | 'command' | 'edit' | 'other';
 
 export type TimelineItem =
-  | { type: 'thinking'; id: string; text: string; running: boolean }
+  | {
+      type: 'thinking';
+      id: string;
+      text: string;
+      running: boolean;
+      /** 思考开始（首个片段到达）与结束（下一步开始 / 整轮结束）；缺数据时不显示秒数 */
+      startedAt?: number;
+      endedAt?: number;
+    }
   | { type: 'call'; call: ToolCall }
   | { type: 'group'; id: string; bucket: Bucket; calls: ToolCall[] }
   | { type: 'subagent'; call: ToolCall; children: TimelineItem[] };
@@ -59,8 +68,17 @@ export function reduceTrace(events: readonly HarnessTraceEvent[]): TraceEntry[] 
   for (const ev of events) {
     if (ev.type === 'thinking') {
       const last = entries[entries.length - 1];
-      if (last?.type === 'thinking') last.text += ev.text;
-      else entries.push({ type: 'thinking', id: `th-${seq++}`, text: ev.text, at: ev.at });
+      if (last?.type === 'thinking') {
+        last.text += ev.text;
+        if (ev.at !== undefined) last.lastAt = ev.at;
+      } else
+        entries.push({
+          type: 'thinking',
+          id: `th-${seq++}`,
+          text: ev.text,
+          at: ev.at,
+          lastAt: ev.at,
+        });
       continue;
     }
     const key = ev.id ?? ev.detail;
@@ -462,7 +480,12 @@ export function diffStats(
  * - 连续同桶（探索 / 命令 / 编辑 / 其它）的 2 个及以上调用折叠成一组，单个调用保持单行；
  * - `live` 为 true 时，最后一条思考视为进行中。
  */
-export function buildTimeline(entries: readonly TraceEntry[], live = false): TimelineItem[] {
+export function buildTimeline(
+  entries: readonly TraceEntry[],
+  live = false,
+  /** 整轮结束时间（已结束的消息传入）：最后一段思考据此算出耗时 */
+  endAt?: number,
+): TimelineItem[] {
   const subagents = new Map<string, ToolCall>();
   for (const e of entries)
     if (e.type === 'tool' && classifyTool(e.call.name) === 'subagent')
@@ -493,11 +516,16 @@ export function buildTimeline(entries: readonly TraceEntry[], live = false): Tim
     list.forEach((e, idx) => {
       if (e.type === 'thinking') {
         flush();
+        const next = list[idx + 1];
+        const nextAt = next ? (next.type === 'tool' ? next.call.startedAt : next.at) : undefined;
+        const running = isLive && idx === list.length - 1;
         items.push({
           type: 'thinking',
           id: e.id,
           text: e.text,
-          running: isLive && idx === list.length - 1,
+          running,
+          startedAt: e.at,
+          endedAt: running ? undefined : (nextAt ?? (next ? e.lastAt : (endAt ?? e.lastAt))),
         });
         return;
       }

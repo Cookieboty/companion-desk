@@ -25,8 +25,9 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import React, { memo, useId, useState } from 'react';
+import React, { memo, useEffect, useId, useState } from 'react';
 
+import { thoughtLabel } from '../../utils/convTime';
 import {
   callDuration,
   commandOf,
@@ -92,6 +93,9 @@ const Disclosure: React.FC<{
   status: CallStatus;
   duration?: number;
   defaultOpen?: boolean;
+  /** 受控展开（思考块：流式时展开、完成后自动折叠） */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   testId: string;
   attrs?: Record<string, string>;
   variant?: 'row' | 'group' | 'block';
@@ -103,12 +107,20 @@ const Disclosure: React.FC<{
   status,
   duration,
   defaultOpen = false,
+  open: controlled,
+  onOpenChange,
   testId,
   attrs,
   variant = 'row',
   children,
 }) => {
-  const [open, setOpen] = useState(defaultOpen);
+  const [inner, setInner] = useState(defaultOpen);
+  const open = controlled ?? inner;
+  const setOpen = (fn: (v: boolean) => boolean) => {
+    const v = fn(open);
+    setInner(v);
+    onOpenChange?.(v);
+  };
   const bodyId = useId();
   return (
     <div
@@ -379,12 +391,55 @@ function countCalls(items: TimelineItem[]): number {
   }, 0);
 }
 
-const Thinking = memo(function Thinking({ text, running }: { text: string; running: boolean }) {
+/** 思考中的已用时（只在运行时挂载，随之清理定时器） */
+const ThinkingTimer: React.FC<{ startedAt?: number }> = ({ startedAt }) => {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  if (!startedAt) return null;
+  return (
+    <span data-testid="tool-thinking-timer">
+      {' '}
+      · {Math.max(0, Math.floor((now - startedAt) / 1000))}s
+    </span>
+  );
+};
+
+const Thinking = memo(function Thinking({
+  text,
+  running,
+  startedAt,
+  endedAt,
+}: {
+  text: string;
+  running: boolean;
+  startedAt?: number;
+  endedAt?: number;
+}) {
+  // 流式时默认展开；结束后自动折叠。用户手动切换过就尊重用户
+  const [manual, setManual] = useState<boolean | undefined>(undefined);
+  const open = manual ?? running;
+  const ms = startedAt !== undefined && endedAt !== undefined ? endedAt - startedAt : undefined;
   return (
     <Disclosure
       icon={Brain}
-      label={<span className={styles.verb}>{running ? t('正在思考') : t('思考过程')}</span>}
+      label={
+        <span className={styles.verb}>
+          {running ? (
+            <>
+              {t('思考中')}
+              <ThinkingTimer startedAt={startedAt} />
+            </>
+          ) : (
+            thoughtLabel(ms)
+          )}
+        </span>
+      }
       status={running ? 'running' : 'done'}
+      open={open}
+      onOpenChange={setManual}
       testId="tool-thinking"
     >
       <div className={styles.thinkText}>{text}</div>
@@ -423,7 +478,15 @@ export const ToolTimeline: React.FC<{ items: TimelineItem[]; nested?: boolean }>
       {visible.map((it) => {
         switch (it.type) {
           case 'thinking':
-            return <Thinking key={it.id} text={it.text} running={it.running} />;
+            return (
+              <Thinking
+                key={it.id}
+                text={it.text}
+                running={it.running}
+                startedAt={it.startedAt}
+                endedAt={it.endedAt}
+              />
+            );
           case 'call':
             return <ToolCallRow key={it.call.id} call={it.call} />;
           case 'group':

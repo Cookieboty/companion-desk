@@ -1,5 +1,5 @@
 import { t as tr, Icon } from '@nomi-ai/ui';
-import { BookOpen, Pin, X, ArrowUp, Plus, Square } from 'lucide-react';
+import { BookOpen, Pin, X, ArrowUp, ListPlus, Plus, Square } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -38,6 +38,11 @@ interface MessageInputProps {
   busyOverride?: boolean;
   /** 设置 busyOverride（CLI 标签）时始终使用这里的提示，不显示 Nomi 的模型提示 */
   placeholder?: string;
+  /**
+   * 运行中也能继续输入：Enter 把消息排进队列（当前轮结束后自动发送）；输入为空时发送键变成「停止」。
+   * 不传则保持原行为（运行中禁用输入）。
+   */
+  queue?: { onQueue: (text: string) => void; onStop?: () => void };
   disabled?: boolean;
   onConfigClick?: () => void;
   onProvidersClick?: () => void;
@@ -55,6 +60,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
   busyOverride,
   placeholder = tr('输入消息...'),
+  queue,
   disabled = false,
   onConfigClick,
   onProvidersClick,
@@ -198,7 +204,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleSend = async () => {
     const trimmedMessage = message.trim() || (images.length ? tr('请看看这张图片。') : '');
-    if (!trimmedMessage || (busyOverride ?? state.isLoading)) return;
+    if (!trimmedMessage) return;
+    if (busy) {
+      // 运行中：文字消息进队列（带图片的消息不排队，等当前轮结束再发）
+      if (queue && !images.length) {
+        queue.onQueue(trimmedMessage);
+        setMessage('');
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      }
+      return;
+    }
     const sendImages = images;
 
     try {
@@ -291,16 +306,29 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  const busy = busyOverride ?? state.isLoading;
   const isDisabled =
     disabled ||
-    (busyOverride !== undefined ? busyOverride : state.isLoading || !state.currentModelId);
+    (busyOverride !== undefined
+      ? queue
+        ? false
+        : busyOverride
+      : queue
+        ? !state.currentModelId
+        : state.isLoading || !state.currentModelId);
 
-  // Nomi 流式生成中：发送键变为「停止」（CLI 标签自带忙碌状态，不走这里）
-  const canStop = busyOverride === undefined && state.streaming;
+  // 停止：Nomi 流式生成中，或编程助手标签自带的停止；输入为空才显示（有字时发送键是「排队」）
+  const stopFn =
+    busyOverride === undefined
+      ? state.streaming
+        ? actions.stopGeneration
+        : undefined
+      : queue?.onStop;
+  const canStop = !!stopFn && (!queue || !busy || (!message.trim() && !images.length));
 
   // 语音：自动发送（对话空闲时）或填入输入框
   const busyRef = useRef(false);
-  busyRef.current = isDisabled;
+  busyRef.current = isDisabled || busy;
   const onVoiceText = useCallback(
     (text: string, autoSend: boolean) => {
       if (autoSend && !busyRef.current) {
@@ -593,13 +621,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             }
           }}
           placeholder={
-            busyOverride !== undefined
-              ? placeholder
-              : isDisabled
-                ? tr('请先选择AI模型...')
-                : kbMode && kbAvailable
-                  ? tr('向知识库提问，回答会标注出处…')
-                  : placeholder
+            queue && busy
+              ? tr('运行中，继续输入会排队，完成后自动发送…')
+              : busyOverride !== undefined
+                ? placeholder
+                : isDisabled
+                  ? tr('请先选择AI模型...')
+                  : kbMode && kbAvailable
+                    ? tr('向知识库提问，回答会标注出处…')
+                    : placeholder
           }
           disabled={isDisabled}
           className={styles.messageTextarea}
@@ -665,7 +695,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           {canStop ? (
             <button
               type="button"
-              onClick={actions.stopGeneration}
+              onClick={stopFn}
               className={styles.sendButton}
               title={tr('停止生成')}
               aria-label={tr('停止生成')}
@@ -678,10 +708,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               onClick={handleSend}
               disabled={isDisabled || (!message.trim() && !images.length)}
               className={styles.sendButton}
-              title={tr('发送消息 (Enter)')}
-              aria-label={tr('发送')}
+              title={queue && busy ? tr('排队发送 (Enter)') : tr('发送消息 (Enter)')}
+              aria-label={queue && busy ? tr('排队') : tr('发送')}
+              data-testid={queue && busy ? 'queue-button' : 'send-button'}
             >
-              {(busyOverride ?? state.isLoading) ? (
+              {queue && busy ? (
+                <Icon icon={ListPlus} />
+              ) : busy ? (
                 <div className={styles.loadingSpinner} />
               ) : (
                 <Icon icon={ArrowUp} />

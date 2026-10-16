@@ -1,17 +1,39 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render } from '@testing-library/react';
+import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { CliConversation } from '../src/components/CliConversation';
-import { Markdown } from '../src/components/CliConversation/Markdown';
+import { ConversationView } from '../src/components/Conversation';
+import { Markdown } from '../src/components/Conversation/Markdown';
 import type { TabLive } from '../src/contexts/HarnessTabsContext';
 import type {
   HarnessTabMessage,
   HarnessTabMeta,
   HarnessTraceEvent,
 } from '../src/services/harnessClient';
+import { fromHarnessMessage, tabLiveToConv } from '../src/utils/convAdapters';
 
 afterEach(cleanup);
+
+/** 编程助手标签 → 统一会话视图（与 App 里的接线一致） */
+const CliConversation: React.FC<{
+  tab: HarnessTabMeta;
+  messages: HarnessTabMessage[];
+  live?: TabLive;
+  onPermission?: (id: string, allow: boolean) => void;
+  queued?: string[];
+  onStop?: () => void;
+  onRetry?: (id: string) => void;
+  onEdit?: (id: string, text: string) => void;
+}> = ({ tab, messages, live, ...rest }) => (
+  <ConversationView
+    scopeId={tab.id}
+    messages={messages.map((m) => fromHarnessMessage(m, tab.backend))}
+    live={tabLiveToConv(live)}
+    phase={tab.status === 'running' ? 'running' : tab.status === 'queued' ? 'queued' : 'idle'}
+    {...rest}
+  />
+);
 
 const tab = (over: Partial<HarnessTabMeta> = {}): HarnessTabMeta => ({
   id: 't1',
@@ -68,7 +90,7 @@ describe('CliConversation 历史消息', () => {
     const { getByTestId, queryByText, container } = render(
       <CliConversation tab={tab()} messages={messages} onPermission={() => undefined} />,
     );
-    expect(getByTestId('cli-msg-user').textContent).toContain('检查内存泄漏');
+    expect(getByTestId('msg-user').textContent).toContain('检查内存泄漏');
     // Markdown：标题 + 粗体 + 行内代码，没有原始标记
     const md = getByTestId('markdown');
     expect(md.querySelector('h3')?.textContent).toBe('结论');
@@ -132,7 +154,7 @@ describe('CliConversation 历史消息', () => {
 
     const think = container.querySelector<HTMLElement>('[data-testid="tool-thinking"]')!;
     expect(think.getAttribute('data-open')).toBe('false');
-    expect(think.textContent).toContain('思考过程');
+    expect(think.textContent).toContain('已思考 1 秒');
     fireEvent.click(think.querySelector('button')!);
     expect(think.textContent).toContain('先看目录');
   });
@@ -166,14 +188,14 @@ describe('CliConversation 历史消息', () => {
   });
 
   it('错误消息显示为告警块', () => {
-    const { getByRole } = render(
+    const { getByTestId } = render(
       <CliConversation
         tab={tab()}
         messages={[{ id: 'e', role: 'assistant', content: '启动失败', timestamp: 1, error: true }]}
         onPermission={() => undefined}
       />,
     );
-    expect(getByRole('alert').textContent).toBe('启动失败');
+    expect(getByTestId('conv-error-card').textContent).toContain('启动失败');
   });
 });
 
@@ -195,11 +217,11 @@ describe('CliConversation 运行中', () => {
         onPermission={() => undefined}
       />,
     );
-    expect(getByTestId('cli-working').textContent).toContain('正在处理');
+    expect(getByTestId('conv-status').getAttribute('data-kind')).toBe('tool');
     const row = container.querySelector('[data-testid="tool-row"]')!;
     expect(row.getAttribute('data-status')).toBe('running');
     expect(row.querySelector('[role="status"]')).not.toBeNull();
-    expect(getByTestId('cli-tab-live').querySelector('strong')?.textContent).toBe('粗体');
+    expect(getByTestId('conv-live').querySelector('strong')?.textContent).toBe('粗体');
   });
 
   it('权限请求是醒目卡片，允许 / 拒绝回调带 id', () => {
@@ -212,24 +234,24 @@ describe('CliConversation 运行中', () => {
         onPermission={onPermission}
       />,
     );
-    expect(getByTestId('cli-permission-card').textContent).toContain('Bash: rm -rf x');
-    expect(getByTestId('cli-working').textContent).toContain('等待你的确认');
-    fireEvent.click(getByTestId('cli-permission-allow'));
-    fireEvent.click(getByTestId('cli-permission-deny'));
+    expect(getByTestId('conv-permission-card').textContent).toContain('Bash: rm -rf x');
+    expect(getByTestId('conv-status').textContent).toContain('等待你的确认');
+    fireEvent.click(getByTestId('conv-permission-allow'));
+    fireEvent.click(getByTestId('conv-permission-deny'));
     expect(onPermission).toHaveBeenNthCalledWith(1, 'p1', true);
     expect(onPermission).toHaveBeenNthCalledWith(2, 'p1', false);
   });
 
-  it('排队中显示等待提示，没有「正在处理」', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('排队中显示明确的等待提示', () => {
+    const { getByTestId } = render(
       <CliConversation
         tab={tab({ status: 'queued' })}
         messages={[]}
         onPermission={() => undefined}
       />,
     );
-    expect(getByTestId('cli-tab-live').textContent).toContain('排队中');
-    expect(queryByTestId('cli-working')).toBeNull();
+    expect(getByTestId('conv-live').textContent).toContain('排队等待');
+    expect(getByTestId('conv-status').getAttribute('data-kind')).toBe('queued');
   });
 });
 
@@ -259,7 +281,7 @@ describe('CliConversation 自动滚动（贴底才跟，上滑不抢）', () => 
         onPermission={() => undefined}
       />,
     );
-    const el = getByTestId('cli-scroll');
+    const el = getByTestId('conv-scroll');
     expect(el.scrollTop).toBe(1000);
 
     rerender(
@@ -283,10 +305,10 @@ describe('CliConversation 自动滚动（贴底才跟，上滑不抢）', () => 
       />,
     );
     expect(el.scrollTop).toBe(100);
-    fireEvent.click(getByTestId('cli-jump-bottom'));
+    fireEvent.click(getByTestId('conv-jump-bottom'));
     expect(el.scrollTop).toBe(1000);
     fireEvent.scroll(el);
-    expect(queryByTestId('cli-jump-bottom')).toBeNull();
+    expect(queryByTestId('conv-jump-bottom')).toBeNull();
 
     // 自己发了新消息：即使上滑过也跟到底
     el.scrollTop = 100;
