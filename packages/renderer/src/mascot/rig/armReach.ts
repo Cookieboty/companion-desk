@@ -10,7 +10,7 @@
  * (sgn +1, hands drawn as their native chirality); `l` is on the screen left = the character's RIGHT arm.
  */
 
-import { ARM_HAND_S, ARM_WRIST_MERGE, ArmChain, type ArmGeom, HAND_BASE } from './armKin';
+import { ARM_BEND_MAX, ARM_ELBOW_S, ARM_HAND_S, ARM_WRIST_MERGE, ArmChain, type ArmGeom, HAND_BASE } from './armKin';
 
 const DEG = Math.PI / 180;
 
@@ -157,6 +157,8 @@ export interface ReachOpts {
   near?: readonly [number, number];
 }
 
+/** the posed elbow must stay on the canvas (rig 960×1120) with a margin */
+export const ELBOW_BOX = [62, 60, 890, 1060] as const;
 const W_MAX = 45 * DEG;
 const wrapPi = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
 
@@ -202,10 +204,10 @@ function reachExact(
     1;
   // coarse grid → local minima of the hand-centre error → Newton polish of each
   const AN = 31;
-  const EN = 45;
+  const EN = 51;
   const grid = new Float64Array(AN * EN);
   const aOf = (i: number) => (-100 + i * 8) * DEG;
-  const eOf = (j: number) => (-110 + j * 5) * DEG;
+  const eOf = (j: number) => (-125 + j * 5) * DEG;
   for (let i = 0; i < AN; i++)
     for (let j = 0; j < EN; j++) {
       const fe = err(aOf(i), eOf(j), wFor(aOf(i), eOf(j)));
@@ -254,14 +256,18 @@ function reachExact(
         de *= 0.2 / m;
       }
       a = Math.max(-1.9, Math.min(2.6, a + da));
-      e = Math.max(-1.92, Math.min(1.92, e + de));
+      e = Math.max(-ARM_BEND_MAX, Math.min(ARM_BEND_MAX, e + de));
       w = wFor(a, e);
       fe = err(a, e, w);
       if (Math.hypot(fe[0], fe[1]) < 0.1) break;
     }
     const er = Math.hypot(fe[0], fe[1]);
     const cost = costOf(a, e, w);
-    if (er < 1.5 && (!o.elbow || Math.sign(e) === o.elbow)) {
+    ch.set(a, e, w, z, 0, ARM_WRIST_MERGE);
+    ch.pos(ARM_ELBOW_S, t);
+    const elbowOk =
+      t[0] > ELBOW_BOX[0] && t[0] < ELBOW_BOX[2] && t[1] > ELBOW_BOX[1] && t[1] < ELBOW_BOX[3];
+    if (er < 1.5 && elbowOk && (!o.elbow || Math.sign(e) === o.elbow)) {
       if (!best || cost < best.cost) best = { a, e, w, err: er, cost };
     }
   }

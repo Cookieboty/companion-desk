@@ -90,7 +90,7 @@ describe('IK arm poses (armTargets → armPoses.generated)', () => {
     for (const n of names) {
       const p = ARM_POSES[n as keyof typeof ARM_POSES];
       for (const s of ['r', 'l'] as const) {
-        expect(Math.abs(p[s][1]), `${n}.${s}.e`).toBeLessThanOrEqual(110.05);
+        expect(Math.abs(p[s][1]), `${n}.${s}.e`).toBeLessThanOrEqual(126.1);
         expect(Math.abs(p[s][2]), `${n}.${s}.w`).toBeLessThanOrEqual(45.01);
         expect(p[s][3]).toBeGreaterThanOrEqual(0);
         expect(p[s][3]).toBeLessThanOrEqual(1);

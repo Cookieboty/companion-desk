@@ -956,10 +956,10 @@
       "character": "right",
       "pieces": {
         "joint": [
-          132.88,
-          314.93
+          129.34,
+          334.62
         ],
-        "elbowS": 320,
+        "elbowS": 340,
         "handS": 560,
         "overlap": 28,
         "layerSize": [
@@ -969,35 +969,40 @@
         "upper": {
           "file": "layers/arms/arm-l-upper.png",
           "offset": [
-            84,
+            78,
             0
           ],
           "size": [
-            182,
-            348
+            188,
+            368
           ]
         },
         "fore": {
           "file": "layers/arms/arm-l-fore.png",
           "offset": [
-            0,
-            285
+            45,
+            305
           ],
           "size": [
-            174,
-            393
+            123,
+            263
           ]
         },
         "elbow": {
           "file": "layers/arms/arm-l-elbow.png",
           "offset": [
-            63,
-            225
+            0,
+            0
           ],
           "size": [
-            81,
-            170
-          ]
+            196,
+            6
+          ],
+          "strip": {
+            "n0": -86,
+            "n1": 109,
+            "thick": 6
+          }
         }
       }
     },
@@ -1016,10 +1021,10 @@
       "character": "left",
       "pieces": {
         "joint": [
-          123.58,
-          314.91
+          127.13,
+          334.6
         ],
-        "elbowS": 320,
+        "elbowS": 340,
         "handS": 560,
         "overlap": 28,
         "layerSize": [
@@ -1034,44 +1039,49 @@
           ],
           "size": [
             170,
-            349
+            369
           ]
         },
         "fore": {
           "file": "layers/arms/arm-r-fore.png",
           "offset": [
-            80,
-            285
+            83,
+            305
           ],
           "size": [
-            182,
-            393
+            138,
+            261
           ]
         },
         "elbow": {
           "file": "layers/arms/arm-r-elbow.png",
           "offset": [
-            113,
-            221
+            0,
+            0
           ],
           "size": [
-            67,
-            174
-          ]
+            172,
+            6
+          ],
+          "strip": {
+            "n0": -79,
+            "n1": 92,
+            "thick": 6
+          }
         }
       }
     }
   },
   "armChain": {
-    "elbowS": 320,
+    "elbowS": 340,
     "handS": 560,
-    "bendLen": 56,
-    "bendMax": 1.92,
+    "bendLen": 28,
+    "bendMax": 2.2,
     "wristMerge": 0.6,
     "stump": 90,
     "shoulderZone": 110,
-    "zUpper": 0.42,
-    "zFore": 0.28,
+    "zUpper": 0.7,
+    "zFore": 0.3,
     "handBase": 0.36,
     "cuffWidth": 96
   },

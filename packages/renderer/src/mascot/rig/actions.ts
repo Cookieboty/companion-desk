@@ -37,12 +37,14 @@ const FALL_EASE = ['o', 'i', 'io', 'io'] as const;
 function arm(
   side: 'r' | 'l',
   hand: number,
-  pose: Pose,
+  pose0: Pose,
   t0: number,
   t1: number,
   dur: number,
   opts: ArmOpts = {},
 ): Track[] {
+  // the elbow range is ±126°; solved targets may sit a hair beyond it
+  const pose = pose0.map((v, k) => (k === 1 ? Math.max(-125.9, Math.min(125.9, v)) : v)) as unknown as Pose;
   const ease = opts.ease ?? 'io';
   const win = opts.win ?? [t0, t1];
   const ret = opts.ret ?? t1 <= dur - 0.3;
@@ -61,7 +63,7 @@ function arm(
       const keys: Key[] = [
         [0, 0],
         [tAnt, 0],
-        [tAnt + 0.2, zb, 'o'],
+        [tAnt + 0.1, zb, 'o'],
         [tArr + 0.12, pose[3], 'io'],
       ];
       for (const [tv, pv] of via) keys.push([tv, pv[3], 'io']);
@@ -78,15 +80,17 @@ function arm(
     }
     // the shoulder first swings IN across the body while the elbow folds (the forearm passes in front
     // of the torso instead of sweeping out past the canvas edge), then abducts to the pose
-    const dip = Math.min(26, 5 + Math.abs(pose[1]) * 0.13);
+    const dip = Math.min(42, 10 + Math.abs(pose[1]) * 0.26);
     const ant =
       i === 0
         ? -dip * Math.sign(pose[1] || 1) * (pose[1] < 0 ? 0.35 : 1)
         : -Math.sign(pose[i] || 1) * Math.min(7, 1.5 + Math.abs(pose[i]) * 0.05);
-    const over = Math.max(-109, Math.min(109, pose[i] * 1.04));
+    const over = Math.max(-124, Math.min(124, pose[i] * 1.04));
     const keys: Key[] = [
       [0, 0],
       [i === 0 ? tAnt + 0.12 : tAnt, ant, 'o'],
+      // shoulder stays swung in until the forearm has passed the horizontal, then abducts
+      ...(i === 0 ? ([[Math.max(tAnt + 0.13, tLift - 0.17), ant, 'io']] as Key[]) : []),
       [tLift, over, i === 0 || i === 2 ? ease : RISE_EASE[i]],
       [tLift + 0.2, pose[i], 'io'],
     ];

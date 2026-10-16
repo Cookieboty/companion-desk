@@ -111,7 +111,7 @@ export const PARAM_DEFS: readonly ParamDef[] = [
   // arms: a = shoulder swing outward/up (deg), e = elbow flexion (deg, + keeps turning out, − folds across the body), w = wrist (deg)
   D('rOn', 0, 0, 1),
   D('rA', 0, -110, 150),
-  D('rE', 0, -110, 110),
+  D('rE', 0, -126, 126),
   D('rW', 0, -90, 90),
   D('rHand', 0, 0, 9, { discrete: true }),
   /** reach toward the camera 0..1: foreshortens the upper arm and (more) the forearm */
@@ -120,7 +120,7 @@ export const PARAM_DEFS: readonly ParamDef[] = [
   D('rMix', 0, 0, 1),
   D('lOn', 0, 0, 1),
   D('lA', 0, -110, 150),
-  D('lE', 0, -110, 110),
+  D('lE', 0, -126, 126),
   D('lW', 0, -90, 90),
   D('lHand', 0, 0, 9, { discrete: true }),
   D('lZ', 0, 0, 1),

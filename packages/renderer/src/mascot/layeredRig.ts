@@ -17,6 +17,9 @@ import {
   bodyShoulderFill,
   bodySideFill,
   drawArmHinge,
+  chainFor,
+  safeReach,
+  handForeshorten,
   drawArmPieces,
   drawHandPiece,
   handScaleFor,
@@ -1729,12 +1732,17 @@ export function drawRig(
     const zReach = ex[side === 'l' ? IDX.lZ : IDX.rZ];
     const mix = ex[side === 'l' ? IDX.lMix : IDX.rMix];
     const hasHand = !!(meta && himg) && mix > 0.002;
-    const hs = hasHand ? handScaleFor(meta!) : 0;
+    const hs0 = hasHand ? handScaleFor(meta!) : 0;
+    const armA = ex[ia] * DEG - sgn * rot;
+    const armChainForZ = chainFor(img as object, geom, pv, off as [number, number]);
+    const [safeA, safeZ] = safeReach(armChainForZ, armA, elbow, wrist, zReach, lift, joint ? 1.3 : undefined);
+    const hs = hs0 * handForeshorten(safeZ, Math.max(0, Math.min(1, zReach)));
     const armP = {
-      a: ex[ia] * DEG - sgn * rot,
+      a: safeA,
       e: elbow,
       w: wrist,
-      z: zReach,
+      // in-between frames never sweep elbow / hand off the stage: foreshorten toward the camera
+      z: safeZ,
       lift,
       mix,
       // taper the sleeve to the common cuff width and fold the wrist into the forearm so

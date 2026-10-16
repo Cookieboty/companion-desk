@@ -17,7 +17,8 @@ import {
   ArmChain,
   type ArmFrame,
   type ArmGeom,
-  ARM_Z_FORE,
+  ARM_ELBOW_S,
+  ARM_HAND_S,
   HAND_BASE,
   HAND_CUFF_W,
   smooth01,
@@ -608,6 +609,8 @@ export interface ArmPieceInfo {
   file: string;
   offset: readonly [number, number];
   size: readonly [number, number];
+  /** elbow sweep strip: sleeve-normal range [n0, n1] (px) and strip thickness along the spine */
+  strip?: { n0: number; n1: number; thick: number };
 }
 
 export interface ArmPieces {
@@ -622,13 +625,122 @@ export interface ArmPieces {
   elbow: ArmPieceInfo;
 }
 
+/** 2x3 affine [a b c d e f] as used by CanvasRenderingContext2D.setTransform */
+export type Affine = [number, number, number, number, number, number];
+
+export interface HingeFrames {
+  /** posed shoulder spine point, elbow and hand attach (rig px) = the ArmChain / IK positions */
+  shoulder: [number, number];
+  elbow: [number, number];
+  hand: [number, number];
+  /** rest-pose points the pieces were cut around (rig px) */
+  restShoulder: [number, number];
+  restElbow: [number, number];
+  restHand: [number, number];
+  upper: Affine;
+  fore: Affine;
+  /** spine direction (rad) of the upper / fore as drawn, and the signed sweep between them */
+  dirU: number;
+  dirF: number;
+  sweep: number;
+}
+
 /**
- * Draw the arm as two rigid pieces (upper + forearm) hinged at the elbow, with an official-art
- * elbow cap covering the OUTER gap of the hinge. The INNER crook is solid because the upper
- * piece is drawn over the forearm's proximal end — no mesh internals / straps can float free.
- *
- * Rest pose (a=e=w=z=0) composites upper+fore over the master (overlap feathers cancel). High
- * bends keep near-constant sleeve width (no rubber-hose balloons).
+ * Affine that maps rest point A→A', B→B' as a rotation + a scale ALONG the rest axis only, so the
+ * sleeve keeps its width while it is foreshortened (never a lateral squash).
+ */
+function axisAffine(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  ax2: number,
+  ay2: number,
+  bx2: number,
+  by2: number,
+  axisAng: number,
+): Affine {
+  const d0x = bx - ax;
+  const d0y = by - ay;
+  const d1x = bx2 - ax2;
+  const d1y = by2 - ay2;
+  const rot = Math.atan2(d1y, d1x) - Math.atan2(d0y, d0x);
+  const k = Math.hypot(d1x, d1y) / Math.max(1e-6, Math.hypot(d0x, d0y));
+  // M = T(A') · R(rot) · Rax · diag(k,1) · Rax⁻¹ · T(−A)
+  const ca = Math.cos(axisAng);
+  const sa = Math.sin(axisAng);
+  // S = Rax·diag(k,1)·Rax⁻¹
+  const s11 = k * ca * ca + sa * sa;
+  const s12 = (k - 1) * ca * sa;
+  const s22 = k * sa * sa + ca * ca;
+  const cr = Math.cos(rot);
+  const sr = Math.sin(rot);
+  // L = R(rot)·S
+  const a = cr * s11 - sr * s12;
+  const b = sr * s11 + cr * s12;
+  const c = cr * s12 - sr * s22;
+  const d = sr * s12 + cr * s22;
+  return [a, b, c, d, ax2 - (a * ax + c * ay), ay2 - (b * ax + d * ay)];
+}
+
+/** Hinge geometry for one arm pose: every joint comes from the same ArmChain the IK solver uses. */
+export function hingeFrames(
+  g: ArmGeom,
+  pivot: readonly [number, number],
+  off: readonly [number, number],
+  pieces: ArmPieces,
+  p: ArmDrawParams,
+  ch: ArmChain,
+): HingeFrames {
+  const bend = Math.max(-ARM_BEND_MAX_LOCAL, Math.min(ARM_BEND_MAX_LOCAL, p.e));
+  ch.set(p.a, bend, p.w, p.z, p.lift, p.mergeMax ?? ARM_WRIST_MERGE_LOCAL);
+  const axis = Math.atan2(ch.u0y, ch.u0x);
+  const s0x = off[0] + g.s0[0];
+  const s0y = off[1] + g.s0[1];
+  const restS: [number, number] = [s0x + ch.u0x * ch.sp, s0y + ch.u0y * ch.sp];
+  const restE: [number, number] = [off[0] + pieces.joint[0], off[1] + pieces.joint[1]];
+  const restH: [number, number] = [
+    off[0] + (pieces.handJoint?.[0] ?? pieces.joint[0] + ch.u0x * (ARM_HAND_S - ARM_ELBOW_S)),
+    off[1] + (pieces.handJoint?.[1] ?? pieces.joint[1] + ch.u0y * (ARM_HAND_S - ARM_ELBOW_S)),
+  ];
+  const sh: [number, number] = [0, 0];
+  const el: [number, number] = [0, 0];
+  const ha: [number, number] = [0, 0];
+  const tmp = [0, 0];
+  ch.pos(ch.sp, tmp);
+  sh[0] = tmp[0];
+  sh[1] = tmp[1];
+  ch.pos(ARM_ELBOW_S, tmp);
+  el[0] = tmp[0];
+  el[1] = tmp[1];
+  ch.pos(ARM_HAND_S, tmp);
+  ha[0] = tmp[0];
+  ha[1] = tmp[1];
+  const upper = axisAffine(restS[0], restS[1], restE[0], restE[1], sh[0], sh[1], el[0], el[1], axis);
+  const fore = axisAffine(restE[0], restE[1], restH[0], restH[1], el[0], el[1], ha[0], ha[1], axis);
+  const dirU = Math.atan2(el[1] - sh[1], el[0] - sh[0]);
+  const dirF = Math.atan2(ha[1] - el[1], ha[0] - el[0]);
+  const sweep = Math.atan2(Math.sin(dirF - dirU), Math.cos(dirF - dirU));
+  return {
+    shoulder: sh,
+    elbow: el,
+    hand: ha,
+    restShoulder: restS,
+    restElbow: restE,
+    restHand: restH,
+    upper,
+    fore,
+    dirU,
+    dirF,
+    sweep,
+  };
+}
+
+/**
+ * Draw the arm as two rigid sleeve pieces (upper + forearm) hinged at the elbow with an official-art
+ * elbow cap over the OUTER corner. The INNER crook is solid because the upper piece is drawn over
+ * the forearm's proximal end. Joints, lengths and the hand attach are the ArmChain / IK values
+ * (hingeFrames), so the wrist lands exactly on the solved target.
  */
 export function drawArmHinge(
   ctx: Ctx,
@@ -641,91 +753,50 @@ export function drawArmHinge(
   elbowImg: RigImageSource,
   p: ArmDrawParams,
 ): void {
-  /**
-   * Rigid 2-bone from rest joints. Posed elbow = rest elbow rotated about the (lifted)
-   * shoulder by phiU so upper distal end and fore proximal end stay locked. No bitmap
-   * foreshortening squash on pieces (that pulled them apart). High bends: clip the
-   * forearm's proximal OUTER wedge so the rest-pose sleeve curve cannot balloon into a
-   * rubber-hose loop; fill the outer hinge with the official-art elbow cap.
-   */
   const ch = chainFor(upperImg as object, g, pivot, off);
-  const bend = Math.max(-ARM_BEND_MAX_LOCAL, Math.min(ARM_BEND_MAX_LOCAL, p.e));
-  ch.set(p.a, bend, p.w, p.z, p.lift, p.mergeMax ?? ARM_WRIST_MERGE_LOCAL);
-  const phiU = ch.sgnRot * p.a;
-  const phiF = ch.sgnRot * (p.a + bend);
-  const restEx = off[0] + pieces.joint[0];
-  const restEy = off[1] + pieces.joint[1];
-  const shx = pivot[0];
-  const shy = pivot[1] + p.lift;
-
-  const dx = restEx - pivot[0];
-  const dy = restEy - pivot[1];
-  const cu = Math.cos(phiU);
-  const su = Math.sin(phiU);
-  const efx = shx + cu * dx - su * dy;
-  const efy = shy + su * dx + cu * dy;
-
-  const absE = Math.abs(bend);
-  const fx = off[0] + pieces.fore.offset[0];
-  const fy = off[1] + pieces.fore.offset[1];
-  const ux = off[0] + pieces.upper.offset[0];
-  const uy = off[1] + pieces.upper.offset[1];
-  const ex = off[0] + pieces.elbow.offset[0];
-  const ey = off[1] + pieces.elbow.offset[1];
-
-  // --- Forearm under (proximal OUTER corner already beveled in the piece cut)
-  ctx.save();
-  ctx.translate(efx, efy);
-  ctx.rotate(phiF);
-  ctx.translate(-restEx, -restEy);
-  ctx.drawImage(foreImg as CanvasImageSource, fx, fy);
-  ctx.restore();
-
-  // --- Elbow cap on OUTER hinge (sharp anime jacket fold, not a cloth loop)
-  if (absE > 0.2) {
-    const bis = (phiU + phiF) / 2;
-    const side = -g.sgn * Math.sign(bend || 1);
-    const nx = Math.cos(bis + (side * Math.PI) / 2);
-    const ny = Math.sin(bis + (side * Math.PI) / 2);
-    // Sit the rest-pose crescent into the outer wedge; scale up with bend so the
-    // hard outer cut does not leave a hollow gap against the background.
-    const push = 4 + 18 * smooth01((absE - 0.2) / 1.3);
-    const sc = 1 + 0.35 * smooth01((absE - 0.2) / 1.3);
+  const f = hingeFrames(g, pivot, off, pieces, p, ch);
+  const put = (img: RigImageSource, m: Affine, info: ArmPieceInfo, alpha = 1) => {
     const prev = ctx.globalAlpha;
-    ctx.globalAlpha = prev * Math.min(1, 0.55 + 0.45 * smooth01((absE - 0.15) / 0.5));
+    ctx.globalAlpha = prev * alpha;
     ctx.save();
-    ctx.translate(efx + nx * push, efy + ny * push);
-    ctx.rotate(bis);
-    ctx.scale(sc, sc);
-    ctx.translate(-restEx, -restEy);
-    ctx.drawImage(elbowImg as CanvasImageSource, ex, ey);
+    ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+    ctx.drawImage(img as CanvasImageSource, off[0] + info.offset[0], off[1] + info.offset[1]);
     ctx.restore();
     ctx.globalAlpha = prev;
+  };
+  put(foreImg, f.fore, pieces.fore);
+  // outer elbow: sweep the official sleeve cross-section through the bend (round hinge, no loop)
+  const strip = pieces.elbow.strip;
+  if (strip && Math.abs(f.sweep) > 0.03) {
+    const axis = Math.atan2(ch.u0y, ch.u0x);
+    const step = 0.04;
+    const n = Math.min(80, Math.ceil(Math.abs(f.sweep) / step));
+    const sw = strip.n1 - strip.n0 + 1;
+    for (let k = 0; k <= n; k++) {
+      const rot = f.dirU + (f.sweep * k) / n - axis;
+      const cr = Math.cos(rot);
+      const sr = Math.sin(rot);
+      // columns: strip x → sleeve normal w0, strip y → spine u0, both rotated by `rot`
+      const a0 = cr * ch.w0x - sr * ch.w0y;
+      const b0 = sr * ch.w0x + cr * ch.w0y;
+      const c0 = cr * ch.u0x - sr * ch.u0y;
+      const d0 = sr * ch.u0x + cr * ch.u0y;
+      ctx.save();
+      ctx.transform(a0, b0, c0, d0, f.elbow[0], f.elbow[1]);
+      ctx.drawImage(
+        elbowImg as CanvasImageSource,
+        0,
+        0,
+        sw,
+        strip.thick,
+        strip.n0,
+        -strip.thick / 2 - 0.4,
+        sw,
+        strip.thick + 0.8,
+      );
+      ctx.restore();
+    }
   }
-
-  // --- Upper over: covers INNER crook (no floating straps / hollow gap)
-  ctx.save();
-  ctx.translate(shx, shy);
-  ctx.rotate(phiU);
-  ctx.translate(-pivot[0], -pivot[1]);
-  ctx.drawImage(upperImg as CanvasImageSource, ux, uy);
-  ctx.restore();
-
-  // Hand frame from the same rigid fore transform (cuff stays locked to the fore piece)
-  if (pieces.handJoint) {
-    const restHx = off[0] + pieces.handJoint[0];
-    const restHy = off[1] + pieces.handJoint[1];
-    const fdx = restHx - restEx;
-    const fdy = restHy - restEy;
-    const cf = Math.cos(phiF);
-    const sf = Math.sin(phiF);
-    const z = Math.max(0, Math.min(1, p.z));
-    const ff = 1 - ARM_Z_FORE * z;
-    armFrame.hx = efx + (cf * fdx - sf * fdy) * ff;
-    armFrame.hy = efy + (sf * fdx + cf * fdy) * ff;
-    const wEff = Math.max(-ARM_WRIST_MERGE_LOCAL, Math.min(ARM_WRIST_MERGE_LOCAL, p.w));
-    armFrame.hPsi = phiF - ch.sgn * ch.theta + Math.PI + ch.sgnRot * (p.w - wEff);
-  } else {
-    ch.hand(armFrame);
-  }
+  put(upperImg, f.upper, pieces.upper);
+  ch.hand(armFrame);
 }

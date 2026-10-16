@@ -30,20 +30,19 @@ export interface ArmGeom {
 }
 
 /** spine arc-length (sleeve px) of the elbow, the bend length at 0 flexion, and the hand attach */
-export const ARM_ELBOW_S = 320;
+export const ARM_ELBOW_S = 340;
 export const ARM_BEND_LEN = 28;
 export const ARM_HAND_S = 560;
 /** s where the sleeve taper starts / has finished (merged wrist mode) */
 export const ARM_TAPER_S0 = 380;
 export const ARM_TAPER_S1 = ARM_HAND_S - 30;
 /** elbow flexion limit (rad) */
-/** ~137° — beyond this the outer hinge gap stays small with an elbow cap */
-export const ARM_BEND_MAX = 1.92; // ~110° — sharp hinge, not rubber hose
+export const ARM_BEND_MAX = 2.2; // ~126° — rigid hinge + elbow cap; deeper folds are foreshortened instead
 export const ARM_WRIST_MERGE = 0.6;
 export const ARM_DISSOLVE_S0 = ARM_HAND_S - 12;
 /** foreshortening of the upper arm / forearm at z = 1 */
-export const ARM_Z_UPPER = 0.42;
-export const ARM_Z_FORE = 0.28;
+export const ARM_Z_UPPER = 0.7;
+export const ARM_Z_FORE = 0.3;
 /** the top of the sleeve (shoulder cap) stays seated on the torso; the swing blends in below it */
 export const ARM_STUMP = 90;
 /** length of the shoulder bend zone below the stump (sleeve px): the upper arm is rigid beyond it */
@@ -218,4 +217,93 @@ export class ArmChain {
     out.hy = t[1];
     out.hPsi = this.phiOf(ARM_HAND_S) - this.sgn * this.theta + Math.PI + this.sgnRot * this.wRest;
   }
+}
+
+/** the visible rig canvas and the margins the arm must keep while it is posed (rig px) */
+export const ARM_STAGE = { w: 960, h: 1120, elbow: 30, hand: 36, palm: 160 } as const;
+
+/**
+ * Smallest reach z ≥ `z` for which the posed elbow and the hand (palm centre) stay on the canvas.
+ * Solved IK poses are already inside, so they are returned unchanged; only in-between frames of a
+ * gesture (shoulder already up, elbow not folded yet) get foreshortened toward the camera instead
+ * of sweeping the hand off the stage. Continuous in the pose (bisection on a monotone region).
+ */
+/**
+ * Hand-piece scale while the guard foreshortens the arm: the forearm swinging toward the camera
+ * also shortens the hand (≤ 40 %). Exactly 1 for every solved pose (guard inactive: zz = z0).
+ */
+export function handForeshorten(zGuard: number, zPose: number): number {
+  return 1 - 0.4 * Math.max(0, Math.min(1, zGuard - zPose));
+}
+
+export function safeReach(
+  ch: ArmChain,
+  a: number,
+  e: number,
+  w: number,
+  z: number,
+  lift: number,
+  mergeMax = ARM_WRIST_MERGE,
+): [number, number] {
+  const el = [0, 0];
+  const fr: ArmFrame = { hx: 0, hy: 0, hPsi: 0 };
+  const z0 = Math.max(0, Math.min(1, z));
+  const bad = (zz: number, aa: number = a): boolean => {
+    ch.set(aa, e, w, zz, lift, mergeMax);
+    ch.pos(ARM_ELBOW_S, el);
+    ch.hand(fr);
+    const pl = ARM_STAGE.palm * handForeshorten(zz, z0);
+    const px = fr.hx + Math.sin(fr.hPsi) * pl;
+    const py = fr.hy - Math.cos(fr.hPsi) * pl;
+    const m = ARM_STAGE.elbow;
+    const h = ARM_STAGE.hand;
+    return (
+      el[0] < m ||
+      el[0] > ARM_STAGE.w - m ||
+      el[1] < m ||
+      el[1] > ARM_STAGE.h - m ||
+      px < h ||
+      px > ARM_STAGE.w - h ||
+      py < h ||
+      py > ARM_STAGE.h - h
+    );
+  };
+  if (!bad(z0)) return [a, z0];
+  let lo = z0;
+  let hi = 1;
+  // coarse scan for the first safe z, then bisect the bracket
+  let found = false;
+  for (let k = 1; k <= 10; k++) {
+    const zz = z0 + ((1 - z0) * k) / 10;
+    if (!bad(zz)) {
+      hi = zz;
+      lo = z0 + ((1 - z0) * (k - 1)) / 10;
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    // fully foreshortened is the best the guard can do (the animation keys keep the shoulder in
+    // until the forearm has passed the horizontal)
+    return [a, 1];
+  }
+  for (let i = 0; i < 8; i++) {
+    const mid = (lo + hi) / 2;
+    if (bad(mid)) lo = mid;
+    else hi = mid;
+  }
+  return [a, hi];
+}
+
+/** z-only view of {@link safeReach} (kept for callers that never swing the shoulder). */
+export function safeReachZ(
+  ch: ArmChain,
+  a: number,
+  e: number,
+  w: number,
+  z: number,
+  lift: number,
+  mergeMax = ARM_WRIST_MERGE,
+): number {
+  return safeReach(ch, a, e, w, z, lift, mergeMax)[1];
 }

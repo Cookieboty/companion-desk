@@ -168,6 +168,17 @@ for (const side of ['l', 'r']) {
   };
 }
 const armPieces = JSON.parse(fs.readFileSync(path.join(MODEL, 'layers/arms/pieces.json'), 'utf8'));
+/** read a numeric constant straight from armKin.ts so the manifest can never drift from the renderer */
+const kinSrc = fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../packages/renderer/src/mascot/rig/armKin.ts'),
+  'utf8',
+);
+const kin = (name) => {
+  const m = new RegExp(`export const ${name} = ([0-9.]+)`).exec(kinSrc);
+  if (!m) throw new Error(`armKin.ts: ${name} not found`);
+  return Number(m[1]);
+};
+
 const out = {
   version: 1,
   generatedBy: 'scripts/brand/build-nomi-parts-manifest.mjs',
@@ -201,17 +212,17 @@ const out = {
   ),
   /** 2-bone arm chain (packages/renderer/src/mascot/rig/armKin.ts) */
   armChain: {
-    elbowS: 320,
-    handS: 560,
-    bendLen: 56,
-    bendMax: 1.92,
-    wristMerge: 0.6,
-    stump: 90,
-    shoulderZone: 110,
-    zUpper: 0.42,
-    zFore: 0.28,
-    handBase: 0.36,
-    cuffWidth: 96,
+    elbowS: kin('ARM_ELBOW_S'),
+    handS: kin('ARM_HAND_S'),
+    bendLen: kin('ARM_BEND_LEN'),
+    bendMax: kin('ARM_BEND_MAX'),
+    wristMerge: kin('ARM_WRIST_MERGE'),
+    stump: kin('ARM_STUMP'),
+    shoulderZone: kin('ARM_SHOULDER_ZONE'),
+    zUpper: kin('ARM_Z_UPPER'),
+    zFore: kin('ARM_Z_FORE'),
+    handBase: kin('HAND_BASE'),
+    cuffWidth: kin('HAND_CUFF_W'),
   },
   eyes: rig.eyes,
 };

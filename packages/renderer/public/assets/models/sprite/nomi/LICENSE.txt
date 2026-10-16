@@ -30,8 +30,9 @@ scripts/brand/build-nomi-hands-extra.py (prayer / OK / chest) and
 scripts/brand/build-nomi-arm-parts.py. Licensed by the project owner under the
 repository's MIT license. They contain no brand-bearing detail.
 
-layers/arms/*.png (upper arm / forearm) are straight pixel cuts of the official sleeve
+layers/arms/*.png (upper arm / forearm / elbow strip) are pixel cuts of the official sleeve
 layers arm-l.png / arm-r.png at the elbow, made with
-scripts/brand/build-nomi-arm-pieces.py (no repaint, no generative content); upper +
-forearm composite back to the master sleeve exactly; elbow-cap patches are the
-outer-elbow band of the same official sleeve (pixel cut, no repaint). Same licence as above.
+scripts/brand/build-nomi-arm-pieces.py (no repaint, no generative content). The forearm is
+the official sleeve pixels resampled (tapered) toward the cuff width; the elbow strip is the
+official sleeve's own one-pixel-wide cross-section at the elbow, swept through the bend angle at
+draw time (pixel resampling only). Same licence as above.
