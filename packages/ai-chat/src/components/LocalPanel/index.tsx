@@ -170,18 +170,22 @@ export const LocalPanel: React.FC<{
     if (tab === 'calendar') void loadCal();
     if (tab === 'clipboard') void loadClips();
   }, [isVisible, tab, ollama, loadOllama, loadCal, loadClips]);
+  // Alt+数字只在「可见标签」里切换；只有 1 个可见标签（标签栏已隐藏）时不响应
+  const shownKey = shown.join(',');
   useEffect(() => {
     if (!isVisible) return;
+    const visible = shownKey.split(',') as Tab[];
+    if (visible.length < 2) return;
     const onKey = (e: KeyboardEvent) => {
       const n = Number(e.key);
-      if (e.altKey && n >= 1 && n <= TABS.length) {
+      if (e.altKey && n >= 1 && n <= visible.length) {
         e.preventDefault();
-        setTab(TABS[n - 1]);
+        setTab(visible[n - 1]!);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isVisible]);
+  }, [isVisible, shownKey]);
 
   const run = async (key: string, fn: () => Promise<unknown>, after?: () => unknown) => {
     setBusy(key);
