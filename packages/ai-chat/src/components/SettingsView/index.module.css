@@ -47,9 +47,18 @@
   color: var(--cd-color-text);
 }
 .navIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  font-size: 15px;
-  text-align: center;
+  flex: none;
+  color: var(--cd-color-text-subtle);
+}
+.navItem:hover .navIcon {
+  color: var(--cd-color-text-muted);
+}
+.navItem.navActive .navIcon {
+  color: var(--cd-color-accent);
 }
 .content {
   flex: 1;

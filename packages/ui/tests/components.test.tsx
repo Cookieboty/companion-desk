@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { Inbox, Settings } from 'lucide-react';
 import React, { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +11,7 @@ import {
   Card,
   EmptyState,
   FormField,
+  Icon,
   IconButton,
   Input,
   Modal,
@@ -25,6 +27,28 @@ import {
 afterEach(cleanup);
 
 describe('@nomi-ai/ui', () => {
+  it('EmptyState: lucide icon sits in the rounded tinted container (no emoji)', () => {
+    const { container } = render(<EmptyState icon={Inbox} title="还没有内容" />);
+    const box = container.querySelector('.cd-empty__icon');
+    expect(box).toBeTruthy();
+    const svg = box!.querySelector('svg');
+    expect(svg?.getAttribute('stroke-width')).toBe('1.75');
+    expect(svg?.getAttribute('stroke')).toBe('currentColor');
+    expect(svg?.getAttribute('width')).toBe('22');
+    expect(svg?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('Icon: presets map to nav 18 / inline 16', () => {
+    const { container } = render(
+      <>
+        <Icon icon={Settings} size="nav" />
+        <Icon icon={Settings} />
+      </>,
+    );
+    const w = [...container.querySelectorAll('svg')].map((n) => n.getAttribute('width'));
+    expect(w).toEqual(['18', '16']);
+  });
+
   it('Button: variants map to classes, default type=button, passes data-testid', () => {
     render(
       <Button variant="primary" size="sm" data-testid="b">
@@ -37,7 +61,7 @@ describe('@nomi-ai/ui', () => {
   });
 
   it('IconButton: label becomes aria-label and title', () => {
-    render(<IconButton label="设置" icon="⚙" />);
+    render(<IconButton label="设置" icon={<Icon icon={Settings} />} />);
     const b = screen.getByRole('button', { name: '设置' });
     expect(b.getAttribute('title')).toBe('设置');
     expect(b.className).toContain('cd-icon-btn');

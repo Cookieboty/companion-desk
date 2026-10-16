@@ -2,7 +2,8 @@
  * 对话标签栏：每个标签绑定一个后端 + 会话 + 工作目录，可并发运行。
  * 状态点：灰 = 空闲 · 蓝（脉动）= 运行中 · 黄 = 排队 · 红 = 出错 · 绿 = 有未读结果。
  */
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
+import { X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useHarnessTabs } from '../../contexts/HarnessTabsContext';
@@ -211,7 +212,7 @@ export const ChatTabs: React.FC<{
                     closeTab(tab);
                   }}
                 >
-                  ×
+                  <Icon icon={X} size={12} />
                 </button>
               )}
             </div>

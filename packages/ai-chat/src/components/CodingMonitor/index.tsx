@@ -3,7 +3,8 @@
  * + 活跃会话列表（按端点筛选；Nomi 标签可直接打开）。
  * 只读本地日志与进程列表，不登录、不抓取任何账号。通知样式与灵动岛在「通知 / 灵动岛」里设置。
  */
-import { Badge, Button, Card, EmptyState, Notice, Switch, t as tr } from '@nomi-ai/ui';
+import { Badge, Button, Card, EmptyState, Notice, Switch, t as tr, Icon } from '@nomi-ai/ui';
+import { SquareTerminal, Check } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -124,7 +125,7 @@ export const CodingMonitor: React.FC<{
                     data-testid={`agents-tool-${k}`}
                   />
                   {tr(AGENT_LABEL[k])}
-                  {agents.detected.includes(k) ? ' ✓' : ''}
+                  {agents.detected.includes(k) ? <Icon icon={Check} size={14} /> : null}
                 </label>
               ))}
             </div>
@@ -178,6 +179,7 @@ export const CodingMonitor: React.FC<{
             )}
             {agents.sessions.length === 0 ? (
               <EmptyState
+                icon={SquareTerminal}
                 title={tr('暂无活跃会话')}
                 description={tr(
                   '启动 Claude Code、Codex、dsh 等工具或打开编程助手标签后会出现在这里。',

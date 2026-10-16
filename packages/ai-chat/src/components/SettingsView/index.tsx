@@ -2,9 +2,10 @@
  * 统一设置页（参考 Codex app 的 Settings：左侧分区导航，右侧内容）。
  * 各分区直接复用原有面板，通过 ModalHostContext 以「内嵌」方式渲染，功能与 test id 不变。
  */
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
 import { ModalHostContext } from '@nomi-ai/ui';
 import { VoiceSettingsPanel, useVoice } from '@nomi-ai/voice';
+import { ChevronLeft } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -204,7 +205,8 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
           data-testid="settings-back"
           title={t('返回对话 (Esc)')}
         >
-          {t('‹ 返回对话')}
+          <Icon icon={ChevronLeft} />
+          {t('返回对话')}
         </button>
         <div className={styles.navTitle}>{t('设置')}</div>
         {SETTINGS_SECTIONS.map((s) => (
@@ -220,7 +222,7 @@ export const SettingsView: React.FC<Props> = ({ section, onSection, onClose }) =
             data-testid={`settings-nav-${s.id}`}
           >
             <span className={styles.navIcon}>
-              <AppIcon icon={s.icon} size={16} />
+              <AppIcon icon={s.icon} size="nav" />
             </span>
             {t(s.label)}
           </button>

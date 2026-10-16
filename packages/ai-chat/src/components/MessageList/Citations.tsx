@@ -2,8 +2,9 @@
  * 知识库回答的引用：正文里的 [n] 变成可点击的上标；底部列出来源卡片。
  * 点击来源 → 预览片段，可「打开文件」或「在文件夹中显示」（主进程重新检查授权）；笔记直接显示全文。
  */
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
 import { Button, Modal } from '@nomi-ai/ui';
+import { BookOpen } from 'lucide-react';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -59,7 +60,10 @@ export const SourceList: React.FC<{ sources: KbSource[]; onPick: (s: KbSource) =
   onPick,
 }) => (
   <div className={styles.sources} data-testid="kb-sources-list">
-    <span className={styles.sourcesLabel}>{t('📚 出处')}</span>
+    <span className={styles.sourcesLabel}>
+      <Icon icon={BookOpen} size={14} />
+      {t('出处')}
+    </span>
     {sources.map((s) => (
       <button
         key={s.chunkId}

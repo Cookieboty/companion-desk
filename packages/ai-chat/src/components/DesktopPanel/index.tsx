@@ -2,8 +2,9 @@
  * DesktopPanel —— 桌面能力设置：授权文件夹（系统选择框）、工具权限、隐私（仅本地模型 / 云端提示）、
  * 操作记录（审计日志）与撤销。全部数据只保存在本机 userData。
  */
-import { t as tr } from '@nomi-ai/ui';
+import { t as tr, Icon } from '@nomi-ai/ui';
 import { Badge, Button, Card, EmptyState, Modal, Notice, Select, Switch, Tabs } from '@nomi-ai/ui';
+import { FolderLock, ScrollText, Lock, Plus } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -81,9 +82,9 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
   return (
     <Modal open onClose={onClose} title={tr('桌面能力')} size="lg" data-testid="desktop-panel">
       <div className={styles.stack}>
-        <Notice>
+        <Notice icon={Lock}>
           {tr(
-            '🔒 授权、权限、操作记录都只保存在本机。Nomi 只能访问你在这里授权的文件夹；删除一律进回收站，可撤销。',
+            '授权、权限、操作记录都只保存在本机。Nomi 只能访问你在这里授权的文件夹；删除一律进回收站，可撤销。',
           )}
         </Notice>
         <Tabs
@@ -112,18 +113,21 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
                 onClick={() => void grant('read')}
                 data-testid="desktop-grant-read"
               >
-                {tr('＋ 授权文件夹（只读）')}
+                <Icon icon={Plus} size={14} />
+                {tr('授权文件夹（只读）')}
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => void grant('read-write')}
                 data-testid="desktop-grant-rw"
               >
-                {tr('＋ 授权文件夹（读写）')}
+                <Icon icon={Plus} size={14} />
+                {tr('授权文件夹（读写）')}
               </Button>
             </div>
             {state && state.scopes.length === 0 ? (
               <EmptyState
+                icon={FolderLock}
                 title={tr('还没有授权任何文件夹')}
                 description={tr('默认 Nomi 看不到你的任何文件。')}
               />
@@ -297,7 +301,7 @@ export const DesktopPanel: React.FC<Props> = ({ isVisible, onClose }) => {
             )}
             <h4 className={styles.h4}>{tr('审计日志')}</h4>
             {audit.length === 0 ? (
-              <EmptyState title={tr('还没有记录')} />
+              <EmptyState icon={ScrollText} title={tr('还没有记录')} />
             ) : (
               <table className={styles.table} data-testid="desktop-audit">
                 <thead>

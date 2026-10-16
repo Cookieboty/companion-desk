@@ -1,4 +1,5 @@
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
+import { RefreshCw, X, Ellipsis, PanelLeft, Pencil, Search, SquarePen, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { List, type RowComponentProps } from 'react-window';
 
@@ -22,7 +23,7 @@ import type { ConversationBackend, ChatSession } from '../../types/chat';
 import { CONVERSATION_BACKENDS } from '../../types/chat';
 import { ENDPOINT_FULL } from '../../utils/endpointBadge';
 import { rankItems, type Range, type SearchField } from '../../utils/fuzzy';
-import { AppIcon, SETTINGS_ICONS } from '../AppIcons';
+import { AppIcon, FEATURE_ICONS } from '../AppIcons';
 import { ConversationMenu } from '../ConversationMenu';
 import { EndpointIcon } from '../EndpointIcon';
 import { NewChatMenu } from '../NewChatMenu';
@@ -104,53 +105,12 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
-const SearchIcon = () => (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-  >
-    <circle cx="11" cy="11" r="6.5" />
-    <path d="m20 20-3.8-3.8" />
-  </svg>
-);
+const SearchIcon = () => <Icon icon={Search} size={15} />;
 
 /** 行内操作的图标（描边，随文字色） */
-const PenIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.9"
-  >
-    <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" strokeLinejoin="round" />
-    <path d="m13.5 6.5 4 4" />
-  </svg>
-);
-const TrashIcon = () => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.9"
-  >
-    <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" strokeLinejoin="round" strokeLinecap="round" />
-  </svg>
-);
-const MoreIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="5" cy="12" r="1.8" />
-    <circle cx="12" cy="12" r="1.8" />
-    <circle cx="19" cy="12" r="1.8" />
-  </svg>
-);
+const PenIcon = () => <Icon icon={Pencil} size={14} />;
+const TrashIcon = () => <Icon icon={Trash2} size={14} />;
+const MoreIcon = () => <Icon icon={Ellipsis} size={14} />;
 
 export interface RowActionHandlers {
   onRename?: () => void;
@@ -802,16 +762,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         aria-expanded={isDev && view === 'all' ? newMenu : undefined}
         data-testid="new-chat"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        >
-          <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-        </svg>
+        <Icon icon={SquarePen} />
       </button>
       {newMenu && !collapsed && (
         <NewChatMenu
@@ -839,17 +790,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           aria-label={collapsed ? t('展开侧边栏') : t('收起侧边栏')}
           data-testid="sidebar-toggle"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <rect x="3" y="4" width="18" height="16" rx="3" />
-            <path d="M9 4v16" />
-          </svg>
+          <Icon icon={PanelLeft} />
         </button>
         {!collapsed && searchOpen && (
           <div className={styles.searchBox} role="search" data-testid="sidebar-search">
@@ -884,7 +825,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               data-testid="sidebar-search-clear"
               onClick={() => (query ? (setQuery(''), inputRef.current?.focus()) : closeSearch())}
             >
-              ×
+              <Icon icon={X} size={14} />
             </button>
           </div>
         )}
@@ -1124,7 +1065,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   aria-label={t('刷新历史会话')}
                   data-testid="cli-history-refresh"
                 >
-                  ↻
+                  <Icon icon={RefreshCw} size={14} />
                 </button>
               </div>
               {histItems.length === 0 && history.loaded && !history.loading && (
@@ -1228,7 +1169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           data-testid="sidebar-settings"
         >
           <span aria-hidden>
-            <AppIcon icon={SETTINGS_ICONS.general} size={16} />
+            <AppIcon icon={FEATURE_ICONS.settings} size={16} />
           </span>
           {!collapsed && <span>{t('设置')}</span>}
         </button>

@@ -39,7 +39,7 @@
   "目标已存在：{0}": "Target already exists: {0}",
   "回收站中的文件已不存在": "The file in the trash no longer exists",
   "免打扰期间有 {0} 条提醒，我一条条告诉你～": "{0} reminders came in during do-not-disturb; here they are one by one~",
-  "⏰ 提醒": "⏰ Reminder",
+  "提醒": "Reminder",
   "AI runtime 未就绪": "AI runtime not ready",
   "授权 Nomi 访问这个文件夹": "Grant Nomi access to this folder",
   "授权": "Grant",

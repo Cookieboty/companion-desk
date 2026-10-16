@@ -1,4 +1,5 @@
-import { t as tr } from '@nomi-ai/ui';
+import { t as tr, Icon } from '@nomi-ai/ui';
+import { BookOpen, Pin, X, ArrowUp, Plus } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef, type KeyboardEvent } from 'react';
 
 import { useAiChat } from '../../contexts/AiChatContext';
@@ -338,7 +339,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'snip',
-      icon: <AppIcon icon={FEATURE_ICONS.fork} />,
+      icon: <AppIcon icon={FEATURE_ICONS.snip} />,
       label: tr('截图提问'),
       hint: '⌘/Ctrl+Shift+S',
       testId: 'snip-button',
@@ -348,7 +349,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'model',
-      icon: <AppIcon icon={FEATURE_ICONS.settings} />,
+      icon: <AppIcon icon={FEATURE_ICONS.model} />,
       label: provOk ? tr('供应商与模型') : tr('配置模型'),
       testId: 'open-config',
       menu: true,
@@ -366,7 +367,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'kbm',
-      icon: <AppIcon icon={FEATURE_ICONS.files} />,
+      icon: <AppIcon icon={FEATURE_ICONS.kbManage} />,
       label: tr('知识库管理'),
       hint: '⌘/Ctrl+Shift+L',
       testId: 'open-kb-panel',
@@ -428,7 +429,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     },
     {
       id: 'settings',
-      icon: <AppIcon icon={FEATURE_ICONS.appSettings} />,
+      icon: <AppIcon icon={FEATURE_ICONS.settings} />,
       label: tr('全部设置…'),
       hint: '⌘/Ctrl+,',
       testId: 'composer-settings',
@@ -522,7 +523,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             aria-pressed={pinned}
             data-testid={`pin-toggle-${c.id}`}
           >
-            📌
+            <Icon icon={Pin} size={14} />
           </button>
         </div>
       );
@@ -546,7 +547,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
                 aria-label={tr('移除图片')}
                 onClick={() => setImages((c) => c.filter((x) => x.id !== i.id))}
               >
-                ×
+                <Icon icon={X} size={12} />
               </button>
             </div>
           ))}
@@ -630,9 +631,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               aria-label={tr('更多功能')}
               data-testid="composer-more"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11 5h2v14h-2zM5 11h14v2H5z" />
-              </svg>
+              <Icon icon={Plus} />
             </button>
             {menuOpen && (
               <div className={styles.menu} role="menu" data-testid="composer-menu">
@@ -651,7 +650,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               title={tr('知识库问答已开启，点击关闭')}
               data-testid="kb-mode-chip"
             >
-              {tr('📚 知识库')}
+              <Icon icon={BookOpen} size={14} />
+              {tr('知识库')}
             </button>
           )}
           <div className={styles.modelStatus}>
@@ -683,9 +683,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             {(busyOverride ?? state.isLoading) ? (
               <div className={styles.loadingSpinner} />
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 4l-7 7 1.4 1.4L11 7.8V20h2V7.8l4.6 4.6L19 11z" />
-              </svg>
+              <Icon icon={ArrowUp} />
             )}
           </button>
         </div>

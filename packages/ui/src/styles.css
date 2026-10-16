@@ -89,7 +89,7 @@
 .cd-icon-btn svg {
   width: 16px;
   height: 16px;
-  fill: currentColor;
+  flex: none;
 }
 
 /* ---------- Input / Select / Textarea ---------- */
@@ -362,6 +362,10 @@
   color: var(--cd-color-accent-2);
   border: 1px solid transparent;
 }
+.cd-badge__icon {
+  flex: none;
+  margin-right: 3px;
+}
 .cd-badge + .cd-badge {
   margin-left: var(--cd-space-1);
 }
@@ -482,6 +486,28 @@
   font-size: var(--cd-font-size-sm);
   line-height: var(--cd-line-height);
 }
+.cd-notice--icon {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cd-space-2);
+}
+.cd-notice__icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cd-color-text-muted);
+}
+.cd-notice--warning .cd-notice__icon {
+  color: var(--cd-color-warning);
+}
+.cd-notice--danger .cd-notice__icon {
+  color: var(--cd-color-danger);
+}
+.cd-notice--success .cd-notice__icon {
+  color: var(--cd-color-success);
+}
+.cd-notice__body {
+  min-width: 0;
+}
 .cd-notice--success {
   background: var(--cd-color-success-soft);
   border-color: rgba(34, 197, 94, 0.35);
@@ -507,8 +533,9 @@
   background: color-mix(in srgb, var(--cd-color-danger, #e5484d) 9%, transparent);
 }
 .cd-error-state__icon {
-  font-size: 18px;
-  line-height: 1.2;
+  display: inline-flex;
+  flex: none;
+  padding-top: 1px;
   color: var(--cd-color-danger, #e5484d);
 }
 .cd-error-state__text {
@@ -556,13 +583,20 @@
   color: var(--cd-color-text-muted);
 }
 .cd-empty__icon {
-  font-size: 32px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--cd-space-1);
+  border-radius: var(--cd-radius-lg);
+  background: var(--cd-color-accent-soft);
+  color: var(--cd-color-accent);
 }
 .cd-empty__icon svg {
-  width: 32px;
-  height: 32px;
-  fill: currentColor;
+  width: 22px;
+  height: 22px;
+  flex: none;
 }
 .cd-empty__title {
   margin: 0;

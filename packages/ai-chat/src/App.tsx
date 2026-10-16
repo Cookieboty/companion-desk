@@ -81,7 +81,7 @@ const AiChatContent: React.FC = () => {
       tabs.messages.map((m) => {
         const toolsLine =
           !m.error && m.tools && m.tools.length
-            ? `${m.tools.map((n) => `⚙ ${n}`).join(' · ')}
+            ? `${m.tools.map((n) => `\`${n}\``).join(' · ')}
 
 `
             : '';

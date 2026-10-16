@@ -17,6 +17,8 @@ export { Tooltip } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 export { Toast, ToastProvider, useToast } from './Toast';
 export type { ToastTone, ToastOptions } from './Toast';
+export { Icon, ICON_SIZE, ICON_STROKE } from './icons';
+export type { IconProps } from './icons';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 export { FormField } from './FormField';

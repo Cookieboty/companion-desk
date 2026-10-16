@@ -1,5 +1,6 @@
 import { t as tr } from '@nomi-ai/ui';
 import { Badge, Button, EmptyState, Input, Select } from '@nomi-ai/ui';
+import { BellRing, Repeat } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -205,7 +206,7 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
       {err && <span className={styles.hint}>{err}</span>}
       {items === null ? null : items.length === 0 ? (
         <EmptyState
-          icon="⏰"
+          icon={BellRing}
           title={tr('没有提醒')}
           description={tr('也可以在对话里说：「每个工作日早上 9 点提醒我站会」')}
         />
@@ -220,7 +221,9 @@ export const RemindersTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }
                   {r.repeat && (
                     <>
                       {' '}
-                      <Badge tone="accent">🔁 {describeRepeat(r.repeat)}</Badge>
+                      <Badge tone="accent" icon={Repeat}>
+                        {describeRepeat(r.repeat)}
+                      </Badge>
                     </>
                   )}
                 </td>

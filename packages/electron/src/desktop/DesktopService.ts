@@ -197,7 +197,7 @@ export class DesktopService {
     try {
       if (osNotify && Notification.isSupported()) {
         const n = new Notification({
-          title: tr('⏰ 提醒'),
+          title: tr('提醒'),
           body: r.text,
           silent: false,
           icon: iconImage(),

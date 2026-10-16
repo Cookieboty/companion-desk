@@ -1,7 +1,9 @@
+import { X } from 'lucide-react';
 import React, { createContext, useContext, useId, useRef } from 'react';
 
 import { cx } from './cx';
 import { t } from './i18n';
+import { Icon } from './icons';
 import { useFocusTrap } from './useFocusTrap';
 import { useWindowButtonsHidden } from './windowChrome';
 
@@ -122,7 +124,7 @@ export const Modal: React.FC<ModalProps> = ({
             title={closeLabel}
             onClick={onClose}
           >
-            ✕
+            <Icon icon={X} />
           </button>
         </div>
         {body}

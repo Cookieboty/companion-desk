@@ -1,3 +1,5 @@
+import { Icon } from '@nomi-ai/ui';
+import { UserRound } from 'lucide-react';
 import React from 'react';
 
 /**
@@ -28,10 +30,10 @@ export class CanvasBoundary extends React.Component<
             inset: 0,
             display: 'grid',
             placeItems: 'center',
-            fontSize: 48,
+            color: 'var(--cd-color-text-subtle, #94a3b8)',
           }}
         >
-          🙂
+          <Icon icon={UserRound} size={56} />
         </div>
       );
     }

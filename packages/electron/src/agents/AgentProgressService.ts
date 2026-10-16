@@ -829,7 +829,7 @@ export class AgentProgressService {
   private notify(title: string, body: string) {
     try {
       if (!Notification.isSupported()) return;
-      new Notification({ title: `🛠 ${title}`, body: body.slice(0, 180), icon: iconImage() }).show();
+      new Notification({ title, body: body.slice(0, 180), icon: iconImage() }).show();
     } catch (e) {
       this.d.logger.warn('agent notify failed', String(e));
     }

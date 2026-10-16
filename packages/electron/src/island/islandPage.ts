@@ -5,6 +5,7 @@
  * 动画：收起（刘海 / 小胶囊）→ 弹性展开 → 停留 → 收起 → 隐藏窗口。
  */
 import { ISLAND_ROW_MAX, type IslandGeometry } from './geometry';
+import { ISLAND_ICON_NODES } from './islandIcons';
 
 export function islandHtml(g: IslandGeometry): string {
   const notch = g.mode === 'notch';
@@ -43,11 +44,16 @@ export function islandHtml(g: IslandGeometry): string {
     transition: opacity .2s ease .08s, transform .28s ease .06s; }
   #island.open #row { opacity: 1; transform: none; }
   #icon { flex: 0 0 36px; height: 36px; border-radius: 11px; display: grid;
-    place-items: center; font-size: 18px; background: color-mix(in srgb, var(--accent) 20%, transparent);
+    place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, transparent);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent) inset; }
   /* 刘海屏：图标与状态点放进刘海带（避开中间的刘海），文字区紧贴其下，没有死黑 */
   #island.notch #icon { position: absolute; left: 16px; top: calc((var(--inset) - 26px) / 2);
-    flex: none; width: 26px; height: 26px; border-radius: 8px; font-size: 14px; }
+    flex: none; width: 26px; height: 26px; border-radius: 8px; }
+  #icon svg { width: 18px; height: 18px; display: block; }
+  #island.notch #icon svg { width: 15px; height: 15px; }
+  #spark svg { width: 14px; height: 14px; display: block; }
+  #island[data-status='running'] #icon svg { animation: spin 1.1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   #island.notch #spark { position: absolute; right: 18px; top: calc((var(--inset) - 16px) / 2);
     line-height: 16px; }
   #island[data-kind='agent'] { --accent: #78aaff; }
@@ -63,17 +69,19 @@ export function islandHtml(g: IslandGeometry): string {
   #body { color: var(--fg2); font-weight: 450; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; margin-top: 2px; }
   #body:empty { display: none; }
-  #spark { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
+  #spark { flex: 0 0 auto; color: var(--accent); }
   #island[data-status='running'] #spark { animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .35; } }
-  @media (prefers-reduced-motion: reduce) { #island, #row { transition: none; } #spark { animation: none !important; } }
+  @media (prefers-reduced-motion: reduce) { #island, #row { transition: none; } #spark, #icon svg { animation: none !important; } }
   `;
   // i18n-ignore: page script contains Chinese comments only
   const js = `
   const el = document.getElementById('island');
   const $ = (id) => document.getElementById(id);
-  const ICON = { message: '💬', agent: '🛠', reminder: '⏰', info: '✨' };
-  const STATUS_ICON = { done: '✅', failed: '⚠️', attention: '👀', running: '⏳' };
+  // lucide 图标节点（islandIcons.ts）；一律 createElementNS 构造
+  const ICONS = ${JSON.stringify(ISLAND_ICON_NODES)};
+  const KIND_ICON = { message: 'message', agent: 'agent', reminder: 'reminder', info: 'info' };
+  const STATUS_ICON = { done: 'done', failed: 'failed', attention: 'attention', running: 'running' };
   const EP = { claude: 'Claude Code', codex: 'Codex', dsh: 'dsh', nomi: 'Nomi' };
   // same glyphs as ai-chat EndpointIcon (packages/ui/src/brand/endpointGlyphs.ts; lobe-icons MIT)
   const EP_TILE = {
@@ -98,6 +106,13 @@ export function islandHtml(g: IslandGeometry): string {
     for (const k in attrs) n.setAttribute(k, attrs[k]);
     return n;
   };
+  function paintIcon(node, key) {
+    node.replaceChildren();
+    const svg = svgEl('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': 1.75, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+    for (const [tag, attrs] of ICONS[key] || ICONS.info) svg.append(svgEl(tag, attrs));
+    node.append(svg);
+  }
   function paintEndpoint(node, ep) {
     node.replaceChildren();
     if (!Object.prototype.hasOwnProperty.call(EP, ep)) return false;
@@ -120,7 +135,7 @@ export function islandHtml(g: IslandGeometry): string {
     /** 填充内容并量出内容行高度（岛展开后的高度）；主进程据此设置窗口高度，再调用 play() */
     prepare(n) {
       clearTimeout(timer);
-      $('icon').textContent = (n.status && STATUS_ICON[n.status]) || ICON[n.kind] || ICON.info;
+      paintIcon($('icon'), (n.status && STATUS_ICON[n.status]) || KIND_ICON[n.kind] || 'info');
       el.dataset.kind = n.kind || 'info';
       el.dataset.status = n.status || '';
       const ep = String(n.endpoint || '');
@@ -152,12 +167,13 @@ export function islandHtml(g: IslandGeometry): string {
   el.addEventListener('click', () => { location.hash = 'open-' + Date.now(); window.__island.hide(); });
   el.addEventListener('mouseenter', () => clearTimeout(timer));
   el.addEventListener('mouseleave', () => { timer = setTimeout(() => window.__island.hide(), 1500); });
+  paintIcon($('spark'), 'spark');
   document.title = 'ready';
   `;
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <style>${css}</style></head><body>
 <div id="island" class="${notch ? 'notch' : 'pill'}" data-mode="${g.mode}" role="status" aria-live="polite"><div id="row"><div id="icon"></div>
-<div id="text"><div id="title"><svg id="ep" viewBox="0 0 16 16" width="15" height="15" aria-hidden="false"></svg><span id="tt"></span></div><div id="body"></div></div><div id="spark">✦</div></div></div>
+<div id="text"><div id="title"><svg id="ep" viewBox="0 0 16 16" width="15" height="15" aria-hidden="false"></svg><span id="tt"></span></div><div id="body"></div></div><div id="spark"></div></div></div>
 <script>${js}</script></body></html>`;
 }

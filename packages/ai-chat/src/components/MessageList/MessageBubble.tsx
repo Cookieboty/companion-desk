@@ -1,4 +1,5 @@
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
+import { ChevronRight } from 'lucide-react';
 import React, { useState } from 'react';
 
 import type { KbSource } from '../../services/kbClient';
@@ -32,7 +33,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       {!isUser && !!message.memories?.length && (
         <details className={styles.stepRow} data-testid="memory-tag">
           <summary>
-            <span className={styles.stepIcon}>›</span>
+            <Icon icon={ChevronRight} size={12} className={styles.stepIcon} />
             {t('参考了')} {message.memories.length} {t('条记忆')}
           </summary>
           <ul className={styles.stepBody}>
@@ -71,7 +72,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         {sources.length > 0 && (
           <details className={styles.stepRow} open>
             <summary>
-              <span className={styles.stepIcon}>›</span>
+              <Icon icon={ChevronRight} size={12} className={styles.stepIcon} />
               {message.kb ? t('知识库') : t('来源')} · {sources.length} {t('处出处')}
             </summary>
             <SourceList sources={sources} onPick={setPick} />

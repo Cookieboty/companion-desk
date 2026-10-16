@@ -199,7 +199,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         const m: ChatMessage = {
           id: `sched-${r.id}`,
           role: 'assistant',
-          content: t('📋 {0}{1}\n\n{2}', r.name, r.catchUp ? t('（补上）') : '', r.text),
+          content: t('**{0}**{1}\n\n{2}', r.name, r.catchUp ? t('（补上）') : '', r.text),
           timestamp: r.at,
         };
         dispatch({ type: 'ADD_MESSAGE', payload: m });
@@ -215,7 +215,7 @@ export function AiChatContextProvider({ children, client }: AiChatContextProvide
         const userMessage: ChatMessage = {
           id: `desk-${e.at}`,
           role: 'user',
-          content: t('📄 总结文件：{0}', e.name),
+          content: t('总结文件：{0}', e.name),
           timestamp: e.at,
         };
         const aiMessage: ChatMessage = {

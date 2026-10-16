@@ -5,20 +5,20 @@
 import { t } from '@nomi-ai/ui';
 import type { LucideIcon } from 'lucide-react';
 import {
+  AudioLines,
+  BellRing,
+  Blocks,
   BookOpen,
+  Bot,
   Brain,
-  CalendarDays,
-  FolderLock,
-  Headphones,
-  Home,
-  KeyRound,
-  Library,
+  Cpu,
+  Crop,
+  LibraryBig,
   Mic,
   Monitor,
   PenLine,
-  Puzzle,
-  Scissors,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -36,18 +36,18 @@ export interface PinDef {
 
 export const PIN_POOL: PinDef[] = [
   { id: 'newchat', icon: PenLine, label: '新对话', sc: 'newChat' },
-  { id: 'snip', icon: Scissors, label: '截图提问', sc: 'snip' },
+  { id: 'snip', icon: Crop, label: '截图提问', sc: 'snip' },
   { id: 'kb', icon: BookOpen, label: '知识库问答开关', sc: 'kbAsk' },
-  { id: 'handsfree', icon: Headphones, label: '免按键语音', sc: 'handsFree' },
-  { id: 'voice', icon: Mic, label: '语音设置', shortcut: 'F2 说话' },
-  { id: 'model', icon: KeyRound, label: '供应商与模型' },
-  { id: 'kbm', icon: Library, label: '知识库管理', sc: 'kb' },
+  { id: 'handsfree', icon: Mic, label: '免按键语音', sc: 'handsFree' },
+  { id: 'voice', icon: AudioLines, label: '语音设置', shortcut: 'F2 说话' },
+  { id: 'model', icon: Bot, label: '供应商与模型' },
+  { id: 'kbm', icon: LibraryBig, label: '知识库管理', sc: 'kb' },
   { id: 'memory', icon: Brain, label: '长期记忆', sc: 'memory' },
-  { id: 'schedule', icon: CalendarDays, label: '日程与提醒', sc: 'schedule' },
+  { id: 'schedule', icon: BellRing, label: '日程与提醒', sc: 'schedule' },
   { id: 'screen', icon: Monitor, label: '屏幕记忆', sc: 'screen' },
-  { id: 'ext', icon: Puzzle, label: '扩展 / MCP', sc: 'ext' },
-  { id: 'desktop', icon: FolderLock, label: '桌面权限' },
-  { id: 'local', icon: Home, label: '本机管理', sc: 'local' },
+  { id: 'ext', icon: Blocks, label: '扩展 / MCP', sc: 'ext' },
+  { id: 'desktop', icon: ShieldCheck, label: '桌面权限' },
+  { id: 'local', icon: Cpu, label: '本机管理', sc: 'local' },
   { id: 'settings', icon: Settings, label: '设置', sc: 'settings' },
 ];
 

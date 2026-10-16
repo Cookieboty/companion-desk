@@ -2,7 +2,7 @@
  * LocalPanel —— 本地中心：本机模型（llama.cpp 按需下载 / 启停 / 删除 / 设为聊天模型、Ollama）、
  * 本地日历（.ics / 订阅 / CalDAV）、剪贴板历史、全部数据导出。
  */
-import { t } from '@nomi-ai/ui';
+import { t, Icon } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -17,6 +17,7 @@ import {
   Switch,
   Tabs,
 } from '@nomi-ai/ui';
+import { Cpu, CalendarDays, ClipboardList, MapPin, Plus, X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -493,7 +494,7 @@ export const LocalPanel: React.FC<{
       ) : ollama.length === 0 ? (
         !ollamaErr && (
           <EmptyState
-            icon="🦙"
+            icon={Cpu}
             title={t('Ollama 里还没有模型')}
             description={t('输入模型名拉取一个吧。')}
           />
@@ -576,7 +577,8 @@ export const LocalPanel: React.FC<{
           onClick={() => setNewEv({ summary: '', date: ymd, time: '10:00', mins: '60', rrule: '' })}
           data-testid="cal-new"
         >
-          {t('＋ 新日程')}
+          <Icon icon={Plus} size={14} />
+          {t('新日程')}
         </Button>
       </div>
       {newEv && (
@@ -793,7 +795,7 @@ export const LocalPanel: React.FC<{
         <SkeletonList rows={3} />
       ) : events.length === 0 ? (
         <EmptyState
-          icon="📅"
+          icon={CalendarDays}
           title={t('接下来两周没有日程')}
           description={t('新建一个，或导入 / 订阅已有的日历。')}
         />
@@ -814,11 +816,15 @@ export const LocalPanel: React.FC<{
                     }
                     aria-label={t('删除 {0}', o.summary)}
                   >
-                    ✕
+                    <Icon icon={X} />
                   </Button>
                 )}
               </div>
-              {o.location && <div className={styles.meta}>📍 {o.location}</div>}
+              {o.location && (
+                <div className={styles.meta}>
+                  <Icon icon={MapPin} size={12} /> {o.location}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -868,7 +874,7 @@ export const LocalPanel: React.FC<{
         <SkeletonList rows={3} />
       ) : clips.items.length === 0 ? (
         <EmptyState
-          icon="📋"
+          icon={ClipboardList}
           title={clips.settings.enabled ? t('还没有复制过内容') : t('剪贴板历史未开启')}
           description={
             clips.settings.enabled
@@ -951,7 +957,7 @@ export const LocalPanel: React.FC<{
                   }
                   aria-label={t('删除')}
                 >
-                  ✕
+                  <Icon icon={X} />
                 </Button>
               </div>
             </div>

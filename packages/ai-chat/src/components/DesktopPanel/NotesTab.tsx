@@ -1,5 +1,6 @@
 import { t as tr } from '@nomi-ai/ui';
 import { Badge, Button, EmptyState, Input, Textarea } from '@nomi-ai/ui';
+import { NotebookPen } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { desktopClient, type NoteMetaView, type NoteView } from '../../services/desktopClient';
@@ -96,6 +97,7 @@ export const NotesTab: React.FC<{ onMsg: (m: string) => void }> = ({ onMsg }) =>
       </div>
       {items.length === 0 ? (
         <EmptyState
+          icon={NotebookPen}
           title={query ? tr('没有匹配的笔记') : tr('还没有笔记')}
           description={tr('可以让 Nomi 帮你记：「帮我记一下……」')}
         />

@@ -2,7 +2,7 @@
  * ScreenPanel —— 截图提问说明 + 本地屏幕记忆（默认关闭）：开关、间隔、保留期、
  * 排除的应用 / 窗口、时间线搜索、暂停与清空。数据只在本机 userData/screen-memory。
  */
-import { ErrorState, LoadingState, t as tr } from '@nomi-ai/ui';
+import { ErrorState, LoadingState, t as tr, Icon } from '@nomi-ai/ui';
 import {
   Badge,
   Button,
@@ -15,6 +15,7 @@ import {
   Switch,
   Tabs,
 } from '@nomi-ai/ui';
+import { Monitor, Crop, X } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { providerDisplayName } from '../../services/providerClient';
@@ -229,7 +230,8 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
                 }}
                 data-testid="screen-panel-snip"
               >
-                {tr('✂️ 现在截图提问')}
+                <Icon icon={Crop} size={14} />
+                {tr('现在截图提问')}
               </Button>
             </div>
           </div>
@@ -320,7 +322,7 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
               <SkeletonList rows={3} />
             ) : items.length === 0 ? (
               <EmptyState
-                icon="🖥"
+                icon={Monitor}
                 title={q ? tr('没有找到相关的屏幕记录') : tr('还没有屏幕记录')}
                 description={
                   s!.enabled
@@ -387,7 +389,7 @@ export const ScreenPanel: React.FC<{ isVisible: boolean; onClose: () => void }> 
                     aria-label={tr('移除 {0}', x)}
                     onClick={() => void set({ exclusions: s!.exclusions.filter((y) => y !== x) })}
                   >
-                    ×
+                    <Icon icon={X} size={12} />
                   </button>
                 </span>
               ))}
