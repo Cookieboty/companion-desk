@@ -226,9 +226,10 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
     await chat.screenshot(shot('01-chat-notes.png'));
 
     // 设置面板 → 笔记页能看到、能搜到
-    // 桌面权限在统一设置页里（⌘/Ctrl+, → 桌面权限）
+    // 桌面权限在统一设置页里（⌘/Ctrl+, → 隐私与权限 → 桌面权限）
     await chat.click('[data-testid="open-settings"]', { timeout: 30_000 });
-    await chat.click('[data-testid="settings-nav-desktop"]');
+    await chat.click('[data-testid="settings-nav-privacy"]');
+    await chat.click('[data-testid="settings-privacy-page-tab-desktop"]');
     await chat.waitForSelector('[data-testid="desktop-panel"]', { timeout: 30_000 });
     await chat
       .getByRole('tab', { name: '笔记' })
@@ -260,9 +261,10 @@ test.describe('E13 · real app · notes / reminders / clipboard', () => {
     await expect(card).toHaveCount(0);
 
     // 面板里的提醒页（显示已结束）
-    // 桌面权限在统一设置页里（⌘/Ctrl+, → 桌面权限）
+    // 桌面权限在统一设置页里（⌘/Ctrl+, → 隐私与权限 → 桌面权限）
     await chat.click('[data-testid="open-settings"]');
-    await chat.click('[data-testid="settings-nav-desktop"]');
+    await chat.click('[data-testid="settings-nav-privacy"]');
+    await chat.click('[data-testid="settings-privacy-page-tab-desktop"]');
     await chat.getByRole('tab', { name: '提醒' }).click();
     await chat.fill('[data-testid="reminder-text"]', 'Water the plants');
     await chat.click('[data-testid="reminder-add"]');
