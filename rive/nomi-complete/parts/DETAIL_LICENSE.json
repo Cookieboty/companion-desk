@@ -1,5 +1,5 @@
 {
- "note": "r3: AI-generated arm/sleeve/hand pose-state art supplied by the project owner (generated outside the box because the GenerateImage MCP was unavailable). Brand lock: hairclip N logo, badge, jacket body, face, hairband, choker are the official layers (sha256-checked by brand-check.py); the AI art is limited to arm pieces.",
+ "note": "r3/r4: AI-generated arm/sleeve/hand pose-state art supplied by the project owner (generated outside the box because the GenerateImage MCP was unavailable). Brand lock: hairclip N logo, badge, jacket body, face, hairband, choker are the official layers (sha256-checked by brand-check.py); the AI art is limited to arm pieces.",
  "generateImage_status": "owner-supplied",
  "license_file": "rive/nomi-complete/LICENSE",
  "assets": {
@@ -217,7 +217,7 @@
    "sha256": "d11b8dff5cebe05050defa488c47f28dd7b998c8b7058faf6398f1ac930461d8",
    "bytes": 166362,
    "ai_generated": true,
-   "in_scene": true,
+   "in_scene": false,
    "derived_from": "parts/ai/gen-arm-cheer-up.png",
    "method": "crop to arm/hand/cuff (torso pocket/hood/collar removed), colour-match white point/orange/cuff/skin to official",
    "scope": "sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels"
@@ -226,7 +226,7 @@
    "sha256": "3e79dc43d48eece2e6e7770042190594065aac5e9d36a5ec7bf3f5512d6f4378",
    "bytes": 166217,
    "ai_generated": true,
-   "in_scene": true,
+   "in_scene": false,
    "derived_from": "parts/ai/gen-arm-cheer-up.png",
    "method": "crop to arm/hand/cuff (torso pocket/hood/collar removed), colour-match white point/orange/cuff/skin to official, horizontal mirror (rig screen-left arm)",
    "scope": "sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels"
@@ -244,7 +244,7 @@
    "sha256": "a742ede80e9a02b237eb6571371685110b6833df16724958503bad97f9d957d8",
    "bytes": 163711,
    "ai_generated": true,
-   "in_scene": true,
+   "in_scene": false,
    "derived_from": "parts/ai/arm-up-r.png",
    "method": "front copy: hand + cuff region only (alpha mask), drawn above the head group while the arm is raised",
    "scope": "sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels"
@@ -262,7 +262,7 @@
    "sha256": "0681ffab7750aa85ff2a2d4e34b21de1cc61055a0773127ac131f2214fb69556",
    "bytes": 163612,
    "ai_generated": true,
-   "in_scene": true,
+   "in_scene": false,
    "derived_from": "parts/ai/arm-up-l.png",
    "method": "front copy: hand + cuff region only (alpha mask), drawn above the head group while the arm is raised",
    "scope": "sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels"
@@ -274,6 +274,15 @@
    "in_scene": true,
    "derived_from": "parts/ai/arm-hang-l.png",
    "method": "shoulder cap: top of the hang sleeve with faded lower edge, static, under the jacket",
+   "scope": "sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels"
+  },
+  "parts/ai/arm-bent-l-hand.png": {
+   "sha256": "be2a87298a2ba01bf8719fdb6a5e0974c3b3a7f7d78e02c383cac6be67b49adc",
+   "bytes": 248736,
+   "ai_generated": true,
+   "in_scene": true,
+   "derived_from": "parts/ai/arm-bent-l.png",
+   "method": "front copy: hand + cuff region only (alpha mask), drawn above the head group while the arm is raised",
    "scope": "sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels"
   }
  }

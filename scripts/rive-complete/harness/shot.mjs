@@ -1,6 +1,6 @@
 /* eslint-disable -- evaluation harness (box-specific paths), not shipped */
 // box-specific playwright harness for the CANVAS rig (reads the polish worktree read-only through /workspace)
-import { chromium } from '/workspace/nomi-2d-polish/node_modules/playwright-core/index.mjs';
+const { chromium } = await import(process.env.PW_CORE || '/workspace/nomi-2d-polish/node_modules/playwright-core/index.mjs');
 import http from 'http';
 import fs from 'fs';
 import path from 'path';

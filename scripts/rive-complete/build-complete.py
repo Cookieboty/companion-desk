@@ -61,9 +61,13 @@ def ns_of(a, x, y):
 AI_DIR = PARTS / 'ai'
 AIM = json.loads((AI_DIR / 'ai_arms.json').read_text())
 # similarity-fit of each state's art into rig space: scale (rig px per native art px) and rest direction
-SCALE = {'hang': 1.185, 'bent': 0.68, 'up': 0.60}
+# r4 proportions (rig px; measured on the canvas rig renders, see docs/brand/rive-complete.md r4):
+#  across-arm scale of each art (sleeve width), along-arm length = canvas rig length (bone stretch), hand size via the wrist tendon scale
+SCALE = {'hang': 1.28, 'bent': 0.62, 'up': 0.60}   # isotropic art scale = sleeve width (hang 1.185 -> ~150 px incl. the part under the jacket)
+HAND_SHRINK = {'hang': 1.30, 'bent': 1.38, 'up': 1.0}   # wrist-tendon scale: hand+cuff drawn at scale/HAND_SHRINK (canvas hand ~145-175 px tall)
+REST_LEN = 490.0                     # shoulder pivot -> cuff centre at rest (canvas sleeve ends 468 px from the pivot, cuff centre ~ +0)
+HOLD_L1, HOLD_L2 = 130.0, 195.0      # raised pose (canvas wave/cheer hold): pivot->elbow, elbow->cuff centre
 REST_TILT = math.radians(78.0)       # hanging arm leans slightly outward (screen-right arm; mirrored for the left)
-STATE_FAC = {'bent': 1.0, 'up': 0.95}   # hold distance P->W as a fraction of the art's own bind distance
 HAND_MASK_BACK = 72.0                # native art px above W (cuff centre) where the front hand copy starts (above cuff rim)
 GRID = 30.0
 CAP_Y = 108.0                        # native art px of the hang sleeve kept as a permanent shoulder cap (alpha fades out from ~62)
@@ -78,15 +82,18 @@ class ArtState:
         self.arm, self.name = arm, state
         meta = AIM[state]; J = meta[arm.side]
         self.S, self.E, self.W = (tuple(J[k]) for k in ('S', 'E', 'W'))     # art (native) px
-        s = SCALE[state]; self.s = s
+        s = SCALE[state]; self.s = s; self.sw = HAND_SHRINK[state]
+        sx = sy = s
         if state == 'hang':
             axis = math.atan2(self.W[1] - self.S[1], self.W[0] - self.S[0])
             tilt = REST_TILT if arm.side == 'r' else math.pi - REST_TILT
             self.rot = tilt - axis
+            sy = REST_LEN / math.hypot(self.W[0] - self.S[0], self.W[1] - self.S[1])   # art axis ~ art y: along-arm scale -> canvas rest length
         else:
             self.rot = 0.0
+        self.sx, self.sy = sx, sy
         c, sn = math.cos(self.rot), math.sin(self.rot)
-        self.M = np.array([[s * c, -s * sn], [s * sn, s * c]])
+        self.M = np.array([[c, -sn], [sn, c]]) @ np.diag([sx, sy])
         P = arm.P
         self.to_rig = lambda p: (P[0] + self.M[0, 0] * (p[0] - self.S[0]) + self.M[0, 1] * (p[1] - self.S[1]),
                                  P[1] + self.M[1, 0] * (p[0] - self.S[0]) + self.M[1, 1] * (p[1] - self.S[1]))
@@ -161,7 +168,7 @@ class Arm:
         p, (x0, y0) = cap_png(self); st = self.states['hang']
         rx, ry = st.to_rig((x0, y0))
         return El('Image', f'arm-{self.side}.shoulderCap', ident=True, assetId=ai_asset(f'arm-hang-{self.side}-cap').need_id(),
-                  x=rx - fig_abs[0], y=ry - fig_abs[1], originX=0, originY=0, rotation=st.rot, scaleX=st.s, scaleY=st.s)
+                  x=rx - fig_abs[0], y=ry - fig_abs[1], originX=0, originY=0, rotation=st.rot, scaleX=st.sx, scaleY=st.sy)
 
     def mesh_image(self, state, fig_abs, front=False):
         st = self.states[state]
@@ -201,9 +208,10 @@ class Arm:
         st.verts += len(verts)
         el.add(mesh)
         sk = El('Skin', 'Skin', xx=1, xy=0, yx=0, yy=1, tx=0, ty=0)
-        for nm_, bid, ang, org, sig in (('shoulder', 'sh', st.a1, st.Sb, st.A1), ('elbow', 'el', st.a2, st.Eb, st.A2), ('wrist', 'wr', st.a2, st.Wb, 1.0)):
+        for nm_, bid, ang, org, sig in (('shoulder', 'sh', st.a1, st.Sb, st.A1), ('elbow', 'el', st.a2, st.Eb, st.A2), ('wrist', 'wr', st.a2, st.Wb, st.sw)):
             c, s_ = math.cos(ang), math.sin(ang)
-            sk.add(El('Tendon', nm_, boneId=self.bones[bid].need_id(), xx=c * sig, xy=s_ * sig, yx=-s_, yy=c, tx=org[0], ty=org[1]))
+            sw_ = st.sw if bid == 'wr' else 1.0
+            sk.add(El('Tendon', nm_, boneId=self.bones[bid].need_id(), xx=c * sig, xy=s_ * sig, yx=-s_ * sw_, yy=c * sw_, tx=org[0], ty=org[1]))
         mesh.add(sk)
         (self.front_els if front else self.mesh_els)[state] = el
         return el
@@ -269,7 +277,7 @@ class Scene:
             rigs.append(arm.make_rig(FIG))
         # AI pose-state art meshes. back -> front inside each arm: raised states over the hang state
         for sd, arm in self.arms.items():
-            st_list = ['up'] + (['bent'] if sd == 'r' else [])
+            st_list = ['bent']
             for st in st_list: back_meshes.append(arm.mesh_image(st, FIG))
             back_meshes.append(arm.mesh_image('hang', FIG))
             for st in st_list: front_meshes.append(arm.mesh_image(st, FIG, front=True))
@@ -317,11 +325,10 @@ def load_rows(name):
     return json.loads((PARAMS / f'{name}.json').read_text())
 
 MID_X2 = 2 * 476.0   # mirror axis between the two shoulder pivots (rig x)
-HAND_XMIN = 745.0
+HAND_XMIN = 722
 HAND_D = 52.0        # canvas hand anchor -> cuff centre distance (rig px)
 X_MAX_SWING = 735.0  # max wrist x while swinging (hand still points sideways)
 X_MAX = 830.0        # max wrist x for the screen-right arm during swings (mirrored for the left)
-UP_OUT = 0.55        # 'up' art: arm leans this many rad outward from vertical
 def _unwrap(v):
     out = [v[0]]
     for x in v[1:]:
@@ -347,23 +354,15 @@ def ik_art(arm, rows, pre, state):
         tx = max(tx, HAND_XMIN) if flip > 0 else min(tx, MID_X2 - HAND_XMIN)
         return (tx + (1 - zb) * (Wrest[0] - ox), t[1] + (1 - zb) * (Wrest[1] - t0[1]))
     holdT = [canvasT(r) for r in rows if r[pre + 'Z'] > 0.8]
-    d_hold = sum(math.hypot(t[0] - P[0], t[1] - P[1]) for t in holdT) / len(holdT)
     Thold_y = sum(t[1] for t in holdT) / len(holdT)
-    K = STATE_FAC[state] * tgt_st.dist / d_hold
     A, E, WR, L1, L2, Wx, Wy, Wl = [], [], [], [], [], [], [], []
     for r in rows:
         Tc = canvasT(r)
         w = smooth01(((Wrest[1] - Tc[1]) / (Wrest[1] - Thold_y) - 0.22) / 0.6)    # raise amount from the canvas hand height
-        kk = 1 + (K - 1) * w
-        dirc = math.atan2(Tc[1] - P[1], Tc[0] - P[0]); dist_c = math.hypot(Tc[0] - P[0], Tc[1] - P[1])
-        if state == 'up':   # arm straight up: lean outward by UP_OUT, constant reach
-            vert = -math.pi / 2 + (UP_OUT if arm.side == 'r' else -UP_OUT)
-            dirc = dirc + wrap(vert - dirc) * w
-            dist_c = dist_c * (1 - w) + (STATE_FAC['up'] * tgt_st.dist / kk) * w
-        T = (P[0] + math.cos(dirc) * dist_c * kk, P[1] + math.sin(dirc) * dist_c * kk)
+        T = Tc                                                                    # canvas rig's own wrist target: no re-scaling
         xm = X_MAX_SWING + (X_MAX - X_MAX_SWING) * smooth01((w - 0.92) / 0.08)   # hand points sideways mid-swing: keep it on the artboard
         T = (min(T[0], xm) if arm.side == 'r' else max(T[0], MID_X2 - xm), T[1])   # keep the wrist (and the big hand) inside the artboard
-        l1 = hang.A1 + (tgt_st.A1 - hang.A1) * w; l2 = hang.A2 + (tgt_st.A2 - hang.A2) * w
+        l1 = hang.A1 + (HOLD_L1 - hang.A1) * w; l2 = hang.A2 + (HOLD_L2 - hang.A2) * w   # canvas-length links
         dx, dy = T[0] - P[0], T[1] - P[1]
         d = max(abs(l1 - l2) + 1.0, min(l1 + l2 - 0.05, math.hypot(dx, dy)))
         th = math.atan2(dy, dx)
@@ -470,7 +469,7 @@ def main():
     sc = Scene()
     idle = build_idle(sc)
     wave = build_action(sc, 'wave', 'wave', {'r': 'r'}, 'bent')
-    cheer = build_action(sc, 'cheer', 'celebrate', {'r': 'r', 'l': 'l'}, 'up')
+    cheer = build_action(sc, 'cheer', 'celebrate', {'r': 'r', 'l': 'l'}, 'bent')
     acts = [wave, cheer]
     rest = build_rest(sc, acts)
     vm, sm = build_sm(idle, acts, rest)

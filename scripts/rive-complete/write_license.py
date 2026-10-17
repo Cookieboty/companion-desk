@@ -13,9 +13,10 @@ for k, v in old['assets'].items():
         v = dict(v); v['in_scene'] = False; v['note'] = 'r2 official cut/restore texture; superseded by the AI pose-state art in r3 (kept for the r2 build script)'
     assets[k] = v
 SRC = {'gen-arm-hang': 'hang', 'gen-arm-wave-bent': 'bent', 'gen-arm-cheer-up': 'up'}
+SCENE = (R / 'scene.rml').read_text()
 def add(path, derived_from, method, ai=True):
     p = R / path
-    assets[path] = dict(sha256=sha(p), bytes=p.stat().st_size, ai_generated=ai, in_scene=not path.startswith('gen-src') and 'gen-arm-' not in path,
+    assets[path] = dict(sha256=sha(p), bytes=p.stat().st_size, ai_generated=ai, in_scene=(Path(path).name in SCENE and not path.startswith('gen-src')),
                         derived_from=derived_from, method=method,
                         scope='sleeve / forearm / hand / cuff only - no head, hair, hairclip, N logo, badge, jacket body or face pixels')
 for n, st in SRC.items():
@@ -28,7 +29,7 @@ for sd in 'rl':
         p = R / f'parts/ai/arm-{st}-{sd}-hand.png'
         if p.exists(): add(f'parts/ai/arm-{st}-{sd}-hand.png', f'parts/ai/arm-{st}-{sd}.png', 'front copy: hand + cuff region only (alpha mask), drawn above the head group while the arm is raised')
     add(f'parts/ai/arm-hang-{sd}-cap.png', f'parts/ai/arm-hang-{sd}.png', 'shoulder cap: top of the hang sleeve with faded lower edge, static, under the jacket')
-out = dict(note='r3: AI-generated arm/sleeve/hand pose-state art supplied by the project owner (generated outside the box because the GenerateImage MCP was unavailable). '
+out = dict(note='r3/r4: AI-generated arm/sleeve/hand pose-state art supplied by the project owner (generated outside the box because the GenerateImage MCP was unavailable). '
                 'Brand lock: hairclip N logo, badge, jacket body, face, hairband, choker are the official layers (sha256-checked by brand-check.py); the AI art is limited to arm pieces.',
            generateImage_status='owner-supplied', license_file='rive/nomi-complete/LICENSE', assets=assets)
 (R / 'parts/DETAIL_LICENSE.json').write_text(json.dumps(out, indent=1, ensure_ascii=False) + '\n')
@@ -47,6 +48,6 @@ hairband, choker and all head layers) are the official layers in rive/nomi-compl
 rive/nomi-complete/parts/DETAIL_LICENSE.json.
 
 Files under parts/ not listed with ai_generated: true (r2 official cut/restore textures, procedural patches) contain no
-AI-generated pixels and are not embedded in the r3 scene.
+AI-generated pixels and are not embedded in the scene.
 ''')
 print('assets', len(assets), 'ai', sum(1 for v in assets.values() if v['ai_generated']))

@@ -13,4 +13,4 @@ hairband, choker and all head layers) are the official layers in rive/nomi-compl
 rive/nomi-complete/parts/DETAIL_LICENSE.json.
 
 Files under parts/ not listed with ai_generated: true (r2 official cut/restore textures, procedural patches) contain no
-AI-generated pixels and are not embedded in the r3 scene.
+AI-generated pixels and are not embedded in the scene.

@@ -164,3 +164,33 @@ Honest remaining flaws: (a) rest pose no longer matches the draft arm exactly (A
 (b) one-frame pop when the hang art switches to the raised art; the upper-arm strap piece of the bent art can show as a dark blob mid-swing; (c) cheer arms are straight-up V instead of the canvas's elbows-out hands-at-head pose, and mostly hidden behind the hair in the lower half;
 (d) wave elbow-lift path starts with the elbow tucked toward the body (canvas hand path), the folded hang sleeve there is the weakest frame range (f10–f30); (e) body-noarm flat shoulder edge (box 5);
 (f) joint positions are hand-estimated from the images, not auto-detected; (g) bone scale is baked (not live-drivable), see r1 notes.
+
+## r4 — canvas-rig proportions (arms were too long/thin, hands tiny, straight-up V cheer)
+
+Feedback on 37dcdf5: arms were not in the character's proportions. r4 measures the canvas rig (the official chibi-ish ratio, head height H ≈ 330 rig px,
+face width ≈ 190, shoulder width 352) and fits every arm state to it:
+
+| quantity (rig px; ratio to head height H=330) | canvas rig | official draft | r3 (37dcdf5) | r4 (new) |
+|---|---|---|---|---|
+| rest: shoulder pivot → cuff / sleeve end | ≈468 (1.42 H) | ≈737 (2.23 H, un-chibi draft, hidden by canvas fade) | hang art 517 (1.57 H) | 490 (1.48 H) |
+| hold: pivot → elbow (upper arm) | ≈131 (0.40 H) | – | 140 art / stretched by reach scale K | 130 (0.39 H) |
+| hold: elbow → cuff centre (forearm) | ≈207 (0.63 H) | – | 135 art (×K) | 195 (0.59 H) |
+| upper : forearm | 0.63 | – | 1.04 | 0.67 |
+| hand (finger tip → wrist) | ≈142–150 (0.45 H) | – | not re-measured (art hand/forearm ratio 1.53 vs canvas 0.69 as bound) | ≈135 (0.41 H) |
+| hand width / face width (190) | ≈90 / 190 = 0.47 | – | not re-measured | ≈95 / 190 = 0.50 |
+| forearm width at the wrist | ≈90 | – | – | ≈95 (sleeve belly up to ≈160 at the elbow) |
+| cheer pose | hands beside the head, elbows out and bent | – | straight-up V | bent-elbow art, hands beside head (same IK target as canvas) |
+
+How: `SCALE` (sleeve width), anisotropic hang bind (`sy = REST_LEN/|W−S|`) so rest length equals the canvas rig's; hold link lengths `HOLD_L1/L2` (bone stretch
+0.64 upper / 1.35 forearm on the bent art); hand size by a uniform scale on the wrist tendon bind matrix (`HAND_SHRINK`: hang 1.30, bent 1.38, shrinks hand+cuff about the wrist);
+the raised state is the bent-elbow art for BOTH arms (left = mirror) in wave and cheer; the straight-up art, the reach scale K and `UP_OUT` are gone; the wrist x clamp moved from 745 to 722
+so the hand sits where the canvas hand sits. Left/right unchanged (rig 'r' = screen-right = character's left arm).
+
+Media: `docs/brand/rive-complete/r4/` (canvas-vs-rive sheets for cheer f0/42/60/84/144, wave f0/24/36/54/60, rest, hand/elbow zoom with rig-px grid).
+60 fps spot check (headless Chromium, software GL, 4× CPU throttle, 6 s): wave+cheer 59.9 fps / 3.81 ms main thread per frame, cheer alone 60.0 fps / 4.03 ms.
+Brand lock: PASS (35 official layers sha256-identical; AI files in scene = 8 arm/hand/cap pieces only; licence flags OK).
+
+Honest remaining flaws: (1) the AI hang art's cuff is a thick black strap band, not the official white under-cuff with orange lining, and it has an orange stripe down the outer sleeve edge the official jacket does not have;
+(2) the bent art's sleeve belly hangs ≈70 px below the elbow (canvas ≈ 0–20 px), so the raised arm looks slightly heavier at the elbow than the canvas rig; (3) the shoulder cap top sits ≈25 px higher than the canvas jacket shoulder line at rest;
+(4) hand/cuff shrink is a skinning scale, so the cuff is also shrunk (≈0.72×) and the cuff strap looks small; (5) canvas rest hand is hidden by the fade while the Rive rest hand is visible. 
+New art that fixes (1)(2)(4): prompts in `rive/nomi-complete/gen-src/REQUESTS.md`.
