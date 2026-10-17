@@ -23,7 +23,6 @@ P_BY = {p['id']: p for p in PJ['parts']}
 S_ELBOW = 340.0
 STRAP_C = {'l': (128.0, 1127.0), 'r': (812.0, 1127.0)}
 WRIST_PT = {'l': (147.0, 1196.0), 'r': (799.0, 1196.0)}
-HANDS = json.loads((PARTS / 'hands.json').read_text())
 ZF = 0.8   # forearm foreshortening at z=1 (canvas rig: 0.45, but its forearm ends at the hand piece; ours includes the cuff, so it is shorter on screen)
 CHAR_SIDE = {'r': 'L', 'l': 'R'}   # rig 'r' arm = screen-right = character's LEFT; never swapped
 
@@ -58,149 +57,156 @@ def ns_of(a, x, y):
     dx, dy = x - a['s0'][0], y - a['s0'][1]
     return dx * a['w'][0] + dy * a['w'][1], dx * a['u'][0] + dy * a['u'][1]
 
-# ---------------------------------------------------------------- arm
-class Arm:
-    def __init__(self, side):
-        self.side = side; a = self.a = arm_geom(side); self.sg = a['sg']
-        self.P = tuple(a['pivot']); Sc = STRAP_C[side]
-        _, sP = ns_of(a, *self.P); _, sS = ns_of(a, *Sc)
-        t = (S_ELBOW - sP) / (sS - sP)
-        self.E = (self.P[0] + (Sc[0] - self.P[0]) * t, self.P[1] + (Sc[1] - self.P[1]) * t)
-        self.W = WRIST_PT[side]
-        d1 = rel(self.E, self.P); d2 = rel(self.W, self.E)
-        self.L1, self.L2, self.L3 = math.hypot(*d1), math.hypot(*d2), 70.0
-        self.a1 = math.atan2(d1[1], d1[0]); self.a2 = math.atan2(d2[1], d2[0])
-        self.rest2 = self.a2 - self.a1
-        self.tex = cv2.imread(str(PARTS / f'arm-{side}-complete.png'), cv2.IMREAD_UNCHANGED)
-        self.sE = ns_of(a, *self.E)[1]
-        self.bones: dict[str, El] = {}
+# ---------------------------------------------------------------- arm (AI pose-state art, skinned 3-bone meshes)
+AI_DIR = PARTS / 'ai'
+AIM = json.loads((AI_DIR / 'ai_arms.json').read_text())
+# similarity-fit of each state's art into rig space: scale (rig px per native art px) and rest direction
+SCALE = {'hang': 1.185, 'bent': 0.68, 'up': 0.60}
+REST_TILT = math.radians(78.0)       # hanging arm leans slightly outward (screen-right arm; mirrored for the left)
+STATE_FAC = {'bent': 1.0, 'up': 0.95}   # hold distance P->W as a fraction of the art's own bind distance
+HAND_MASK_BACK = 72.0                # native art px above W (cuff centre) where the front hand copy starts (above cuff rim)
+GRID = 30.0
+CAP_Y = 108.0                        # native art px of the hang sleeve kept as a permanent shoulder cap (alpha fades out from ~62)
+def wrap(a):
+    while a > math.pi: a -= 2 * math.pi
+    while a < -math.pi: a += 2 * math.pi
+    return a
+
+class ArtState:
+    """one pose-state texture of one arm, fitted to the rig; joints in rig px."""
+    def __init__(self, arm, state):
+        self.arm, self.name = arm, state
+        meta = AIM[state]; J = meta[arm.side]
+        self.S, self.E, self.W = (tuple(J[k]) for k in ('S', 'E', 'W'))     # art (native) px
+        s = SCALE[state]; self.s = s
+        if state == 'hang':
+            axis = math.atan2(self.W[1] - self.S[1], self.W[0] - self.S[0])
+            tilt = REST_TILT if arm.side == 'r' else math.pi - REST_TILT
+            self.rot = tilt - axis
+        else:
+            self.rot = 0.0
+        c, sn = math.cos(self.rot), math.sin(self.rot)
+        self.M = np.array([[s * c, -s * sn], [s * sn, s * c]])
+        P = arm.P
+        self.to_rig = lambda p: (P[0] + self.M[0, 0] * (p[0] - self.S[0]) + self.M[0, 1] * (p[1] - self.S[1]),
+                                 P[1] + self.M[1, 0] * (p[0] - self.S[0]) + self.M[1, 1] * (p[1] - self.S[1]))
+        self.Sb, self.Eb, self.Wb = P, self.to_rig(self.E), self.to_rig(self.W)
+        self.a1 = math.atan2(self.Eb[1] - self.Sb[1], self.Eb[0] - self.Sb[0])
+        self.a2 = math.atan2(self.Wb[1] - self.Eb[1], self.Wb[0] - self.Eb[0])
+        self.A1 = math.hypot(self.Eb[0] - self.Sb[0], self.Eb[1] - self.Sb[1])
+        self.A2 = math.hypot(self.Wb[0] - self.Eb[0], self.Wb[1] - self.Eb[1])
+        self.img = cv2.imread(str(AI_DIR / f'arm-{state}-{arm.side}.png'), cv2.IMREAD_UNCHANGED)
         self.verts = 0
+    @property
+    def dist(self): return math.hypot(self.Wb[0] - self.Sb[0], self.Wb[1] - self.Sb[1])
 
-    def make_rig(self, fig_abs):
-        """Three independent RootBones (shoulder / elbow / wrist) under the arm node. A nested chain would make the
-        foreshortening scaleX of a parent shear its rotated child (Rive has no skew), which tore the sleeve in the
-        first version; the joint positions are therefore keyed from the FK solution (see ik_arm) instead."""
-        n = node(f'arm-{self.side}.rig', self.P, fig_abs)
-        ex, ey = self.E[0] - self.P[0], self.E[1] - self.P[1]; wx, wy = self.W[0] - self.P[0], self.W[1] - self.P[1]
-        sh = El('RootBone', f'arm-{self.side}.shoulder', ident=True, x=0, y=0, rotation=self.a1, length=self.L1)
-        el = El('RootBone', f'arm-{self.side}.elbow', ident=True, x=ex, y=ey, rotation=self.a2, length=self.L2)
-        wr = El('RootBone', f'arm-{self.side}.wrist', ident=True, x=wx, y=wy, rotation=self.a2, length=self.L3)
-        n.add(sh, el, wr)
-        # front copy of the wrist bone: raised hands (wave / fist) are drawn above the head and hair, the resting hand
-        # stays under the cuff lining inside the arm layer
-        nf = node(f'arm-{self.side}.rigF', self.P, fig_abs)
-        wf = El('RootBone', f'arm-{self.side}.wristF', ident=True, x=wx, y=wy, rotation=self.a2, length=self.L3)
-        nf.add(wf)
-        self.bones = dict(sh=sh, el=el, wr=wr, wrF=wf); self.rig = n; self.rigF = nf
-        return n
-
-    def weights(self, s):
-        w3 = smooth01((s - 715) / 70)
-        w2 = smooth01((s - (self.sE - 55)) / 110) * (1 - w3)
+    def weights(self, px, py):
+        """packed skin weight of an art-space point: shoulder / elbow / wrist"""
+        S, E, W = self.S, self.E, self.W
+        d1 = np.array([E[0] - S[0], E[1] - S[1]]); d1 /= np.linalg.norm(d1)
+        d2 = np.array([W[0] - E[0], W[1] - E[1]]); d2 /= np.linalg.norm(d2)
+        nb = d1 + d2; nb /= np.linalg.norm(nb)
+        B = 70.0 if self.name == 'hang' else 55.0
+        u2 = (px - E[0]) * nb[0] + (py - E[1]) * nb[1]       # signed distance across the elbow bisector plane
+        u3 = (px - W[0]) * d2[0] + (py - W[1]) * d2[1]       # along the forearm; wrist bone owns cuff + hand
+        w3 = smooth01((u3 + 84) / 44)
+        w2 = smooth01((u2 + B) / (2 * B)) * (1 - w3)
         w1 = 1 - w2 - w3
         vals = [int(round(255 * v)) for v in (w1, w2, w3)]; vals[0] += 255 - sum(vals)
         return sum(v << (8 * i) for i, v in enumerate(vals)), sum((i + 1) << (8 * i) for i in range(3))
 
-    def mesh_image(self, fig_abs):
-        a = self.a; Ht, Wt = self.tex.shape[:2]
-        M = tex_to_rig_affine(a)
-        al = self.tex[..., 3] > 8
-        ys, xs = np.where(al)
-        x0, x1, y0, y1 = max(xs.min() - 4, 0), min(xs.max() + 4, Wt - 1), max(ys.min() - 4, 0), min(ys.max() + 4, Ht - 1)
-        cols = 8
-        cx = [x0 + (x1 - x0) * i / (cols - 1) for i in range(cols)]
-        ry = set([y0, y1])
-        y = y0
-        while y < y1: ry.add(round(y)); y += 34
-        yE = self.sE - TEX_S0
-        y = yE - 90
-        while y <= yE + 90: ry.add(round(y)); y += 8
-        y = 715 - TEX_S0
-        while y <= 790 - TEX_S0: ry.add(round(y)); y += 20
-        ry = sorted(r for r in ry if y0 <= r <= y1)
-        R, C = len(ry), len(cx)
+    def hand_front_png(self):
+        im = self.img.copy(); H, W = im.shape[:2]
+        yy, xx = np.mgrid[0:H, 0:W]
+        d2 = np.array([self.W[0] - self.E[0], self.W[1] - self.E[1]]); d2 /= np.linalg.norm(d2)
+        u3 = (xx - self.W[0]) * d2[0] + (yy - self.W[1]) * d2[1]
+        keep = (u3 > -HAND_MASK_BACK).astype(np.float32)
+        im[..., 3] = (im[..., 3].astype(np.float32) * keep).astype(np.uint8)
+        p = AI_DIR / f'arm-{self.name}-{self.arm.side}-hand.png'; cv2.imwrite(str(p), im); return p
+
+def cap_png(arm):
+    im = arm.states['hang'].img.copy()
+    yy = np.mgrid[0:im.shape[0], 0:im.shape[1]][0].astype(np.float32)
+    f = np.clip((CAP_Y - yy) / (CAP_Y - 62.0), 0, 1); f = f * f * (3 - 2 * f)
+    im[..., 3] = (im[..., 3].astype(np.float32) * f).astype(np.uint8)
+    ys, xs = np.where(im[..., 3] > 0)
+    x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
+    p = AI_DIR / f'arm-hang-{arm.side}-cap.png'; cv2.imwrite(str(p), im[y0:y1, x0:x1]); return p, (x0, y0)
+
+def ai_asset(rel): return asset(rel, f'parts/ai/{rel}.png')
+
+class Arm:
+    def __init__(self, side):
+        self.side = side; a = self.a = arm_geom(side); self.sg = a['sg']
+        self.P = tuple(a['pivot'])
+        self.states = {s: ArtState(self, s) for s in ('hang', 'bent', 'up')}
+        h = self.states['hang']
+        self.W = h.Wb; self.bones = {}; self.mesh_els = {}; self.front_els = {}
+
+    def make_rig(self, fig_abs):
+        """Three independent RootBones (shoulder / elbow / wrist). A nested chain would make the foreshortening scaleX of a
+        parent shear its rotated child (Rive has no skew), so joint positions are keyed from the IK solution instead.
+        bone scaleX = current link length in rig px; each state's Tendon carries its bind length as a scale, so the skin
+        transform is length/bind_length along the bone. Base values = hang pose."""
+        h = self.states['hang']; P = self.P
+        n = node(f'arm-{self.side}.rig', P, fig_abs)
+        sh = El('RootBone', f'arm-{self.side}.shoulder', ident=True, x=0, y=0, rotation=h.a1, scaleX=h.A1, length=1)
+        el = El('RootBone', f'arm-{self.side}.elbow', ident=True, x=h.Eb[0] - P[0], y=h.Eb[1] - P[1], rotation=h.a2, scaleX=h.A2, length=1)
+        wr = El('RootBone', f'arm-{self.side}.wrist', ident=True, x=h.Wb[0] - P[0], y=h.Wb[1] - P[1], rotation=h.a2, length=1)
+        n.add(sh, el, wr)
+        self.bones = dict(sh=sh, el=el, wr=wr); self.rig = n
+        return n
+
+    def cap_image(self, fig_abs):
+        p, (x0, y0) = cap_png(self); st = self.states['hang']
+        rx, ry = st.to_rig((x0, y0))
+        return El('Image', f'arm-{self.side}.shoulderCap', ident=True, assetId=ai_asset(f'arm-hang-{self.side}-cap').need_id(),
+                  x=rx - fig_abs[0], y=ry - fig_abs[1], originX=0, originY=0, rotation=st.rot, scaleX=st.s, scaleY=st.s)
+
+    def mesh_image(self, state, fig_abs, front=False):
+        st = self.states[state]
+        tex = st.img
+        Ht, Wt = tex.shape[:2]
+        if front:
+            p = st.hand_front_png(); tex = cv2.imread(str(p), cv2.IMREAD_UNCHANGED)
+        ys, xs = np.where(tex[..., 3] > 8)
+        x0, x1 = max(xs.min() - 6, 0), min(xs.max() + 6, Wt - 1); y0, y1 = max(ys.min() - 6, 0), min(ys.max() + 6, Ht - 1)
+        cols = max(3, int(round((x1 - x0) / GRID)) + 1); rows = max(3, int(round((y1 - y0) / GRID)) + 1)
         verts = []
-        for yy in ry:
-            for xx in cx:
-                rx = M[0, 0] * xx + M[0, 1] * yy + M[0, 2]; rY = M[1, 0] * xx + M[1, 1] * yy + M[1, 2]
-                verts.append((rx, rY, xx / Wt, yy / Ht, TEX_S0 + yy))
-        idx = lambda r, c: r * C + c
-        bset = {idx(r, c) for r in range(R) for c in range(C) if r in (0, R - 1) or c in (0, C - 1)}
+        for r in range(rows):
+            for c in range(cols):
+                px = x0 + (x1 - x0) * c / (cols - 1); py = y0 + (y1 - y0) * r / (rows - 1)
+                rx, ry = st.to_rig((px, py))
+                verts.append((rx, ry, px / Wt, py / Ht, px, py))
+        idx = lambda r, c: r * cols + c
+        bset = {idx(r, c) for r in range(rows) for c in range(cols) if r in (0, rows - 1) or c in (0, cols - 1)}
         order = sorted(bset) + [i for i in range(len(verts)) if i not in bset]
         newi = {o: n for n, o in enumerate(order)}
         tri = bytearray()
-        for r in range(R - 1):
-            for c in range(C - 1):
+        for r in range(rows - 1):
+            for c in range(cols - 1):
                 p0, p1, p2, p3 = idx(r, c), idx(r, c + 1), idx(r + 1, c + 1), idx(r + 1, c)
                 for t3 in ((p0, p1, p2), (p0, p2, p3)):
                     for v in t3: tri += varuint(newi[v])
-        el = El('Image', f'arm-{self.side}.complete', ident=True, assetId=part_asset(f'arm-{self.side}-complete').need_id(),
-                x=-fig_abs[0], y=-fig_abs[1], originX=0, originY=0)
+        nm = f'arm-{self.side}.{state}' + ('.hand' if front else '')
+        key = f'arm-{state}-{self.side}' + ('-hand' if front else '')
+        op = 1.0 if state == 'hang' and not front else 0.0
+        el = El('Image', nm, ident=True, assetId=ai_asset(key).need_id(), x=-fig_abs[0], y=-fig_abs[1], originX=0, originY=0, opacity=op)
         mesh = El('Mesh', 'Mesh', triangleIndexBytes=base64.b64encode(bytes(tri)).decode())
         for i in order:
-            rx, rY, u, v, s = verts[i]
-            vals, inds = self.weights(s)
-            vtx = El('ContourMeshVertex' if i in bset else 'MeshVertex', x=rx, y=rY, u=u, v=v)
+            rx, ry, u, v, px, py = verts[i]
+            vals, inds = st.weights(px, py)
+            vtx = El('ContourMeshVertex' if i in bset else 'MeshVertex', x=rx, y=ry, u=u, v=v)
             vtx.add(El('Weight', values=vals, indices=inds)); mesh.add(vtx)
-        self.verts = len(verts)
+        st.verts += len(verts)
         el.add(mesh)
         sk = El('Skin', 'Skin', xx=1, xy=0, yx=0, yy=1, tx=0, ty=0)
-        for nm, (ang, org) in (('shoulder', (self.a1, self.P)), ('elbow', (self.a2, self.E)), ('wrist', (self.a2, self.W))):
+        for nm_, bid, ang, org, sig in (('shoulder', 'sh', st.a1, st.Sb, st.A1), ('elbow', 'el', st.a2, st.Eb, st.A2), ('wrist', 'wr', st.a2, st.Wb, 1.0)):
             c, s_ = math.cos(ang), math.sin(ang)
-            bid = {'shoulder': 'sh', 'elbow': 'el', 'wrist': 'wr'}[nm]
-            sk.add(El('Tendon', nm, boneId=self.bones[bid].need_id(), xx=c, xy=s_, yx=-s_, yy=c, tx=org[0], ty=org[1]))
+            sk.add(El('Tendon', nm_, boneId=self.bones[bid].need_id(), xx=c * sig, xy=s_ * sig, yx=-s_, yy=c, tx=org[0], ty=org[1]))
         mesh.add(sk)
+        (self.front_els if front else self.mesh_els)[state] = el
         return el
-
-    def make_hands(self):
-        self.hand_nodes = {}
-        for hn in ('rest', 'wave', 'fist'):
-            m = HANDS[hn]
-            flip = m['side'] != 'S' and m['side'] != CHAR_SIDE[self.side]
-            hs = m['scale']
-            # tuck the extended wrist stub under the orange cuff lining: pull along the bone toward the elbow
-            # (wrist RootBone +x points along the forearm). Scale up a bit so fingers stay crisp after downsample.
-            hs = m['scale'] * 1.12
-            tuck = -28.0   # px toward elbow / under cuff
-            node_ = El('Node', f'hand-{self.side}.{hn}', ident=True, x=tuck, y=0, rotation=math.pi / 2,
-                       scaleX=-hs if flip else hs, scaleY=hs, opacity=1.0 if hn == 'rest' else 0.0)
-            im = El('Image', f'hand-{hn}', assetId=part_asset(f'hand-{hn}').need_id(), x=0, y=0,
-                    originX=m['ax'] / m['w'], originY=m['ay'] / m['h'])
-            node_.add(im)
-            self.bones['wr' if hn == 'rest' else 'wrF'].add(node_)
-            self.hand_nodes[hn] = node_
-            node_.flip = flip
-
-    def make_cuff_overlay(self):
-        """Official cuff tip (strap+buckle+orange lining) drawn ABOVE the hand so the wrist stub never shows as a flesh block."""
-        arm = cv2.imread(str(PARTS / f'arm-{self.side}-complete.png'), cv2.IMREAD_UNCHANGED)
-        # cuff band approx tex y 820..920
-        cuff = arm[800:940].copy()
-        # fade top into sleeve
-        for i in range(20):
-            cuff[i, ..., 3] = (cuff[i, ..., 3].astype(np.float32) * (i / 20)).astype(np.uint8)
-        path = PARTS / f'cuff-overlay-{self.side}.png'
-        cv2.imwrite(str(path), cuff)
-        part_asset(f'cuff-overlay-{self.side}')
-        self.cuff_overlay = El('Node', f'arm-{self.side}.cuffOverlay', ident=True, x=-8, y=0, rotation=0.0, opacity=0.0)
-        im = El('Image', f'cuff-ov-{self.side}', assetId=part_asset(f'cuff-overlay-{self.side}').need_id(),
-                x=0, y=0, originX=0.5, originY=0.85, scaleX=0.42, scaleY=0.42)
-        self.cuff_overlay.add(im)
-        self.bones['wrF'].add(self.cuff_overlay)
-
-    def make_elbow_patch(self):
-        """Overlay a bent-sleeve crease near the elbow bone; opacity keyed later in build_action."""
-        self.elbow_patch = El('Node', f'arm-{self.side}.elbowPatch', ident=True, x=0, y=0, opacity=0.0)
-        im = El('Image', f'elbow-bent-{self.side}', assetId=part_asset(f'elbow-bent-patch-{self.side}').need_id(),
-                x=0, y=0, originX=0.5, originY=0.5, scaleX=0.55, scaleY=0.55)
-        self.elbow_patch.add(im)
-        self.bones['el'].add(self.elbow_patch)
-
-    def fk(self, d1, d2, d3=0.0):
-        a_sh = self.a1 + d1
-        e = (self.P[0] + self.L1 * math.cos(a_sh), self.P[1] + self.L1 * math.sin(a_sh))
-        a_fa = a_sh + self.rest2 + d2
-        return e, (e[0] + self.L2 * math.cos(a_fa), e[1] + self.L2 * math.sin(a_fa)), a_fa
 
 # ---------------------------------------------------------------- animation machinery
 CURVES = {'io': (0.42, 0, 0.58, 1), 'o': (0, 0, 0.58, 1), 'i': (0.42, 0, 1, 1)}
@@ -258,23 +264,17 @@ class Scene:
         ab = self.ab
         self.figIdle = node('fig.idle', FIG, (0, 0)); self.figAct = node('fig.act', FIG, FIG); self.figIdle.add(self.figAct)
         self.arms = {'l': Arm('l'), 'r': Arm('r')}
-        rigs, meshes = [], []
-        for s, arm in self.arms.items():
-            rigs.append(arm.make_rig(FIG)); arm.make_cuff_overlay(); arm.make_hands(); arm.make_elbow_patch(); meshes.append(arm.mesh_image(FIG))
+        rigs, back_meshes, front_meshes = [], [], []
+        for sd, arm in self.arms.items():
+            rigs.append(arm.make_rig(FIG))
+        # AI pose-state art meshes. back -> front inside each arm: raised states over the hang state
+        for sd, arm in self.arms.items():
+            st_list = ['up'] + (['bent'] if sd == 'r' else [])
+            for st in st_list: back_meshes.append(arm.mesh_image(st, FIG))
+            back_meshes.append(arm.mesh_image('hang', FIG))
+            for st in st_list: front_meshes.append(arm.mesh_image(st, FIG, front=True))
+        caps = [arm.cap_image(FIG) for arm in self.arms.values()]
         flank_l = image('body-flank-l', FIG); flank_r = image('body-flank-r', FIG)
-        # raised-arm shoulder gussets (official flank + orange lining), start hidden; opacity keyed to arm raise
-        self.gusset = {}
-        for sd in ('l', 'r'):
-            pivot = self.arms[sd].P
-            # shift slightly toward body midline and down into the armpit
-            mid = 476.0
-            gx = pivot[0] + (12 if sd == 'r' else -12) * (1 if sd == 'r' else 1)
-            gx = pivot[0] + (18 if sd == 'r' else -18)
-            gy = pivot[1] + 40
-            gn = node(f'gusset-{sd}', (gx, gy), FIG, opacity=0.0)
-            gim = El('Image', f'gusset-{sd}-img', assetId=part_asset(f'shoulder-gusset-{sd}-raised').need_id(),
-                     x=0, y=0, originX=0.5, originY=0.15, scaleX=0.85 if sd == 'r' else -0.85, scaleY=0.85)
-            gn.add(gim); self.gusset[sd] = gn
         body = image('body-noarm', FIG)
         self.badge = node('badge.idle', tuple(P_BY['badge']['pivot']), FIG); self.badge.add(image('badge', tuple(P_BY['badge']['pivot'])))
         self.strap = node('strap-r.idle', tuple(P_BY['strap-r']['pivot']), FIG); self.strap.add(image('strap-r', tuple(P_BY['strap-r']['pivot'])))
@@ -299,9 +299,7 @@ class Scene:
         back_to_front(self.headAct, *tail_nodes, image('head', NECK), image('crown', NECK), *feats, mouth, image('bangs', NECK),
                       image('clip', NECK), self.ribbon, image('earring', NECK))
         # z: back -> front
-        back_to_front(self.figAct, flank_l, flank_r, self.gusset['l'], self.gusset['r'],
-                      rigs[0], rigs[1], meshes[0], meshes[1], body, self.strap, self.badge, self.headIdle,
-                      self.arms['l'].rigF, self.arms['r'].rigF)
+        back_to_front(self.figAct, flank_l, flank_r, *rigs, *back_meshes, *caps, body, self.strap, self.badge, self.headIdle, *front_meshes)
         ab.add(self.figIdle)
         if os.environ.get('RC_BG'):   # review renders only: opaque cream backdrop so CLI frames match the canvas rig's bg
             bg = El('Shape', 'review.bg', ident=True, x=0, y=0)
@@ -318,10 +316,12 @@ class Scene:
 def load_rows(name):
     return json.loads((PARAMS / f'{name}.json').read_text())
 
-
 MID_X2 = 2 * 476.0   # mirror axis between the two shoulder pivots (rig x)
 HAND_XMIN = 745.0
-HAND_D = 52.0   # cuff rim offset from canvas hand anchor; smaller = hand sits closer under cuff   # canvas hand anchor -> cuff rim distance (rig px)
+HAND_D = 52.0        # canvas hand anchor -> cuff centre distance (rig px)
+X_MAX_SWING = 735.0  # max wrist x while swinging (hand still points sideways)
+X_MAX = 830.0        # max wrist x for the screen-right arm during swings (mirrored for the left)
+UP_OUT = 0.55        # 'up' art: arm leans this many rad outward from vertical
 def _unwrap(v):
     out = [v[0]]
     for x in v[1:]:
@@ -330,102 +330,86 @@ def _unwrap(v):
         out.append(x)
     return out
 
-def ik_arm(arm, rows, pre, fu, ff, Zs):
-    """Place this arm's wrist where the canvas rig's hand is (same timestamps), solving a 2-link IK per frame.
-    Returns absolute bone rotations (shoulder world angle, elbow local angle, wrist local delta)."""
-    r0 = rows[0]
+def ik_art(arm, rows, pre, state):
+    """Two-link IK per frame. The target wrist is the canvas rig's own hand anchor (same timestamps); link lengths and the
+    reach distance morph from the hang art's to the raised-state art's by w (raise amount from the canvas hand height); the
+    elbow branch is the one closest to the art's own bind direction so a bent-elbow art keeps its upper arm out to the side."""
+    hang, tgt_st = arm.states['hang'], arm.states[state]
     def tgt(r):
-        h = r['hand']
-        return (h['hx'] + HAND_D * math.sin(h['hPsi']), h['hy'] - HAND_D * math.cos(h['hPsi']))
-    t0 = tgt(r0)
-    flip = -1.0 if arm.side == 'l' else 1.0     # mirror the screen-right ('r') target for the screen-left arm
-    P = arm.P; Wrest = arm.W
-    A, E, W = [], [], []
-    th_rest = 0
-    prevA = None
-    for r, u, f, z in zip(rows, fu, ff, Zs):
-        t = tgt(r)
-        # absolute canvas target (mirrored for the screen-left arm); blended to this arm's own rest wrist while z~0,
-        # because our draft-length arm hangs ~190 px lower than the canvas chibi arm at rest
-        tx = t[0] if flip > 0 else MID_X2 - t[0]
-        ox = t0[0] if flip > 0 else MID_X2 - t0[0]
+        h = r['hand']; return (h['hx'] + HAND_D * math.sin(h['hPsi']), h['hy'] - HAND_D * math.cos(h['hPsi']))
+    t0 = tgt(rows[0])
+    flip = -1.0 if arm.side == 'l' else 1.0
+    P = arm.P; Wrest = hang.Wb
+    def canvasT(r):
+        t = tgt(r); z = max(0.0, min(1.0, r[pre + 'Z']))
+        tx = t[0] if flip > 0 else MID_X2 - t[0]; ox = t0[0] if flip > 0 else MID_X2 - t0[0]
         zb = max(0.0, min(1.0, z / 0.8))
-        tx = max(tx, HAND_XMIN) if flip > 0 else min(tx, MID_X2 - HAND_XMIN)   # keep the (larger) hand off the face
-        T = (tx + (1 - zb) * (Wrest[0] - ox), t[1] + (1 - zb) * (Wrest[1] - t0[1]))
-        l1, l2 = arm.L1 * u, arm.L2 * f
+        tx = max(tx, HAND_XMIN) if flip > 0 else min(tx, MID_X2 - HAND_XMIN)
+        return (tx + (1 - zb) * (Wrest[0] - ox), t[1] + (1 - zb) * (Wrest[1] - t0[1]))
+    holdT = [canvasT(r) for r in rows if r[pre + 'Z'] > 0.8]
+    d_hold = sum(math.hypot(t[0] - P[0], t[1] - P[1]) for t in holdT) / len(holdT)
+    Thold_y = sum(t[1] for t in holdT) / len(holdT)
+    K = STATE_FAC[state] * tgt_st.dist / d_hold
+    A, E, WR, L1, L2, Wx, Wy, Wl = [], [], [], [], [], [], [], []
+    for r in rows:
+        Tc = canvasT(r)
+        w = smooth01(((Wrest[1] - Tc[1]) / (Wrest[1] - Thold_y) - 0.22) / 0.6)    # raise amount from the canvas hand height
+        kk = 1 + (K - 1) * w
+        dirc = math.atan2(Tc[1] - P[1], Tc[0] - P[0]); dist_c = math.hypot(Tc[0] - P[0], Tc[1] - P[1])
+        if state == 'up':   # arm straight up: lean outward by UP_OUT, constant reach
+            vert = -math.pi / 2 + (UP_OUT if arm.side == 'r' else -UP_OUT)
+            dirc = dirc + wrap(vert - dirc) * w
+            dist_c = dist_c * (1 - w) + (STATE_FAC['up'] * tgt_st.dist / kk) * w
+        T = (P[0] + math.cos(dirc) * dist_c * kk, P[1] + math.sin(dirc) * dist_c * kk)
+        xm = X_MAX_SWING + (X_MAX - X_MAX_SWING) * smooth01((w - 0.92) / 0.08)   # hand points sideways mid-swing: keep it on the artboard
+        T = (min(T[0], xm) if arm.side == 'r' else max(T[0], MID_X2 - xm), T[1])   # keep the wrist (and the big hand) inside the artboard
+        l1 = hang.A1 + (tgt_st.A1 - hang.A1) * w; l2 = hang.A2 + (tgt_st.A2 - hang.A2) * w
         dx, dy = T[0] - P[0], T[1] - P[1]
-        d = max(abs(l1 - l2) + 1.0, min(l1 + l2 - 0.5, math.hypot(dx, dy)))
+        d = max(abs(l1 - l2) + 1.0, min(l1 + l2 - 0.05, math.hypot(dx, dy)))
         th = math.atan2(dy, dx)
         al = math.acos(max(-1, min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))))
-        cands = []
-        for sgn in (1, -1):
-            a1w = th + sgn * al
-            ex, ey = P[0] + l1 * math.cos(a1w), P[1] + l1 * math.sin(a1w)
-            a2w = math.atan2(T[1] - ey, T[0] - ex)
-            e = a2w - a1w
-            while e > math.pi: e -= 2 * math.pi
-            while e < -math.pi: e += 2 * math.pi
-            cands.append((a1w, e, a2w))
-        # canvas elbow bend sign (positive canvas e = forearm turns toward the head) -> local rotation sign -sg
-        want = -arm.sg * (1 if r[pre + 'E'] >= 0 else -1)
-        ok = ([c for c in cands if (c[1] > 0) == (want > 0)] if abs(r[pre + 'E']) > 3 else cands) or cands
-        c = min(ok, key=lambda c: abs(c[0] - (prevA if prevA is not None else arm.a1)))
-        prevA = c[0]
+        # elbow branch: elbow stays low/out and lifts as the forearm comes up (screen-right arm: th + al; mirrored for the left arm)
+        a1w = th + al if arm.side == 'r' else th - al
+        ex, ey = P[0] + l1 * math.cos(a1w), P[1] + l1 * math.sin(a1w)
+        wx_, wy_ = P[0] + d * math.cos(th), P[1] + d * math.sin(th)     # wrist on the (clamped) reach circle
+        a2w = math.atan2(wy_ - ey, wx_ - ex)
         hp = r['hand']['hPsi']
         thh = math.atan2(-math.cos(hp), math.sin(hp))
-        thh_eff = thh if arm.side == 'r' else (math.pi - thh if True else thh)
-        A.append(c[0]); E.append(c[2])
-        W.append(thh_eff - c[2])
-    A = _unwrap(A)
-    W0 = W[0]; W = _unwrap([w - W0 for w in W])
-    return A, _unwrap(E), W
+        thh_eff = thh if arm.side == 'r' else math.pi - thh
+        A.append(a1w); E.append(a2w); WR.append(thh_eff - a2w); L1.append(l1); L2.append(l2)
+        Wx.append(wx_ - P[0]); Wy.append(wy_ - P[1]); Wl.append(w)
+    E = _unwrap(E); A = _unwrap(A)
+    W0 = WR[0]; WR = _unwrap([x - W0 for x in WR])
+    # hand roll follows the canvas hand angle partially (clamped); art hands are upright continuations of the forearm
+    WR = [max(-0.45, min(0.45, 0.55 * x)) * w for x, w in zip(WR, Wl)]
+    return dict(A=A, E=E, WR=WR, L1=L1, L2=L2, Wx=Wx, Wy=Wy, w=Wl)
 
-def build_action(sc: Scene, name: str, src: str, sides: dict[str, str], hand: str):
+def build_action(sc: Scene, name: str, src: str, sides: dict[str, str], state: str):
     d = load_rows(src); rows = d['rows']; n = len(rows) - 1
     an = Anim(name, n, False)
-    gain = 1.0
     def track(vals, eps):
-        pts = [(r['f'], v) for r, v in zip(rows, vals)]
-        return simplify(pts, eps)
+        return simplify([(r['f'], v) for r, v in zip(rows, vals)], eps)
     for side, pre in sides.items():
-        arm = sc.arms[side]; sg = arm.sg
-        Z = [0.0 if os.environ.get('RC_NOZ') else max(0.0, min(1.0, r[pre + 'Z'])) for r in rows]
-        fu = [1 - 0.7 * z for z in Z]; ff = [1 - ZF * z for z in Z]
-        Ab, Eb, Wb = ik_arm(arm, rows, pre, fu, ff, Z)
-        mix = [r[pre + 'Mix'] for r in rows]
-        # independent root bones: key joint positions from FK (P fixed; elbow/wrist follow the scaled links)
-        ex = []; ey = []; wx = []; wy = []
-        for a1w, a2w, u, f in zip(Ab, Eb, fu, ff):
-            e = (arm.L1 * u * math.cos(a1w), arm.L1 * u * math.sin(a1w))
-            w = (e[0] + arm.L2 * f * math.cos(a2w), e[1] + arm.L2 * f * math.sin(a2w))
-            ex.append(e[0]); ey.append(e[1]); wx.append(w[0]); wy.append(w[1])
-        an.key(arm.bones['sh'], 'scaleX', [(f, v, 'l') for f, v in track(fu, 0.01)])
-        an.key(arm.bones['el'], 'scaleX', [(f, v, 'l') for f, v in track(ff, 0.01)])
-        an.key(arm.bones['sh'], 'rotation', [(f, v, 'l') for f, v in track(Ab, 0.004)])
-        an.key(arm.bones['el'], 'rotation', [(f, v, 'l') for f, v in track(Eb, 0.004)])
-        an.key(arm.bones['wr'], 'rotation', [(f, v, 'l') for f, v in track([a + w for a, w in zip(Eb, Wb)], 0.004)])
-        an.key(arm.bones['wrF'], 'rotation', [(f, v, 'l') for f, v in track([a + w for a, w in zip(Eb, Wb)], 0.004)])
-        for bn, xs, ys in (('el', ex, ey), ('wr', wx, wy), ('wrF', wx, wy)):
+        arm = sc.arms[side]
+        k = ik_art(arm, rows, pre, state); arm.last = k
+        A, E, WR, L1, L2, Wx, Wy = (k[q] for q in ('A', 'E', 'WR', 'L1', 'L2', 'Wx', 'Wy'))
+        ex = [l * math.cos(a) for l, a in zip(L1, A)]; ey = [l * math.sin(a) for l, a in zip(L1, A)]
+        an.key(arm.bones['sh'], 'scaleX', [(f, v, 'l') for f, v in track(L1, 0.4)])
+        an.key(arm.bones['el'], 'scaleX', [(f, v, 'l') for f, v in track(L2, 0.4)])
+        an.key(arm.bones['sh'], 'rotation', [(f, v, 'l') for f, v in track(A, 0.004)])
+        an.key(arm.bones['el'], 'rotation', [(f, v, 'l') for f, v in track(E, 0.004)])
+        an.key(arm.bones['wr'], 'rotation', [(f, v, 'l') for f, v in track([e + w for e, w in zip(E, WR)], 0.004)])
+        for bn, xs, ys in (('el', ex, ey), ('wr', Wx, Wy)):
             an.key(arm.bones[bn], 'x', [(f, v, 'l') for f, v in track(xs, 0.3)])
             an.key(arm.bones[bn], 'y', [(f, v, 'l') for f, v in track(ys, 0.3)])
-        # hands: rest -> action hand crossfade by the canvas rig's own hand mix
-        hv = [min(1.0, max(0.0, m)) for m in mix]
-        # never leave a stump: wave hand is visible whenever mix>0.15; rest hand stays until wave is nearly solid
-        an.key(arm.hand_nodes[hand], 'opacity', [(f, v, 'l') for f, v in track([min(1.0, max(0.0, (m-0.12)/0.55)) for m in mix], 0.02)])
-        an.key(arm.hand_nodes['rest'], 'opacity', [(f, v, 'l') for f, v in track([1.0 if m < 0.85 else max(0.0, 1.0-(m-0.85)/0.15) for m in mix], 0.02)])
-        # raised-arm detail: gusset fades in with z / raise; elbow crease with |E|
-        raise_amt = [max(0.0, min(1.0, 0.55 * z + 0.55 * max(0.0, (abs(r[pre + 'A']) - 25) / 90))) for r, z in zip(rows, Z)]
-        an.key(sc.gusset[side], 'opacity', [(f, v, 'l') for f, v in track(raise_amt, 0.02)])
-        bend = [max(0.0, min(0.85, abs(r[pre + 'E']) / 70.0)) for r in rows]
-        an.key(arm.elbow_patch, 'opacity', [(f, v, 'l') for f, v in track(bend, 0.02)])
-        an.key(arm.cuff_overlay, 'opacity', [(f, v, 'l') for f, v in track([min(1.0, max(0.0, (m-0.12)/0.55)) for m in mix], 0.02)])
-
-
-    # body bob / head
+        # crossfade hang art -> raised-state art (hang stays underneath until the raised art is fully opaque)
+        alpha = [1.0 if w >= 0.56 else 0.0 for w in k["w"]]   # hard switch: no double-exposed hands/sleeves
+        an.key(arm.mesh_els[state], 'opacity', [(f, v, 'l') for f, v in track(alpha, 0.02)])
+        an.key(arm.front_els[state], 'opacity', [(f, v, 'l') for f, v in track(alpha, 0.02)])
+        an.key(arm.mesh_els['hang'], 'opacity', [(f, v, 'l') for f, v in track([1.0 if a_ < 0.999 else 0.0 for a_ in alpha], 0.02)])
     an.key(sc.figAct, 'y', [(f, v, 'l') for f, v in track([r['bodyY'] for r in rows], 0.15)])
     an.key(sc.figAct, 'x', [(f, v, 'l') for f, v in track([r['torsoX'] for r in rows], 0.15)])
     an.key(sc.headAct, 'rotation', [(f, v, 'l') for f, v in track([r['headRot'] for r in rows], 0.004)])
-    # right strap fades while the screen-right arm is raised (same rule as the canvas rig)
     if 'r' in sides:
         an.key(sc.strap, 'opacity', [(f, 1 - min(1.0, v), 'l') for f, v in track([r['rOn'] for r in rows], 0.02)])
     return an
@@ -485,8 +469,8 @@ def build_sm(idle, acts, rest):
 def main():
     sc = Scene()
     idle = build_idle(sc)
-    wave = build_action(sc, 'wave', 'wave', {'r': 'r'}, 'wave')
-    cheer = build_action(sc, 'cheer', 'celebrate', {'r': 'r', 'l': 'l'}, 'wave')
+    wave = build_action(sc, 'wave', 'wave', {'r': 'r'}, 'bent')
+    cheer = build_action(sc, 'cheer', 'celebrate', {'r': 'r', 'l': 'l'}, 'up')
     acts = [wave, cheer]
     rest = build_rest(sc, acts)
     vm, sm = build_sm(idle, acts, rest)
@@ -498,7 +482,8 @@ def main():
     for a_ in assets.values(): body += a_.emit(1)
     body += vm.emit(1) + sc.ab.emit(1) + '</Rive>\n'
     (PROJ / 'scene.rml').write_text(body)
-    print('wrote scene.rml; mesh verts', {s: a.verts for s, a in sc.arms.items()}, 'assets', len(assets), 'wave frames', wave.frames, 'cheer', cheer.frames)
+    print('wrote scene.rml; mesh verts', {s: {k: v.verts for k, v in a.states.items()} for s, a in sc.arms.items()}, 'assets', len(assets), 'wave frames', wave.frames, 'cheer', cheer.frames)
 
 if __name__ == '__main__':
     main()
+

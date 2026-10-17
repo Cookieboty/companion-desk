@@ -118,3 +118,49 @@ cut/restore, procedural crease/gusset compositing, cuff overlay, denser elbow me
 | 6 sleeve holes | white holes | careful connected-component inpaint from official | small interior holes fixed; body-noarm hard silhouette edge remains |
 
 Provenance: `rive/nomi-complete/parts/DETAIL_LICENSE.json` (`ai_generated: false` for every file).
+
+## r3 — AI pose-state arm art (owner-generated), bone-chain skinning
+
+Why: `GenerateImage` was unavailable in r2, so the six red-box flaws were only partly fixed with official cut/restore. The owner then generated
+three arm/hand/sleeve images (green #00FF00 bg, 1280×720; `rive/nomi-complete/gen-src/`): `gen-arm-hang` (relaxed sleeve + cuff + hand),
+`gen-arm-wave-bent` (bent elbow, crisp open hand), `gen-arm-cheer-up` (arm straight up, crisp hand). Rig `r` = screen-right = the character's
+LEFT arm (never swapped); the screen-left arm is the cv2 mirror of the art, joints mirrored.
+
+Pipeline (`python3 scripts/rive-complete/{key_gen,make_ai_parts,build-complete,write_license}.py`, then `rive rive/nomi-complete --verify|--once`, `brand-check.py`):
+1. `key_gen.py` — chroma-key (green dominance alpha, despill by clamping g to max(r,b), speck removal), native resolution, **no resampling**.
+2. `make_ai_parts.py` — crop to arm/hand/cuff (torso pocket / hood / collar bits of the wave-bent and cheer-up images are cut away, feathered 5 px; leak check = 0 px),
+   colour-match to the official arm texture (warm white (250,236,229), orange (240,142,72) from the AI's saturated (228,88,8), warm-black cuff, skin),
+   mirror for the left arm, write joint estimates (shoulder S / elbow E / cuff-centre wrist W) to `parts/ai/ai_arms.json`.
+3. `build-complete.py` (r2 builder kept as `build-complete-r2.py`) — three art states per arm, each a **skinned mesh bound at its own pose** (grid 30 art-px, ~175–675 vertices):
+   `hang` (rest; also replaces the official wrist/cuff/hand and the sleeve with the holes), `bent` (wave, right arm), `up` (cheer, both arms).
+   Bones: three independent RootBones per arm (shoulder / elbow / wrist; nested bones sheared the sleeve in r1 because Rive has no skew), keyed from a per-frame 2-link IK
+   that hits the canvas rig's own hand anchor. `bone.scaleX` = current link length in px and every state's Tendon bind matrix carries its bind length as a scale, so one bone set drives
+   all three meshes. Weights: elbow = smoothstep across the elbow bisector plane (±55 px art), wrist bone owns cuff + hand (rigid, so fingers/buckle never squash), so the
+   elbow bend folds the drawn fabric instead of squashing it. Raise amount w (from the canvas hand height) morphs link lengths/reach from the hang art's to the state art's;
+   hard switch hang→raised art at w≥0.56 (a cross-fade double-exposed two different hands for 3 frames). Elbow branch: elbow low/out, lifting as the forearm comes up.
+   Front copy of the hand+cuff (alpha-masked) is drawn above the head group while raised. A static shoulder cap (top of the hang sleeve, faded lower edge) stays under the jacket
+   when the arm is raised. `cheer` uses `up` art with the arms leaning 0.55 rad outward (V), reach fixed to the art's own length (the canvas hands sit beside the head with bent elbows; the straight-arm art cannot reproduce that).
+4. `write_license.py` — `parts/DETAIL_LICENSE.json` (`ai_generated: true` for the 3 sources, 3 keyed, 6 state textures, 3 hand-front copies, 2 caps = 17 files) and `rive/nomi-complete/LICENSE`.
+5. `brand-check.py` — official layers sha256 (35/35), scene embeds only official layers + `parts/ai/*` (hairclip N logo, badge, jacket body/flanks, head, bangs, crown, hairband, earring, hair tails, strap = official files),
+   every AI file listed with `ai_generated:true` + matching sha256, torso-crop leak, colour medians vs official (max channel delta: white ≤6, orange ≤11, skin ≤11). **PASS**.
+
+Style drift handled: the AI cuff is a wide black cuff with a grey buckle and no white under-cuff/orange lining (official: black strap + square buckle + white cuff + orange lining) — kept (the user chose this art; the old official-style cuff overlay is gone),
+the AI hang sleeve is narrower than the official draft one (re-scaled ×1.185 to ~172 px width = official), and the AI cheer/bent images contained torso pocket / hood lining which are cropped.
+
+Per red box (media: `docs/brand/rive-complete/r3/`; BEFORE = d1b9b7c, AFTER = r3):
+| box | before | after |
+|---|---|---|
+| 1 cuff↔hand seam | gap / stump | AI hang cuff + hand drawn as one piece, no seam |
+| 2 extended arm hand | missing hand / stump | hand present in every frame (hang hand while lowered, bent/up hand when raised) |
+| 3 raised elbow | pinched, jagged fold | folded-fabric bent elbow from the AI art, skinned elbow weights |
+| 4 raised hand | blurry fingers | crisp AI hand at native res (≤0.68 scale), front copy above hair |
+| 5 shoulder/armpit | hard cut, dark wedge | wedge gone; static AI shoulder cap + arm base under the jacket. **Still**: the official `body-noarm` layer's own flat shoulder cut edge is visible in raised poses |
+| 6 lower sleeve | white holes | AI sleeve, no holes |
+
+fps (headless Chromium software GL, rive wasm `canvas-lite` 2.44.2): 4× CPU throttle wave 60 / cheer 60 / both 59.9–60 fps, 3.2–3.4 ms main-thread per frame (r2: 2.6); 6× both 60 fps 4.3 ms; 1× 60 fps 0.95 ms.
+Canvas rig numbers from earlier turns (4×: 54 / 49 fps) unchanged. `docs/brand/rive-complete/r3/perf-r3.jsonl`.
+
+Honest remaining flaws: (a) rest pose no longer matches the draft arm exactly (AI sleeve is a different drawing, arm ~100 px shorter than the draft rig; official strap/lining details on the sleeve are not reproduced);
+(b) one-frame pop when the hang art switches to the raised art; the upper-arm strap piece of the bent art can show as a dark blob mid-swing; (c) cheer arms are straight-up V instead of the canvas's elbows-out hands-at-head pose, and mostly hidden behind the hair in the lower half;
+(d) wave elbow-lift path starts with the elbow tucked toward the body (canvas hand path), the folded hang sleeve there is the weakest frame range (f10–f30); (e) body-noarm flat shoulder edge (box 5);
+(f) joint positions are hand-estimated from the images, not auto-detected; (g) bone scale is baked (not live-drivable), see r1 notes.
